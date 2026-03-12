@@ -1,8 +1,18 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fredoka", "Nunito", ui-sans-serif, system-ui, sans-serif;
+}
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes bounce-in {
@@ -24,6 +34,10 @@
 
 .animate-fade-in {
   animation: fade-in 0.4s ease-out;
+}
+
+.animate-bubble-in {
+  animation: bubble-in 0.35s ease-out forwards;
 }
 
 .animate-bounce-in {

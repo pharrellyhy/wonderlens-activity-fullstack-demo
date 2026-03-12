@@ -54,7 +54,7 @@ def load_scenario(activity_type: str) -> dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def match_scenario(entity: str, features: list[str] | None = None) -> str:
+def match_scenario(entity: str, features: list[str] | None = None, filename: str = "") -> str:
     """Map a vision entity to the best matching scenario using keyword matching."""
     entity_lower = entity.lower().strip()
 
@@ -76,6 +76,14 @@ def match_scenario(entity: str, features: list[str] | None = None) -> str:
             return "fluffy_expedition_dandelion"
         if any(kw in feature_text for kw in ["plush", "stuffed", "toy"]):
             return "mood_changer_dog"
+
+    # Filename-based fallback (e.g., "ladybug.jpg" → "ladybug")
+    if filename:
+        name_lower = Path(filename).stem.lower()
+        for keyword, scenario in _ENTITY_SCENARIO_MAP.items():
+            if keyword in name_lower:
+                logger.info(f"Matched scenario from filename '{filename}': {scenario}")
+                return scenario
 
     # Default
     logger.info(f"No scenario match for entity '{entity}', defaulting to mood_changer_dog")

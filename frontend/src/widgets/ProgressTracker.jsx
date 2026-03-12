@@ -3,33 +3,33 @@ export default function ProgressTracker({ filled = 0, total = 4, description }) 
 
   return (
     <div className="flex flex-col items-center gap-4 p-4">
-      <h3 className="text-lg font-bold text-purple-700">Collection Progress</h3>
+      <h3 className="text-lg font-bold text-fuchsia-400">Collection Progress</h3>
 
       <div className="flex gap-3">
         {slots.map((isFilled, i) => (
           <div
             key={i}
-            className={`w-16 h-16 rounded-full border-3 flex items-center justify-center transition-all duration-500 ${
+            className={`w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
               isFilled
-                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 shadow-lg shadow-green-200 scale-110'
-                : 'bg-gray-100 border-gray-300 border-dashed'
-            } ${!isFilled && i === filled ? 'animate-pulse border-purple-400' : ''}`}
+                ? 'bg-fuchsia-500 border-fuchsia-400/30 scale-110'
+                : 'bg-white/5 border-white/10 border-dashed'
+            } ${!isFilled && i === filled ? 'animate-pulse border-fuchsia-500' : ''}`}
           >
             {isFilled ? (
               <span className="text-white text-2xl">✓</span>
             ) : (
-              <span className="text-gray-300 text-xl">{i + 1}</span>
+              <span className="text-neutral-600 text-xl">{i + 1}</span>
             )}
           </div>
         ))}
       </div>
 
-      <p className={`text-sm font-medium ${filled >= total ? 'text-green-600' : 'text-gray-600'}`}>
+      <p className={`text-sm font-medium ${filled >= total ? 'text-fuchsia-400' : 'text-neutral-400'}`}>
         {filled >= total ? 'Collection Complete!' : `${filled} of ${total} found`}
       </p>
 
       {description && (
-        <p className="text-xs text-gray-500 text-center max-w-xs">{description}</p>
+        <p className="text-xs text-neutral-500 text-center max-w-xs">{description}</p>
       )}
     </div>
   );

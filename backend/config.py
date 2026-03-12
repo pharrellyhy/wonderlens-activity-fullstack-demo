@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     google_application_credentials: str = ""
 
     # App config — defaults from config.yaml, overridable by env vars
-    gemini_model: str = str(_yaml_config.get("gemini_model", "gemini-2.0-flash"))
+    gemini_model: str = str(_yaml_config.get("gemini_model", "gemini-2.5-flash"))
     tts_model: str = str(_yaml_config.get("tts_model", "gemini-2.5-flash-tts"))
     director_timeout_ms: int = int(_yaml_config.get("director_timeout_ms", 200))
     director_max_tokens: int = int(_yaml_config.get("director_max_tokens", 150))

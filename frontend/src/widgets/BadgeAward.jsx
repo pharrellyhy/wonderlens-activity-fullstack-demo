@@ -5,8 +5,8 @@ export default function BadgeAward({ title, concepts = [], animation, entity }) 
     }`}>
       {/* Badge */}
       <div className="relative">
-        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-400 shadow-xl flex items-center justify-center border-4 border-yellow-200">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-100 to-amber-200 flex items-center justify-center">
+        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 flex items-center justify-center border-4 border-fuchsia-400/30">
+          <div className="w-24 h-24 rounded-full bg-[#1a1a1a] flex items-center justify-center">
             <span className="text-4xl">🏆</span>
           </div>
         </div>
@@ -16,12 +16,12 @@ export default function BadgeAward({ title, concepts = [], animation, entity }) 
       </div>
 
       {/* Title */}
-      <h2 className="text-xl font-bold text-center bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+      <h2 className="text-xl font-bold font-display text-center text-fuchsia-400">
         {title || 'Explorer'}
       </h2>
 
       {entity && (
-        <p className="text-sm text-gray-500">{entity}</p>
+        <p className="text-sm text-neutral-500">{entity}</p>
       )}
 
       {/* Concepts */}
@@ -30,7 +30,7 @@ export default function BadgeAward({ title, concepts = [], animation, entity }) 
           {concepts.map((concept, i) => (
             <span
               key={i}
-              className="px-4 py-1.5 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full text-sm font-medium border border-indigo-200 shadow-sm"
+              className="px-4 py-1.5 bg-fuchsia-500/10 text-fuchsia-300 rounded-full text-sm font-medium border border-fuchsia-500/20"
               style={{ animationDelay: `${i * 300}ms` }}
             >
               {concept}

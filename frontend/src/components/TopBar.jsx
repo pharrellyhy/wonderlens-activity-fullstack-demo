@@ -1,20 +1,22 @@
 export default function TopBar({ tier, onTierChange, activityName, onNewSession, sessionActive }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm">
-      <div className="flex items-center gap-2">
-        <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+    <div className="flex items-center justify-between px-4 py-3 bg-[#111] border-b border-white/5">
+      <div className="flex items-center gap-2.5">
+        <div className="w-2 h-2 rounded-full bg-fuchsia-500" />
+        <span className="text-lg font-bold font-display text-white">
           WonderLens Demo
         </span>
       </div>
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-500 font-medium">Tier:</label>
+          <label className="text-sm text-neutral-500 font-medium">Tier:</label>
           <select
             value={tier}
             onChange={(e) => onTierChange(e.target.value)}
             disabled={sessionActive}
-            className="text-sm border border-gray-300 rounded-lg px-2 py-1 bg-white disabled:opacity-50 focus:ring-2 focus:ring-purple-300 focus:border-purple-400 outline-none"
+            aria-label="Select age tier"
+            className="text-sm border border-white/10 rounded-lg px-2 py-1 bg-white/5 text-neutral-200 disabled:opacity-50 focus:ring-1 focus:ring-fuchsia-500 focus:border-fuchsia-500 outline-none"
           >
             <option value="T0">T0 (2-4)</option>
             <option value="T1">T1 (4-6)</option>
@@ -23,14 +25,15 @@ export default function TopBar({ tier, onTierChange, activityName, onNewSession,
         </div>
 
         {activityName && (
-          <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+          <span className="text-sm text-neutral-400 bg-white/5 px-3 py-1 rounded-full">
             {activityName}
           </span>
         )}
 
         <button
           onClick={onNewSession}
-          className="text-sm px-4 py-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium disabled:opacity-50"
+          aria-label="Start new session"
+          className="text-sm px-4 py-1.5 bg-fuchsia-500 text-white rounded-full hover:bg-fuchsia-400 transition-colors font-semibold disabled:opacity-50"
         >
           New Session
         </button>

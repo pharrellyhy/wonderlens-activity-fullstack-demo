@@ -1,0 +1,91 @@
+{
+  "activity_type": "fluffy_expedition_dandelion",
+  "voice_script": {
+    "hook_line": "Oh wow, look at this fluffy dandelion! All those tiny white seeds just waiting to fly away on the wind — like a hundred tiny parachutes!",
+    "transition_line": "You are now a Fluffy Expedition Explorer! Your mission is to find three more fluffy, fuzzy, or soft things around you. Let's see what fluffy treasures are hiding nearby!",
+    "rounds": [
+      {
+        "prompt": "Explorer, your first mission! Can you find something fluffy, fuzzy, or soft near you?",
+        "correct_responses": ["cloud", "cotton", "fur", "feather", "wool", "moss", "grass", "blanket", "fluffy", "soft", "fuzzy"],
+        "on_correct": "What an amazing fluffy find! Look how soft and gentle it is — just like our dandelion friend! That's one treasure found!",
+        "on_incorrect": "Great eye, Explorer! If we look really closely, there might be something soft or fuzzy about it. Every treasure counts!",
+        "on_silence": "Take a look around you, Explorer. Maybe feel something nearby — is there anything soft, fluffy, or fuzzy? Even a leaf can feel soft!",
+        "hint": "Try touching things around you — look for anything that feels soft, fuzzy, or fluffy like the dandelion!",
+        "sfx_cue": "photo_shutter_click"
+      },
+      {
+        "prompt": "Expedition report! We need our second fluffy find. Can you spot something else that's soft or fuzzy?",
+        "correct_responses": ["pet", "pillow", "carpet", "sweater", "plush", "stuffed", "teddy", "hair", "soft", "fuzzy", "fluffy"],
+        "on_correct": "Wonderful discovery! That's so soft and fluffy — our collection is growing! Two fluffy treasures found!",
+        "on_incorrect": "Interesting find! You know what, if we imagine really hard, everything has a little bit of softness to it. Good exploring!",
+        "on_silence": "You're doing great, Explorer. Maybe look at what you're wearing or sitting on — sometimes the fluffiest things are right next to us!",
+        "hint": "Think about things you like to cuddle or touch because they're soft — a pillow, a blanket, or a pet!",
+        "sfx_cue": "photo_shutter_click"
+      },
+      {
+        "prompt": "Last mission, Explorer! Find one more fluffy or soft thing to complete your expedition!",
+        "correct_responses": ["cloud", "cotton", "feather", "moss", "flower", "seed", "fluffy", "soft", "fuzzy", "fur", "wool"],
+        "on_correct": "You did it, Explorer! Three fluffy treasures found! What an incredible Fluffy Expedition — you're a natural explorer!",
+        "on_incorrect": "That's a wonderful final find! Every explorer sees the world differently, and your collection is uniquely yours!",
+        "on_silence": "We're almost there! Try looking up at the sky, or down at the ground. Fluffy things can be anywhere — even clouds count!",
+        "hint": "Look up at the sky — clouds are the fluffiest things of all! Or try finding a soft flower or fuzzy leaf.",
+        "sfx_cue": "mission_complete_fanfare"
+      }
+    ],
+    "closing_speech": "Congratulations, Fluffy Expedition Explorer! You found three amazing soft treasures, all connected by their fluffiness — just like our dandelion! A tiny dandelion seed and all your fluffy finds share something special. That's the beauty of Connection — finding how different things are linked together!",
+    "tomorrow_hook": "Next time you're outside, keep your explorer senses open — fluffy and soft things are hiding everywhere, waiting to be discovered!"
+  },
+  "screen_frames": [
+    {
+      "widget": "photo_display",
+      "widget_params": {
+        "description": "Dandelion photo centered with seeds gently floating"
+      },
+      "animation": "sparkle_highlight",
+      "trigger": "on_enter"
+    },
+    {
+      "widget": "progress_tracker",
+      "widget_params": {
+        "filled": 1,
+        "total": 4
+      },
+      "animation": "card_slide_in",
+      "trigger": "on_round_1"
+    },
+    {
+      "widget": "progress_tracker",
+      "widget_params": {
+        "filled": 2,
+        "total": 4
+      },
+      "animation": "celebration_burst",
+      "trigger": "on_round_2"
+    },
+    {
+      "widget": "progress_tracker",
+      "widget_params": {
+        "filled": 3,
+        "total": 4
+      },
+      "animation": "celebration_burst",
+      "trigger": "on_round_3"
+    }
+  ],
+  "celebration_frame": {
+    "widget": "badge_award",
+    "widget_params": {
+      "title": "Fluffy Expedition Explorer",
+      "concepts": ["Connection"]
+    },
+    "animation": "badge_reveal",
+    "trigger": "on_correct"
+  },
+  "metadata": {
+    "tier": "T0",
+    "ib_theme": "Sharing the Planet",
+    "ib_key_concept": "Connection",
+    "concepts_earned": ["Connection"],
+    "round_count": 3
+  }
+}

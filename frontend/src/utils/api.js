@@ -29,7 +29,7 @@ export async function transcribeAudio(audioBlob) {
   return res.json();
 }
 
-export async function synthesizeSpeech(text, tier) {
+export async function synthesizeSpeechStream(text, tier) {
   const res = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -37,5 +37,6 @@ export async function synthesizeSpeech(text, tier) {
   });
   if (res.status === 204) return null;
   if (!res.ok) throw new Error(`TTS failed: ${res.status}`);
-  return res.blob();
+  const sampleRate = parseInt(res.headers.get('X-Sample-Rate') || '24000', 10);
+  return { stream: res.body, sampleRate };
 }

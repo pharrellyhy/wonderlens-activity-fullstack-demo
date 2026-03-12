@@ -107,8 +107,8 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 
 | Agent | Type | Latency | Role |
 |-------|------|---------|------|
-| **Director** | LLM (Gemini 2.0 Flash) | ~150ms | Plans creative direction, round count, screen strategy, emotional arc |
-| **Script** | LLM (Gemini 2.0 Flash) | ~400ms | Generates all voice/text content with branching dialogue paths |
+| **Director** | LLM (Gemini 2.5 Flash) | ~150ms | Plans creative direction, round count, screen strategy, emotional arc |
+| **Script** | LLM (Gemini 2.5 Flash) | ~400ms | Generates all voice/text content with branching dialogue paths |
 | **Visual** | Rule-based | ~10ms | Selects screen widgets, assigns assets, sequences frames |
 | **Assembler** | Merge + validate | — | Combines Script + Visual into a validated JSON recipe |
 
@@ -153,7 +153,7 @@ uv run mypy .              # Type check
 ## Tech Stack
 
 - **Backend:** Python 3.12+, FastAPI, Pydantic v2, uvicorn
-- **LLM:** Gemini 2.0 Flash via Vertex AI (JSON mode)
+- **LLM:** Gemini 2.5 Flash via Vertex AI (JSON mode)
 - **Frontend:** React 19, Tailwind CSS v4, Vite 7
 - **Speech:** Vertex AI TTS/STT with browser API fallbacks
 - **Testing:** pytest, pytest-asyncio, pytest-mock

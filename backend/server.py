@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 try:
@@ -18,7 +18,7 @@ try:
     from .scenarios import load_scenario, match_scenario
     from .schemas import ActivityRecipe
     from .stt import transcribe_audio
-    from .tts import synthesize_speech
+    from .tts import synthesize_speech_stream
     from .vision import analyze_image
 except ImportError:
     from agents.pipeline import generate_recipe
@@ -28,7 +28,7 @@ except ImportError:
     from scenarios import load_scenario, match_scenario
     from schemas import ActivityRecipe
     from stt import transcribe_audio
-    from tts import synthesize_speech
+    from tts import synthesize_speech_stream
     from vision import analyze_image
 
 logger = setup_logger(__name__)
@@ -109,10 +109,11 @@ async def start_session(
         # 2. Vision analysis
         vision_result = await analyze_image(image_bytes, mime_type)
 
-        # 3. Match scenario
+        # 3. Match scenario (use filename as fallback hint when vision fails)
         activity_type = match_scenario(
             vision_result.get("entity", "unknown"),
             vision_result.get("features", []),
+            filename=photo.filename or "",
         )
         scenario = load_scenario(activity_type)
 
@@ -312,10 +313,11 @@ async def speech_to_text(audio: UploadFile = File(...)) -> JSONResponse:
 
 @app.post("/api/tts")
 async def text_to_speech(req: TTSRequest) -> Response:
-    wav_data = await synthesize_speech(req.text, req.tier)
-    if wav_data is None:
-        return Response(status_code=204)
-    return Response(content=wav_data, media_type="audio/wav")
+    return StreamingResponse(
+        synthesize_speech_stream(req.text, req.tier),
+        media_type="audio/pcm",
+        headers={"X-Sample-Rate": str(24000)},
+    )
 
 
 # --- Helpers ---

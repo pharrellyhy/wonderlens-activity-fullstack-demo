@@ -4,6 +4,128 @@ Last updated: 2026-03-12
 
 ---
 
+## Session Start Error Retry Visibility
+
+**Problem**: [`frontend/src/App.jsx`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/frontend/src/App.jsx) had a real control-flow bug after the recent frontend refactor. When session start failed, the initial `showPhotoSelector` branch still won before the error branch, so the retry UI never rendered and users were dropped straight back to photo selection.
+
+**Solution**: Split the branch conditions into explicit `showRetry` and `showPhotoSelector` flags so the error state takes precedence when there is no active session. This keeps the current layout logic simple and makes the existing retry path reachable again.
+
+**Edits**:
+- `frontend/src/App.jsx` — prioritized the retry state over the photo-selector state for failed session starts
+
+**NOT Changed**:
+- Session orchestration hook internals, retry button behavior, and backend API flows were not modified in this pass.
+- The earlier TTS streaming test alignment and scenario filename hardening remain unchanged.
+
+**Verification**:
+- `cd frontend && npm run lint && npm run build` — PASS
+
+---
+
+## Streaming TTS Test Alignment
+
+**Problem**: The latest backend/frontend verification exposed a regression in [`tests/test_api.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/tests/test_api.py): the `/api/tts` coverage still patched the removed non-streaming helper and still expected the old `204` fallback path, even though the implementation now streams PCM chunks via `synthesize_speech_stream()`. That left the suite out of sync with the actual route contract.
+
+**Solution**: Updated the TTS API tests to patch `server.synthesize_speech_stream`, assert the streaming response headers/body for a successful chunked response, and cover the empty-stream case that the current frontend treats as a browser-fallback trigger.
+
+**Edits**:
+- `tests/test_api.py` — rewrote the `/api/tts` tests around the streaming contract instead of the removed non-streaming helper
+
+**NOT Changed**:
+- `/api/tts` implementation and frontend playback behavior were left unchanged in this pass.
+- The frontend redesign/refactor work was reviewed again, but no additional concrete regressions were found from lint/build plus source review.
+
+**Verification**:
+- `uv run pytest tests/test_api.py::TestTTSEndpoint -q` — PASS
+- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`63 passed, 5 deselected`)
+- `ruff check backend frontend/src tests` — PASS
+- `cd frontend && npm run lint && npm run build` — PASS
+
+---
+
+## Scenario Filename Matching Hardening
+
+**Problem**: The new filename-based scenario fallback in [`backend/scenarios.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/scenarios.py) was too permissive. Very short filenames such as `c.jpg` could match unrelated keywords because the fallback checked both `keyword in filename` and `filename in keyword`, which produced incorrect activity selection when vision/entity matching failed. The latest backend pass also still left [`backend/tts.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/tts.py) outside Ruff's formatting check.
+
+**Solution**: Added a focused regression test for filename fallback behavior, then tightened the matcher so filename fallback only triggers when a known keyword appears in the filename stem. Reformatted `backend/tts.py` so the backend check is clean again.
+
+**Edits**:
+- `tests/test_scenarios.py` — added filename fallback coverage for a valid match (`ladybug.jpg`) and a short unrelated filename (`c.jpg`)
+- `backend/scenarios.py` — removed reverse containment from filename fallback matching to avoid false-positive activity selection
+- `backend/tts.py` — reformatted to satisfy Ruff
+
+**NOT Changed**:
+- Entity-based and feature-based scenario matching logic were left unchanged.
+- Frontend TTS playback behavior and backend route contracts were not modified in this pass.
+
+**Verification**:
+- `uv run pytest tests/test_scenarios.py -k filename -q` — PASS
+- `ruff check backend tests && ruff format --check backend tests` — PASS
+- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`63 passed, 5 deselected`)
+- `cd frontend && npm run lint && npm run build` — PASS
+
+---
+
+## Dark Theme — Fuchsia/Pink Chatbot UI Design
+
+**Problem**: User provided a reference design (`docs/chatbot_UI.png`) showing a dark chatbot UI with near-black backgrounds (#0a0a0a), fuchsia/pink accent color, gradient user bubbles (fuchsia→purple), dark AI bubbles, rounded pill-shaped inputs, and subtle `white/5`–`white/10` borders.
+
+**Solution**: Redesigned the entire frontend to match the reference. Near-black base (#0a0a0a, #111, #1a1a1a), fuchsia-500 as primary accent, user bubbles with `from-fuchsia-500 to-purple-600` gradient, AI bubbles flat dark (#1a1a1a), rounded-full buttons, pill input, ultra-thin `border-white/5` and `border-white/10` borders. All widgets updated to fuchsia accent on dark surfaces.
+
+**Edits**:
+- All components + all 5 widgets updated: backgrounds → #0a0a0a/#111/#1a1a1a, accent → fuchsia-500, borders → white/5 and white/10, text → white/neutral-200/neutral-500
+- `ChatBubble.jsx` — User bubble: `from-fuchsia-500 to-purple-600` gradient. AI bubble: `bg-[#1a1a1a]`
+- `TextInput.jsx` — Input `bg-[#1a1a1a]`, mic idle `bg-white/5`, send `bg-fuchsia-500`, placeholder "Send message..."
+- `TopBar.jsx` — `bg-[#111]`, brand dot `bg-fuchsia-500`, buttons `bg-fuchsia-500 rounded-full`
+- `PhotoSelector.jsx` — Hover `border-fuchsia-500/50`, hover overlay `bg-fuchsia-500/10`, spinner `border-t-fuchsia-500`
+- `DeviceScreen.jsx` — `bg-[#111] rounded-3xl border-white/5`
+- All widgets — fuchsia-400 headings, fuchsia-500/10 accent surfaces, white/5 borders
+
+**NOT Changed**:
+- Backend, hooks, AnimationOverlay, API client, ARIA attributes, responsive stacking, font setup unchanged
+
+**Verification**:
+- `cd frontend && npm run build` — PASS (48 modules, 433ms)
+- `cd frontend && npm run lint` — PASS (no errors)
+
+---
+
+## Frontend Refactoring — Animation Fix, Orchestration Extraction, Visual Refresh, Accessibility, Polish
+
+**Problem**: Frontend had a confirmed animation bug (ChatBubble uses `animate-bubble-in` but only `animate-fade-in` existed), an overloaded App.jsx (~210 LOC mixing orchestration with layout), generic purple/indigo styling with system fonts, missing accessibility attributes, wrong page title, silent STT fallback, and no responsive stacking.
+
+**Solution**: Implemented 5-phase refactoring plan:
+- **Phase 1** — Fixed bubble animation by adding `bubble-in` keyframe + `.animate-bubble-in` with `animation-fill-mode: forwards`; removed useEffect/useRef workaround from ChatBubble; fixed page title; added Google Fonts (Nunito + Fredoka); registered custom fonts in Tailwind v4 `@theme` block
+- **Phase 2** — Extracted `useSessionOrchestration` hook (~120 LOC) from App.jsx, moving all 4 hook invocations, coordination effects, and handler callbacks; App.jsx dropped from ~210 to ~80 LOC with zero useEffect hooks
+- **Phase 3** — Replaced purple/indigo palette with teal/cyan primary + amber accent across all components; added `.bg-dots` radial-gradient texture to device screen; applied `shadow-inner` to DeviceScreen; added `font-display` (Fredoka) to headings in TopBar, PhotoSelector, BadgeAward
+- **Phase 4** — Added ARIA labels to mic/send/tier/new-session buttons; added `role="log"` + `aria-live="polite"` to message container; added `role="button"` + `tabIndex={0}` + keyboard handler to photo drop zone
+- **Phase 5** — Added dismissible STT fallback banner in ConversationPanel when `sttMode === 'browser'`; added responsive `flex-col md:flex-row` stacking on main layout; photo grid responsive: `grid-cols-2 sm:grid-cols-3 md:grid-cols-5`
+
+**Edits**:
+- `frontend/index.html` — Updated title, added Google Fonts preconnect + stylesheet links
+- `frontend/src/index.css` — Added `@theme` block (custom fonts), `bubble-in` keyframe, `.animate-bubble-in` class, `.bg-dots` utility
+- `frontend/src/hooks/useSessionOrchestration.js` — New file: extracted orchestration from App.jsx
+- `frontend/src/App.jsx` — Simplified to pure layout (~80 LOC), new color palette, responsive stacking, ARIA landmarks
+- `frontend/src/components/ChatBubble.jsx` — Removed useEffect/useRef workaround, teal/cyan gradient
+- `frontend/src/components/TopBar.jsx` — Teal palette, font-display, ARIA labels
+- `frontend/src/components/TextInput.jsx` — Teal palette, ARIA labels + aria-pressed
+- `frontend/src/components/PhotoSelector.jsx` — Teal palette, font-display, responsive grid, keyboard-accessible drop zone
+- `frontend/src/components/ConversationPanel.jsx` — role="log", aria-live, STT fallback banner, sttMode prop
+- `frontend/src/components/RetryButton.jsx` — Teal palette
+- `frontend/src/components/DeviceScreen.jsx` — Teal/cyan gradient, shadow-inner
+- `frontend/src/widgets/BadgeAward.jsx` — Teal/cyan gradient, font-display, teal concept badges
+
+**NOT Changed**:
+- Backend code, API endpoints, agent pipeline, schemas, and tests unchanged
+- Hook internals (useConversation, useTTS, useSpeechRecognition, useSilenceTimer) unchanged
+- Widget components other than BadgeAward unchanged
+
+**Verification**:
+- `cd frontend && npm run build` — PASS (48 modules, 421ms)
+- `cd frontend && npm run lint` — PASS (no errors)
+
+---
+
 ## FastAPI Lifespan + Test Fixture Cleanup
 
 **Problem**: The new test suite passed, but the backend still emitted FastAPI deprecation warnings because [`backend/server.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/server.py) used `@app.on_event("startup")`. The API test client fixture in [`tests/test_api.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/tests/test_api.py) also mutated the cached settings object without restoring it, which made the test setup more stateful than it needed to be.
@@ -140,83 +262,12 @@ Last updated: 2026-03-12
 
 ---
 
-## Phase 10: Polish
-
-**Problem**: Need loading states, animations, and session end handling.
-
-**Solution**: Added custom CSS keyframe animations (fade-in, bounce-in, slide-in, spin-slow) to index.css. Animation classes used by widgets and components. Session end shows completion message + New Session button. Footer shows live status with colored indicator.
-
-**Edits**:
-- `frontend/src/index.css` — Added @keyframes and animation utility classes
-- `frontend/src/App.jsx` — Session end handling, status indicators
-- `frontend/src/components/ConversationPanel.jsx` — Silence timer progress bar with hook integration
-
-**Verification**: `cd frontend && npx vite build` succeeds.
 
 ---
 
-## Phase 9: Frontend Hooks + Integration
-
-**Problem**: Need state management, speech, silence timer, and end-to-end flow wiring.
-
-**Solution**: Created 4 hooks + rewrote App.jsx to wire the full interaction flow: PhotoSelector → startSession → hook_line → TTS → silence timer → user input → sendTurn → response → repeat.
-
-**Edits**:
-- `frontend/src/hooks/useConversation.js` — Central state: messages, recipe, sessionState, startSession, sendMessage, sendSilence
-- `frontend/src/hooks/useSilenceTimer.js` — Tier-specific timeout (T0=10s, T1=8s, T2=6s), progress tracking
-- `frontend/src/hooks/useSpeechRecognition.js` — Browser Web Speech API wrapper
-- `frontend/src/hooks/useTTS.js` — Server TTS → browser fallback, onSpeakingDone callback
-- `frontend/src/App.jsx` — Full integration wiring all hooks + components
-
-**Verification**: `cd frontend && npx vite build` — 47 modules, builds clean.
 
 ---
 
-## Phase 8: Frontend Components + Widgets
-
-**Problem**: Need all UI components and widgets for the split-view demo.
-
-**Solution**: Created 7 components + 6 widgets + API client utility.
-
-**Edits**:
-- `frontend/src/components/` — ConversationPanel, ChatBubble, TextInput, PhotoSelector, TopBar, DeviceScreen, RetryButton
-- `frontend/src/widgets/` — PhotoDisplay, ProgressTracker, CharacterDisplay, PhotoGrid, BadgeAward, AnimationOverlay
-- `frontend/src/utils/api.js` — startSession, sendTurn, synthesizeSpeech
-
-**Verification**: All components render correctly in build.
-
----
-
-## Phase 6: FastAPI Server
-
-**Problem**: Need API endpoints with session management.
-
-**Solution**: Built server.py with /api/start (multipart photo upload → vision → pipeline → recipe), /api/turn (recipe lookup with branching), /api/tts (Gemini TTS → WAV), /api/health. In-memory SessionState store with consecutive silence tracking and graceful exit.
-
-**Edits**:
-- `backend/server.py` — Full FastAPI app with 4 endpoints, CORS, startup DB init
-
-**Verification**: `cd backend && python -c "from server import app; print(len(app.routes))"` → 8 routes.
-
----
-
-## Phase 4: Agent Implementations
-
-**Problem**: Need all 4 agents + vision + TTS + pipeline orchestrator + scenario loader.
-
-**Solution**: Built all agent classes using Gemini 2.0 Flash via Vertex AI with JSON mode. Director has timeout fallback. Script uses template injection. Visual is pure rule-based. Assembler validates hook rule, tier constraints, SFX cues. Pipeline orchestrates with 3-retry + fallback.
-
-**Edits**:
-- `backend/agents/director.py` — DirectorAgent with Gemini JSON mode, default plan fallback
-- `backend/agents/script_agent.py` — ScriptAgent with template injection
-- `backend/agents/visual_agent.py` — VisualAgent (rule-based, no LLM)
-- `backend/agents/recipe_assembler.py` — RecipeAssembler with validation checklist
-- `backend/agents/pipeline.py` — generate_recipe() with retry/fallback
-- `backend/vision.py` — analyze_image() via Gemini Vision
-- `backend/tts.py` — synthesize_speech() via Gemini TTS, PCM→WAV
-- `backend/scenarios.py` — load_scenario, match_scenario, build_activity_context
-
-**Verification**: `cd backend && python -c "from agents.pipeline import generate_recipe; print('OK')"`
 
 ---
 

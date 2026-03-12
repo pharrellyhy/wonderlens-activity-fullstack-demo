@@ -1,0 +1,88 @@
+{
+  "activity_type": "time_machine_dinosaur",
+  "voice_script": {
+    "hook_line": "Whoa, look at that amazing dinosaur! Those big teeth and powerful legs — I wonder what it was like when dinosaurs roamed the Earth!",
+    "transition_line": "What if we had a magical time machine and could travel back to when dinosaurs lived? I'll describe a time period, and you tell me what our dinosaur friend would be doing there!",
+    "rounds": [
+      {
+        "prompt": "We've landed in a giant prehistoric jungle! Huge trees and ferns everywhere. What is our dinosaur doing in this jungle?",
+        "correct_responses": ["eating", "walking", "exploring", "stomping", "looking", "running", "hiding", "playing"],
+        "on_correct": "Yes! I can totally see it — stomping through those giant ferns, having the best adventure ever!",
+        "on_incorrect": "Ooh, that's a fun idea! In a big jungle like that, our dinosaur might also be exploring and munching on some giant leaves!",
+        "on_silence": "Imagine you're in a huge jungle with trees as tall as buildings. What would a dinosaur do there? Maybe stomp around or munch on leaves?",
+        "hint": "Think about what you would do in a giant jungle — explore, play, or maybe find something to eat!",
+        "sfx_cue": "scene_woosh"
+      },
+      {
+        "prompt": "Time jump! Now we're at a big volcano rumbling in the distance. The ground is shaking! What does our dinosaur do?",
+        "correct_responses": ["run", "scared", "roar", "hide", "escape", "surprised", "brave", "watch"],
+        "on_correct": "That makes so much sense! A big rumbling volcano would be quite the surprise for our dinosaur friend!",
+        "on_incorrect": "Interesting! With all that rumbling and shaking, our dinosaur might also feel surprised or want to run to a safe spot!",
+        "on_silence": "The ground is shaking and the volcano is making big booming sounds. Would the dinosaur feel scared? Brave? Would it run or roar back?",
+        "hint": "Think about how you'd feel if the ground was shaking — surprised? Scared? Brave?",
+        "sfx_cue": "scene_woosh"
+      },
+      {
+        "prompt": "Last time jump! We've landed at a beautiful lake at sunset, everything is calm and peaceful. What is our dinosaur doing now?",
+        "correct_responses": ["drinking", "resting", "sleeping", "swimming", "relaxing", "happy", "calm", "peaceful"],
+        "on_correct": "That's perfect! After all those adventures, a peaceful rest by the lake sounds just right!",
+        "on_incorrect": "What a lovely thought! By a calm lake at sunset, our dinosaur might also be relaxing and enjoying the beautiful view!",
+        "on_silence": "Picture a beautiful sunset over a quiet lake. Everything is calm. What would our dinosaur do? Maybe take a drink, or rest?",
+        "hint": "Think about what you like to do when everything is calm and peaceful — rest, relax, enjoy the view?",
+        "sfx_cue": "celebration_fanfare"
+      }
+    ],
+    "closing_speech": "What an incredible Time Traveler you are! You imagined our dinosaur exploring a jungle, reacting to a volcano, and relaxing by a lake. The same dinosaur acted differently in each time and place — that's the magic of Change! Things change depending on when and where they are.",
+    "tomorrow_hook": "Next time you see your dinosaur friend, try imagining what other time periods you could visit together!"
+  },
+  "screen_frames": [
+    {
+      "widget": "photo_display",
+      "widget_params": {
+        "description": "Dinosaur photo centered with a prehistoric glow effect"
+      },
+      "animation": "sparkle_highlight",
+      "trigger": "on_enter"
+    },
+    {
+      "widget": "character_display",
+      "widget_params": {
+        "description": "Illustration of a dinosaur in a lush prehistoric jungle"
+      },
+      "animation": "scene_transition",
+      "trigger": "on_round_1"
+    },
+    {
+      "widget": "character_display",
+      "widget_params": {
+        "description": "Illustration of a dinosaur near a rumbling volcano"
+      },
+      "animation": "scene_transition",
+      "trigger": "on_round_2"
+    },
+    {
+      "widget": "character_display",
+      "widget_params": {
+        "description": "Illustration of a dinosaur resting by a peaceful lake at sunset"
+      },
+      "animation": "gentle_pulse",
+      "trigger": "on_round_3"
+    }
+  ],
+  "celebration_frame": {
+    "widget": "badge_award",
+    "widget_params": {
+      "title": "Time Traveler",
+      "concepts": ["Change"]
+    },
+    "animation": "badge_reveal",
+    "trigger": "on_correct"
+  },
+  "metadata": {
+    "tier": "T0",
+    "ib_theme": "How the World Works",
+    "ib_key_concept": "Change",
+    "concepts_earned": ["Change"],
+    "round_count": 3
+  }
+}

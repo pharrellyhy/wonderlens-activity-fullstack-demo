@@ -16,8 +16,8 @@ const WIDGET_MAP = {
 export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
   if (!screenFrame) {
     return (
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl">
-        <div className="text-center text-gray-400">
+      <div className="h-full flex items-center justify-center bg-[#111] rounded-3xl border border-white/5">
+        <div className="text-center text-neutral-600">
           <div className="text-5xl mb-3">📱</div>
           <p className="text-sm">Device screen will appear here</p>
         </div>
@@ -29,22 +29,22 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
   const params = screenFrame.widget_params || {};
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl overflow-hidden">
+    <div className="h-full flex flex-col bg-[#111] rounded-3xl overflow-hidden border border-white/5">
       <div className="flex-1 flex items-center justify-center p-4">
         <AnimationOverlay animation={screenFrame.animation}>
           {WidgetComponent ? (
             <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} />
           ) : (
-            <div className="text-center p-8 bg-white/60 rounded-xl">
-              <p className="text-gray-500 text-sm">Widget: {screenFrame.widget}</p>
-              <p className="text-gray-400 text-xs mt-1">{JSON.stringify(params)}</p>
+            <div className="text-center p-8 bg-white/5 rounded-2xl">
+              <p className="text-neutral-400 text-sm">Widget: {screenFrame.widget}</p>
+              <p className="text-neutral-500 text-xs mt-1">{JSON.stringify(params)}</p>
             </div>
           )}
         </AnimationOverlay>
       </div>
 
       {sessionState && (
-        <div className="px-4 py-2 bg-white/40 border-t border-white/60 text-xs text-gray-500 flex justify-between">
+        <div className="px-4 py-2 border-t border-white/5 text-xs text-neutral-600 flex justify-between">
           <span>Widget: {screenFrame.widget}</span>
           {screenFrame.animation && <span>Animation: {screenFrame.animation}</span>}
         </div>

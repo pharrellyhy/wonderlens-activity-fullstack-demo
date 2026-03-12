@@ -1,409 +1,88 @@
 {
-  "scenario": "scenarios/mood_changer_dog.yaml",
-  "timestamp": "2026-03-12T11:34:25Z",
-  "system_prompt_length": 12046,
-  "turns": [
-    {
-      "role": "system",
-      "event": "vision_result",
-      "data": {
-        "entity": "stuffed toy dog",
-        "confidence": 0.92,
-        "scene": "indoor bedroom",
-        "features": [
-          "plush",
-          "brown",
-          "soft toy",
-          "on bed"
-        ]
+  "activity_type": "mood_changer_dog",
+  "voice_script": {
+    "hook_line": "Oh wow, it's your fluffy dog friend! Look at those cute floppy ears and that super soft fur!",
+    "transition_line": "What if we could hear what your doggy is thinking inside? I'll say something that happens, and you tell me what it would say or feel!",
+    "rounds": [
+      {
+        "prompt": "Morning time! The sun is so warm and cozy on the doggy's belly. What does the doggy say?",
+        "correct_responses": ["happy", "cozy", "comfy", "warm", "so comfy", "nice", "sleepy", "relaxed"],
+        "on_correct": "That is perfect! The doggy feels so warm and safe. Its heart is dancing with happiness!",
+        "on_incorrect": "That sounds interesting! The warm sun might make it feel all cozy and comfy inside, like a big warm hug.",
+        "on_silence": "You can do it! Imagine the sun is warm on its belly. Maybe it says 'so warm!' or just goes 'hmmm'... which one?",
+        "hint": "Think about how you feel when you sit in the sunshine — warm and happy, right?",
+        "sfx_cue": "scene_woosh"
+      },
+      {
+        "prompt": "Oops! The doggy tripped and went bump! What does it say now?",
+        "correct_responses": ["surprised", "startled", "oh no", "ouch", "shocked", "scared", "whoa"],
+        "on_correct": "Yes! That sounds like a big surprise! The doggy wasn't expecting that bump at all!",
+        "on_incorrect": "Woof woof! That sounds like a big surprise! When something unexpected happens, we might feel startled or say 'oh no!'",
+        "on_silence": "When something surprising happens, we might go 'whoa!' or 'oh no!' What do you think the doggy says?",
+        "hint": "Think about how you feel when you trip — you might say 'whoa!' or 'oh no!'",
+        "sfx_cue": "scene_woosh"
+      },
+      {
+        "prompt": "The owner brings the doggy's favorite treat! What does the doggy do?",
+        "correct_responses": ["excited", "happy", "yay", "wag", "treats", "hungry", "eager", "jump"],
+        "on_correct": "Yay! The doggy is so excited for that yummy snack! Its tail is wagging so fast!",
+        "on_incorrect": "That's fun! When the doggy sees its favorite treat, it gets SO excited — maybe its tail wags super fast!",
+        "on_silence": "Imagine your favorite snack is right in front of you. Would you feel excited? Maybe the doggy goes 'yay!' or wags its tail really fast!",
+        "hint": "Think about how you feel when someone gives you your favorite treat — super excited, right?",
+        "sfx_cue": "celebration_fanfare"
       }
-    },
+    ],
+    "closing_speech": "You are such a wonderful Emotion Translator! You heard your doggy being happy, surprised, and excited. The same doggy feels different things when different things happen — that's the magic of Perspective! Everyone sees the world a little differently.",
+    "tomorrow_hook": "Next time you see your fluffy friend, try imagining what it's thinking — you might discover a whole new feeling!"
+  },
+  "screen_frames": [
     {
-      "role": "ai",
-      "step": "1_transition",
-      "text": "(gasping with delight) Oh wow, it's your fluffy dog friend! Look at those cute floppy ears and that super soft fur!",
-      "screen": {
-        "photo_display": "photo of the stuffed dog on the bed with a soft golden glow",
-        "animation": "sparkle_highlight"
+      "widget": "photo_display",
+      "widget_params": {
+        "description": "Photo of the stuffed dog on the bed with a soft golden glow"
       },
-      "audio": {
-        "sfx": "wonder_chime",
-        "timing": "start"
+      "animation": "sparkle_highlight",
+      "trigger": "on_enter"
+    },
+    {
+      "widget": "character_display",
+      "widget_params": {
+        "description": "Illustration of a cozy dog napping in a sunbeam"
       },
-      "raw_response": "(gasping with delight) Oh wow, it's your fluffy dog friend! Look at those cute floppy ears and that super soft fur!\n\n[SCREEN] photo_display: photo of the stuffed dog on the bed with a soft golden glow | animation: sparkle_highlight\n[AUDIO] sfx: wonder_chime | timing: start",
-      "latency_seconds": 1.92,
-      "expected": {
-        "expected_tone": "warm delight, gentle excitement",
-        "must_contain": [
-          "dog",
-          "friend"
-        ],
-        "must_not_contain": [
-          "what color",
-          "how big",
-          "what brand",
-          "do you know"
-        ],
-        "expected_screen": {
-          "widget": "photo_display",
-          "description": "Entity photo centered with ambient glow animation",
-          "animation": "sparkle_highlight"
-        },
-        "expected_audio": {
-          "sfx": "wonder_chime",
-          "timing": "on_ai_start"
-        }
-      }
+      "animation": "gentle_pulse",
+      "trigger": "on_round_1"
     },
     {
-      "role": "child",
-      "type": "ideal",
-      "text": "It's happy!",
-      "consecutive_silence": 0
-    },
-    {
-      "role": "ai",
-      "step": "1_followup_ideal",
-      "text": "(warm and excited) Happy! Its heart must be dancing right now! What if we could hear what your doggy is thinking inside?",
-      "screen": {
-        "character_display": "illustration of a happy dog with a speech bubble",
-        "animation": "gentle_pulse"
+      "widget": "character_display",
+      "widget_params": {
+        "description": "Illustration of a dog looking surprised after a little bump"
       },
-      "audio": {
-        "sfx": "excitement_rising",
-        "timing": "start"
+      "animation": "scene_transition",
+      "trigger": "on_round_2"
+    },
+    {
+      "widget": "character_display",
+      "widget_params": {
+        "description": "Illustration of a dog wagging its tail excitedly for a treat"
       },
-      "raw_response": "(warm and excited) Happy! Its heart must be dancing right now! What if we could hear what your doggy is thinking inside?\n\n[SCREEN] character_display: illustration of a happy dog with a speech bubble | animation: gentle_pulse\n[AUDIO] sfx: excitement_rising | timing: start",
-      "latency_seconds": 1.72,
-      "expected": {
-        "expected_tone": "warm, building to magical",
-        "must_contain": [
-          "happy",
-          "magic",
-          "hear",
-          "think"
-        ],
-        "expected_screen": {
-          "widget": "photo_display",
-          "description": "Entity photo with subtle overlay building toward activity"
-        },
-        "expected_audio": null
-      }
-    },
-    {
-      "role": "child",
-      "type": "unexpected",
-      "text": "It's hungry.",
-      "consecutive_silence": 0
-    },
-    {
-      "role": "ai",
-      "step": "1_followup_unexpected",
-      "text": "(playfully) Oh, a hungry tummy! That means it's feeling a bit impatient. Let's play a game to hear its thoughts!\n\nI'll say what happens, and you tell me the feeling. If it lost its ball, it might say \"oh no!\" Ready?",
-      "screen": {
-        "character_display": "illustration of a dog looking at an empty bowl",
-        "animation": "card_slide_in"
-      },
-      "audio": {
-        "sfx": "game_start_chime",
-        "timing": "start"
-      },
-      "raw_response": "(playfully) Oh, a hungry tummy! That means it's feeling a bit impatient. Let's play a game to hear its thoughts!\n\nI'll say what happens, and you tell me the feeling. If it lost its ball, it might say \"oh no!\" Ready?\n\n[SCREEN] character_display: illustration of a dog looking at an empty bowl | animation: card_slide_in\n[AUDIO] sfx: game_start_chime | timing: start",
-      "latency_seconds": 1.88,
-      "expected": {
-        "must_validate_first": true,
-        "must_contain": [
-          "hungry",
-          "feeling"
-        ],
-        "expected_screen": {
-          "widget": "photo_display",
-          "description": "Entity photo with subtle overlay building toward activity"
-        },
-        "expected_audio": null
-      }
-    },
-    {
-      "role": "child",
-      "type": "silent",
-      "text": "",
-      "consecutive_silence": 1
-    },
-    {
-      "role": "ai",
-      "step": "1_followup_silent",
-      "text": "(encouraging) You can do it! Imagine the sun is warm on its belly. What does it say?",
-      "screen": {
-        "character_display": "illustration of a cozy dog in the sun",
-        "animation": "gentle_pulse"
-      },
-      "audio": {
-        "sfx": "wonder_chime",
-        "timing": "start"
-      },
-      "raw_response": "(encouraging) You can do it! Imagine the sun is warm on its belly. What does it say?\n\n[SCREEN] character_display: illustration of a cozy dog in the sun | animation: gentle_pulse\n[AUDIO] sfx: wonder_chime | timing: start",
-      "latency_seconds": 1.77,
-      "expected": {
-        "must_wait": true,
-        "expected_tone": "gentle, quiet",
-        "expected_screen": {
-          "widget": "photo_display",
-          "description": "Entity photo with subtle overlay building toward activity"
-        },
-        "expected_audio": null
-      }
-    },
-    {
-      "role": "child",
-      "type": "ideal",
-      "text": "Yes! I want to try!",
-      "consecutive_silence": 0
-    },
-    {
-      "role": "ai",
-      "step": "2_rule_demo",
-      "text": "(cheerfully) Yay! The sun is so warm and cozy on its belly. What does the doggy say now?",
-      "screen": {
-        "character_display": "illustration of a dog napping in a sunbeam",
-        "animation": "gentle_pulse"
-      },
-      "audio": {
-        "sfx": "excitement_rising",
-        "timing": "start"
-      },
-      "raw_response": "(cheerfully) Yay! The sun is so warm and cozy on its belly. What does the doggy say now?\n\n[SCREEN] character_display: illustration of a dog napping in a sunbeam | animation: gentle_pulse\n[AUDIO] sfx: excitement_rising | timing: start",
-      "latency_seconds": 1.7,
-      "expected": {
-        "expected_tone": "mysterious, playful",
-        "must_contain": [
-          "game",
-          "say",
-          "feel"
-        ],
-        "expected_screen": {
-          "widget": "character_display",
-          "description": "Game mechanic icons appear alongside entity photo"
-        },
-        "expected_audio": {
-          "sfx": "game_start_chime",
-          "timing": "on_game_intro"
-        }
-      }
-    },
-    {
-      "role": "ai",
-      "step": "3_round1_scenario",
-      "text": "",
-      "screen": {},
-      "audio": {},
-      "raw_response": "",
-      "latency_seconds": 1.37,
-      "expected": {
-        "expected_tone": "storytelling",
-        "must_contain": [
-          "sun",
-          "warm",
-          "morning"
-        ],
-        "expected_screen": {
-          "widget": "character_display",
-          "description": "Scene illustration matching current round scenario",
-          "animation": "scene_transition"
-        },
-        "expected_audio": {
-          "sfx": "scene_woosh",
-          "timing": "on_scenario_start"
-        }
-      }
-    },
-    {
-      "role": "child",
-      "type": "ideal",
-      "text": "So comfy!",
-      "consecutive_silence": 0
-    },
-    {
-      "role": "ai",
-      "step": "3_round1_followup",
-      "text": "(delighted) \"So comfy!\" That is perfect! Now, the doggy trips and goes bump! How does it feel now?",
-      "screen": {
-        "character_display": "illustration of a dog looking surprised after a little bump",
-        "animation": "scene_transition"
-      },
-      "audio": {
-        "sfx": "wonder_chime",
-        "timing": "start"
-      },
-      "raw_response": "(delighted) \"So comfy!\" That is perfect! Now, the doggy trips and goes bump! How does it feel now?\n\n[SCREEN] character_display: illustration of a dog looking surprised after a little bump | animation: scene_transition\n[AUDIO] sfx: wonder_chime | timing: start",
-      "latency_seconds": 1.76,
-      "expected": {
-        "expected_tone": "mirroring child's warmth",
-        "must_validate_first": true,
-        "expected_screen": {
-          "widget": "photo_display",
-          "description": "Entity photo with subtle overlay building toward activity"
-        },
-        "expected_audio": null
-      }
-    },
-    {
-      "role": "ai",
-      "step": "3_round2_scenario",
-      "text": "",
-      "screen": {},
-      "audio": {},
-      "raw_response": "",
-      "latency_seconds": 1.6,
-      "expected": {
-        "expected_tone": "dramatic, playful",
-        "expected_screen": {
-          "widget": "character_display",
-          "description": "Game mechanic icons appear alongside entity photo"
-        },
-        "expected_audio": {
-          "sfx": "game_start_chime",
-          "timing": "on_game_intro"
-        }
-      }
-    },
-    {
-      "role": "child",
-      "type": "unexpected",
-      "text": "Woof woof!",
-      "consecutive_silence": 0
-    },
-    {
-      "role": "ai",
-      "step": "3_round2_followup_unexpected",
-      "text": "(warmly) Woof woof! That sounds like a big surprise! Now, the owner brings a yummy treat! What does it say?",
-      "screen": {
-        "character_display": "illustration of a dog wagging its tail for a treat",
-        "animation": "gentle_pulse"
-      },
-      "audio": {
-        "sfx": "excitement_rising",
-        "timing": "start"
-      },
-      "raw_response": "(warmly) Woof woof! That sounds like a big surprise! Now, the owner brings a yummy treat! What does it say?\n\n[SCREEN] character_display: illustration of a dog wagging its tail for a treat | animation: gentle_pulse\n[AUDIO] sfx: excitement_rising | timing: start",
-      "latency_seconds": 1.54,
-      "expected": {
-        "must_validate_first": true,
-        "expected_screen": {
-          "widget": "character_display",
-          "description": "Game mechanic icons appear alongside entity photo"
-        },
-        "expected_audio": {
-          "sfx": "game_start_chime",
-          "timing": "on_game_intro"
-        }
-      }
-    },
-    {
-      "role": "ai",
-      "step": "3_round3_scenario",
-      "text": "",
-      "screen": {},
-      "audio": {},
-      "raw_response": "",
-      "latency_seconds": 1.34,
-      "expected": {
-        "expected_tone": "building excitement",
-        "expected_screen": {
-          "widget": "character_display",
-          "description": "New scene illustration for round 3",
-          "animation": "scene_transition"
-        },
-        "expected_audio": {
-          "sfx": "scene_woosh",
-          "timing": "on_scenario_start"
-        }
-      }
-    },
-    {
-      "role": "child",
-      "type": "ideal",
-      "text": "Yay! Treats!",
-      "consecutive_silence": 0
-    },
-    {
-      "role": "ai",
-      "step": "3_round3_followup",
-      "text": "(clapping) Yay! It is so excited for that yummy snack! You are such a wonderful Dog's Emotion Translator! \n\nYou heard your doggy being happy, surprised, and excited. The same doggy feels different things when different things happen — that's the magic of Perspective!",
-      "screen": {
-        "badge_award": "image of a gold \"Emotion Translator\" badge with stars",
-        "animation": "badge_reveal"
-      },
-      "audio": {
-        "sfx": "celebration_fanfare",
-        "timing": "start"
-      },
-      "raw_response": "(clapping) Yay! It is so excited for that yummy snack! You are such a wonderful Dog's Emotion Translator! \n\nYou heard your doggy being happy, surprised, and excited. The same doggy feels different things when different things happen — that's the magic of Perspective!\n\n[SCREEN] badge_award: image of a gold \"Emotion Translator\" badge with stars | animation: badge_reveal\n[AUDIO] sfx: celebration_fanfare | timing: start",
-      "latency_seconds": 1.69,
-      "expected": {
-        "expected_tone": "celebrating",
-        "expected_screen": {
-          "widget": "character_display",
-          "description": "New scene illustration for round 3",
-          "animation": "scene_transition"
-        },
-        "expected_audio": {
-          "sfx": "scene_woosh",
-          "timing": "on_scenario_start"
-        }
-      }
-    },
-    {
-      "role": "ai",
-      "step": "4_celebration",
-      "text": "",
-      "screen": {},
-      "audio": {},
-      "raw_response": "",
-      "latency_seconds": 1.33,
-      "expected": {
-        "expected_tone": "proud, warm",
-        "must_contain": [
-          "translator",
-          "feelings",
-          "emotions"
-        ],
-        "expected_screen": {
-          "widget": "badge_award",
-          "description": "Trophy or role badge with celebration animation",
-          "animation": "celebration_fanfare"
-        },
-        "expected_audio": {
-          "sfx": "celebration_fanfare",
-          "timing": "on_celebration"
-        }
-      }
-    },
-    {
-      "role": "ai",
-      "step": "5_closing",
-      "text": "",
-      "screen": {},
-      "audio": {},
-      "raw_response": "",
-      "latency_seconds": 1.49,
-      "expected": {
-        "expected_tone": "warm celebration",
-        "must_contain": [
-          "Perspective"
-        ],
-        "expected_screen": {
-          "widget": "badge_award",
-          "description": "IB concept words appear artistically with entity-themed styling",
-          "animation": "concept_reveal"
-        },
-        "expected_audio": {
-          "sfx": "badge_awarded",
-          "timing": "on_badge_display",
-          "music": "celebration_finale"
-        }
-      }
+      "animation": "gentle_pulse",
+      "trigger": "on_round_3"
     }
   ],
-  "exited_early": false,
-  "exit_reason": null
+  "celebration_frame": {
+    "widget": "badge_award",
+    "widget_params": {
+      "title": "Emotion Translator",
+      "concepts": ["Perspective"]
+    },
+    "animation": "badge_reveal",
+    "trigger": "on_correct"
+  },
+  "metadata": {
+    "tier": "T0",
+    "ib_theme": "Who We Are",
+    "ib_key_concept": "Perspective",
+    "concepts_earned": ["Perspective"],
+    "round_count": 3
+  }
 }

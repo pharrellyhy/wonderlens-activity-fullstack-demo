@@ -1,0 +1,91 @@
+{
+  "activity_type": "polka_dot_patrol",
+  "voice_script": {
+    "hook_line": "Oh my goodness, look at that tiny little friend! A ladybug wearing a beautiful red coat with fancy black polka dots!",
+    "transition_line": "I bet this ladybug isn't the only spotty thing around here. You are now an official Polka-Dot Patrol Officer! Your mission is to find three more things with dots, spots, or circles.",
+    "rounds": [
+      {
+        "prompt": "Keep your eyes super wide open! Can you find something with spots or dots on it? Maybe a flower, a rock, or a leaf?",
+        "correct_responses": ["flower", "dots", "spots", "petals", "pattern", "circles"],
+        "on_correct": "You found it! Oh, look at those lovely little dots — they look just like tiny polka-dot freckles! That is our first find, Officer!",
+        "on_incorrect": "That's a great find! Let me look more closely — I can see a little pattern there! Every little detail counts on patrol.",
+        "on_silence": "It's okay to take your time, Officer. Maybe try looking at flowers up close, or at the ground near your feet. Do you see anything with dots?",
+        "hint": "Try looking at flowers up close — sometimes their petals have the most amazing tiny dots!",
+        "sfx_cue": "photo_shutter_click"
+      },
+      {
+        "prompt": "Patrol report! We need our second find. Can you spot something else with dots, spots, or speckles nearby?",
+        "correct_responses": ["rock", "spots", "speckles", "stone", "bark", "dots", "pattern"],
+        "on_correct": "Incredible detective work! Look at those little speckles — nature painted those on! That's two spotted treasures found!",
+        "on_incorrect": "Hmm, let me look closer — you know what, I can see a little pattern there! Good spotting, Officer!",
+        "on_silence": "You're doing such a great job, Officer. Maybe look down at the ground near our feet? Sometimes pebbles or tree bark have the best little speckles.",
+        "hint": "Try looking at the ground — little pebbles and stones sometimes have amazing spotted patterns!",
+        "sfx_cue": "photo_shutter_click"
+      },
+      {
+        "prompt": "Last one, Officer! Can you find one more thing with spots or dots to complete our patrol collection?",
+        "correct_responses": ["tree", "bark", "butterfly", "dots", "spots", "leaf", "pattern", "bug"],
+        "on_correct": "You did it! Collection complete! You found three amazing spotted treasures. What an incredible Polka-Dot Patrol Officer you are!",
+        "on_incorrect": "You know what, I think that counts! Every little pattern tells a story. Our collection is complete, Officer!",
+        "on_silence": "We're so close! Try looking at tree bark up close, or the underside of a leaf. Even tiny things can have beautiful dot patterns.",
+        "hint": "Try looking at tree bark up close — it often has amazing little spotted patterns!",
+        "sfx_cue": "mission_complete_fanfare"
+      }
+    ],
+    "closing_speech": "Congratulations, Polka-Dot Patrol Officer! You noticed the beautiful Form of spots and patterns everywhere, and found a surprising Connection between all these different spotted things. A tiny ladybug, and all your amazing finds — all connected by their wonderful dots!",
+    "tomorrow_hook": "Next time you're outside, keep your patrol eyes open — spots and dots are hiding everywhere, waiting for you to discover them!"
+  },
+  "screen_frames": [
+    {
+      "widget": "photo_display",
+      "widget_params": {
+        "description": "Ladybug photo centered with spots gently highlighted"
+      },
+      "animation": "sparkle_highlight",
+      "trigger": "on_enter"
+    },
+    {
+      "widget": "progress_tracker",
+      "widget_params": {
+        "filled": 1,
+        "total": 4
+      },
+      "animation": "card_slide_in",
+      "trigger": "on_round_1"
+    },
+    {
+      "widget": "progress_tracker",
+      "widget_params": {
+        "filled": 2,
+        "total": 4
+      },
+      "animation": "celebration_burst",
+      "trigger": "on_round_2"
+    },
+    {
+      "widget": "progress_tracker",
+      "widget_params": {
+        "filled": 3,
+        "total": 4
+      },
+      "animation": "celebration_burst",
+      "trigger": "on_round_3"
+    }
+  ],
+  "celebration_frame": {
+    "widget": "badge_award",
+    "widget_params": {
+      "title": "Polka-Dot Patrol Officer",
+      "concepts": ["Form", "Connection"]
+    },
+    "animation": "badge_reveal",
+    "trigger": "on_correct"
+  },
+  "metadata": {
+    "tier": "T1",
+    "ib_theme": "How We Express Ourselves",
+    "ib_key_concept": "Form",
+    "concepts_earned": ["Form", "Connection"],
+    "round_count": 3
+  }
+}

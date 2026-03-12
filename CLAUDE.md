@@ -34,13 +34,14 @@ npm run dev   # Vite on port 5173
 
 # Open http://localhost:5173
 
-# Code quality
-ruff check backend/             # lint
-ruff format backend/            # format
-mypy backend/                   # type check
+# Code quality (run from backend/)
+uv run ruff check .             # lint
+uv run ruff format .            # format
+uv run mypy .                   # type check
+uv run pytest                   # tests
 ```
 
-Pre-commit hooks run `ruff` and `isort` automatically.
+All Python tools (`ruff`, `mypy`, `pytest`, etc.) must be run via `uv run` to use the project's virtualenv. Pre-commit hooks run `ruff` and `isort` automatically.
 
 ## Architecture
 
@@ -71,6 +72,7 @@ React split-view: ConversationPanel (left, ~55%) + DeviceScreen (right, ~45%). P
 | Visual Agent | `backend/agents/visual_agent.py` |
 | Recipe Assembler | `backend/agents/recipe_assembler.py` |
 | Pydantic schemas | `backend/schemas/` |
+| Speech-to-text | `backend/stt.py` |
 | Agent system prompts | `backend/prompts/` |
 | Fallback recipes | `backend/fallbacks/` |
 | Activity scenarios (YAML) | `backend/scenarios/` |
@@ -90,6 +92,7 @@ React split-view: ConversationPanel (left, ~55%) + DeviceScreen (right, ~45%). P
 |----------|---------|
 | `POST /api/start` | Start new session — runs full agent pipeline, returns recipe + first turn |
 | `POST /api/turn` | Process one user turn — recipe lookup, returns matched dialogue + screen frame |
+| `POST /api/stt` | Speech-to-text — Gemini STT via Vertex AI, fallback: browser Web Speech API |
 | `POST /api/tts` | Text-to-speech — Gemini TTS via Vertex AI, fallback: browser SpeechSynthesis |
 
 ## Code Style

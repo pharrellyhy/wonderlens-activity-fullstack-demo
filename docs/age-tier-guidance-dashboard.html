@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WonderLens 年龄分层引导系统</title>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0a0e17;
+      color: #e2e8f0;
+      font-family: 'Noto Sans SC', 'Outfit', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes glowPulse {
+
+      0%,
+      100% {
+        filter: drop-shadow(0 0 4px currentColor);
+      }
+
+      50% {
+        filter: drop-shadow(0 0 10px currentColor);
+      }
+    }
+
+    .fade-section {
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .fade-section:nth-child(2) {
+      animation-delay: 0.08s;
+    }
+
+    .fade-section:nth-child(3) {
+      animation-delay: 0.16s;
+    }
+
+    .fade-section:nth-child(4) {
+      animation-delay: 0.24s;
+    }
+
+    .fade-section:nth-child(5) {
+      animation-delay: 0.32s;
+    }
+
+    .fade-section:nth-child(6) {
+      animation-delay: 0.40s;
+    }
+
+    .fade-section:nth-child(7) {
+      animation-delay: 0.48s;
+    }
+
+    .fade-section:nth-child(8) {
+      animation-delay: 0.56s;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0a0e17;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const {useState} = React;
+
+    /* ── colour system ─────────────────────────────────────────── */
+    const C = {
+      bg: '#0a0e17', surface: '#111827', surfaceHover: '#1a2237',
+      border: '#1e293b', borderAccent: '#334155',
+      text: '#e2e8f0', textMuted: '#94a3b8', textDim: '#64748b',
+    };
+
+    const TIER_COLORS = {
+      0: {main: '#f59e0b', light: '#fbbf24', glow: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)'},
+      1: {main: '#06b6d4', light: '#22d3ee', glow: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.3)'},
+      2: {main: '#6366f1', light: '#818cf8', glow: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.3)'},
+      3: {main: '#a855f7', light: '#c084fc', glow: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.3)'},
+    };
+
+    /* ── tier data (from app/core/constants.py AgeTierConfig.CONFIGS) ── */
+    const TIERS = [
+      {
+        tier: 0, label: 'Little Explorer', labelCn: '小小探索者', ages: '2–3 岁',
+        descCn: '前对话阶段，以呼唤-回应为主，使用极简语言和拟声词',
+        age_description: '2-3 year old',
+        interaction_model: 'call_and_response', max_freeform_turns: 2,
+        pathway_rounds: [1, 2], question_complexity: 'naming_pointing',
+        response_style: ['onomatopoeia', 'repetition', 'sing_song'],
+        words_per_sentence: [3, 5], hook_rule: 'exclamation_name_sound_celebrate_no_question',
+        engagement_threshold: 'any_vocalization', silent_timeout_seconds: 12,
+        activity_types: ['body_mimic', 'sound_safari', 'rhythm_echo'],
+        closing_speech: 'simple_celebration',
+        available_dimensions: ['visual', 'tactile', 'auditory', 'kinesthetic'],
+        vocabulary_level: 'very simple', max_sentences: 1, tone: 'gentle and cute',
+        available_key_concepts: ['form', 'connection'], max_concept_badges: 0,
+      },
+      {
+        tier: 1, label: 'Sensory Explorer', labelCn: '感官探索者', ages: '3–4 岁',
+        descCn: '引导式对话，简单词汇和感官探索为主',
+        age_description: '3-4 year old',
+        interaction_model: 'guided_dialogue', max_freeform_turns: 4,
+        pathway_rounds: [2, 4], question_complexity: 'binary_simple_choice',
+        response_style: ['simple', 'playful', 'exclamations'],
+        words_per_sentence: [5, 10], hook_rule: 'personal_feeling_hook',
+        engagement_threshold: 'generous_1word', silent_timeout_seconds: 10,
+        activity_types: 'all_35', closing_speech: 'names_1_concept',
+        available_dimensions: ['visual', 'tactile', 'auditory', 'kinesthetic', 'structural', 'spatial', 'relational', 'emotional'],
+        vocabulary_level: 'very simple', max_sentences: 2, tone: 'gentle and cute',
+        available_key_concepts: ['form', 'function', 'connection', 'change'], max_concept_badges: 1,
+      },
+      {
+        tier: 2, label: 'Function Discoverer', labelCn: '功能发现者', ages: '5–6 岁',
+        descCn: '开放式对话，引导探索因果关系和多角度思维',
+        age_description: '5-6 year old',
+        interaction_model: 'open_dialogue', max_freeform_turns: 5,
+        pathway_rounds: [3, 5], question_complexity: 'open_guided',
+        response_style: ['curious', 'encouraging'],
+        words_per_sentence: [10, 15], hook_rule: 'experience_preference_hook',
+        engagement_threshold: 'moderate_2_3_word', silent_timeout_seconds: 8,
+        activity_types: 'all_35', closing_speech: 'names_2_concepts',
+        available_dimensions: ['visual', 'tactile', 'auditory', 'kinesthetic', 'structural', 'spatial', 'relational', 'emotional', 'temporal'],
+        vocabulary_level: 'simple and easy to understand', max_sentences: 3, tone: 'lively and friendly',
+        available_key_concepts: ['form', 'function', 'causation', 'change', 'connection', 'perspective', 'responsibility'],
+        max_concept_badges: 2,
+      },
+      {
+        tier: 3, label: 'System Thinker', labelCn: '系统思考者', ages: '7–8 岁',
+        descCn: '同伴式对话，支持抽象思维和跨领域联想',
+        age_description: '7-8 year old',
+        interaction_model: 'peer_conversation', max_freeform_turns: 6,
+        pathway_rounds: [3, 5], question_complexity: 'fully_open',
+        response_style: ['conversational', 'peer'],
+        words_per_sentence: [15, 20], hook_rule: 'opinion_connection_hook',
+        engagement_threshold: 'standard', silent_timeout_seconds: 6,
+        activity_types: 'all_35', closing_speech: 'names_up_to_3_concepts',
+        available_dimensions: ['visual', 'tactile', 'auditory', 'kinesthetic', 'structural', 'spatial', 'relational', 'emotional', 'temporal', 'evaluative'],
+        vocabulary_level: 'slightly richer', max_sentences: 4, tone: 'enthusiastic and interesting',
+        available_key_concepts: ['form', 'function', 'causation', 'change', 'connection', 'perspective', 'responsibility'],
+        max_concept_badges: 3,
+      },
+    ];
+
+    /* ── IB PYP key concepts ─────────────────────────────────── */
+    const IB_CONCEPTS = [
+      {id: 'form', cn: '形式', en: 'Form', desc: '事物的外观、结构和特征'},
+      {id: 'function', cn: '功能', en: 'Function', desc: '事物如何运作、有何用途'},
+      {id: 'causation', cn: '因果', en: 'Causation', desc: '为什么会这样，原因和结果'},
+      {id: 'change', cn: '变化', en: 'Change', desc: '事物如何随时间变化和发展'},
+      {id: 'connection', cn: '联系', en: 'Connection', desc: '事物之间的关系和相互影响'},
+      {id: 'perspective', cn: '观点', en: 'Perspective', desc: '不同角度看待同一事物'},
+      {id: 'responsibility', cn: '责任', en: 'Responsibility', desc: '我们的选择如何影响世界'},
+    ];
+
+    /* ── Exploration dimensions ── */
+    const DIMENSIONS = [
+      {id: 'visual', cn: '视觉', q: 'What does it look like?', tier: 0},
+      {id: 'tactile', cn: '触感', q: 'How does it feel?', tier: 0},
+      {id: 'auditory', cn: '听觉', q: 'What does it sound like?', tier: 0},
+      {id: 'kinesthetic', cn: '动作', q: 'What can it do?', tier: 0},
+      {id: 'structural', cn: '结构', q: 'What is it made of?', tier: 1},
+      {id: 'spatial', cn: '空间', q: 'How big is it? Where do you find it?', tier: 1},
+      {id: 'relational', cn: '关联', q: 'Where does it belong?', tier: 1},
+      {id: 'emotional', cn: '情感', q: 'How does it make you feel?', tier: 1},
+      {id: 'temporal', cn: '时序', q: 'How does it change?', tier: 2},
+      {id: 'evaluative', cn: '评价', q: 'What do people think?', tier: 3},
+    ];
+
+    const DIM_COLORS = {
+      visual: '#60a5fa', tactile: '#f472b6', auditory: '#38bdf8', kinesthetic: '#34d399',
+      structural: '#a78bfa', spatial: '#2dd4bf', relational: '#fbbf24', emotional: '#fb7185',
+      temporal: '#fb923c', evaluative: '#f87171',
+    };
+
+    /* ── Apple example data (from docs/plans/age_tier_guided_conversation.md) ── */
+    /* topic_anchors are now dict[dimension, list[{attr, val}]] */
+    const APPLE_EXAMPLE = {
+      0: {
+        primary_topic_focus: 'form',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              visual: [
+                {attr: 'color', val: 'bright red (or green or yellow)'},
+                {attr: 'shape', val: 'round like a ball'},
+                {attr: 'size', val: 'fits in one hand'},
+              ],
+              tactile: [
+                {attr: 'texture', val: 'smooth and waxy skin'},
+                {attr: 'weight', val: 'light, easy to hold'},
+              ],
+              auditory: [
+                {attr: 'sound', val: 'crunchy when you bite it'},
+              ],
+              kinesthetic: [
+                {attr: 'action', val: 'hold it, roll it, take a bite'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              visual: [
+                {attr: 'similar_things', val: 'round like oranges and balls'},
+              ],
+              kinesthetic: [
+                {attr: 'where_used', val: 'eating, lunchbox, kitchen'},
+              ],
+            }
+          },
+        ],
+      },
+      1: {
+        primary_topic_focus: 'function',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              visual: [
+                {attr: 'color', val: 'bright red'},
+                {attr: 'varieties', val: 'red, green, and yellow apples'},
+              ],
+              tactile: [
+                {attr: 'taste', val: 'sweet and crunchy, juicy inside'},
+              ],
+              auditory: [
+                {attr: 'juice_sound', val: 'juicy crunch sound'},
+              ],
+              structural: [
+                {attr: 'parts', val: 'skin, white flesh, small seeds, little stem'},
+              ],
+              spatial: [
+                {attr: 'where_grown', val: 'grows on trees in sunny orchards'},
+              ],
+              emotional: [
+                {attr: 'feeling', val: 'feels exciting to pick one yourself'},
+              ],
+            }
+          },
+          {
+            id: 'function', anchors_by_dim: {
+              kinesthetic: [
+                {attr: 'use', val: 'eating fresh, baking pies, making juice'},
+              ],
+              structural: [
+                {attr: 'seed_purpose', val: 'seeds inside can grow new trees'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              relational: [
+                {attr: 'ecosystem', val: 'grows on trees in orchards'},
+                {attr: 'animals', val: 'birds and worms eat apples too'},
+              ],
+            }
+          },
+          {
+            id: 'change', anchors_by_dim: {
+              temporal: [
+                {attr: 'lifecycle', val: 'blossom → small green fruit → big red apple'},
+                {attr: 'decay', val: 'turns brown and mushy if left out'},
+              ],
+            }
+          },
+        ],
+      },
+      2: {
+        primary_topic_focus: 'causation',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              structural: [
+                {attr: 'anatomy', val: 'skin protects flesh, core holds seeds'},
+              ],
+              spatial: [
+                {attr: 'distribution', val: 'grows in temperate climates worldwide'},
+              ],
+              relational: [
+                {attr: 'varieties', val: 'thousands of cultivated varieties worldwide'},
+              ],
+            }
+          },
+          {
+            id: 'causation', anchors_by_dim: {
+              temporal: [
+                {attr: 'ripening', val: 'sunlight triggers sugar production'},
+                {attr: 'browning', val: 'oxygen reacts with enzymes when skin is broken'},
+              ],
+              structural: [
+                {attr: 'mechanism', val: 'ethylene gas signals cells to soften'},
+              ],
+            }
+          },
+          {
+            id: 'perspective', anchors_by_dim: {
+              relational: [
+                {attr: 'farmer_view', val: 'crop to grow, harvest, and sell'},
+                {attr: 'animal_view', val: 'food source, home for insects'},
+              ],
+              emotional: [
+                {attr: 'debate', val: 'some find worms disgusting, others think it is natural'},
+              ],
+            }
+          },
+        ],
+      },
+      3: {
+        primary_topic_focus: 'causation',
+        concepts: [
+          {
+            id: 'causation', anchors_by_dim: {
+              temporal: [
+                {attr: 'selective_breeding', val: 'humans bred apples for sweetness over centuries'},
+                {attr: 'pollination', val: 'bees transfer pollen between trees to produce fruit'},
+              ],
+              spatial: [
+                {attr: 'origin', val: 'originated in Central Asia, spread via Silk Road'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              relational: [
+                {attr: 'food_chain', val: 'sun → tree → apple → animals/humans → compost → soil → tree'},
+                {attr: 'cultural', val: 'apples in stories, symbols, traditions across cultures'},
+              ],
+              emotional: [
+                {attr: 'symbolism', val: 'apple as symbol of knowledge, temptation, health'},
+              ],
+            }
+          },
+          {
+            id: 'responsibility', anchors_by_dim: {
+              evaluative: [
+                {attr: 'pesticides', val: 'chemicals protect crops but affect bees and soil'},
+                {attr: 'food_waste', val: 'billions of apples wasted yearly'},
+              ],
+            }
+          },
+        ],
+      },
+    };
+
+    /* ── Dog example data ───────────────────────────────────── */
+    const DOG_EXAMPLE = {
+      0: {
+        primary_topic_focus: 'form',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              visual: [
+                {attr: 'fur', val: 'fluffy fur, brown or white or spotted'},
+              ],
+              tactile: [
+                {attr: 'texture', val: 'soft warm fur, wet nose'},
+              ],
+              auditory: [
+                {attr: 'sound', val: 'woof woof! bark bark!'},
+              ],
+              kinesthetic: [
+                {attr: 'action', val: 'wags tail, licks your hand'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              visual: [
+                {attr: 'similar_animals', val: 'looks like a wolf but friendly'},
+              ],
+              kinesthetic: [
+                {attr: 'play', val: 'plays fetch, goes for walks'},
+              ],
+            }
+          },
+        ],
+      },
+      1: {
+        primary_topic_focus: 'connection',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              visual: [
+                {attr: 'breeds', val: 'big dogs, tiny dogs, floppy ears, pointy ears'},
+              ],
+              tactile: [
+                {attr: 'feel', val: 'some fur is curly, some is short and smooth'},
+              ],
+              auditory: [
+                {attr: 'sounds', val: 'barks, whines, growls, and happy panting'},
+              ],
+              spatial: [
+                {attr: 'home', val: 'lives in houses, plays in dog parks'},
+              ],
+              emotional: [
+                {attr: 'feeling', val: 'makes you feel happy and loved'},
+              ],
+            }
+          },
+          {
+            id: 'function', anchors_by_dim: {
+              kinesthetic: [
+                {attr: 'jobs', val: 'guards the house, herds sheep'},
+              ],
+              relational: [
+                {attr: 'helper', val: 'guide dogs help people who cannot see'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              relational: [
+                {attr: 'family', val: 'part of the family, a loyal friend'},
+              ],
+              emotional: [
+                {attr: 'bond', val: 'dogs love their owners and miss them'},
+              ],
+            }
+          },
+        ],
+      },
+      2: {
+        primary_topic_focus: 'causation',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              structural: [
+                {attr: 'anatomy', val: 'strong legs for running, sharp teeth for chewing'},
+              ],
+              relational: [
+                {attr: 'classification', val: 'over 300 recognized breeds worldwide'},
+              ],
+            }
+          },
+          {
+            id: 'causation', anchors_by_dim: {
+              temporal: [
+                {attr: 'domestication', val: 'wolves became friendly over thousands of years'},
+              ],
+              structural: [
+                {attr: 'adaptation', val: 'long snout helps cooling, thick fur keeps warm'},
+              ],
+              kinesthetic: [
+                {attr: 'instinct', val: 'chases moving things because of hunting instinct'},
+              ],
+            }
+          },
+          {
+            id: 'perspective', anchors_by_dim: {
+              relational: [
+                {attr: 'owner_view', val: 'beloved pet and family member'},
+              ],
+              emotional: [
+                {attr: 'fear', val: 'some people are scared of dogs, others love them'},
+              ],
+            }
+          },
+        ],
+      },
+      3: {
+        primary_topic_focus: 'causation',
+        concepts: [
+          {
+            id: 'causation', anchors_by_dim: {
+              temporal: [
+                {attr: 'breeding', val: 'humans shaped dog breeds for specific jobs over centuries'},
+              ],
+              spatial: [
+                {attr: 'climate_adaptation', val: 'huskies in Arctic, salukis in deserts'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              relational: [
+                {attr: 'ecosystem', val: 'dogs shaped human civilization — hunting, herding, companionship'},
+              ],
+              emotional: [
+                {attr: 'symbolism', val: 'dogs as symbols of loyalty, fidelity, and friendship'},
+              ],
+            }
+          },
+          {
+            id: 'responsibility', anchors_by_dim: {
+              evaluative: [
+                {attr: 'breeding_ethics', val: 'some breeds have health problems from selective breeding'},
+                {attr: 'strays', val: 'millions of stray dogs need homes worldwide'},
+              ],
+            }
+          },
+        ],
+      },
+    };
+
+    /* ── Bicycle example data ──────────────────────────────── */
+    const BICYCLE_EXAMPLE = {
+      0: {
+        primary_topic_focus: 'form',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              visual: [
+                {attr: 'shape', val: 'two round wheels and handlebars'},
+              ],
+              tactile: [
+                {attr: 'feel', val: 'smooth metal, rubber grips'},
+              ],
+              auditory: [
+                {attr: 'sound', val: 'ring ring! bell goes ding ding'},
+              ],
+              kinesthetic: [
+                {attr: 'action', val: 'push pedals, steer with hands'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              visual: [
+                {attr: 'similar_things', val: 'wheels like a car, seat like a chair'},
+              ],
+              kinesthetic: [
+                {attr: 'where_used', val: 'riding to the park, down the street'},
+              ],
+            }
+          },
+        ],
+      },
+      1: {
+        primary_topic_focus: 'function',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              visual: [
+                {attr: 'types', val: 'big bikes, small bikes, bikes with training wheels'},
+              ],
+              structural: [
+                {attr: 'parts', val: 'frame, wheels, pedals, chain, brakes, seat'},
+              ],
+              spatial: [
+                {attr: 'size', val: 'bikes come in sizes from tiny to adult'},
+              ],
+            }
+          },
+          {
+            id: 'function', anchors_by_dim: {
+              kinesthetic: [
+                {attr: 'how_it_works', val: 'push pedals to spin the wheels and go'},
+              ],
+              structural: [
+                {attr: 'chain', val: 'chain connects pedals to the back wheel'},
+              ],
+              spatial: [
+                {attr: 'travel', val: 'ride to school, to the store, to a friend\'s house'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              relational: [
+                {attr: 'transport', val: 'a way to travel, like cars and buses'},
+              ],
+              emotional: [
+                {attr: 'freedom', val: 'feels exciting to ride fast in the wind'},
+              ],
+            }
+          },
+        ],
+      },
+      2: {
+        primary_topic_focus: 'causation',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              structural: [
+                {attr: 'mechanism', val: 'gears change how hard you pedal — low gear for hills'},
+              ],
+              relational: [
+                {attr: 'varieties', val: 'mountain bikes, road bikes, BMX, folding bikes'},
+              ],
+            }
+          },
+          {
+            id: 'causation', anchors_by_dim: {
+              kinesthetic: [
+                {attr: 'balance', val: 'spinning wheels create gyroscopic force that keeps you upright'},
+              ],
+              structural: [
+                {attr: 'braking', val: 'brake pads squeeze the wheel rim to create friction'},
+              ],
+              temporal: [
+                {attr: 'evolution', val: 'first bikes had no pedals — riders pushed with feet'},
+              ],
+            }
+          },
+          {
+            id: 'perspective', anchors_by_dim: {
+              relational: [
+                {attr: 'city_view', val: 'cities build bike lanes to reduce traffic'},
+              ],
+              spatial: [
+                {attr: 'culture', val: 'in Netherlands everyone bikes — flat land, bike paths everywhere'},
+              ],
+            }
+          },
+        ],
+      },
+      3: {
+        primary_topic_focus: 'causation',
+        concepts: [
+          {
+            id: 'causation', anchors_by_dim: {
+              temporal: [
+                {attr: 'innovation', val: 'pneumatic tires, gears, and carbon frames evolved over 200 years'},
+              ],
+              structural: [
+                {attr: 'physics', val: 'gear ratios multiply force — small chainring + large cog = easier pedaling'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              relational: [
+                {attr: 'systems', val: 'bikes connect to roads, bike-sharing, urban planning, health'},
+              ],
+              spatial: [
+                {attr: 'global_impact', val: 'bikes transformed transportation in developing countries'},
+              ],
+            }
+          },
+          {
+            id: 'responsibility', anchors_by_dim: {
+              evaluative: [
+                {attr: 'environment', val: 'zero emissions — bikes vs cars for short trips'},
+                {attr: 'safety', val: 'helmet laws protect riders but debate over personal freedom'},
+              ],
+            }
+          },
+        ],
+      },
+    };
+
+    /* ── Rain example data ─────────────────────────────────── */
+    const RAIN_EXAMPLE = {
+      0: {
+        primary_topic_focus: 'form',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              visual: [
+                {attr: 'look', val: 'tiny drops falling from gray clouds'},
+              ],
+              tactile: [
+                {attr: 'feel', val: 'wet and cool on your skin'},
+              ],
+              auditory: [
+                {attr: 'sound', val: 'pitter patter on the window'},
+              ],
+              kinesthetic: [
+                {attr: 'action', val: 'splash in puddles, catch drops'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              visual: [
+                {attr: 'similar_things', val: 'like water from a shower or sprinkler'},
+              ],
+              auditory: [
+                {attr: 'related_sounds', val: 'thunder goes boom after lightning'},
+              ],
+            }
+          },
+        ],
+      },
+      1: {
+        primary_topic_focus: 'function',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              visual: [
+                {attr: 'types', val: 'drizzle, downpour, thunderstorm'},
+              ],
+              auditory: [
+                {attr: 'sounds', val: 'gentle patter, loud drumming, rumbling thunder'},
+              ],
+              spatial: [
+                {attr: 'where', val: 'falls from clouds high up in the sky'},
+              ],
+              emotional: [
+                {attr: 'mood', val: 'cozy inside watching rain, or gloomy gray sky'},
+              ],
+            }
+          },
+          {
+            id: 'function', anchors_by_dim: {
+              relational: [
+                {attr: 'purpose', val: 'gives water to plants, animals, and people'},
+              ],
+              kinesthetic: [
+                {attr: 'effect', val: 'fills rivers, makes puddles, waters gardens'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              relational: [
+                {attr: 'nature', val: 'plants, frogs, and worms love rain'},
+              ],
+              emotional: [
+                {attr: 'feeling', val: 'rainbow after rain makes everyone smile'},
+              ],
+            }
+          },
+        ],
+      },
+      2: {
+        primary_topic_focus: 'causation',
+        concepts: [
+          {
+            id: 'form', anchors_by_dim: {
+              structural: [
+                {attr: 'composition', val: 'raindrops are not teardrop-shaped — they are like tiny hamburger buns'},
+              ],
+              spatial: [
+                {attr: 'geography', val: 'mountains force clouds up and cause more rain on one side'},
+              ],
+            }
+          },
+          {
+            id: 'causation', anchors_by_dim: {
+              temporal: [
+                {attr: 'water_cycle', val: 'sun heats water → evaporates → clouds form → rain falls → repeat'},
+              ],
+              structural: [
+                {attr: 'condensation', val: 'water vapor cools around tiny dust particles to form drops'},
+              ],
+              kinesthetic: [
+                {attr: 'gravity', val: 'drops fall when too heavy for clouds to hold'},
+              ],
+            }
+          },
+          {
+            id: 'perspective', anchors_by_dim: {
+              relational: [
+                {attr: 'farmer_view', val: 'farmers need rain for crops but too much causes floods'},
+              ],
+              emotional: [
+                {attr: 'cultural_mood', val: 'some cultures celebrate rain, others find it depressing'},
+              ],
+            }
+          },
+        ],
+      },
+      3: {
+        primary_topic_focus: 'causation',
+        concepts: [
+          {
+            id: 'causation', anchors_by_dim: {
+              temporal: [
+                {attr: 'climate_patterns', val: 'monsoons bring seasonal rain that billions of people depend on'},
+              ],
+              spatial: [
+                {attr: 'acid_rain', val: 'pollution travels through air and falls as acid rain far from factories'},
+              ],
+            }
+          },
+          {
+            id: 'connection', anchors_by_dim: {
+              relational: [
+                {attr: 'water_system', val: 'rain feeds rivers → reservoirs → taps → drains → ocean → clouds → rain'},
+              ],
+              emotional: [
+                {attr: 'art_literature', val: 'rain as symbol of renewal, sadness, or cleansing across cultures'},
+              ],
+            }
+          },
+          {
+            id: 'responsibility', anchors_by_dim: {
+              evaluative: [
+                {attr: 'climate_change', val: 'warming climate makes rain patterns more extreme — floods and droughts'},
+                {attr: 'water_management', val: 'collecting rainwater vs letting it run off into drains'},
+              ],
+            }
+          },
+        ],
+      },
+    };
+
+    /* ── glossary data ──────────────────────────────────────── */
+
+    const GLOSSARY = [
+      {
+        key: 'interaction_model', cn: '交互模式',
+        desc: '定义每轮对话的基本交互形式，决定 AI 如何与儿童互动',
+        terms: [
+          {term: 'call_and_response', cn: '呼唤-回应', desc: '成人发起，儿童回应单一动作（拍手、指认、模仿声音），无开放式问答'},
+          {term: 'guided_dialogue', cn: '引导式对话', desc: '以二选一或简单选择题引导，逐步过渡到简短回答'},
+          {term: 'open_dialogue', cn: '开放式对话', desc: '开放性问题为主，鼓励儿童用完整句子表达想法'},
+          {term: 'peer_conversation', cn: '同伴式对话', desc: '平等交流风格，支持假设、推理、跨学科联想'},
+        ],
+      },
+      {
+        key: 'question_complexity', cn: '问题复杂度',
+        desc: '对话中提出问题的认知难度级别',
+        terms: [
+          {term: 'naming_pointing', cn: '命名指认', desc: '指向并命名：「这是什么？」「颜色是？」'},
+          {term: 'binary_simple_choice', cn: '二选一/简单选择', desc: '是/否或 A/B 选择：「是圆的还是方的？」「你喜欢吗？」'},
+          {term: 'open_guided', cn: '开放引导', desc: '有方向的开放问题：「你觉得为什么会这样？」「如果...会怎样？」'},
+          {term: 'fully_open', cn: '完全开放', desc: '无限制开放问题：「你怎么看？」「能不能想到其他例子？」'},
+        ],
+      },
+      {
+        key: 'hook_rule', cn: '开场规则',
+        desc: '对话开场白的生成策略 — 决定每次对话第一句话的风格和结构',
+        terms: [
+          {
+            term: 'exclamation_name_sound_celebrate_no_question', cn: '感叹+命名+声音+庆祝，不提问',
+            desc: '「哇！一个苹果！红红的！」— 用夸张语气和拟声词吸引注意，绝不用问句开场'
+          },
+          {
+            term: 'personal_feeling_hook', cn: '个人感受开场',
+            desc: '「你看这个苹果，摸起来滑滑的，你觉得呢？」— 连接儿童的感官体验'
+          },
+          {
+            term: 'experience_preference_hook', cn: '经验偏好开场',
+            desc: '「你吃过苹果吗？你最喜欢什么颜色的苹果？」— 唤起个人经历和偏好'
+          },
+          {
+            term: 'opinion_connection_hook', cn: '观点联想开场',
+            desc: '「苹果让你想到了什么？」— 鼓励自由联想和观点表达'
+          },
+        ],
+      },
+      {
+        key: 'engagement_threshold', cn: '参与阈值',
+        desc: '判定儿童"有效参与"的最低标准 — 低于此标准时 AI 会切换到重新引导策略',
+        terms: [
+          {term: 'any_vocalization', cn: '任何发声', desc: '任何声音（包括笑声、拟声词、无意义音节）均视为有效参与'},
+          {term: 'generous_1word', cn: '宽松单词', desc: '至少一个可辨识的词语即算参与，语法和发音不完美没关系'},
+          {term: 'moderate_2_3_word', cn: '中等 2–3 词', desc: '需要 2–3 个词的回答才算有效参与'},
+          {term: 'standard', cn: '标准', desc: '期望完整短语或句子级别的回答'},
+        ],
+      },
+      {
+        key: 'response_style', cn: '回应风格',
+        desc: 'AI 回应的语言风格标签 — 注入 LLM system prompt，指导生成的语气和用词',
+        terms: [
+          {term: 'onomatopoeia', cn: '拟声词', desc: '大量使用声音模拟：「汪汪」「咕噜咕噜」「嘭！」'},
+          {term: 'repetition', cn: '重复', desc: '关键词重复强化：「苹果，红红的苹果，好大的苹果！」'},
+          {term: 'sing_song', cn: '歌谣式', desc: '带节奏感和韵律的表达方式'},
+          {term: 'simple', cn: '简单', desc: '短句、常用词、一步一步说明'},
+          {term: 'playful', cn: '活泼', desc: '有趣、游戏化的表达'},
+          {term: 'exclamations', cn: '感叹', desc: '用感叹号和夸张表情传递惊喜感'},
+          {term: 'curious', cn: '好奇', desc: '表现出对儿童回答的好奇和兴趣'},
+          {term: 'encouraging', cn: '鼓励', desc: '积极肯定和正向引导'},
+          {term: 'conversational', cn: '对话式', desc: '自然、平等的对话语气'},
+          {term: 'peer', cn: '同伴', desc: '朋友间交流的风格，不居高临下'},
+        ],
+      },
+      {
+        key: 'closing_speech', cn: '结束语',
+        desc: '对话结束时的总结方式 — 决定如何回顾本次探索的 IB 概念',
+        terms: [
+          {term: 'simple_celebration', cn: '简单庆祝', desc: '「太棒了！你认识了苹果！」— 用欢呼和庆祝结束，不总结概念'},
+          {term: 'names_1_concept', cn: '提及 1 个概念', desc: '结束时点名一个探索过的 IB 概念：「今天我们发现了苹果的功能！」'},
+          {term: 'names_2_concepts', cn: '提及 2 个概念', desc: '总结两个概念之间的关联'},
+          {term: 'names_up_to_3_concepts', cn: '提及最多 3 个概念', desc: '综合回顾本次探索的多个概念维度'},
+        ],
+      },
+      {
+        key: 'activity_types', cn: '活动类型',
+        desc: '对话中可穿插的互动活动 — AI 可在对话中邀请儿童参与这些活动',
+        terms: [
+          {term: 'body_mimic', cn: '肢体模仿', desc: '用身体动作模仿事物：「像苹果一样圆圆地蹲下来！」'},
+          {term: 'sound_safari', cn: '声音探索', desc: '寻找和模仿相关声音：「苹果咬一口会发出什么声音？」'},
+          {term: 'rhythm_echo', cn: '节奏回声', desc: '跟随节奏拍手或重复短语'},
+          {term: 'all_35', cn: '全部 35 种活动', desc: 'Tier 1+ 解锁完整活动库，包含手工、绘画、角色扮演等 35 种互动形式'},
+        ],
+      },
+      {
+        key: 'exploration_dimensions', cn: '探索维度',
+        desc: '话题锚点的分组方式 — 按儿童的探索模式（感官/认知通道）组织，与 IB 概念正交',
+        terms: [
+          {term: 'visual', cn: '视觉', desc: '外观特征：颜色、形状、大小、图案（T0+）'},
+          {term: 'tactile', cn: '触感', desc: '触觉/味觉/嗅觉特征：质感、重量、温度（T0+）'},
+          {term: 'auditory', cn: '听觉', desc: '声音特征：叫声、节奏、音量、声音模式（T0+）'},
+          {term: 'kinesthetic', cn: '动作', desc: '动作与使用：运动方式、用途（T0+）'},
+          {term: 'structural', cn: '结构', desc: '内部构造：组成部分、材料、结构关系（T1+）'},
+          {term: 'spatial', cn: '空间', desc: '空间特征：大小、比例、位置、栖息地（T1+）'},
+          {term: 'relational', cn: '关联', desc: '关联与归属：生态系统、类别、文化联系（T1+）'},
+          {term: 'emotional', cn: '情感', desc: '情感反应：个人感受、情绪、主观体验（T1+）'},
+          {term: 'temporal', cn: '时序', desc: '时间维度：生长、变化、因果过程（T2+）'},
+          {term: 'evaluative', cn: '评价', desc: '评价与反思：观点、伦理、假设推理（T3+）'},
+        ],
+      },
+    ];
+
+    /* ── friendly labels for code values ────────────────────── */
+
+    const FRIENDLY = {
+      // interaction_model
+      call_and_response: '呼唤-回应', guided_dialogue: '引导式对话',
+      open_dialogue: '开放式对话', peer_conversation: '同伴式对话',
+      // question_complexity
+      naming_pointing: '命名指认', binary_simple_choice: '二选一/简单选择',
+      open_guided: '开放引导', fully_open: '完全开放',
+      // hook_rule
+      exclamation_name_sound_celebrate_no_question: '感叹+命名+庆祝（不提问）',
+      personal_feeling_hook: '个人感受开场', experience_preference_hook: '经验偏好开场',
+      opinion_connection_hook: '观点联想开场',
+      // engagement_threshold
+      any_vocalization: '任何发声', generous_1word: '宽松单词',
+      moderate_2_3_word: '中等 2–3 词', standard: '标准',
+      // response_style
+      onomatopoeia: '拟声词', repetition: '重复', sing_song: '歌谣式',
+      simple: '简单', playful: '活泼', exclamations: '感叹',
+      curious: '好奇', encouraging: '鼓励', conversational: '对话式', peer: '同伴',
+      // closing_speech
+      simple_celebration: '简单庆祝', names_1_concept: '提及 1 个概念',
+      names_2_concepts: '提及 2 个概念', names_up_to_3_concepts: '提及最多 3 个概念',
+      // activity_types
+      body_mimic: '肢体模仿', sound_safari: '声音探索', rhythm_echo: '节奏回声',
+      all_35: '全部 35 种活动',
+      // IB key concepts (used by available_key_concepts display)
+      form: '形式', function: '功能用途', change: '变化',
+      causation: '因果', connection: '联系', perspective: '观点', responsibility: '责任',
+      // exploration dimensions
+      visual: '视觉', tactile: '触感', auditory: '听觉', kinesthetic: '动作',
+      structural: '结构', spatial: '空间', relational: '关联', emotional: '情感',
+      temporal: '时序', evaluative: '评价',
+      // vocabulary_level
+      'very simple': '非常简单', 'simple and easy to understand': '简单易懂',
+      'slightly richer': '稍丰富',
+      // tone
+      'gentle and cute': '温柔可爱', 'lively and friendly': '活泼友好',
+      'enthusiastic and interesting': '热情有趣',
+    };
+
+    function friendly(val) {
+      if (typeof val === 'string') return FRIENDLY[val] || val;
+      if (Array.isArray(val)) return val.map(v => typeof v === 'string' ? (FRIENDLY[v] || v) : v);
+      return val;
+    }
+
+    /* ── attribute display metadata ─────────────────────────── */
+    const ATTR_GROUPS = [
+      {
+        groupCn: '对话行为', groupEn: 'Conversation Behavior',
+        attrs: [
+          {key: 'interaction_model', cn: '交互模式'},
+          {key: 'max_freeform_turns', cn: '最大多轮对话轮次'},
+          {key: 'question_complexity', cn: '问题复杂度'},
+          {key: 'response_style', cn: '回应风格'},
+          {key: 'hook_rule', cn: '开场规则'},
+          {key: 'engagement_threshold', cn: '参与阈值'},
+          {key: 'silent_timeout_seconds', cn: '沉默超时'},
+        ],
+      },
+      {
+        groupCn: '语音参数', groupEn: 'Speech / TTS',
+        attrs: [
+          {key: 'vocabulary_level', cn: '词汇水平'},
+          {key: 'max_sentences', cn: '最大句数'},
+          {key: 'tone', cn: '语气'},
+          {key: 'words_per_sentence', cn: '每句词数'},
+        ],
+      },
+      {
+        groupCn: 'IB 探究概念', groupEn: 'IB Inquiry Concepts',
+        attrs: [
+          {key: 'available_key_concepts', cn: '可用核心概念'},
+          {key: 'max_concept_badges', cn: '最大概念徽章数'},
+          {key: 'available_dimensions', cn: '探索维度'},
+          {key: 'activity_types', cn: '活动类型'},
+          {key: 'closing_speech', cn: '结束语'},
+        ],
+      },
+    ];
+
+    /* ── utility components ──────────────────────────────────── */
+
+    const mono = "'JetBrains Mono', monospace";
+    const display = "'Outfit', 'Noto Sans SC', sans-serif";
+    const body = "'Noto Sans SC', 'Outfit', sans-serif";
+
+    function Badge({children, color, small}) {
+      return (
+        <span style={{
+          display: 'inline-block', padding: small ? '1px 6px' : '2px 8px',
+          borderRadius: '4px', fontSize: small ? '10px' : '11px', fontWeight: 600,
+          fontFamily: mono, color, background: `${color}18`, border: `1px solid ${color}30`,
+          whiteSpace: 'nowrap', letterSpacing: '0.3px',
+        }}>
+          {children}
+        </span>
+      );
+    }
+
+    function SectionHeader({number, titleCn, titleEn, style: extraStyle}) {
+      return (
+        <div style={{marginBottom: '20px', ...extraStyle}}>
+          <div style={{display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '4px'}}>
+            <span style={{
+              fontFamily: mono, fontSize: '12px', fontWeight: 700, color: C.textDim,
+              letterSpacing: '1px'
+            }}>{number}</span>
+            <h2 style={{
+              fontFamily: display, fontSize: '20px', fontWeight: 700, color: C.text,
+              letterSpacing: '-0.3px', margin: 0
+            }}>{titleCn}</h2>
+            <span style={{fontFamily: display, fontSize: '13px', fontWeight: 500, color: C.textDim}}>
+              {titleEn}
+            </span>
+          </div>
+          <div style={{height: '1px', background: `linear-gradient(90deg, ${C.borderAccent}, transparent)`}} />
+        </div>
+      );
+    }
+
+    function formatValue(val) {
+      if (Array.isArray(val)) return val.join(', ');
+      if (typeof val === 'number') return String(val);
+      return String(val);
+    }
+
+    function AttrValue({value, color}) {
+      const fv = friendly(value);
+      if (Array.isArray(fv)) {
+        return (
+          <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px'}}>
+            {fv.map((v, i) => <Badge key={i} color={color} small>{v}</Badge>)}
+          </div>
+        );
+      }
+      if (typeof fv === 'number') {
+        return <span style={{fontWeight: 600, color}}>{fv}</span>;
+      }
+      return <span style={{fontSize: '12px', color: C.textMuted}}>{String(fv)}</span>;
+    }
+
+    /* ── Header ──────────────────────────────────────────────── */
+
+    function Header() {
+      return (
+        <div className="fade-section" style={{
+          padding: '48px 24px 40px',
+          background: `linear-gradient(180deg, rgba(245,158,11,0.04) 0%, rgba(168,85,247,0.04) 50%, ${C.bg} 100%)`,
+          borderBottom: `1px solid ${C.border}`,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* decorative spectrum bar */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
+            background: `linear-gradient(90deg, ${TIER_COLORS[0].main}, ${TIER_COLORS[1].main}, ${TIER_COLORS[2].main}, ${TIER_COLORS[3].main})`,
+          }} />
+          <div style={{maxWidth: '1300px', margin: '0 auto'}}>
+            <h1 style={{
+              fontFamily: display, fontSize: '32px', fontWeight: 900, margin: 0,
+              letterSpacing: '-0.5px', lineHeight: 1.2,
+              background: `linear-gradient(135deg, ${TIER_COLORS[0].light} 0%, ${TIER_COLORS[1].light} 35%, ${TIER_COLORS[2].light} 65%, ${TIER_COLORS[3].light} 100%)`,
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>
+              WonderLens 年龄分层引导系统
+            </h1>
+            <p style={{
+              fontFamily: body, fontSize: '14px', color: C.textDim, margin: '10px 0 0',
+              lineHeight: 1.6, maxWidth: '640px',
+            }}>
+              基于 IB PYP 探究框架的四阶段认知发展体系 — 从感官探索到抽象思维，
+              为 2–8 岁儿童提供分层引导式对话体验。
+            </p>
+            {/* tier chips */}
+            <div style={{display: 'flex', gap: '8px', marginTop: '18px', flexWrap: 'wrap'}}>
+              {TIERS.map(t => {
+                const tc = TIER_COLORS[t.tier];
+                return (
+                  <div key={t.tier} style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '5px 12px', borderRadius: '6px',
+                    background: tc.glow, border: `1px solid ${tc.border}`,
+                  }}>
+                    <span style={{fontFamily: mono, fontSize: '11px', fontWeight: 700, color: tc.main}}>
+                      T{t.tier}
+                    </span>
+                    <span style={{fontSize: '12px', color: C.textMuted}}>{t.ages}</span>
+                    <span style={{fontSize: '12px', fontWeight: 600, color: tc.light}}>{t.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ── Tier Overview Cards ─────────────────────────────────── */
+
+    function TierCard({data}) {
+      const [open, setOpen] = useState(false);
+      const tc = TIER_COLORS[data.tier];
+
+      const keyStats = [
+        {label: '交互模式', value: friendly(data.interaction_model)},
+        {label: '问题复杂度', value: friendly(data.question_complexity)},
+        {label: '每句词数', value: `${data.words_per_sentence[0]}–${data.words_per_sentence[1]}`},
+        {label: '多轮对话轮次', value: data.max_freeform_turns},
+      ];
+
+      return (
+        <div
+          onClick={() => setOpen(!open)}
+          style={{
+            background: open ? tc.glow : C.surface,
+            border: `1px solid ${open ? tc.border : C.border}`,
+            borderLeft: `4px solid ${tc.main}`,
+            borderRadius: '10px', padding: '18px 20px', cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => {if (!open) e.currentTarget.style.background = C.surfaceHover;}}
+          onMouseLeave={e => {if (!open) e.currentTarget.style.background = C.surface;}}
+        >
+          {/* card header */}
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+            <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '10px',
+                background: `linear-gradient(135deg, ${tc.main}30, ${tc.main}10)`,
+                border: `1px solid ${tc.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: mono, fontSize: '18px', fontWeight: 800, color: tc.main,
+              }}>
+                {data.tier}
+              </div>
+              <div>
+                <div style={{fontFamily: display, fontSize: '17px', fontWeight: 700, color: C.text}}>
+                  {data.labelCn}
+                  <span style={{
+                    fontFamily: mono, fontSize: '12px', fontWeight: 500,
+                    color: tc.light, marginLeft: '8px'
+                  }}>{data.label}</span>
+                </div>
+                <div style={{fontSize: '13px', color: C.textDim, marginTop: '2px'}}>
+                  {data.ages} &middot; {data.descCn}
+                </div>
+              </div>
+            </div>
+            <div style={{
+              fontSize: '18px', color: C.textDim, transition: 'transform 0.2s',
+              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+              userSelect: 'none', flexShrink: 0, marginTop: '4px',
+            }}>&#9662;</div>
+          </div>
+
+          {/* key stats strip */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px',
+            marginTop: '14px',
+          }}>
+            {keyStats.map((s, i) => (
+              <div key={i} style={{
+                textAlign: 'center', padding: '8px 4px', background: C.bg,
+                borderRadius: '6px', border: `1px solid ${C.border}`,
+              }}>
+                <div style={{fontSize: '13px', fontWeight: 700, color: tc.light}}>
+                  {s.value}
+                </div>
+                <div style={{fontSize: '10px', color: C.textDim, marginTop: '3px'}}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* expanded detail */}
+          {open && (
+            <div style={{marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${C.border}`}}
+              onClick={e => e.stopPropagation()}>
+              {ATTR_GROUPS.map((group, gi) => (
+                <div key={gi} style={{marginBottom: gi < ATTR_GROUPS.length - 1 ? '16px' : 0}}>
+                  <div style={{
+                    fontSize: '11px', fontWeight: 700, color: tc.main,
+                    textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px',
+                    fontFamily: display,
+                  }}>
+                    {group.groupCn} <span style={{color: C.textDim, fontWeight: 500}}>{group.groupEn}</span>
+                  </div>
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px',
+                  }}>
+                    {group.attrs.map((a, ai) => {
+                      const val = data[a.key];
+                      return (
+                        <div key={ai} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                          padding: '5px 8px', background: C.bg, borderRadius: '4px',
+                          gap: '8px', minHeight: '28px',
+                        }}>
+                          <span style={{fontSize: '11px', color: C.textDim, whiteSpace: 'nowrap', lineHeight: '20px'}}>
+                            {a.cn}
+                          </span>
+                          <span style={{textAlign: 'right', lineHeight: '20px'}}>
+                            <AttrValue value={val} color={tc.light} />
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function TierCards() {
+      return (
+        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+          {TIERS.map(t => <TierCard key={t.tier} data={t} />)}
+        </div>
+      );
+    }
+
+    /* ── IB Key Concepts Unlock Matrix ───────────────────────── */
+
+    function ConceptMatrix() {
+      return (
+        <div style={{
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px',
+          padding: '20px', overflowX: 'auto',
+        }}>
+          <table style={{width: '100%', borderCollapse: 'collapse', minWidth: '600px'}}>
+            <thead>
+              <tr>
+                <th style={{
+                  textAlign: 'left', padding: '8px 12px', fontSize: '11px', color: C.textDim,
+                  fontWeight: 600, borderBottom: `1px solid ${C.border}`, fontFamily: display,
+                }}>
+                  IB 核心概念
+                </th>
+                {TIERS.map(t => {
+                  const tc = TIER_COLORS[t.tier];
+                  return (
+                    <th key={t.tier} style={{
+                      textAlign: 'center', padding: '8px 16px',
+                      borderBottom: `1px solid ${C.border}`,
+                    }}>
+                      <div style={{fontFamily: mono, fontSize: '12px', fontWeight: 700, color: tc.main}}>
+                        Tier {t.tier}
+                      </div>
+                      <div style={{fontSize: '10px', color: C.textDim, marginTop: '2px'}}>{t.ages}</div>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {IB_CONCEPTS.map((concept, ci) => (
+                <tr key={concept.id} style={{
+                  background: ci % 2 === 0 ? 'transparent' : `${C.bg}80`,
+                }}>
+                  <td style={{padding: '10px 12px', borderBottom: `1px solid ${C.border}`}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <span style={{fontSize: '14px', fontWeight: 600, color: C.text}}>{concept.cn}</span>
+                      <span style={{fontFamily: mono, fontSize: '11px', color: C.textDim}}>{concept.en}</span>
+                    </div>
+                    <div style={{fontSize: '11px', color: C.textDim, marginTop: '2px'}}>{concept.desc}</div>
+                  </td>
+                  {TIERS.map(t => {
+                    const tc = TIER_COLORS[t.tier];
+                    const available = t.available_key_concepts.includes(concept.id);
+                    const isNew = available && (t.tier === 0 ||
+                      !TIERS.find(p => p.tier === t.tier - 1)?.available_key_concepts.includes(concept.id));
+                    return (
+                      <td key={t.tier} style={{
+                        textAlign: 'center', padding: '10px 16px',
+                        borderBottom: `1px solid ${C.border}`,
+                      }}>
+                        {available ? (
+                          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px'}}>
+                            <div style={{
+                              width: '18px', height: '18px', borderRadius: '50%',
+                              background: tc.main,
+                              boxShadow: isNew ? `0 0 10px ${tc.main}60` : 'none',
+                              border: isNew ? `2px solid ${tc.light}` : 'none',
+                            }} />
+                            {isNew && (
+                              <span style={{
+                                fontFamily: mono, fontSize: '8px', fontWeight: 700,
+                                color: tc.light, textTransform: 'uppercase', letterSpacing: '0.5px'
+                              }}>
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{
+                            width: '18px', height: '18px', borderRadius: '50%',
+                            border: `1px solid ${C.borderAccent}`, margin: '0 auto',
+                            opacity: 0.3,
+                          }} />
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {/* legend */}
+          <div style={{
+            display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '14px',
+            paddingTop: '12px', borderTop: `1px solid ${C.border}`,
+          }}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: C.textDim}}>
+              <div style={{
+                width: 12, height: 12, borderRadius: '50%', background: C.textMuted,
+                border: `2px solid ${C.text}`, boxShadow: `0 0 6px ${C.textMuted}`
+              }} />
+              首次解锁 NEW
+            </div>
+            <div style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: C.textDim}}>
+              <div style={{width: 12, height: 12, borderRadius: '50%', background: C.textMuted}} />
+              已解锁
+            </div>
+            <div style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: C.textDim}}>
+              <div style={{
+                width: 12, height: 12, borderRadius: '50%',
+                border: `1px solid ${C.borderAccent}`, opacity: 0.3
+              }} />
+              未解锁
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ── Tier Feature Comparison Table ───────────────────────── */
+
+    const COMPARISON_ROWS = [
+      {
+        key: 'interaction_model', cn: '交互模式', group: '对话',
+        example: 'T0「哇！苹果！拍拍手！」→ T3「你觉得苹果和橙子有什么不同？」'
+      },
+      {
+        key: 'question_complexity', cn: '问题复杂度', group: '对话',
+        example: 'T0「这是什么？」→ T1「红色还是绿色？」→ T2「你觉得为什么会变色？」→ T3「如果没有蜜蜂会怎样？」'
+      },
+      {
+        key: 'words_per_sentence', cn: '每句词数', group: '对话',
+        example: 'T0「红苹果！」→ T3「苹果从开花到成熟大约需要四个月的时间」'
+      },
+      {
+        key: 'max_freeform_turns', cn: '多轮对话轮次', group: '对话',
+        example: '多轮对话的回合数上限，T0 最多2轮，T3 最多 6 轮'
+      },
+      {
+        key: 'hook_rule', cn: '开场规则', group: '对话',
+        example: 'T0「哇！看！一个大苹果！」→ T1「你摸过苹果吗？」→ T3「苹果让你想到了什么？」'
+      },
+      {
+        key: 'engagement_threshold', cn: '参与阈值', group: '对话',
+        example: 'T0 笑声/拟声词即算参与 → T2 需要 2–3 个词回答 → T3 期望完整句子'
+      },
+      {
+        key: 'silent_timeout_seconds', cn: '沉默超时(秒)', group: '对话',
+        example: '儿童沉默超过该秒数后 AI 主动引导。T0 更耐心(12s)，T3 更紧凑(6s)'
+      },
+      {
+        key: 'vocabulary_level', cn: '词汇水平', group: '语音',
+        example: 'T0/T1 使用最基础的日常词汇 → T3 可引入稍复杂的词汇如「光合作用」'
+      },
+      {
+        key: 'max_sentences', cn: '最大句数', group: '语音',
+        example: 'AI 每次回复的句子数上限。T0 只说 1 句，T3 可说 4 句'
+      },
+      {
+        key: 'tone', cn: '语气', group: '语音',
+        example: 'T0 轻柔哄娃的语气 → T2 活泼好朋友的语气 → T3 像聊天一样自然'
+      },
+      {
+        key: 'max_concept_badges', cn: '概念徽章上限', group: 'IB',
+        example: '本次对话最多探索的 IB 概念数。T0 不发徽章，T3 最多 3 个'
+      },
+      {
+        key: 'available_dimensions', cn: '探索维度', group: 'IB',
+        example: '实体话题锚点的分组方式 — T0 视觉/触感/听觉/动作 → T1 +结构/空间/关联/情感 → T2 +时序 → T3 +评价'
+      },
+      {
+        key: 'closing_speech', cn: '结束语', group: 'IB',
+        example: 'T0「太棒了！你真厉害！」→ T3「今天我们探索了因果和联系，你发现了好多有趣的事！」'
+      },
+    ];
+
+    function ComparisonTable() {
+      let lastGroup = '';
+
+      return (
+        <div style={{
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px',
+          padding: '4px', overflowX: 'auto',
+        }}>
+          <table style={{width: '100%', borderCollapse: 'collapse', minWidth: '700px'}}>
+            <thead>
+              <tr>
+                <th style={{
+                  textAlign: 'left', padding: '12px 14px', fontSize: '11px', color: C.textDim,
+                  fontWeight: 600, borderBottom: `2px solid ${C.border}`, fontFamily: display,
+                  position: 'sticky', left: 0, background: C.surface, minWidth: '140px',
+                }}>
+                  属性
+                </th>
+                {TIERS.map(t => {
+                  const tc = TIER_COLORS[t.tier];
+                  return (
+                    <th key={t.tier} style={{
+                      textAlign: 'center', padding: '12px 10px',
+                      borderBottom: `2px solid ${tc.main}40`,
+                      background: tc.glow, minWidth: '150px',
+                    }}>
+                      <span style={{fontFamily: mono, fontSize: '13px', fontWeight: 700, color: tc.main}}>
+                        T{t.tier}
+                      </span>
+                      <span style={{fontSize: '11px', color: C.textDim, marginLeft: '6px'}}>{t.labelCn}</span>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON_ROWS.map((row, ri) => {
+                const showGroupHeader = row.group !== lastGroup;
+                lastGroup = row.group;
+                const groupLabels = {'对话': '对话行为', '语音': '语音参数', 'IB': 'IB 概念'};
+
+                return (
+                  <React.Fragment key={row.key}>
+                    {showGroupHeader && (
+                      <tr>
+                        <td colSpan={5} style={{
+                          padding: '10px 14px 4px', fontSize: '10px', fontWeight: 700,
+                          color: C.textDim, textTransform: 'uppercase', letterSpacing: '1px',
+                          fontFamily: display, borderBottom: `1px solid ${C.border}`,
+                          background: `${C.bg}80`,
+                        }}>
+                          {groupLabels[row.group]}
+                        </td>
+                      </tr>
+                    )}
+                    <tr style={{background: ri % 2 === 0 ? 'transparent' : `${C.bg}40`}}>
+                      <td style={{
+                        padding: '8px 14px', fontSize: '12px', color: C.textMuted,
+                        borderBottom: `1px solid ${C.border}`,
+                        position: 'sticky', left: 0, background: ri % 2 === 0 ? C.surface : `${C.bg}cc`,
+                        minWidth: '260px',
+                      }}>
+                        <div style={{fontWeight: 500}}>{row.cn}</div>
+                        {row.example && (
+                          <div style={{fontSize: '10px', color: C.textDim, marginTop: '3px', lineHeight: 1.5, fontStyle: 'italic'}}>
+                            {row.example}
+                          </div>
+                        )}
+                      </td>
+                      {TIERS.map(t => {
+                        const tc = TIER_COLORS[t.tier];
+                        let val = t[row.key];
+                        let fv = friendly(val);
+                        let display_val;
+
+                        if (Array.isArray(fv) && typeof fv[0] === 'number') {
+                          display_val = `${fv[0]}–${fv[1]}`;
+                        } else if (Array.isArray(fv)) {
+                          display_val = fv.join(', ');
+                        } else {
+                          display_val = String(fv);
+                        }
+
+                        /* progress bar for numeric-like values */
+                        let barPct = null;
+                        if (row.key === 'max_freeform_turns') barPct = (val / 6) * 100;
+                        if (row.key === 'max_sentences') barPct = (val / 4) * 100;
+                        if (row.key === 'silent_timeout_seconds') barPct = (val / 12) * 100;
+                        if (row.key === 'max_concept_badges') barPct = (val / 3) * 100;
+
+                        return (
+                          <td key={t.tier} style={{
+                            padding: '8px 10px', textAlign: 'center',
+                            borderBottom: `1px solid ${C.border}`,
+                            fontSize: '11px', color: C.textMuted,
+                          }}>
+                            <div>{display_val}</div>
+                            {barPct !== null && (
+                              <div style={{
+                                height: '3px', background: C.border, borderRadius: '2px',
+                                marginTop: '4px', overflow: 'hidden',
+                              }}>
+                                <div style={{
+                                  height: '100%', width: `${barPct}%`,
+                                  background: `linear-gradient(90deg, ${tc.main}88, ${tc.main})`,
+                                  borderRadius: '2px', transition: 'width 0.4s ease',
+                                }} />
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    /* ── Entity Examples with Tab Selector ──────────────────── */
+
+    const ENTITY_EXAMPLES = [
+      {key: 'apple', emoji: '\u{1F34E}', cn: '苹果', en: 'Apple', data: APPLE_EXAMPLE},
+      {key: 'dog', emoji: '\u{1F436}', cn: '狗', en: 'Dog', data: DOG_EXAMPLE},
+      {key: 'bicycle', emoji: '\u{1F6B2}', cn: '自行车', en: 'Bicycle', data: BICYCLE_EXAMPLE},
+      {key: 'rain', emoji: '\u{1F327}', cn: '雨', en: 'Rain', data: RAIN_EXAMPLE},
+    ];
+
+    function EntityExamples() {
+      const [selectedKey, setSelectedKey] = useState('apple');
+      const selected = ENTITY_EXAMPLES.find(e => e.key === selectedKey);
+      const exampleData = selected.data;
+
+      return (
+        <div>
+          {/* tab pills */}
+          <div style={{
+            display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap',
+          }}>
+            {ENTITY_EXAMPLES.map(ent => {
+              const isActive = ent.key === selectedKey;
+              return (
+                <div
+                  key={ent.key}
+                  onClick={() => setSelectedKey(ent.key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px', borderRadius: '8px', cursor: 'pointer',
+                    background: isActive ? 'rgba(6,182,212,0.12)' : C.surface,
+                    border: `1.5px solid ${isActive ? 'rgba(6,182,212,0.5)' : C.border}`,
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => {if (!isActive) e.currentTarget.style.background = C.surfaceHover;}}
+                  onMouseLeave={e => {if (!isActive) e.currentTarget.style.background = C.surface;}}
+                >
+                  <span style={{fontSize: '18px'}}>{ent.emoji}</span>
+                  <span style={{
+                    fontSize: '13px', fontWeight: isActive ? 700 : 500,
+                    color: isActive ? TIER_COLORS[1].light : C.textMuted,
+                  }}>{ent.cn}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* description */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px',
+            fontSize: '13px', color: C.textDim, fontFamily: body,
+          }}>
+            以 <span style={{fontSize: '20px'}}>{selected.emoji}</span>
+            <Badge color={TIER_COLORS[0].main}>{selected.cn}</Badge>
+            为例，展示同一实体在不同认知层级下的话题引导差异
+          </div>
+
+          {/* tier columns */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px',
+          }}>
+            {TIERS.map(t => {
+              const tc = TIER_COLORS[t.tier];
+              const ex = exampleData[t.tier];
+              return (
+                <div key={t.tier} style={{
+                  background: C.surface, border: `1px solid ${C.border}`,
+                  borderTop: `3px solid ${tc.main}`, borderRadius: '10px',
+                  padding: '14px', display: 'flex', flexDirection: 'column',
+                }}>
+                  {/* card header */}
+                  <div style={{marginBottom: '10px'}}>
+                    <div style={{
+                      fontFamily: mono, fontSize: '11px', fontWeight: 700, color: tc.main,
+                      marginBottom: '2px',
+                    }}>
+                      TIER {t.tier} &middot; {t.ages}
+                    </div>
+                    <div style={{fontSize: '13px', fontWeight: 600, color: C.text}}>{t.labelCn}</div>
+                    <div style={{fontSize: '10px', color: C.textDim, marginTop: '4px'}}>
+                      核心话题方向：
+                      <span style={{fontWeight: 600, color: tc.light, marginLeft: '2px'}}>
+                        {IB_CONCEPTS.find(ic => ic.id === ex.primary_topic_focus)?.cn || ex.primary_topic_focus}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* concept anchors grouped by dimension */}
+                  <div style={{display: 'flex', flexDirection: 'column', gap: '8px', flex: 1}}>
+                    {ex.concepts.map((c, ci) => {
+                      const conceptInfo = IB_CONCEPTS.find(ic => ic.id === c.id);
+                      const dims = Object.entries(c.anchors_by_dim || {});
+                      return (
+                        <div key={ci} style={{
+                          background: C.bg, borderRadius: '6px', padding: '8px',
+                          border: `1px solid ${C.border}`,
+                        }}>
+                          <div style={{
+                            fontSize: '11px', fontWeight: 600, color: tc.light, marginBottom: '5px',
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                          }}>
+                            <div style={{
+                              width: '6px', height: '6px', borderRadius: '50%', background: tc.main,
+                            }} />
+                            {conceptInfo?.cn}
+                          </div>
+                          {dims.map(([dim, anchors], di) => {
+                            const dimInfo = DIMENSIONS.find(d => d.id === dim);
+                            const dimColor = DIM_COLORS[dim] || C.textDim;
+                            return (
+                              <div key={di} style={{marginBottom: di < dims.length - 1 ? '6px' : 0}}>
+                                <div style={{
+                                  fontSize: '9px', fontWeight: 600, color: dimColor,
+                                  marginBottom: '2px', textTransform: 'uppercase',
+                                  letterSpacing: '0.5px', opacity: 0.85,
+                                }}>
+                                  {dimInfo?.cn || dim}
+                                </div>
+                                {anchors.map((a, ai) => (
+                                  <div key={ai} style={{
+                                    marginBottom: '3px', fontSize: '10px', lineHeight: 1.5,
+                                    paddingLeft: '6px', borderLeft: `2px solid ${dimColor}33`,
+                                  }}>
+                                    <span style={{fontWeight: 600, color: C.textDim}}>{a.attr}</span>
+                                    <span style={{color: C.textMuted, marginLeft: '4px'}}>{a.val}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    /* ── Pipeline Flow ────────────────────────────────────────── */
+
+    function PipelineFlow() {
+      const boxes = [
+        {label: '实体原始数据', labelCn: '~1000 个实体', icon: '&#128196;', color: C.textDim},
+        {label: '实体列表生成', labelCn: '筛选与标准化', icon: '&#9881;', color: TIER_COLORS[0].main},
+        {label: '实体库', labelCn: '结构化实体信息', icon: '&#128193;', color: TIER_COLORS[1].main},
+        {label: 'IB 主题批处理', labelCn: '概念匹配 + 分层引导', icon: '&#9881;', color: TIER_COLORS[2].main},
+        {label: '主题映射库', labelCn: '含分层话题锚点', icon: '&#128193;', color: TIER_COLORS[2].light},
+        {label: '主题服务', labelCn: '运行时按需加载', icon: '&#9889;', color: TIER_COLORS[3].main},
+        {label: '对话服务', labelCn: '注入 AI 对话提示词', icon: '&#128172;', color: TIER_COLORS[3].light},
+      ];
+
+      return (
+        <div style={{
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px',
+          padding: '24px 20px', overflowX: 'auto',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center',
+            minWidth: '900px', flexWrap: 'nowrap',
+          }}>
+            {boxes.map((box, i) => (
+              <React.Fragment key={i}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                  padding: '12px 10px', background: C.bg, borderRadius: '8px',
+                  border: `1px solid ${box.color}30`, minWidth: '110px', textAlign: 'center',
+                  flex: '0 0 auto',
+                }}>
+                  <span style={{fontSize: '18px'}} dangerouslySetInnerHTML={{__html: box.icon}} />
+                  <span style={{
+                    fontSize: '11px', fontWeight: 600, color: box.color,
+                    lineHeight: 1.3,
+                  }}>
+                    {box.label}
+                  </span>
+                  <span style={{fontSize: '10px', color: C.textDim, lineHeight: 1.3}}>
+                    {box.labelCn}
+                  </span>
+                </div>
+                {i < boxes.length - 1 && (
+                  <div style={{color: C.textDim, fontSize: '16px', flexShrink: 0, padding: '0 2px'}}>&#10132;</div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          <div style={{
+            marginTop: '16px', paddingTop: '12px', borderTop: `1px solid ${C.border}`,
+            display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap',
+          }}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: C.textDim}}>
+              <span style={{fontSize: '14px'}}>&#9881;</span> 离线预处理步骤
+            </div>
+            <div style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: C.textDim}}>
+              <span style={{fontSize: '14px'}}>&#128193;</span> 数据存储
+            </div>
+            <div style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: C.textDim}}>
+              <span style={{fontSize: '14px'}}>&#9889;</span> 实时运行服务
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ── Usage Guide ──────────────────────────────────────────── */
+
+    function UsageGuide() {
+      const [open, setOpen] = useState(true);
+      const items = [
+        {
+          icon: '&#128218;', title: '这份文档是什么',
+          text: '这是 WonderLens 年龄分层引导系统的可视化参考手册，完整呈现 4 个认知层级的所有行为参数和 IB 概念配置。'
+        },
+        {
+          icon: '&#127922;', title: '两层引导架构',
+          text: '系统分为两层：① 全局分层配置 — 控制对话行为、语音参数、IB 概念（Section 01–03 展示）；② 每实体话题引导 — 预计算的实体级主题锚点，告诉 AI 针对具体事物聊什么（Section 04 以苹果为例展示）。'
+        },
+        {
+          icon: '&#128269;', title: '如何阅读',
+          text: '点击 Section 01 的分层卡片可展开查看全部 20 个属性。Section 02 矩阵展示 IB 概念在哪个层级首次解锁。Section 03 提供跨层级的特征对比。Section 06 术语表解释所有专业术语的含义和设计意图。'
+        },
+        {
+          icon: '&#127891;', title: '设计原则',
+          text: '从温暖简单（Tier 0 呼唤-回应）到理性抽象（Tier 3 同伴对话），每个层级的参数都围绕该年龄段的认知发展特征精心设计，同时对齐 IB PYP 探究框架的 7 个核心概念。'
+        },
+      ];
+
+      return (
+        <div style={{
+          background: `linear-gradient(135deg, ${TIER_COLORS[1].glow}, ${TIER_COLORS[2].glow})`,
+          border: `1px solid ${TIER_COLORS[1].main}25`,
+          borderRadius: '10px', overflow: 'hidden',
+        }}>
+          <div
+            onClick={() => setOpen(!open)}
+            style={{
+              padding: '14px 20px', cursor: 'pointer',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}
+          >
+            <div style={{
+              fontFamily: display, fontSize: '14px', fontWeight: 700, color: TIER_COLORS[1].light,
+              display: 'flex', alignItems: 'center', gap: '8px',
+            }}>
+              <span style={{fontSize: '16px'}}>&#128161;</span>
+              使用说明 How to Use This Dashboard
+            </div>
+            <div style={{
+              fontSize: '14px', color: C.textDim, transition: 'transform 0.2s',
+              transform: open ? 'rotate(180deg)' : 'rotate(0deg)', userSelect: 'none',
+            }}>&#9662;</div>
+          </div>
+          {open && (
+            <div style={{
+              padding: '0 20px 16px',
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px',
+            }}>
+              {items.map((item, i) => (
+                <div key={i} style={{
+                  padding: '12px', background: `${C.bg}cc`, borderRadius: '8px',
+                  border: `1px solid ${C.border}`,
+                }}>
+                  <div style={{
+                    fontFamily: display, fontSize: '12px', fontWeight: 700, color: C.text,
+                    marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px',
+                  }}>
+                    <span dangerouslySetInnerHTML={{__html: item.icon}} />
+                    {item.title}
+                  </div>
+                  <div style={{fontSize: '12px', color: C.textMuted, lineHeight: 1.7}}>
+                    {item.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    /* ── Glossary ─────────────────────────────────────────────── */
+
+    function GlossarySection() {
+      const [openKey, setOpenKey] = useState(null);
+
+      return (
+        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+          {GLOSSARY.map(group => {
+            const isOpen = openKey === group.key;
+            return (
+              <div key={group.key} style={{
+                background: C.surface, border: `1px solid ${isOpen ? C.borderAccent : C.border}`,
+                borderRadius: '8px', overflow: 'hidden', transition: 'border-color 0.2s',
+              }}>
+                <div
+                  onClick={() => setOpenKey(isOpen ? null : group.key)}
+                  style={{
+                    padding: '12px 16px', cursor: 'pointer',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}
+                  onMouseEnter={e => {e.currentTarget.style.background = C.surfaceHover;}}
+                  onMouseLeave={e => {e.currentTarget.style.background = 'transparent';}}
+                >
+                  <div>
+                    <span style={{fontSize: '14px', fontWeight: 600, color: C.text}}>{group.cn}</span>
+                    <div style={{fontSize: '12px', color: C.textDim, marginTop: '2px'}}>{group.desc}</div>
+                  </div>
+                  <div style={{
+                    fontSize: '14px', color: C.textDim, transition: 'transform 0.2s',
+                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', userSelect: 'none',
+                    flexShrink: 0, marginLeft: '12px',
+                  }}>&#9662;</div>
+                </div>
+
+                {isOpen && (
+                  <div style={{padding: '0 16px 14px'}}>
+                    <div style={{
+                      display: 'flex', flexDirection: 'column', gap: '4px',
+                    }}>
+                      {group.terms.map((t, i) => (
+                        <div key={i} style={{
+                          display: 'grid', gridTemplateColumns: '120px auto',
+                          gap: '12px', padding: '8px 12px', background: C.bg,
+                          borderRadius: '6px', border: `1px solid ${C.border}`,
+                          alignItems: 'baseline',
+                        }}>
+                          <div style={{fontSize: '13px', fontWeight: 600, color: C.text}}>
+                            {t.cn}
+                          </div>
+                          <div style={{fontSize: '12px', color: C.textMuted, lineHeight: 1.6}}>
+                            {t.desc}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    /* ── App ──────────────────────────────────────────────────── */
+
+    function App() {
+      return (
+        <div style={{minHeight: '100vh', background: C.bg, fontFamily: body}}>
+          <Header />
+          <div style={{maxWidth: '1300px', margin: '0 auto', padding: '32px 24px 60px'}}>
+            <div className="fade-section" style={{marginBottom: '32px'}}>
+              <UsageGuide />
+            </div>
+
+            <div className="fade-section" style={{marginBottom: '40px'}}>
+              <SectionHeader number="01" titleCn="分层总览" titleEn="Tier Overview" />
+              <TierCards />
+            </div>
+
+            <div className="fade-section" style={{marginBottom: '40px'}}>
+              <SectionHeader number="02" titleCn="IB 概念解锁矩阵" titleEn="Key Concepts Unlock Matrix" />
+              <ConceptMatrix />
+            </div>
+
+            <div className="fade-section" style={{marginBottom: '40px'}}>
+              <SectionHeader number="03" titleCn="层级特征对比" titleEn="Tier Feature Comparison" />
+              <ComparisonTable />
+            </div>
+
+            <div className="fade-section" style={{marginBottom: '40px'}}>
+              <SectionHeader number="04" titleCn="实体示例" titleEn="Per-Entity Examples" />
+              <EntityExamples />
+            </div>
+
+            <div className="fade-section" style={{marginBottom: '40px'}}>
+              <SectionHeader number="05" titleCn="数据处理流程" titleEn="Processing Flow" />
+              <PipelineFlow />
+            </div>
+
+            <div className="fade-section" style={{marginBottom: '40px'}}>
+              <SectionHeader number="06" titleCn="术语表" titleEn="Glossary" />
+              <GlossarySection />
+            </div>
+
+            {/* footer */}
+            <div className="fade-section" style={{
+              marginTop: '24px', padding: '14px', background: C.surface, borderRadius: '8px',
+              border: `1px solid ${C.border}`,
+            }}>
+              <div style={{fontSize: '11px', color: C.textDim, lineHeight: 1.7}}>
+                <strong style={{color: C.textMuted}}>说明：</strong>
+                本文档数据来自 WonderLens 年龄分层引导系统配置，包含全部 4 个认知层级的行为参数、IB 概念解锁规则和探索话题标签。
+                多个实体示例展示了实体级话题引导的分层设计思路。
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+
+</html>

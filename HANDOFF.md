@@ -1,6 +1,59 @@
 # Session Handoff
 
-Last updated: 2026-03-12
+Last updated: 2026-03-13
+
+---
+
+## Glassmorphic UI Redesign — Reference Image Match
+
+**Problem**: User provided 4 chatbot UI reference images (`docs/chatbot-ui-1.png`, `chatbot-ui-2.png`, `chatbot-ui-3.png`, `chatbot_UI.png`) showing a light glassmorphic design with pastel gradient mesh background, frosted glass panels, rounded cards, soft shadows, avatar on AI bubbles, pill-shaped input, and clean typography. Current dark fuchsia theme did not match.
+
+**Solution**: Complete visual redesign to match the reference. Fonts changed to Plus Jakarta Sans (display) + Outfit (body). Background uses multi-stop radial gradient mesh (lavender/mint/pink/blue washes). All surfaces use `.glass` / `.glass-strong` / `.glass-subtle` utility classes with `backdrop-blur` and semi-transparent white backgrounds. AI chat bubbles have a small indigo/purple avatar icon. User bubbles are `bg-gray-700` (dark, as shown in reference for user messages). Input is pill-shaped with mic inside the input container and a separate dark send button. All widgets use frosted glass surfaces with soft colored shadows.
+
+**Edits**:
+- `frontend/index.html` — Switched fonts to Plus Jakarta Sans 400-800 + Outfit 300-700
+- `frontend/src/index.css` — New `@theme` (Outfit + Plus Jakarta Sans), `.bg-mesh` multi-gradient background, `.glass` / `.glass-strong` / `.glass-subtle` utility classes
+- `frontend/src/App.jsx` — `bg-mesh`, glass panels with `rounded-3xl`, outer padding/gap, footer as glass pill
+- `frontend/src/components/TopBar.jsx` — Glass bar with indigo/purple gradient logo icon, dark "New Session" button, glass select
+- `frontend/src/components/ChatBubble.jsx` — AI bubbles: `bg-white/70` with indigo avatar circle. User: `bg-gray-700 text-white`. Tone badge: `bg-indigo-50 text-indigo-400`
+- `frontend/src/components/TextInput.jsx` — Pill container `bg-white/50` with inline mic button, separate dark send button with up-arrow icon
+- `frontend/src/components/ConversationPanel.jsx` — Empty state with gradient icon, glass timer bar
+- `frontend/src/components/PhotoSelector.jsx` — Gradient camera icon, glass photo cards with hover scale, indigo accents
+- `frontend/src/components/RetryButton.jsx` — Dark button, amber glass badge
+- `frontend/src/components/DeviceScreen.jsx` — Transparent device frame (inherits parent glass), white/40 surfaces
+- `frontend/src/widgets/BadgeAward.jsx` — Amber/gold badge with white/60 backdrop center, indigo concept tags
+- `frontend/src/widgets/PhotoDisplay.jsx` — `bg-white/40 border-white/60` glass frame
+- `frontend/src/widgets/ProgressTracker.jsx` — Emerald filled slots with colored shadow, glass empty slots
+- `frontend/src/widgets/CharacterDisplay.jsx` — Pastel gradient backgrounds with glass inner cards
+- `frontend/src/widgets/PhotoGrid.jsx` — Glass grid slots, indigo "Connected!" text
+
+**NOT Changed**:
+- Backend code, hooks, AnimationOverlay, API client, all ARIA attributes, responsive stacking unchanged
+
+**Verification**:
+- `cd frontend && npm run build` — PASS (48 modules, 630ms)
+- `cd frontend && npm run lint` — PASS (no errors)
+
+---
+
+## OpenAI Agent Timeout Handling
+
+**Problem**: The latest backend change set switched the Director and Script agents from Gemini to `AsyncOpenAI`, but the timeout path still only caught built-in `TimeoutError`. In the installed OpenAI SDK, request timeouts raise `openai.APITimeoutError`, so the Director timeout fallback would miss the intended timeout branch and the Script agent would log a generic failure instead of an explicit timeout.
+
+**Solution**: Updated both OpenAI-backed agents to catch `APITimeoutError` directly and switched the parsed chat completion calls to `max_completion_tokens`, which matches the current SDK signature for structured chat completions more closely than the older `max_tokens` field.
+
+**Edits**:
+- `backend/agents/director.py` — catch `APITimeoutError` for the default-plan timeout path and use `max_completion_tokens`
+- `backend/agents/script_agent.py` — catch `APITimeoutError` explicitly for timeout logging and use `max_completion_tokens`
+
+**NOT Changed**:
+- Vision, TTS, and the rule-based Visual Agent remain on their existing implementations.
+- Config values, dependency pins, and the OpenAI migration plan doc were reviewed but not changed in this pass.
+
+**Verification**:
+- `ruff check backend/agents/director.py backend/agents/script_agent.py backend/config.py pyproject.toml` — PASS
+- `python - <<'PY' ... from agents.director import DirectorAgent; from agents.script_agent import ScriptAgent ... PY` — PASS
+- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`63 passed, 5 deselected`)
 
 ---
 
@@ -234,30 +287,6 @@ Last updated: 2026-03-12
 
 ---
 
-## Code Review + Frontend Stabilization
-
-**Problem**: Newly added frontend code had React hook/lint violations, turn-processing race conditions, and a few avoidable complexity points. `HANDOFF.md` also did not yet reflect this review-and-fix pass.
-
-**Solution**: Simplified the frontend conversation/speech flow without changing the user-facing demo model. Fixed timer/TTS callback ordering, prevented overlapping `/api/turn` requests, made repeated speech transcripts submit reliably, cleaned up photo object URLs, and hardened demo photo loading so missing assets fall back cleanly instead of uploading HTML as fake JPEGs.
-
-**Edits**:
-- `frontend/src/App.jsx` — removed hook ordering issue, tightened effect dependencies, disabled input during in-flight turns, centralized timer clears
-- `frontend/src/hooks/useConversation.js` — added shared turn-response handling, in-flight turn guard, and object URL cleanup
-- `frontend/src/hooks/useSilenceTimer.js` — replaced ref-derived render state with explicit `isRunning` state
-- `frontend/src/hooks/useSpeechRecognition.js` — removed unnecessary effect-driven `supported` state and added `resultId` so identical transcripts can still submit
-- `frontend/src/hooks/useTTS.js` — reordered fallback logic to satisfy hook rules and cleaned up audio URL lifecycle
-- `frontend/src/components/PhotoSelector.jsx` — verify fetched demo assets are real images before converting to `File`
-- `frontend/src/widgets/ProgressTracker.jsx` — removed an unused prop
-
-**NOT Changed**:
-- Backend agent pipeline, FastAPI endpoints, and schema shape were left as-is.
-- Existing fallback recipe content and scenario YAML behavior were not modified in this pass.
-- No dependency upgrades or broad refactors were performed.
-
-**Verification**:
-- `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS
-- `python -m compileall backend` — PASS
 - `python - <<'PY' ... from server import app; print(len(app.routes)) ... PY` — PASS (`8`)
 
 ---

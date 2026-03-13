@@ -5,23 +5,22 @@ export default function BadgeAward({ title, concepts = [], animation, entity }) 
     }`}>
       {/* Badge */}
       <div className="relative">
-        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 flex items-center justify-center border-4 border-fuchsia-400/30">
-          <div className="w-24 h-24 rounded-full bg-[#1a1a1a] flex items-center justify-center">
+        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-300 via-yellow-400 to-orange-400 shadow-lg shadow-amber-200/50 flex items-center justify-center border-4 border-white/80">
+          <div className="w-24 h-24 rounded-full bg-white/60 backdrop-blur-sm flex items-center justify-center">
             <span className="text-4xl">🏆</span>
           </div>
         </div>
-        {/* Sparkle decorations */}
         <span className="absolute -top-2 -right-2 text-2xl animate-spin-slow">✨</span>
         <span className="absolute -bottom-1 -left-2 text-xl animate-ping">⭐</span>
       </div>
 
       {/* Title */}
-      <h2 className="text-xl font-bold font-display text-center text-fuchsia-400">
+      <h2 className="text-xl font-bold font-display text-center text-gray-800 tracking-tight">
         {title || 'Explorer'}
       </h2>
 
       {entity && (
-        <p className="text-sm text-neutral-500">{entity}</p>
+        <p className="text-sm text-gray-400">{entity}</p>
       )}
 
       {/* Concepts */}
@@ -30,7 +29,7 @@ export default function BadgeAward({ title, concepts = [], animation, entity }) 
           {concepts.map((concept, i) => (
             <span
               key={i}
-              className="px-4 py-1.5 bg-fuchsia-500/10 text-fuchsia-300 rounded-full text-sm font-medium border border-fuchsia-500/20"
+              className="px-4 py-1.5 bg-white/50 text-indigo-600 rounded-full text-sm font-medium border border-indigo-100 shadow-sm"
               style={{ animationDelay: `${i * 300}ms` }}
             >
               {concept}

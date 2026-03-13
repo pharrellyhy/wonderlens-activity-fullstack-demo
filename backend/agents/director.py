@@ -1,13 +1,11 @@
-"""Director Agent — plans activity composition using Gemini 2.0 Flash."""
+"""Director Agent — plans activity composition using OpenAI GPT-5.2."""
 
-import asyncio
 import json
 import time
 from functools import lru_cache
 from pathlib import Path
 
-from google import genai
-from google.genai import types
+from openai import APITimeoutError, AsyncOpenAI
 
 try:
     from ..config import get_settings
@@ -28,12 +26,12 @@ _SKILL_PATH = Path(__file__).parent.parent / "skills" / "director.md"
 
 
 @lru_cache(maxsize=1)
-def _get_client() -> genai.Client:
+def _get_client() -> AsyncOpenAI:
     settings = get_settings()
-    return genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location=settings.google_cloud_location,
+    return AsyncOpenAI(
+        api_key=settings.openai_api_key,
+        base_url=settings.openai_base_url or None,
+        max_retries=0,
     )
 
 
@@ -95,34 +93,30 @@ class DirectorAgent:
 
         try:
             client = _get_client()
-            loop = asyncio.get_running_loop()
 
-            response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: client.models.generate_content(
-                        model=settings.gemini_model,
-                        contents=user_prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=self.skill,
-                            response_mime_type="application/json",
-                            response_schema=CompositionPlan,
-                            temperature=0.3,
-                            max_output_tokens=settings.director_max_tokens,
-                        ),
-                    ),
-                ),
+            response = await client.beta.chat.completions.parse(
+                model=settings.openai_model,
+                messages=[
+                    {"role": "system", "content": self.skill},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format=CompositionPlan,
+                temperature=0.3,
+                max_completion_tokens=settings.director_max_tokens,
                 timeout=settings.director_timeout_ms / 1000,
             )
 
             latency_ms = int((time.perf_counter() - start) * 1000)
-            plan = CompositionPlan.model_validate_json(response.text)
-            logger.info(f"Director: rounds={plan.round_count}, strategy={plan.screen_strategy}, latency={latency_ms}ms")
+            plan = response.choices[0].message.parsed
 
+            if plan is None:
+                raise ValueError("Model returned unparseable response")
+
+            logger.info(f"Director: rounds={plan.round_count}, strategy={plan.screen_strategy}, latency={latency_ms}ms")
             await log_agent_call(session_id, "director", latency_ms, True)
             return plan
 
-        except asyncio.TimeoutError:
+        except APITimeoutError:
             latency_ms = int((time.perf_counter() - start) * 1000)
             logger.warning(f"Director timed out ({latency_ms}ms), using default plan")
             await log_agent_call(session_id, "director", latency_ms, False, error_message="timeout")

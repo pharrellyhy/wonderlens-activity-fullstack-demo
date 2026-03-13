@@ -16,10 +16,12 @@ const WIDGET_MAP = {
 export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
   if (!screenFrame) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#111] rounded-3xl border border-white/5">
-        <div className="text-center text-neutral-600">
-          <div className="text-5xl mb-3">📱</div>
-          <p className="text-sm">Device screen will appear here</p>
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-2xl bg-white/40 border border-white/50 flex items-center justify-center mx-auto mb-3 shadow-sm">
+            <span className="text-3xl">📱</span>
+          </div>
+          <p className="text-sm text-gray-400 font-medium">Device screen will appear here</p>
         </div>
       </div>
     );
@@ -29,22 +31,22 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
   const params = screenFrame.widget_params || {};
 
   return (
-    <div className="h-full flex flex-col bg-[#111] rounded-3xl overflow-hidden border border-white/5">
-      <div className="flex-1 flex items-center justify-center p-4">
+    <div className="h-full flex flex-col">
+      <div className="flex-1 flex items-center justify-center">
         <AnimationOverlay animation={screenFrame.animation}>
           {WidgetComponent ? (
             <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} />
           ) : (
-            <div className="text-center p-8 bg-white/5 rounded-2xl">
-              <p className="text-neutral-400 text-sm">Widget: {screenFrame.widget}</p>
-              <p className="text-neutral-500 text-xs mt-1">{JSON.stringify(params)}</p>
+            <div className="text-center p-8 bg-white/40 rounded-2xl border border-white/50">
+              <p className="text-gray-500 text-sm">Widget: {screenFrame.widget}</p>
+              <p className="text-gray-400 text-xs mt-1">{JSON.stringify(params)}</p>
             </div>
           )}
         </AnimationOverlay>
       </div>
 
       {sessionState && (
-        <div className="px-4 py-2 border-t border-white/5 text-xs text-neutral-600 flex justify-between">
+        <div className="px-3 py-2 bg-white/30 rounded-xl mt-2 text-xs text-gray-400 flex justify-between">
           <span>Widget: {screenFrame.widget}</span>
           {screenFrame.animation && <span>Animation: {screenFrame.animation}</span>}
         </div>

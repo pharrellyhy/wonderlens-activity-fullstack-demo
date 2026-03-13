@@ -30,14 +30,18 @@ class Settings(BaseSettings):
     google_cloud_project: str = ""
     google_cloud_location: str = "us-central1"
     google_application_credentials: str = ""
+    openai_api_key: str = ""
+    openai_base_url: str = ""
 
     # App config — defaults from config.yaml, overridable by env vars
     gemini_model: str = str(_yaml_config.get("gemini_model", "gemini-2.5-flash"))
+    openai_model: str = str(_yaml_config.get("openai_model", "gpt-5.2"))
     tts_model: str = str(_yaml_config.get("tts_model", "gemini-2.5-flash-tts"))
     director_timeout_ms: int = int(_yaml_config.get("director_timeout_ms", 200))
     director_max_tokens: int = int(_yaml_config.get("director_max_tokens", 150))
     script_timeout_ms: int = int(_yaml_config.get("script_timeout_ms", 600))
     script_max_tokens: int = int(_yaml_config.get("script_max_tokens", 600))
+    vision_timeout_ms: int = int(_yaml_config.get("vision_timeout_ms", 5000))
     max_retries: int = int(_yaml_config.get("max_retries", 3))
     db_path: str = str(_yaml_config.get("db_path", "data/demo.db"))
     log_level: str = str(_yaml_config.get("log_level", "INFO"))

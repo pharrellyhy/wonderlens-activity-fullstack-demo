@@ -57,17 +57,20 @@ async def analyze_image(image_bytes: bytes, mime_type: str) -> dict[str, Any]:
         image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
 
         loop = asyncio.get_running_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: client.models.generate_content(
-                model=settings.gemini_model,
-                contents=[image_part, _VISION_PROMPT],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.1,
-                    max_output_tokens=200,
+        response = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                lambda: client.models.generate_content(
+                    model=settings.gemini_model,
+                    contents=[image_part, _VISION_PROMPT],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.1,
+                        max_output_tokens=500,
+                    ),
                 ),
             ),
+            timeout=settings.vision_timeout_ms / 1000,
         )
 
         latency_ms = int((time.perf_counter() - start) * 1000)

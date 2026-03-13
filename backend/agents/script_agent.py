@@ -1,13 +1,11 @@
-"""Script Agent — generates voice/text content using Gemini 2.0 Flash."""
+"""Script Agent — generates voice/text content using OpenAI GPT-5.2."""
 
-import asyncio
 import time
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from google import genai
-from google.genai import types
+from openai import APITimeoutError, AsyncOpenAI
 
 try:
     from ..config import get_settings
@@ -28,12 +26,12 @@ _TIER_RULES_PATH = Path(__file__).parent.parent / "tier_rules.yaml"
 
 
 @lru_cache(maxsize=1)
-def _get_client() -> genai.Client:
+def _get_client() -> AsyncOpenAI:
     settings = get_settings()
-    return genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location=settings.google_cloud_location,
+    return AsyncOpenAI(
+        api_key=settings.openai_api_key,
+        base_url=settings.openai_base_url or None,
+        max_retries=0,
     )
 
 
@@ -92,32 +90,34 @@ class ScriptAgent:
 
         try:
             client = _get_client()
-            loop = asyncio.get_running_loop()
 
-            response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: client.models.generate_content(
-                        model=settings.gemini_model,
-                        contents=user_prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_prompt,
-                            response_mime_type="application/json",
-                            response_schema=VoiceScript,
-                            temperature=0.7,
-                            max_output_tokens=settings.script_max_tokens,
-                        ),
-                    ),
-                ),
+            response = await client.beta.chat.completions.parse(
+                model=settings.openai_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format=VoiceScript,
+                temperature=0.7,
+                max_completion_tokens=settings.script_max_tokens,
                 timeout=settings.script_timeout_ms / 1000,
             )
 
             latency_ms = int((time.perf_counter() - start) * 1000)
-            script = VoiceScript.model_validate_json(response.text)
-            logger.info(f"Script: {len(script.rounds)} rounds, latency={latency_ms}ms")
+            script = response.choices[0].message.parsed
 
+            if script is None:
+                raise ValueError("Model returned unparseable response")
+
+            logger.info(f"Script: {len(script.rounds)} rounds, latency={latency_ms}ms")
             await log_agent_call(session_id, "script", latency_ms, True)
             return script
+
+        except APITimeoutError:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.error(f"Script Agent timed out ({latency_ms}ms)")
+            await log_agent_call(session_id, "script", latency_ms, False, error_message="timeout")
+            raise
 
         except Exception as e:
             latency_ms = int((time.perf_counter() - start) * 1000)

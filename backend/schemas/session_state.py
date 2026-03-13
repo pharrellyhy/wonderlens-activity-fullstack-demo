@@ -5,6 +5,7 @@ from typing import Literal, Union
 from pydantic import BaseModel, Field
 
 from .creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+from .visual_composition import ScreenFrame
 
 
 class ConversationTurn(BaseModel):
@@ -32,6 +33,10 @@ class SessionStateModel(BaseModel):
     consecutive_silence: int = 0
     turn_count: int = 0
     status: Literal["active", "completed", "exited", "error"] = "active"
+
+    # Visual Agent output
+    visual_frames: list[ScreenFrame] = Field(default_factory=list)
+    celebration_frame: ScreenFrame | None = None
 
     # Vision/entity context
     entity_name: str = ""

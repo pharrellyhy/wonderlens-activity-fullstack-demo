@@ -5,6 +5,7 @@ import DeviceScreen from './components/DeviceScreen';
 import PhotoSelector from './components/PhotoSelector';
 import PhotoGallery from './components/PhotoGallery';
 import RetryButton from './components/RetryButton';
+import ToyCameraFrame from './components/ToyCameraFrame';
 import useSessionOrchestration from './hooks/useSessionOrchestration';
 
 function App() {
@@ -22,13 +23,12 @@ function App() {
   const showRetry = Boolean(error && !sessionId);
   const showPhotoSelector = !sessionId && !loading && !showRetry;
 
-  // Determine if we should show the Cat 5 photo gallery
   const showPhotoGallery = templateType === 'cat5'
     && sessionState?.current_step?.startsWith('STEP_3_COLLECT_')
     && isActive;
 
   return (
-    <div className="flex flex-col h-screen bg-mesh text-gray-800 font-sans">
+    <div className="flex flex-col h-screen bg-nature text-gray-800 font-sans">
       <TopBar
         tier={tier}
         onTierChange={setTier}
@@ -37,12 +37,28 @@ function App() {
         sessionActive={!!sessionId}
       />
 
-      <main className="flex flex-col md:flex-row flex-1 overflow-hidden p-3 gap-3">
-        {/* Conversation Panel */}
-        <section
-          className="w-full md:w-[55%] flex flex-col glass-strong rounded-3xl shadow-lg shadow-black/5 overflow-hidden"
-          aria-label="Conversation panel"
-        >
+      <main className="flex flex-col flex-1 overflow-hidden p-3 gap-3">
+        {/* TOP ~42% — Device Screen in Toy Camera */}
+        <section className="h-[42%] flex-shrink-0" aria-label="Device screen">
+          <ToyCameraFrame>
+            {showPhotoGallery ? (
+              <PhotoGallery
+                onPhotoSelect={sendPhotoCollection}
+                collectedPhotos={sessionState?.collected_photos || []}
+                totalToCollect={sessionState?.total_rounds || 3}
+              />
+            ) : (
+              <DeviceScreen
+                screenFrame={screenFrame}
+                photoUrl={photoUrl}
+                sessionState={sessionState}
+              />
+            )}
+          </ToyCameraFrame>
+        </section>
+
+        {/* BOTTOM ~58% — Conversation */}
+        <section className="flex-1 min-h-0 flex flex-col surface-primary overflow-hidden" aria-label="Conversation panel">
           {showRetry ? (
             <div className="flex-1 flex items-center justify-center">
               <RetryButton onRetry={handleRetry} retryCount={retryCount} maxRetries={3} />
@@ -64,57 +80,35 @@ function App() {
             />
           )}
         </section>
-
-        {/* Device Screen Panel */}
-        <section
-          className="w-full md:w-[45%] flex flex-col gap-3"
-          aria-label="Device screen"
-        >
-          <div className="flex-1 glass rounded-3xl shadow-lg shadow-black/5 overflow-hidden p-4">
-            {showPhotoGallery ? (
-              <PhotoGallery
-                onPhotoSelect={sendPhotoCollection}
-                collectedPhotos={sessionState?.collected_photos || []}
-                totalToCollect={sessionState?.total_rounds || 3}
-              />
-            ) : (
-              <DeviceScreen
-                screenFrame={screenFrame}
-                photoUrl={photoUrl}
-                sessionState={sessionState}
-              />
-            )}
-          </div>
-
-          {/* Error exit indicator */}
-          {errorExit && (
-            <div className="glass rounded-2xl p-3 text-center shadow-md shadow-black/5 border border-amber-200/50">
-              <p className="text-xs text-amber-500">
-                Session ended due to a connection issue. Your progress was saved!
-              </p>
-            </div>
-          )}
-
-          {isEnded && (
-            <div className="glass rounded-2xl p-4 text-center shadow-md shadow-black/5">
-              <p className="text-sm text-gray-500 mb-2">
-                {sessionState?.status === 'completed' ? 'Activity complete!' :
-                 sessionState?.status === 'error' ? 'Session ended early' :
-                 'Session ended'}
-              </p>
-              <button
-                onClick={resetSession}
-                className="px-5 py-2 bg-indigo-500 text-white rounded-full hover:bg-indigo-600 text-sm font-semibold transition-all hover:shadow-md"
-              >
-                New Session
-              </button>
-            </div>
-          )}
-        </section>
       </main>
 
+      {/* Error exit indicator */}
+      {errorExit && (
+        <div className="mx-3 mb-1 surface-card rounded-2xl p-3 text-center border border-amber-200/50">
+          <p className="text-xs text-amber-600">
+            Session ended due to a connection issue. Your progress was saved!
+          </p>
+        </div>
+      )}
+
+      {isEnded && (
+        <div className="mx-3 mb-1 surface-card rounded-2xl p-4 text-center">
+          <p className="text-sm text-gray-500 mb-2">
+            {sessionState?.status === 'completed' ? 'Activity complete!' :
+             sessionState?.status === 'error' ? 'Session ended early' :
+             'Session ended'}
+          </p>
+          <button
+            onClick={resetSession}
+            className="px-5 py-2 bg-[var(--color-forest)] text-white rounded-full hover:bg-[var(--color-forest-dark)] text-sm font-semibold transition-all hover:shadow-md"
+          >
+            New Session
+          </button>
+        </div>
+      )}
+
       <footer
-        className="flex items-center justify-between mx-3 mb-3 px-5 py-2.5 glass rounded-2xl text-gray-400 text-xs"
+        className="flex items-center justify-between mx-3 mb-3 px-5 py-2.5 surface-card rounded-2xl text-gray-500 text-xs"
         aria-label="Session status"
       >
         <div className="flex items-center gap-4">
@@ -132,10 +126,10 @@ function App() {
         </div>
         <div className="flex items-center gap-2">
           <span className={`inline-block w-2 h-2 rounded-full ${
-            isActive ? 'bg-emerald-400' :
-            isEnded ? 'bg-amber-400' :
+            isActive ? 'bg-[var(--color-forest)]' :
+            isEnded ? 'bg-[var(--color-sunflower)]' :
             error ? 'bg-red-400' :
-            loading ? 'bg-indigo-400 animate-pulse' :
+            loading ? 'bg-[var(--color-teal)] animate-pulse' :
             'bg-gray-300'
           }`} />
           <span className="capitalize text-gray-500">
@@ -143,7 +137,7 @@ function App() {
              turnPending ? 'thinking...' :
              sessionState?.status || 'idle'}
           </span>
-          {isSpeaking && <span className="ml-2 text-indigo-400">Speaking...</span>}
+          {isSpeaking && <span className="ml-2 text-[var(--color-teal)]">Speaking...</span>}
         </div>
       </footer>
     </div>

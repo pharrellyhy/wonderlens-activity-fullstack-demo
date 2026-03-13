@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ChatBubble from './ChatBubble';
 import TextInput from './TextInput';
+import { CompassIcon } from '../icons';
 
 export default function ConversationPanel({
   messages,
@@ -39,7 +40,7 @@ export default function ConversationPanel({
             className="ml-2 text-amber-400 hover:text-amber-600 font-bold"
             aria-label="Dismiss notification"
           >
-            ✕
+            x
           </button>
         </div>
       )}
@@ -53,10 +54,8 @@ export default function ConversationPanel({
       >
         {messages.length === 0 && !isWaiting ? (
           <div className="flex flex-col items-center justify-center h-full">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center mb-4 shadow-lg shadow-indigo-200/50">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-teal)] flex items-center justify-center mb-4 shadow-lg">
+              <CompassIcon className="w-7 h-7 text-white" />
             </div>
             <p className="text-sm font-semibold text-gray-500">No conversation yet</p>
             <p className="text-xs text-gray-400 mt-1">Select a photo to get started</p>
@@ -80,15 +79,13 @@ export default function ConversationPanel({
             {/* Typing indicator */}
             {isWaiting && (
               <div className="flex justify-start animate-fade-in">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center mr-2 mt-1 flex-shrink-0 shadow-sm">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-teal)] flex items-center justify-center mr-2 mt-1 flex-shrink-0 shadow-sm">
+                  <CompassIcon className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className="bg-white/70 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-gray-400 typing-dot" />
-                  <span className="w-2 h-2 rounded-full bg-gray-400 typing-dot" />
-                  <span className="w-2 h-2 rounded-full bg-gray-400 typing-dot" />
+                <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5 border border-[var(--color-forest)]/10">
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-forest)] typing-dot" />
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-forest)] typing-dot" />
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-forest)] typing-dot" />
                 </div>
               </div>
             )}

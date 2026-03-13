@@ -1,5 +1,6 @@
 """Pipeline orchestrator — initializes sessions with Director + first Script turn."""
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -13,6 +14,7 @@ try:
     from ..state_machine import next_step
     from .director import DirectorAgent
     from .script_agent import ScriptAgent, ScriptAgentError
+    from .visual_agent import VisualAgent
 except ImportError:
     from logger import setup_logger
     from scenarios import SCENARIO_CATEGORIES, build_activity_context, load_scenario
@@ -24,6 +26,7 @@ except ImportError:
 
     from agents.director import DirectorAgent
     from agents.script_agent import ScriptAgent, ScriptAgentError
+    from agents.visual_agent import VisualAgent
 
 logger = setup_logger(__name__)
 
@@ -61,6 +64,7 @@ async def initialize_session(
     """
     director = DirectorAgent()
     script_agent = ScriptAgent()
+    visual_agent = VisualAgent()
 
     # Enrich context with activity_context string from scenario
     if "activity_context" not in context:
@@ -126,26 +130,38 @@ async def initialize_session(
         photo_url=context.get("photo_url", ""),
     )
 
-    # Step 3: Script Agent — generate hook turn
-    try:
-        first_turn = await script_agent.generate_turn(state)
-    except ScriptAgentError:
-        # Retry once
-        logger.warning("Script Agent failed for hook, retrying once")
+    # Step 3: Visual Agent + Script Agent in parallel
+    async def _run_visual() -> None:
         try:
-            first_turn = await script_agent.generate_turn(state)
+            visual_result = await visual_agent.run(plan, context, session_id)
+            state.visual_frames = visual_result.screen_frames
+            state.celebration_frame = visual_result.celebration_frame
+        except Exception as e:
+            logger.warning(f"Visual Agent failed: {e}")
+
+    async def _run_script() -> TurnResponse:
+        try:
+            return await script_agent.generate_turn(state)
         except ScriptAgentError:
-            # Use hardcoded generic hook
-            logger.error("Script Agent failed twice for hook, using default")
-            default_hook = _DEFAULT_HOOKS.get(template_type, _DEFAULT_HOOKS["cat1"])
-            first_turn = TurnResponse(
-                dialogue=default_hook,
-                tone_marker="excited",
-                screen_widget="photo_display",
-                screen_widget_params={"description": f"Photo of {state.entity_name}", "entity": state.entity_name},
-                screen_animation="sparkle_highlight",
-                sfx_cue="wonder_chime",
-            )
+            logger.warning("Script Agent failed for hook, retrying once")
+            try:
+                return await script_agent.generate_turn(state)
+            except ScriptAgentError:
+                logger.error("Script Agent failed twice for hook, using default")
+                default_hook = _DEFAULT_HOOKS.get(template_type, _DEFAULT_HOOKS["cat1"])
+                return TurnResponse(
+                    dialogue=default_hook,
+                    tone_marker="excited",
+                    screen_widget="photo_display",
+                    screen_widget_params={"description": f"Photo of {state.entity_name}", "entity": state.entity_name},
+                    screen_animation="sparkle_highlight",
+                    sfx_cue="wonder_chime",
+                )
+
+    visual_task = asyncio.create_task(_run_visual())
+    script_task = asyncio.create_task(_run_script())
+    first_turn = await script_task
+    await visual_task
 
     # Record hook in conversation history
     state.conversation_history.append(

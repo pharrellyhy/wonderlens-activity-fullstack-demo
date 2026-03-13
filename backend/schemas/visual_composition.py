@@ -10,6 +10,10 @@ class ScreenFrame(BaseModel):
     widget_params: dict = Field(default_factory=dict, description="Widget-specific parameters")
     animation: str | None = Field(default=None, description="Animation preset")
     trigger: str = Field(description="on_enter | on_round_N | on_correct")
+    sfx_cue: str | None = Field(default=None, description="Sound effect ID")
+    sfx_label: str | None = Field(default=None, description="Human-readable SFX description")
+    animation_label: str | None = Field(default=None, description="Human-readable animation description")
+    widget_label: str | None = Field(default=None, description="Human-readable widget description")
 
 
 class VisualComposition(BaseModel):

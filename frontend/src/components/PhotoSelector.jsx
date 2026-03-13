@@ -1,16 +1,32 @@
 import { useState } from 'react';
+import { CameraIcon, BinocularsIcon, MagnifyingGlassIcon, LeafIcon } from '../icons';
 
-const DEMO_PHOTOS = [
-  { id: 'dog', label: 'Stuffed Dog', src: '/photos/dog.jpg', fallbackEmoji: '🐶' },
-  { id: 'ladybug', label: 'Ladybug', src: '/photos/ladybug.jpg', fallbackEmoji: '🐞' },
-  { id: 'cat', label: 'Cat', src: '/photos/cat.jpg', fallbackEmoji: '🐱' },
-  { id: 'dinosaur', label: 'Dinosaur', src: '/photos/dinosaur.jpg', fallbackEmoji: '🦕' },
-  { id: 'dandelion', label: 'Dandelion', src: '/photos/dandelion.jpg', fallbackEmoji: '🌼' },
+const CATEGORIES = [
+  {
+    id: 'cat1',
+    title: 'In-Device Verbal',
+    subtitle: 'Imagine stories with your photo friend!',
+    Icon: BinocularsIcon,
+    photos: [
+      { id: 'dog', label: 'Stuffed Dog', src: '/photos/dog.jpg', icon: '/icons/dog.png' },
+      { id: 'cat', label: 'Cat', src: '/photos/cat.jpg', icon: '/icons/cat.png' },
+      { id: 'dinosaur', label: 'Dinosaur', src: '/photos/dinosaur.jpg', icon: '/icons/dinosaur.png' },
+    ],
+  },
+  {
+    id: 'cat5',
+    title: 'Out-of-Device Collection',
+    subtitle: 'Go on a real-world scavenger hunt!',
+    Icon: MagnifyingGlassIcon,
+    photos: [
+      { id: 'ladybug', label: 'Ladybug', src: '/photos/ladybug.jpg', icon: '/icons/ladybug.png' },
+      { id: 'dandelion', label: 'Dandelion', src: '/photos/dandelion.jpg', icon: '/icons/dandelion.png' },
+    ],
+  },
 ];
 
 export default function PhotoSelector({ onPhotoSelect, isLoading }) {
   const [dragOver, setDragOver] = useState(false);
-  const [imageErrors, setImageErrors] = useState({});
 
   const handleFileUpload = (file) => {
     if (file && file.type.startsWith('image/')) {
@@ -37,16 +53,18 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
       const file = new File([blob], `${photo.id}.jpg`, { type: 'image/jpeg' });
       onPhotoSelect(file);
     } catch {
+      // Create fallback image with SVG icon rendered to canvas
       const canvas = document.createElement('canvas');
       canvas.width = 400;
       canvas.height = 400;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#f5f3ff';
+      ctx.fillStyle = '#E8F5E9';
       ctx.fillRect(0, 0, 400, 400);
-      ctx.font = '120px serif';
+      ctx.fillStyle = '#4CAF50';
+      ctx.font = '80px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(photo.fallbackEmoji, 200, 200);
+      ctx.fillText(photo.label[0], 200, 200);
       canvas.toBlob((blob) => {
         const file = new File([blob], `${photo.id}.jpg`, { type: 'image/jpeg' });
         onPhotoSelect(file);
@@ -66,49 +84,63 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full p-8">
-      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center mb-4 shadow-lg shadow-indigo-200/50">
-        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+    <div className="flex flex-col items-center justify-center h-full p-6 overflow-y-auto">
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-forest-dark)] flex items-center justify-center mb-4 shadow-lg">
+        <CameraIcon className="w-7 h-7 text-white" />
       </div>
-      <h2 className="text-2xl font-bold font-display text-gray-800 mb-1 tracking-tight">Pick a Photo to Explore!</h2>
-      <p className="text-gray-400 text-sm mb-8">Select a demo photo or upload your own</p>
+      <h2 className="text-2xl font-bold font-display text-[var(--color-forest-dark)] mb-1 tracking-tight">Pick a Photo to Explore!</h2>
+      <p className="text-gray-400 text-sm mb-6">Select a demo photo or upload your own</p>
 
       {isLoading ? (
         <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 border-[3px] border-gray-200 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-indigo-500 font-medium text-sm">Starting your adventure...</p>
+          <div className="w-14 h-14 border-[3px] border-gray-200 border-t-[var(--color-forest)] rounded-full animate-spin" />
+          <p className="text-[var(--color-forest)] font-medium text-sm">Starting your adventure...</p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-8">
-            {DEMO_PHOTOS.map((photo) => (
-              <button
-                key={photo.id}
-                onClick={() => handlePhotoClick(photo)}
-                className="group relative w-24 h-24 rounded-2xl overflow-hidden bg-white/50 border border-gray-200/50 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-100/50 transition-all duration-200 cursor-pointer hover:scale-105"
-              >
-                {!imageErrors[photo.id] ? (
-                  <img
-                    src={photo.src}
-                    alt={photo.label}
-                    className="w-full h-full object-cover"
-                    onError={() => setImageErrors(prev => ({ ...prev, [photo.id]: true }))}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 text-4xl">
-                    {photo.fallbackEmoji}
-                  </div>
-                )}
-                <span className="absolute bottom-0 inset-x-0 text-[11px] text-center text-gray-600 bg-white/80 backdrop-blur-sm py-1 truncate font-medium">
-                  {photo.label}
-                </span>
-              </button>
-            ))}
-          </div>
+          {CATEGORIES.map((cat, catIdx) => (
+            <div key={cat.id} className="w-full max-w-lg mb-6">
+              {/* Category header */}
+              <div className="flex items-center gap-2 mb-3">
+                <cat.Icon className="w-5 h-5 text-[var(--color-forest)]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--color-forest-dark)]">{cat.title}</h3>
+                  <p className="text-xs text-gray-400">{cat.subtitle}</p>
+                </div>
+              </div>
 
+              {/* Photo cards */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {cat.photos.map((photo) => (
+                  <button
+                    key={photo.id}
+                    onClick={() => handlePhotoClick(photo)}
+                    className="group relative w-full aspect-square rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105"
+                  >
+                    <img
+                      src={photo.icon}
+                      alt={photo.label}
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute bottom-0 inset-x-0 text-[11px] text-center text-[var(--color-forest-dark)] bg-white/90 py-1 truncate font-medium">
+                      {photo.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Vine divider between categories */}
+              {catIdx < CATEGORIES.length - 1 && (
+                <div className="flex items-center gap-2 my-4">
+                  <div className="flex-1 h-px bg-[var(--color-forest)]/20" />
+                  <LeafIcon className="w-4 h-4 text-[var(--color-forest)]/30" />
+                  <div className="flex-1 h-px bg-[var(--color-forest)]/20" />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Upload zone */}
           <div
             role="button"
             tabIndex={0}
@@ -117,7 +149,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
             onDrop={handleDrop}
             onKeyDown={handleDropZoneKeyDown}
             className={`w-full max-w-md border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
-              dragOver ? 'border-indigo-400 bg-indigo-50/50 scale-[1.01]' : 'border-gray-200 hover:border-gray-300 hover:bg-white/30'
+              dragOver ? 'border-[var(--color-forest)] bg-[var(--color-forest)]/5 scale-[1.01]' : 'border-[var(--color-forest)]/30 hover:border-[var(--color-forest)]/50 hover:bg-[var(--color-forest)]/5'
             }`}
             onClick={() => {
               const input = document.createElement('input');
@@ -128,7 +160,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
             }}
           >
             <p className="text-gray-400 text-sm">
-              Drop a photo here or <span className="text-indigo-500 font-medium">click to upload</span>
+              Drop a photo here or <span className="text-[var(--color-forest)] font-medium">click to upload</span>
             </p>
           </div>
         </>

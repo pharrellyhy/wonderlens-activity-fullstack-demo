@@ -122,13 +122,47 @@ def step_needs_user_input(step: str) -> bool:
     return step not in auto_advance_steps
 
 
+def _match_visual_frame(step: str, visual_frames: list[ScreenFrame]) -> ScreenFrame | None:
+    """Try to match a Visual Agent frame by mapping step to trigger."""
+    if step == "STEP_1_HOOK":
+        trigger = "on_enter"
+    elif step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
+        _, rnd = _parse_round_step(step)
+        trigger = f"on_round_{rnd}"
+    elif step in ("STEP_4_CELEBRATE", "STEP_5_CELEBRATE"):
+        trigger = "on_correct"
+    else:
+        return None
+
+    for frame in visual_frames:
+        if frame.trigger == trigger:
+            return frame
+    return None
+
+
 def get_screen_frame(
     step: str,
     template_type: Literal["cat1", "cat5"],
     creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots],
     context: dict,
+    visual_frames: list[ScreenFrame] | None = None,
+    celebration_frame: ScreenFrame | None = None,
 ) -> ScreenFrame:
-    """Map a step to the appropriate screen frame."""
+    """Map a step to the appropriate screen frame.
+
+    If visual_frames are provided (from Visual Agent), attempt to match by trigger first.
+    For celebrate steps, prefer the dedicated celebration_frame when available.
+    Falls back to hardcoded logic if no match is found.
+    """
+    if celebration_frame and step in {"STEP_4_CELEBRATE", "STEP_5_CELEBRATE"}:
+        return celebration_frame
+
+    # Try matching from Visual Agent frames
+    if visual_frames:
+        matched = _match_visual_frame(step, visual_frames)
+        if matched:
+            return matched
+
     entity = context.get("entity_name", context.get("entity", "object"))
     key_concepts = context.get("ib_key_concepts", context.get("key_concepts", []))
 

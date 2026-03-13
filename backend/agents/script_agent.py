@@ -270,7 +270,9 @@ class ScriptAgent:
             await log_agent_call(state.session_id, "script_turn", latency_ms, False, error_message=str(e))
             raise ScriptAgentError(f"Turn generation failed: {e}") from e
 
-    async def generate_turn_streaming(self, state: SessionStateModel, on_dialogue: object | None = None) -> TurnResponse:
+    async def generate_turn_streaming(
+        self, state: SessionStateModel, on_dialogue: object | None = None
+    ) -> TurnResponse:
         """Generate the next dialogue turn using streaming.
 
         Streams tokens from Gemini Flash, extracting the dialogue value early

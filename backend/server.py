@@ -232,7 +232,14 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
         turn_response = await _generate_turn_with_retry(script_agent, state)
         state.status = "exited"
 
-        screen_frame = get_screen_frame(EARLY_EXIT, state.template_type, state.creative_slots, _state_context(state))
+        screen_frame = get_screen_frame(
+            EARLY_EXIT,
+            state.template_type,
+            state.creative_slots,
+            _state_context(state),
+            visual_frames=state.visual_frames or None,
+            celebration_frame=state.celebration_frame,
+        )
 
         state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
 
@@ -298,9 +305,14 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
     # Generate AI response for current step
     turn_response = await _generate_turn_with_retry(script_agent, state)
 
-    # Get screen frame from state machine
+    # Get screen frame from state machine (with Visual Agent frames if available)
     screen_frame = get_screen_frame(
-        state.current_step, state.template_type, state.creative_slots, _state_context(state)
+        state.current_step,
+        state.template_type,
+        state.creative_slots,
+        _state_context(state),
+        visual_frames=state.visual_frames or None,
+        celebration_frame=state.celebration_frame,
     )
 
     error_exit = state.status == "error"
@@ -394,7 +406,12 @@ async def turn_and_speak(req: TurnRequest) -> Response:
             turn_response = await _generate_turn_with_retry(script_agent, state)
             state.status = "exited"
             screen_frame = get_screen_frame(
-                EARLY_EXIT, state.template_type, state.creative_slots, _state_context(state)
+                EARLY_EXIT,
+                state.template_type,
+                state.creative_slots,
+                _state_context(state),
+                visual_frames=state.visual_frames or None,
+                celebration_frame=state.celebration_frame,
             )
             state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
             await update_session_status(
@@ -526,7 +543,12 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         # --- Post-processing ---
 
         screen_frame = get_screen_frame(
-            state.current_step, state.template_type, state.creative_slots, _state_context(state)
+            state.current_step,
+            state.template_type,
+            state.creative_slots,
+            _state_context(state),
+            visual_frames=state.visual_frames or None,
+            celebration_frame=state.celebration_frame,
         )
         error_exit = state.status == "error"
         response_type = "error" if error_exit else _get_response_type(state.current_step)
@@ -644,11 +666,14 @@ def _build_turn_response(
     error_exit: bool = False,
 ) -> dict:
     """Build the turn response dict for the API."""
+    audio: dict = {"sfx": turn.sfx_cue}
+    if screen_frame.sfx_label:
+        audio["sfx_label"] = screen_frame.sfx_label
     return {
         "dialogue": turn.dialogue,
         "tone_marker": turn.tone_marker,
         "screen_frame": screen_frame.model_dump(),
-        "audio": {"sfx": turn.sfx_cue},
+        "audio": audio,
         "response_type": response_type,
         "error_exit": error_exit,
     }

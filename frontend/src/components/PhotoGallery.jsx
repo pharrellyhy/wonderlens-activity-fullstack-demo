@@ -1,12 +1,13 @@
 import { useState } from 'react';
+import { CheckmarkIcon, LeafIcon } from '../icons';
 
 const COLLECTION_PHOTOS = [
-  { id: 'leaf_heart', label: 'Heart-shaped leaf', emoji: '🍃' },
-  { id: 'leaf_long', label: 'Long thin leaf', emoji: '🌿' },
-  { id: 'leaf_round', label: 'Round leaf', emoji: '☘️' },
-  { id: 'stone_smooth', label: 'Smooth stone', emoji: '🪨' },
-  { id: 'flower_small', label: 'Small flower', emoji: '🌸' },
-  { id: 'bark_rough', label: 'Rough bark', emoji: '🪵' },
+  { id: 'leaf_heart', label: 'Heart-shaped leaf' },
+  { id: 'leaf_long', label: 'Long thin leaf' },
+  { id: 'leaf_round', label: 'Round leaf' },
+  { id: 'stone_smooth', label: 'Smooth stone' },
+  { id: 'flower_small', label: 'Small flower' },
+  { id: 'bark_rough', label: 'Rough bark' },
 ];
 
 export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], totalToCollect = 3 }) {
@@ -24,7 +25,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
   return (
     <div className="flex flex-col items-center gap-4 p-4">
       <div className="text-center">
-        <p className="text-sm font-semibold text-gray-600 mb-1">
+        <p className="text-sm font-semibold text-[var(--color-forest-dark)] mb-1">
           Find and collect items!
         </p>
         <p className="text-xs text-gray-400">
@@ -42,22 +43,22 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
               disabled={isCollected || selecting}
               className={`
                 relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-1
-                transition-all duration-200 text-center
+                transition-all duration-200 text-center border-2
                 ${isCollected
-                  ? 'bg-emerald-50 border-2 border-emerald-300 opacity-60'
-                  : 'bg-white/70 border-2 border-gray-200 hover:border-indigo-300 hover:shadow-md cursor-pointer'
+                  ? 'bg-[var(--color-forest)]/10 border-[var(--color-forest)] opacity-60'
+                  : 'bg-white border-[var(--color-forest)]/20 hover:border-[var(--color-forest)] hover:shadow-md cursor-pointer'
                 }
                 ${selecting ? 'pointer-events-none' : ''}
               `}
               aria-label={`${isCollected ? 'Collected: ' : 'Select: '}${photo.label}`}
             >
-              <span className="text-3xl">{photo.emoji}</span>
+              <LeafIcon className={`w-8 h-8 ${isCollected ? 'text-[var(--color-forest)]' : 'text-[var(--color-forest)]/40'}`} />
               <span className="text-[10px] text-gray-500 leading-tight px-1">
                 {photo.label}
               </span>
               {isCollected && (
-                <span className="absolute top-1 right-1 w-5 h-5 bg-emerald-400 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                  ✓
+                <span className="absolute top-1 right-1 w-5 h-5 bg-[var(--color-forest)] text-white rounded-full flex items-center justify-center">
+                  <CheckmarkIcon className="w-3 h-3" />
                 </span>
               )}
             </button>
@@ -73,13 +74,13 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
               key={i}
               className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                 i < collected
-                  ? 'bg-emerald-400 border-emerald-400 text-white'
+                  ? 'bg-[var(--color-forest)] border-[var(--color-forest)] text-white'
                   : i === collected
-                    ? 'border-indigo-300 text-indigo-300 animate-pulse'
+                    ? 'border-[var(--color-teal)] text-[var(--color-teal)] animate-pulse'
                     : 'border-gray-200 text-gray-300'
               }`}
             >
-              {i < collected ? '✓' : i + 1}
+              {i < collected ? <CheckmarkIcon className="w-3 h-3" /> : i + 1}
             </div>
           ))}
         </div>

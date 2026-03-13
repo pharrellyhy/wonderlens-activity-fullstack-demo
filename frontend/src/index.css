@@ -3,32 +3,55 @@
 @theme {
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --color-forest: #4CAF50;
+  --color-forest-light: #66BB6A;
+  --color-forest-dark: #388E3C;
+  --color-sky: #87CEEB;
+  --color-sky-light: #B3E5FC;
+  --color-brown: #8D6E63;
+  --color-sunflower: #FFC107;
+  --color-sunflower-light: #FFD54F;
+  --color-teal: #26A69A;
+  --color-teal-light: #4DB6AC;
 }
 
-/* Pastel gradient mesh background — simplified to 2 stops */
-.bg-mesh {
-  background-color: #f0eef6;
-  background-image:
-    radial-gradient(ellipse at 15% 10%, rgba(199, 185, 240, 0.4) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 80%, rgba(186, 230, 210, 0.35) 0%, transparent 50%);
+/* Nature sky background with subtle cloud shapes */
+.bg-nature {
+  background: linear-gradient(180deg, #E3F2FD 0%, #F1F8E9 40%, #FFF8E1 100%);
+  background-attachment: fixed;
 }
 
-/* Glassmorphic surfaces — opaque, no backdrop-filter */
-.glass {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+/* Surface classes — nature card system */
+.surface-primary {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid var(--color-forest);
+  border-radius: 1.5rem;
 }
 
-.glass-strong {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+.surface-card {
+  background: #FFF8E1;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.08);
 }
 
-.glass-subtle {
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+.surface-accent {
+  background: rgba(135, 206, 235, 0.15);
+  border: 1px solid rgba(135, 206, 235, 0.3);
 }
 
+/* Decorative vine border */
+.border-vine {
+  border: 2px solid var(--color-forest);
+  border-image: repeating-linear-gradient(
+    90deg,
+    var(--color-forest) 0px,
+    var(--color-forest-light) 8px,
+    var(--color-forest) 16px
+  ) 2;
+  border-radius: 1rem;
+}
+
+/* Base animations */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -56,6 +79,28 @@
   to { transform: rotate(360deg); }
 }
 
+/* Larger animation variants */
+@keyframes sparkle-large {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes celebration-large {
+  0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+  50% { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes slide-up-large {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes sfx-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
 .animate-fade-in {
   animation: fade-in 0.4s ease-out;
 }
@@ -74,6 +119,22 @@
 
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
+}
+
+.animate-sparkle-large {
+  animation: sparkle-large 2s ease-in-out infinite;
+}
+
+.animate-celebration-large {
+  animation: celebration-large 0.8s ease-out;
+}
+
+.animate-slide-up-large {
+  animation: slide-up-large 0.5s ease-out;
+}
+
+.animate-sfx-pulse {
+  animation: sfx-pulse 1.5s ease-in-out infinite;
 }
 
 /* Typing indicator dots */

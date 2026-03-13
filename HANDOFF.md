@@ -4,6 +4,74 @@ Last updated: 2026-03-13
 
 ---
 
+## Visual Agent Celebration Frame Wiring
+
+**Problem**: The new Visual Agent stack generated and stored `celebration_frame`, but the active turn flow never used it. `backend/state_machine.py` only matched `visual_frames`, so the celebrate step still rendered the hardcoded badge frame and dropped the Visual Agent’s labels/SFX metadata on completion.
+
+**Solution**: Extended `get_screen_frame()` to accept `celebration_frame` and prefer it for `STEP_4_CELEBRATE` / `STEP_5_CELEBRATE`. Updated the server turn paths to pass the stored frame through, and added focused regression coverage proving the celebrate response now returns the Visual Agent’s completion frame and `sfx_label`.
+
+**Edits**:
+- `backend/state_machine.py` — added `celebration_frame` handling to `get_screen_frame()` for celebrate steps
+- `backend/server.py` — passed `state.celebration_frame` through all `get_screen_frame()` call sites
+- local `tests/test_api.py` — added a focused regression test for Visual Agent celebration-frame delivery in the current workspace
+
+**NOT Changed**:
+- The Visual Agent prompt/schema, per-round `visual_frames` matching, and frontend SFX display components were reviewed but not modified in this pass.
+- Closing-step rendering remains unchanged; this fix only makes the dedicated celebration frame live for the celebration response itself.
+
+**Verification**:
+- `uv run pytest tests/test_api.py -q -k turn_uses_visual_agent_celebration_frame_for_celebrate_step` — PASS (`1 passed, 18 deselected`)
+- `uv run ruff check backend/state_machine.py backend/server.py tests/test_api.py` — PASS
+- `uv run pytest tests/test_api.py -q -k "turn_enters_first_round_with_round_number_one or turn_marks_closing_delivery_complete_without_auto_advance or turn_uses_visual_agent_celebration_frame_for_celebrate_step or turn_speak_uses_final_fallback_dialogue_for_tts"` — PASS (`4 passed, 15 deselected`)
+
+---
+
+## Frontend Redesign + LLM Visual Agent (Full Stack)
+
+**Problem**: The frontend used a dark glassmorphic left/right split layout with small widgets, emoji icons, and no sound effect display. The Visual Agent was rule-based with fixed widget mappings. Needed child-friendly nature/explorer theme with top/bottom layout, toy camera frame, SVG icons, SFX indicators, category-grouped landing page, and LLM-powered Visual Agent.
+
+**Solution**: Implemented all 6 phases from `docs/plans/frontend-redesign-visual-agent.md`:
+- **Phase 1 (Backend)**: Converted Visual Agent from rule-based to async LLM-based (Gemini via google.genai) with rule-based fallback. Added `sfx_cue`, `sfx_label`, `animation_label`, `widget_label` to ScreenFrame schema. Stored visual frames in session state. Updated pipeline to run Visual + Script agents in parallel. Updated state machine and all server endpoints to pass visual frames.
+- **Phase 2 (Icons + CSS)**: Created 15 SVG icon components in `frontend/src/icons/`. Replaced `.bg-mesh`/`.glass` theme with `.bg-nature`/`.surface-primary`/`.surface-card` nature theme (Forest Green, Sky Blue, Warm Brown, Sunflower, Teal palette). Added larger animation keyframes.
+- **Phase 3 (Layout)**: Changed from left/right to top/bottom split (42% camera top, 58% conversation bottom). Created `ToyCameraFrame` SVG component. Updated TopBar to green gradient.
+- **Phase 4 (Widgets + SFX)**: Created `SfxIndicator` component. Made all widgets larger with SVG icons instead of emoji. DeviceScreen now shows widget/animation labels and SFX indicator.
+- **Phase 5 (Landing)**: Redesigned PhotoSelector with two category sections (Cat 1 "In-Device Verbal" + Cat 5 "Out-of-Device Collection"), SVG icon fallbacks, leaf dividers.
+- **Phase 6 (Theme)**: Updated ChatBubble (compass SVG avatar, green theme), ConversationPanel (green typing indicator), TextInput (green/teal theme), RetryButton, PhotoGallery to match nature theme. Zero emoji in UI.
+
+**Edits**:
+- `backend/schemas/visual_composition.py` — Added 4 label fields to ScreenFrame
+- `backend/agents/visual_agent.py` — Full rewrite: async LLM-based + `_rule_based_fallback()` with SFX_LABELS
+- `backend/agents/pipeline.py` — Visual Agent runs parallel with Script Agent via asyncio
+- `backend/schemas/session_state.py` — Added `visual_frames`, `celebration_frame` fields
+- `backend/state_machine.py` — Added `_match_visual_frame()`, `visual_frames` param to `get_screen_frame()`
+- `backend/server.py` — All 4 `get_screen_frame()` calls pass `visual_frames`, `sfx_label` in audio dict
+- `backend/prompts/visual_system.md` — NEW: Visual Agent system prompt
+- `frontend/src/icons/` — NEW: 15 SVG components + barrel export
+- `frontend/src/index.css` — Full theme overhaul (nature palette, surface classes, large animations)
+- `frontend/src/App.jsx` — Top/bottom layout with ToyCameraFrame
+- `frontend/src/components/ToyCameraFrame.jsx` — NEW: Toy camera SVG frame
+- `frontend/src/components/SfxIndicator.jsx` — NEW: SFX display pill
+- `frontend/src/components/TopBar.jsx` — Forest green gradient, CameraIcon
+- `frontend/src/components/DeviceScreen.jsx` — SFX indicator, labels, CameraIcon placeholder
+- `frontend/src/components/PhotoSelector.jsx` — Category grouping, SVG icons
+- `frontend/src/components/ChatBubble.jsx` — CompassIcon avatar, green theme
+- `frontend/src/components/ConversationPanel.jsx` — Green/teal accents
+- `frontend/src/components/TextInput.jsx` — Green/teal theme
+- `frontend/src/components/RetryButton.jsx` — Nature theme
+- `frontend/src/components/PhotoGallery.jsx` — SVG icons, green theme
+- `frontend/src/widgets/` — All 6 widgets enlarged, SVG icons, nature theme
+
+**NOT Changed**:
+- Backend hooks, STT, TTS, DB, config, scenarios, tier rules, fallback recipes
+- Frontend hooks (useSessionOrchestration, useConversation, useTTS, useSpeechRecognition, useSilenceTimer)
+- API client (utils/api.js)
+
+**Verification**:
+- `cd backend && uv run ruff check . && uv run ruff format --check .` — PASS
+- `cd frontend && npm run build` — PASS (67 modules, 533ms)
+
+---
+
 ## Turn-Speak Fallback Audio/Text Consistency
 
 **Problem**: The new combined `/api/turn-speak` path could speak the wrong text when the streaming Script Agent emitted an early dialogue fragment and then failed. In that case, server-side TTS started from the early fragment, but the API fell back to a different final `TurnResponse`, so the spoken audio no longer matched the JSON turn payload shown in the UI.
@@ -210,52 +278,5 @@ Measured improvement: `/api/start` dropped from 22-43s to ~12s; Script Agent tur
 - `uv run pytest tests/ -m 'not e2e' -q` — PASS (`63 passed, 5 deselected`)
 - `ruff check backend frontend/src tests` — PASS
 - `cd frontend && npm run lint && npm run build` — PASS
-
----
-
-## Scenario Filename Matching Hardening
-
-**Problem**: The new filename-based scenario fallback in [`backend/scenarios.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/scenarios.py) was too permissive. Very short filenames such as `c.jpg` could match unrelated keywords because the fallback checked both `keyword in filename` and `filename in keyword`, which produced incorrect activity selection when vision/entity matching failed. The latest backend pass also still left [`backend/tts.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/tts.py) outside Ruff's formatting check.
-
-**Solution**: Added a focused regression test for filename fallback behavior, then tightened the matcher so filename fallback only triggers when a known keyword appears in the filename stem. Reformatted `backend/tts.py` so the backend check is clean again.
-
-**Edits**:
-- `tests/test_scenarios.py` — added filename fallback coverage for a valid match (`ladybug.jpg`) and a short unrelated filename (`c.jpg`)
-- `backend/scenarios.py` — removed reverse containment from filename fallback matching to avoid false-positive activity selection
-- `backend/tts.py` — reformatted to satisfy Ruff
-
-**NOT Changed**:
-- Entity-based and feature-based scenario matching logic were left unchanged.
-- Frontend TTS playback behavior and backend route contracts were not modified in this pass.
-
-**Verification**:
-- `uv run pytest tests/test_scenarios.py -k filename -q` — PASS
-- `ruff check backend tests && ruff format --check backend tests` — PASS
-- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`63 passed, 5 deselected`)
-- `cd frontend && npm run lint && npm run build` — PASS
-
----
-
-## Dark Theme — Fuchsia/Pink Chatbot UI Design
-
-**Problem**: User provided a reference design (`docs/chatbot_UI.png`) showing a dark chatbot UI with near-black backgrounds (#0a0a0a), fuchsia/pink accent color, gradient user bubbles (fuchsia→purple), dark AI bubbles, rounded pill-shaped inputs, and subtle `white/5`–`white/10` borders.
-
-**Solution**: Redesigned the entire frontend to match the reference. Near-black base (#0a0a0a, #111, #1a1a1a), fuchsia-500 as primary accent, user bubbles with `from-fuchsia-500 to-purple-600` gradient, AI bubbles flat dark (#1a1a1a), rounded-full buttons, pill input, ultra-thin `border-white/5` and `border-white/10` borders. All widgets updated to fuchsia accent on dark surfaces.
-
-**Edits**:
-- All components + all 5 widgets updated: backgrounds → #0a0a0a/#111/#1a1a1a, accent → fuchsia-500, borders → white/5 and white/10, text → white/neutral-200/neutral-500
-- `ChatBubble.jsx` — User bubble: `from-fuchsia-500 to-purple-600` gradient. AI bubble: `bg-[#1a1a1a]`
-- `TextInput.jsx` — Input `bg-[#1a1a1a]`, mic idle `bg-white/5`, send `bg-fuchsia-500`, placeholder "Send message..."
-- `TopBar.jsx` — `bg-[#111]`, brand dot `bg-fuchsia-500`, buttons `bg-fuchsia-500 rounded-full`
-- `PhotoSelector.jsx` — Hover `border-fuchsia-500/50`, hover overlay `bg-fuchsia-500/10`, spinner `border-t-fuchsia-500`
-- `DeviceScreen.jsx` — `bg-[#111] rounded-3xl border-white/5`
-- All widgets — fuchsia-400 headings, fuchsia-500/10 accent surfaces, white/5 borders
-
-**NOT Changed**:
-- Backend, hooks, AnimationOverlay, API client, ARIA attributes, responsive stacking, font setup unchanged
-
-**Verification**:
-- `cd frontend && npm run build` — PASS (48 modules, 433ms)
-- `cd frontend && npm run lint` — PASS (no errors)
 
 ---

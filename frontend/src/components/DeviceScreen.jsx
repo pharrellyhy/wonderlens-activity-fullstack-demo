@@ -4,6 +4,8 @@ import CharacterDisplay from '../widgets/CharacterDisplay';
 import PhotoGrid from '../widgets/PhotoGrid';
 import BadgeAward from '../widgets/BadgeAward';
 import AnimationOverlay from '../widgets/AnimationOverlay';
+import SfxIndicator from './SfxIndicator';
+import { CameraIcon } from '../icons';
 
 const WIDGET_MAP = {
   photo_display: PhotoDisplay,
@@ -18,8 +20,8 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white/40 border border-white/50 flex items-center justify-center mx-auto mb-3 shadow-sm">
-            <span className="text-3xl">📱</span>
+          <div className="w-16 h-16 rounded-2xl surface-accent flex items-center justify-center mx-auto mb-3 shadow-sm">
+            <CameraIcon className="w-8 h-8 text-[var(--color-forest)]" />
           </div>
           <p className="text-sm text-gray-400 font-medium">Device screen will appear here</p>
         </div>
@@ -32,25 +34,32 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 flex items-center justify-center">
+      {/* Widget label header */}
+      {screenFrame.widget_label && (
+        <div className="px-3 pt-2 pb-1">
+          <p className="text-xs font-medium text-[var(--color-forest)] text-center">{screenFrame.widget_label}</p>
+        </div>
+      )}
+
+      <div className="flex-1 flex items-center justify-center min-h-0">
         <AnimationOverlay animation={screenFrame.animation}>
           {WidgetComponent ? (
             <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} />
           ) : (
-            <div className="text-center p-8 bg-white/40 rounded-2xl border border-white/50">
+            <div className="text-center p-8 surface-card rounded-2xl">
               <p className="text-gray-500 text-sm">Widget: {screenFrame.widget}</p>
-              <p className="text-gray-400 text-xs mt-1">{JSON.stringify(params)}</p>
             </div>
           )}
         </AnimationOverlay>
       </div>
 
-      {sessionState && (
-        <div className="px-3 py-2 bg-white/30 rounded-xl mt-2 text-xs text-gray-400 flex justify-between">
-          <span>Widget: {screenFrame.widget}</span>
-          {screenFrame.animation && <span>Animation: {screenFrame.animation}</span>}
-        </div>
-      )}
+      {/* Animation label + SFX indicator */}
+      <div className="flex items-center justify-between px-3 py-1.5 gap-2">
+        {screenFrame.animation_label && (
+          <p className="text-[10px] text-gray-400 italic truncate">{screenFrame.animation_label}</p>
+        )}
+        <SfxIndicator sfxCue={screenFrame.sfx_cue} sfxLabel={screenFrame.sfx_label} />
+      </div>
     </div>
   );
 }

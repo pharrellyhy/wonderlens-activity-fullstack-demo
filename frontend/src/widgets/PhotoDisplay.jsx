@@ -1,18 +1,20 @@
+import { PhotoFrameIcon } from '../icons';
+
 export default function PhotoDisplay({ photoUrl, description, animation, entity }) {
   return (
     <div className="relative flex flex-col items-center gap-3">
-      <div className={`relative w-64 h-64 rounded-2xl overflow-hidden bg-white/40 border border-white/60 shadow-lg shadow-black/5 ${
-        animation === 'sparkle_highlight' ? 'animate-pulse' : ''
+      <div className={`relative w-full max-w-md aspect-square rounded-2xl overflow-hidden border-2 border-[var(--color-forest)]/20 shadow-lg ${
+        animation === 'sparkle_highlight' ? 'animate-sparkle-large' : ''
       }`}>
         {photoUrl ? (
           <img src={photoUrl} alt={entity || 'Photo'} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-6xl">📷</span>
+          <div className="w-full h-full flex items-center justify-center bg-[var(--color-sky-light)]/20">
+            <PhotoFrameIcon className="w-16 h-16 text-[var(--color-forest)]/40" />
           </div>
         )}
         {animation === 'sparkle_highlight' && (
-          <div className="absolute inset-0 bg-gradient-to-tr from-amber-200/20 via-transparent to-indigo-200/20 animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-tr from-[var(--color-sunflower)]/10 via-transparent to-[var(--color-sky)]/10 animate-sparkle-large" />
         )}
       </div>
       {description && (

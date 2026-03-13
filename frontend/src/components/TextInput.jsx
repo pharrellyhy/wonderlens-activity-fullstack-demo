@@ -1,9 +1,5 @@
 import { useState } from 'react';
 
-/**
- * Text field + submit button + mic toggle button.
- * Props: { onSubmit, onMicToggle, isMicActive, disabled }
- */
 export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled }) {
   const [text, setText] = useState('');
 
@@ -17,7 +13,7 @@ export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled
 
   return (
     <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-3">
-      <div className="flex-1 flex items-center gap-2 bg-white/50 border border-gray-200/50 rounded-full px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-indigo-300 focus-within:border-transparent transition-shadow">
+      <div className="flex-1 flex items-center gap-2 bg-white border border-[var(--color-forest)]/20 rounded-full px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-[var(--color-forest)]/30 focus-within:border-[var(--color-forest)]/40 transition-shadow">
         <input
           type="text"
           value={text}
@@ -35,7 +31,7 @@ export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled
           className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
             isMicActive
               ? 'bg-red-500 text-white hover:bg-red-400 animate-pulse shadow-sm'
-              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+              : 'text-[var(--color-teal)] hover:text-[var(--color-teal-light)] hover:bg-[var(--color-teal)]/10'
           } disabled:opacity-40 disabled:cursor-not-allowed`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,7 +48,7 @@ export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled
         type="submit"
         disabled={disabled || !text.trim()}
         aria-label="Send message"
-        className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 text-white hover:bg-gray-700 transition-all shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--color-forest)] text-white hover:bg-[var(--color-forest-dark)] transition-all shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path

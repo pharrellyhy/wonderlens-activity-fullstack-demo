@@ -159,19 +159,15 @@ async def start_session(
         # 7. Store session state
         _sessions[session_id] = state
 
-        # 8. Build first turn response
-        first_turn_data = {
-            "dialogue": first_turn.dialogue,
-            "tone_marker": first_turn.tone_marker,
-            "screen_frame": {
-                "widget": first_turn.screen_widget,
-                "widget_params": first_turn.screen_widget_params,
-                "animation": first_turn.screen_animation,
-                "trigger": "on_enter",
-            },
-            "audio": {"sfx": first_turn.sfx_cue or "wonder_chime"},
-            "response_type": "hook",
-        }
+        # 8. Build first turn response using Visual Agent frames
+        hook_frame = get_screen_frame(
+            "STEP_1_HOOK",
+            state.template_type,
+            state.creative_slots,
+            {"entity_name": state.entity_name, "ib_key_concepts": state.ib_key_concepts},
+            visual_frames=state.visual_frames or None,
+        )
+        first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
         logger.info(

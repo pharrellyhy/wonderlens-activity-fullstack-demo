@@ -1,7 +1,39 @@
+import { useState, useEffect, useRef } from 'react';
 import { CompassIcon } from '../icons';
 
-export default function ChatBubble({ message }) {
+function useTypewriter(text, enabled) {
+  const [displayed, setDisplayed] = useState(enabled ? '' : text);
+  const [done, setDone] = useState(!enabled);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      indexRef.current += 1;
+      if (indexRef.current >= text.length) {
+        setDisplayed(text);
+        setDone(true);
+        clearInterval(interval);
+      } else {
+        setDisplayed(text.slice(0, indexRef.current));
+      }
+    }, 18);
+
+    return () => clearInterval(interval);
+  }, [text, enabled]);
+
+  return {
+    displayed: enabled ? displayed : text,
+    done: enabled ? done : true,
+  };
+}
+
+export default function ChatBubble({ message, isLatestAi }) {
   const isAi = message.role === 'ai';
+  const { displayed, done } = useTypewriter(message.text, isAi && isLatestAi);
 
   return (
     <div className={`flex ${isAi ? 'justify-start' : 'justify-end'} opacity-0 animate-bubble-in`}>
@@ -23,7 +55,8 @@ export default function ChatBubble({ message }) {
           </span>
         )}
         {message.tone && isAi && <br />}
-        {message.text}
+        {displayed}
+        {isAi && !done && <span className="inline-block w-0.5 h-4 bg-[var(--color-forest)] ml-0.5 animate-pulse align-text-bottom" />}
       </div>
     </div>
   );

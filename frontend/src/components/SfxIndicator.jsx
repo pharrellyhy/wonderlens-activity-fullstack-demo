@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { SpeakerIcon } from '../icons';
 
 const SFX_LABELS = {
@@ -15,19 +14,7 @@ const SFX_LABELS = {
 };
 
 export default function SfxIndicator({ sfxCue, sfxLabel }) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (!sfxCue) {
-      setVisible(false);
-      return;
-    }
-    setVisible(true);
-    const timer = setTimeout(() => setVisible(false), 3000);
-    return () => clearTimeout(timer);
-  }, [sfxCue]);
-
-  if (!visible || !sfxCue) return null;
+  if (!sfxCue) return null;
 
   const label = sfxLabel || SFX_LABELS[sfxCue] || sfxCue;
 

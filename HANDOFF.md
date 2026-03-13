@@ -4,6 +4,49 @@ Last updated: 2026-03-13
 
 ---
 
+## Chat Bubble Typewriter + Local API Test Realignment
+
+**Problem**: The newly added typewriter effect in `ChatBubble` failed frontend lint because it synchronously reset React state inside an effect. In the same review pass, the local `tests/test_api.py` file still targeted removed server contracts (`server.generate_recipe`, `SessionState`, and sync TTS patching), so the non-e2e suite was no longer a useful regression signal.
+
+**Solution**: Simplified the typewriter hook so it only performs timer-driven updates while active, and keyed the latest AI bubble wrapper so the animation resets cleanly without effect-time state rewrites. Then updated the stale local API tests to match the current architecture: `/api/start` now patches `initialize_session`, the obsolete legacy turn-flow tests were reduced to the still-valid `session not found` case, and `/api/tts` now patches `synthesize_speech_stream_async`.
+
+**Edits**:
+- `frontend/src/components/ChatBubble.jsx` — removed synchronous effect resets from `useTypewriter()`
+- `frontend/src/components/ConversationPanel.jsx` — keyed chat rows so the latest AI bubble remounts cleanly for typewriter playback
+- local `tests/test_api.py` — realigned start/turn/TTS coverage to the current server contracts in the current workspace
+
+**NOT Changed**:
+- The current backend provider/runtime changes (`director.py`, `script_agent.py`, `visual_agent.py`, `vision.py`, `stt.py`, `tts.py`, config/env files) were reviewed but not modified in this pass.
+- The icon/demo-photo asset changes were also reviewed, but no additional concrete issue in that path justified widening scope.
+
+**Verification**:
+- `cd frontend && npm run lint` — PASS
+- `cd frontend && npm run build` — PASS
+- `uv run ruff check tests/test_api.py backend/agents/director.py backend/agents/script_agent.py backend/agents/visual_agent.py backend/config.py backend/server.py backend/stt.py backend/tts.py backend/vision.py` — PASS
+- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`121 passed, 5 deselected`)
+
+---
+
+## Device Screen Frame-Key Simplification
+
+**Problem**: The latest `DeviceScreen` transition logic introduced two issues in the redesigned UI path. First, the component keyed frame changes only by `widget + trigger`, so celebration and closing could both resolve to `badge_award + on_correct` and leave the old badge content on screen instead of updating. Second, both `DeviceScreen` and `SfxIndicator` now failed the frontend lint rules because they were calling `setState()` synchronously inside effects.
+
+**Solution**: Removed the effect-driven frame swapping and replaced it with a deterministic frame key derived from the full screen-frame payload. `DeviceScreen` now renders directly from props, remounting the frame subtree when any meaningful screen-frame field changes, which also resets `SfxIndicator` cleanly. `SfxIndicator` keeps only the delayed hide timer, so the lint errors are gone without reintroducing state synchronization logic.
+
+**Edits**:
+- `frontend/src/components/DeviceScreen.jsx` — replaced local transition state with a full `getFrameKey()` helper and keyed frame rendering
+- `frontend/src/components/SfxIndicator.jsx` — removed synchronous effect-driven visibility toggles and kept timer-only hide behavior
+
+**NOT Changed**:
+- `frontend/src/components/PhotoSelector.jsx`, `frontend/src/widgets/PhotoDisplay.jsx`, and the current demo icon assets were reviewed but not modified in this pass.
+- No existing frontend component test harness covers `DeviceScreen` or `SfxIndicator`, so this pass did not add automated UI tests.
+
+**Verification**:
+- `cd frontend && npm run lint` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
 ## Visual Agent Celebration Frame Wiring
 
 **Problem**: The new Visual Agent stack generated and stored `celebration_frame`, but the active turn flow never used it. `backend/state_machine.py` only matched `visual_frames`, so the celebrate step still rendered the hardcoded badge frame and dropped the Visual Agent’s labels/SFX metadata on completion.
@@ -242,41 +285,5 @@ Measured improvement: `/api/start` dropped from 22-43s to ~12s; Script Agent tur
 
 ---
 
-## Session Start Error Retry Visibility
-
-**Problem**: [`frontend/src/App.jsx`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/frontend/src/App.jsx) had a real control-flow bug after the recent frontend refactor. When session start failed, the initial `showPhotoSelector` branch still won before the error branch, so the retry UI never rendered and users were dropped straight back to photo selection.
-
-**Solution**: Split the branch conditions into explicit `showRetry` and `showPhotoSelector` flags so the error state takes precedence when there is no active session. This keeps the current layout logic simple and makes the existing retry path reachable again.
-
-**Edits**:
-- `frontend/src/App.jsx` — prioritized the retry state over the photo-selector state for failed session starts
-
-**NOT Changed**:
-- Session orchestration hook internals, retry button behavior, and backend API flows were not modified in this pass.
-- The earlier TTS streaming test alignment and scenario filename hardening remain unchanged.
-
-**Verification**:
-- `cd frontend && npm run lint && npm run build` — PASS
-
----
-
-## Streaming TTS Test Alignment
-
-**Problem**: The latest backend/frontend verification exposed a regression in [`tests/test_api.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/tests/test_api.py): the `/api/tts` coverage still patched the removed non-streaming helper and still expected the old `204` fallback path, even though the implementation now streams PCM chunks via `synthesize_speech_stream()`. That left the suite out of sync with the actual route contract.
-
-**Solution**: Updated the TTS API tests to patch `server.synthesize_speech_stream`, assert the streaming response headers/body for a successful chunked response, and cover the empty-stream case that the current frontend treats as a browser-fallback trigger.
-
-**Edits**:
-- `tests/test_api.py` — rewrote the `/api/tts` tests around the streaming contract instead of the removed non-streaming helper
-
-**NOT Changed**:
-- `/api/tts` implementation and frontend playback behavior were left unchanged in this pass.
-- The frontend redesign/refactor work was reviewed again, but no additional concrete regressions were found from lint/build plus source review.
-
-**Verification**:
-- `uv run pytest tests/test_api.py::TestTTSEndpoint -q` — PASS
-- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`63 passed, 5 deselected`)
-- `ruff check backend frontend/src tests` — PASS
-- `cd frontend && npm run lint && npm run build` — PASS
 
 ---

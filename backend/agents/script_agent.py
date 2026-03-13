@@ -1,14 +1,15 @@
-"""Script Agent — per-turn dialogue generation using Gemini Flash."""
+"""Script Agent — per-turn dialogue generation using Qwen via ALI DashScope."""
 
 import json
 import re
 import time
 from functools import lru_cache
 from pathlib import Path
+from typing import Callable
 
+import httpx
 import yaml
-from google import genai
-from google.genai.types import GenerateContentConfig, ThinkingConfig
+from openai import AsyncOpenAI
 
 try:
     from ..config import get_settings
@@ -42,12 +43,13 @@ class ScriptAgentError(Exception):
 
 
 @lru_cache(maxsize=1)
-def _get_client() -> genai.Client:
+def _get_client() -> AsyncOpenAI:
     settings = get_settings()
-    return genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location=settings.google_cloud_location,
+    return AsyncOpenAI(
+        api_key=settings.ali_api_key,
+        base_url=settings.ali_base_url,
+        max_retries=0,
+        timeout=httpx.Timeout(30.0, connect=5.0),
     )
 
 
@@ -214,7 +216,7 @@ def _build_system_prompt(state: SessionStateModel) -> str:
 
 
 class ScriptAgent:
-    """Generates per-turn dialogue using Gemini Flash."""
+    """Generates per-turn dialogue using Qwen via ALI DashScope."""
 
     async def generate_turn(self, state: SessionStateModel) -> TurnResponse:
         """Generate the next dialogue turn (non-streaming fallback).
@@ -237,25 +239,25 @@ class ScriptAgent:
         try:
             client = _get_client()
 
-            response = await client.aio.models.generate_content(
-                model=settings.gemini_model,
-                contents=user_prompt,
-                config=GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=0.7,
-                    max_output_tokens=settings.script_turn_max_tokens,
-                    response_mime_type="application/json",
-                    response_schema=TurnResponse,
-                    thinking_config=ThinkingConfig(thinking_budget=0),
-                ),
+            response = await client.chat.completions.create(
+                model=settings.ali_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.7,
+                max_tokens=settings.script_turn_max_tokens,
+                response_format={"type": "json_object"},
+                extra_body={"enable_thinking": False},
             )
 
             latency_ms = int((time.perf_counter() - start) * 1000)
 
-            if not response.text:
-                raise ScriptAgentError("Empty response from Gemini")
+            text = response.choices[0].message.content or ""
+            if not text:
+                raise ScriptAgentError("Empty response from LLM")
 
-            turn = TurnResponse.model_validate_json(response.text)
+            turn = TurnResponse.model_validate_json(text)
 
             logger.info(f"Script turn: step={state.current_step}, round={state.current_round}, latency={latency_ms}ms")
             await log_agent_call(state.session_id, "script_turn", latency_ms, True)
@@ -271,11 +273,11 @@ class ScriptAgent:
             raise ScriptAgentError(f"Turn generation failed: {e}") from e
 
     async def generate_turn_streaming(
-        self, state: SessionStateModel, on_dialogue: object | None = None
+        self, state: SessionStateModel, on_dialogue: Callable | None = None
     ) -> TurnResponse:
         """Generate the next dialogue turn using streaming.
 
-        Streams tokens from Gemini Flash, extracting the dialogue value early
+        Streams tokens from the LLM, extracting the dialogue value early
         so TTS can start before the full JSON is complete.
 
         Args:
@@ -298,25 +300,26 @@ class ScriptAgent:
         try:
             client = _get_client()
 
-            response_stream = await client.aio.models.generate_content_stream(
-                model=settings.gemini_model,
-                contents=user_prompt,
-                config=GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=0.7,
-                    max_output_tokens=settings.script_turn_max_tokens,
-                    response_mime_type="application/json",
-                    response_schema=TurnResponse,
-                    thinking_config=ThinkingConfig(thinking_budget=0),
-                ),
+            response_stream = await client.chat.completions.create(
+                model=settings.ali_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.7,
+                max_tokens=settings.script_turn_max_tokens,
+                response_format={"type": "json_object"},
+                extra_body={"enable_thinking": False},
+                stream=True,
             )
 
             accumulated = ""
             dialogue_sent = False
 
             async for chunk in response_stream:
-                if chunk.text:
-                    accumulated += chunk.text
+                delta = chunk.choices[0].delta if chunk.choices else None
+                if delta and delta.content:
+                    accumulated += delta.content
 
                 # Try to extract dialogue from partial JSON as early as possible
                 if not dialogue_sent and on_dialogue and accumulated:
@@ -330,7 +333,7 @@ class ScriptAgent:
                             pass
 
             if not accumulated:
-                raise ScriptAgentError("Empty response from Gemini streaming")
+                raise ScriptAgentError("Empty response from LLM streaming")
 
             turn = TurnResponse.model_validate_json(accumulated)
 
@@ -371,5 +374,13 @@ class ScriptAgent:
             f"This is turn {state.turn_count + 1} of the session.\n"
             f"Round {state.current_round} of {state.total_rounds}."
             f"{child_input}\n\n"
-            f"Respond with a single JSON object matching the TurnResponse schema."
+            f"Respond with EXACTLY this JSON structure (all fields required):\n"
+            f"{{\n"
+            f'  "dialogue": "(tone_marker) Your dialogue text here",\n'
+            f'  "tone_marker": "excited|curious|mysterious|encouraging|impressed|gentle|celebrating|adventurous",\n'
+            f'  "screen_widget": "photo_display|character_display|progress_tracker|badge_award|photo_grid",\n'
+            f'  "screen_widget_params": {{}},\n'
+            f'  "screen_animation": "sparkle_highlight|celebration_burst|appear|gentle_pulse|scene_transition|badge_reveal|null",\n'
+            f'  "sfx_cue": "wonder_chime|celebration_fanfare|badge_awarded|game_start_chime|null"\n'
+            f"}}"
         )

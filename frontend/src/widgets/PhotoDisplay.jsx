@@ -3,7 +3,7 @@ import { PhotoFrameIcon } from '../icons';
 export default function PhotoDisplay({ photoUrl, description, animation, entity }) {
   return (
     <div className="relative flex flex-col items-center gap-3">
-      <div className={`relative w-full max-w-md aspect-square rounded-2xl overflow-hidden border-2 border-[var(--color-forest)]/20 shadow-lg ${
+      <div className={`relative w-full max-w-md aspect-square rounded-2xl overflow-hidden ${
         animation === 'sparkle_highlight' ? 'animate-sparkle-large' : ''
       }`}>
         {photoUrl ? (

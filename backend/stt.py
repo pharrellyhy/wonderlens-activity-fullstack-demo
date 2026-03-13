@@ -31,11 +31,14 @@ _MP3_PREFIXES: set[bytes] = {b"\xff\xfb", b"\xff\xfa", b"\xff\xf3", b"\xff\xf2",
 def _get_client() -> genai.Client:
     """Get or create the Gemini STT client."""
     settings = get_settings()
-    client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location=settings.google_cloud_location,
-    )
+    if settings.google_cloud_project:
+        client = genai.Client(
+            vertexai=True,
+            project=settings.google_cloud_project,
+            location=settings.google_cloud_location,
+        )
+    else:
+        client = genai.Client(api_key=settings.gemini_api_key)
     logger.info("Initialized Gemini STT client")
     return client
 

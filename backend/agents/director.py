@@ -1,10 +1,11 @@
-"""Director Agent — plans activity composition using OpenAI GPT-5.2."""
+"""Director Agent — plans activity composition using Qwen via ALI DashScope."""
 
 import json
 import time
 from functools import lru_cache
 from pathlib import Path
 
+import httpx
 from openai import APITimeoutError, AsyncOpenAI
 
 try:
@@ -31,9 +32,10 @@ _SKILL_PATH = Path(__file__).parent.parent / "skills" / "director.md"
 def _get_client() -> AsyncOpenAI:
     settings = get_settings()
     return AsyncOpenAI(
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_base_url or None,
+        api_key=settings.ali_api_key,
+        base_url=settings.ali_base_url,
         max_retries=0,
+        timeout=httpx.Timeout(settings.director_timeout_ms / 1000, connect=5.0),
     )
 
 
@@ -146,23 +148,28 @@ class DirectorAgent:
         try:
             client = _get_client()
 
-            response = await client.beta.chat.completions.parse(
-                model=settings.openai_model,
+            schema_json = json.dumps(CompositionPlan.model_json_schema(), indent=2)
+
+            response = await client.chat.completions.create(
+                model=settings.ali_model,
                 messages=[
                     {"role": "system", "content": self.skill},
-                    {"role": "user", "content": user_prompt},
+                    {
+                        "role": "user",
+                        "content": user_prompt + f"\n\nRespond with JSON matching this schema:\n{schema_json}",
+                    },
                 ],
-                response_format=CompositionPlan,
                 temperature=0.3,
-                max_completion_tokens=settings.director_max_tokens,
-                timeout=settings.director_timeout_ms / 1000,
+                max_tokens=settings.director_max_tokens,
+                response_format={"type": "json_object"},
+                extra_body={"enable_thinking": False},
             )
 
             latency_ms = int((time.perf_counter() - start) * 1000)
-            plan = response.choices[0].message.parsed
-
-            if plan is None:
-                raise ValueError("Model returned unparseable response")
+            text = response.choices[0].message.content or ""
+            if not text:
+                raise ValueError("Empty response from LLM")
+            plan = CompositionPlan.model_validate_json(text)
 
             # Ensure template_type is set
             plan.template_type = template_type

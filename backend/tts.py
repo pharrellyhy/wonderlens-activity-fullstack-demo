@@ -32,11 +32,14 @@ SAMPLE_RATE = 24000
 def _get_client() -> genai.Client:
     """Get or create the Gemini TTS client."""
     settings = get_settings()
-    client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location="global",
-    )
+    if settings.google_cloud_project:
+        client = genai.Client(
+            vertexai=True,
+            project=settings.google_cloud_project,
+            location="global",
+        )
+    else:
+        client = genai.Client(api_key=settings.gemini_api_key)
     logger.info("Initialized Gemini TTS client")
     return client
 

@@ -1,7 +1,8 @@
 gemini_model: "gemini-2.5-flash"
 tts_model: "gemini-2.5-flash-tts"
 openai_model: "gpt-5.2"
-vision_timeout_ms: 5000
+ali_model: "qwen3.5-plus"
+vision_timeout_ms: 15000
 director_timeout_ms: 10000
 director_max_tokens: 1000
 script_timeout_ms: 60000

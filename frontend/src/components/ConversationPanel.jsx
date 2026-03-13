@@ -62,11 +62,17 @@ export default function ConversationPanel({
           </div>
         ) : (
           <>
-            {messages.map((msg, i) => (
-              <div key={i} className={msg.errorExit ? 'border-l-2 border-amber-300 pl-2' : ''}>
-                <ChatBubble message={msg} />
-              </div>
-            ))}
+            {messages.map((msg, i) => {
+              const isLatestAi = msg.role === 'ai' && !messages.slice(i + 1).some((m) => m.role === 'ai');
+              return (
+                <div
+                  key={`${i}-${msg.role}-${isLatestAi ? 'latest' : 'static'}-${msg.text}`}
+                  className={msg.errorExit ? 'border-l-2 border-amber-300 pl-2' : ''}
+                >
+                  <ChatBubble message={msg} isLatestAi={isLatestAi} />
+                </div>
+              );
+            })}
 
             {/* Error exit warning */}
             {errorExit && (

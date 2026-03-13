@@ -15,7 +15,24 @@ const WIDGET_MAP = {
   badge_award: BadgeAward,
 };
 
-export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
+function getFrameKey(screenFrame) {
+  if (!screenFrame) {
+    return 'empty-frame';
+  }
+
+  return JSON.stringify({
+    widget: screenFrame.widget,
+    trigger: screenFrame.trigger,
+    animation: screenFrame.animation,
+    widgetParams: screenFrame.widget_params,
+    widgetLabel: screenFrame.widget_label,
+    animationLabel: screenFrame.animation_label,
+    sfxCue: screenFrame.sfx_cue,
+    sfxLabel: screenFrame.sfx_label,
+  });
+}
+
+export default function DeviceScreen({ screenFrame, photoUrl }) {
   if (!screenFrame) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -29,11 +46,15 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
     );
   }
 
+  const frameKey = getFrameKey(screenFrame);
   const WidgetComponent = WIDGET_MAP[screenFrame.widget];
   const params = screenFrame.widget_params || {};
 
   return (
-    <div className="h-full flex flex-col">
+    <div
+      key={frameKey}
+      className="h-full flex flex-col transition-opacity duration-300 ease-in-out"
+    >
       {/* Widget label header */}
       {screenFrame.widget_label && (
         <div className="px-3 pt-2 pb-1">
@@ -58,7 +79,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
         {screenFrame.animation_label && (
           <p className="text-[10px] text-gray-400 italic truncate">{screenFrame.animation_label}</p>
         )}
-        <SfxIndicator sfxCue={screenFrame.sfx_cue} sfxLabel={screenFrame.sfx_label} />
+        <SfxIndicator key={`sfx-${frameKey}`} sfxCue={screenFrame.sfx_cue} sfxLabel={screenFrame.sfx_label} />
       </div>
     </div>
   );

@@ -8,9 +8,9 @@ const CATEGORIES = [
     subtitle: 'Imagine stories with your photo friend!',
     Icon: BinocularsIcon,
     photos: [
-      { id: 'dog', label: 'Stuffed Dog', src: '/photos/dog.jpg', icon: '/icons/dog.png' },
-      { id: 'cat', label: 'Cat', src: '/photos/cat.jpg', icon: '/icons/cat.png' },
-      { id: 'dinosaur', label: 'Dinosaur', src: '/photos/dinosaur.jpg', icon: '/icons/dinosaur.png' },
+      { id: 'dog', label: 'Stuffed Dog', src: '/icons/dog.png' },
+      { id: 'cat', label: 'Cat', src: '/icons/cat.png' },
+      { id: 'dinosaur', label: 'Dinosaur', src: '/icons/dinosaur.png' },
     ],
   },
   {
@@ -19,8 +19,8 @@ const CATEGORIES = [
     subtitle: 'Go on a real-world scavenger hunt!',
     Icon: MagnifyingGlassIcon,
     photos: [
-      { id: 'ladybug', label: 'Ladybug', src: '/photos/ladybug.jpg', icon: '/icons/ladybug.png' },
-      { id: 'dandelion', label: 'Dandelion', src: '/photos/dandelion.jpg', icon: '/icons/dandelion.png' },
+      { id: 'ladybug', label: 'Ladybug', src: '/icons/ladybug.png' },
+      { id: 'dandelion', label: 'Dandelion', src: '/icons/dandelion.png' },
     ],
   },
 ];
@@ -45,15 +45,12 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
     if (isLoading) return;
     try {
       const res = await fetch(photo.src);
-      const contentType = res.headers.get('content-type') || '';
-      if (!res.ok || !contentType.startsWith('image/')) {
-        throw new Error('Demo photo unavailable');
-      }
+      if (!res.ok) throw new Error('Demo photo unavailable');
       const blob = await res.blob();
-      const file = new File([blob], `${photo.id}.jpg`, { type: 'image/jpeg' });
+      const file = new File([blob], `${photo.id}.png`, { type: blob.type || 'image/png' });
       onPhotoSelect(file);
     } catch {
-      // Create fallback image with SVG icon rendered to canvas
+      // Create fallback image with label text
       const canvas = document.createElement('canvas');
       canvas.width = 400;
       canvas.height = 400;
@@ -66,9 +63,9 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
       ctx.textBaseline = 'middle';
       ctx.fillText(photo.label[0], 200, 200);
       canvas.toBlob((blob) => {
-        const file = new File([blob], `${photo.id}.jpg`, { type: 'image/jpeg' });
+        const file = new File([blob], `${photo.id}.png`, { type: 'image/png' });
         onPhotoSelect(file);
-      }, 'image/jpeg');
+      }, 'image/png');
     }
   };
 
@@ -118,7 +115,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
                     className="group relative w-full aspect-square rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105"
                   >
                     <img
-                      src={photo.icon}
+                      src={photo.src}
                       alt={photo.label}
                       className="w-full h-full object-cover"
                     />

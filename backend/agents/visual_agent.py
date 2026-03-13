@@ -1,11 +1,12 @@
 """Visual Agent — LLM-based screen frame composition with rule-based fallback."""
 
+import json
 import time
 from functools import lru_cache
 from pathlib import Path
 
-from google import genai
-from google.genai.types import GenerateContentConfig
+import httpx
+from openai import AsyncOpenAI
 
 try:
     from ..config import get_settings
@@ -85,11 +86,13 @@ def _load_prompt() -> str:
 
 
 @lru_cache(maxsize=1)
-def _get_client() -> genai.Client:
+def _get_client() -> AsyncOpenAI:
     settings = get_settings()
-    return genai.Client(
-        project=settings.google_cloud_project,
-        location=settings.google_cloud_location,
+    return AsyncOpenAI(
+        api_key=settings.ali_api_key,
+        base_url=settings.ali_base_url,
+        max_retries=0,
+        timeout=httpx.Timeout(30.0, connect=5.0),
     )
 
 
@@ -111,7 +114,7 @@ def _validate_composition(comp: VisualComposition) -> VisualComposition:
 
 
 class VisualAgent:
-    """Generates screen frames using Gemini LLM with rule-based fallback."""
+    """Generates screen frames using Qwen LLM with rule-based fallback."""
 
     async def run(self, plan: CompositionPlan, context: dict, session_id: str = "") -> VisualComposition:
         """Generate visual composition, trying LLM first then falling back to rules."""
@@ -130,10 +133,12 @@ class VisualAgent:
             return self._rule_based_fallback(plan, context)
 
     async def _llm_generate(self, plan: CompositionPlan, context: dict) -> VisualComposition:
-        """Call Gemini to generate visual composition."""
+        """Call ALI Qwen to generate visual composition."""
         settings = get_settings()
         client = _get_client()
         prompt = _load_prompt()
+
+        schema_json = json.dumps(VisualComposition.model_json_schema(), indent=2)
 
         user_content = (
             f"Entity: {context.get('entity', 'object')}\n"
@@ -143,24 +148,23 @@ class VisualAgent:
             f"Round count: {plan.round_count}\n"
             f"Scene: {context.get('scene', '')}\n"
             f"Key concepts: {context.get('key_concepts', [])}\n"
+            f"\nRespond with a single JSON object matching this schema:\n{schema_json}"
         )
 
-        config = GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=VisualComposition,
-            temperature=0.3,
-            max_output_tokens=800,
-        )
-
-        response = await client.aio.models.generate_content(
-            model=settings.gemini_model,
-            contents=[
-                {"role": "user", "parts": [{"text": prompt + "\n\n---\n\n" + user_content}]},
+        response = await client.chat.completions.create(
+            model=settings.ali_model,
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_content},
             ],
-            config=config,
+            temperature=0.3,
+            max_tokens=2048,
+            response_format={"type": "json_object"},
+            extra_body={"enable_thinking": False},
         )
 
-        return VisualComposition.model_validate_json(response.text)
+        text = response.choices[0].message.content or ""
+        return VisualComposition.model_validate_json(text)
 
     def _rule_based_fallback(self, plan: CompositionPlan, context: dict) -> VisualComposition:
         """Deterministic rule-based frame generation (original logic with labels)."""

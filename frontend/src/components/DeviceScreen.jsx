@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import PhotoDisplay from '../widgets/PhotoDisplay';
 import ProgressTracker from '../widgets/ProgressTracker';
 import CharacterDisplay from '../widgets/CharacterDisplay';
@@ -5,6 +6,7 @@ import PhotoGrid from '../widgets/PhotoGrid';
 import BadgeAward from '../widgets/BadgeAward';
 import AnimationOverlay from '../widgets/AnimationOverlay';
 import SfxIndicator from './SfxIndicator';
+import useSfxPlayer from '../hooks/useSfxPlayer';
 import { CameraIcon } from '../icons';
 
 const WIDGET_MAP = {
@@ -33,6 +35,17 @@ function getFrameKey(screenFrame) {
 }
 
 export default function DeviceScreen({ screenFrame, photoUrl }) {
+  const playSfx = useSfxPlayer();
+  const lastSfxFrameRef = useRef(null);
+
+  useEffect(() => {
+    if (!screenFrame?.sfx_cue) return;
+    const frameKey = getFrameKey(screenFrame);
+    if (frameKey === lastSfxFrameRef.current) return;
+    lastSfxFrameRef.current = frameKey;
+    playSfx(screenFrame.sfx_cue);
+  }, [screenFrame, playSfx]);
+
   if (!screenFrame) {
     return (
       <div className="h-full flex items-center justify-center">

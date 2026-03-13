@@ -5,35 +5,27 @@
   --font-display: "Plus Jakarta Sans", "Outfit", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Pastel gradient mesh background */
+/* Pastel gradient mesh background — simplified to 2 stops */
 .bg-mesh {
   background-color: #f0eef6;
   background-image:
-    radial-gradient(ellipse at 15% 10%, rgba(199, 185, 240, 0.5) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 20%, rgba(186, 230, 210, 0.45) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(245, 200, 210, 0.35) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 75%, rgba(200, 220, 250, 0.3) 0%, transparent 50%);
+    radial-gradient(ellipse at 15% 10%, rgba(199, 185, 240, 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 80%, rgba(186, 230, 210, 0.35) 0%, transparent 50%);
 }
 
-/* Glassmorphic surface */
+/* Glassmorphic surfaces — opaque, no backdrop-filter */
 .glass {
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.7);
 }
 
 .glass-subtle {
-  background: rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 

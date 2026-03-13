@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 
 const SILENCE_TIMEOUTS = {
   T0: 10000,
@@ -36,12 +36,12 @@ export default function useSilenceTimer(tier, onSilence, enabled) {
     startTimeRef.current = Date.now();
     setIsRunning(true);
 
-    // Update elapsed every 100ms for the progress bar
+    // Update elapsed every 500ms for the progress bar (reduced from 100ms)
     intervalRef.current = setInterval(() => {
       if (startTimeRef.current) {
         setElapsed(Date.now() - startTimeRef.current);
       }
-    }, 100);
+    }, 500);
 
     timerRef.current = setTimeout(() => {
       clear();
@@ -54,12 +54,15 @@ export default function useSilenceTimer(tier, onSilence, enabled) {
     return clear;
   }, [clear]);
 
-  return {
+  // Memoize the return object to avoid triggering re-renders in consumers
+  const progress = Math.min(elapsed / timeout, 1);
+
+  return useMemo(() => ({
     start,
     clear,
     elapsed,
     timeout,
-    progress: Math.min(elapsed / timeout, 1),
+    progress,
     isRunning,
-  };
+  }), [start, clear, elapsed, timeout, progress, isRunning]);
 }

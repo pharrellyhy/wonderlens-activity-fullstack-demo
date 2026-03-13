@@ -3,9 +3,11 @@ tts_model: "gemini-2.5-flash-tts"
 openai_model: "gpt-5.2"
 vision_timeout_ms: 5000
 director_timeout_ms: 10000
-director_max_tokens: 500
+director_max_tokens: 1000
 script_timeout_ms: 60000
 script_max_tokens: 4096
+script_turn_timeout_ms: 5000
+script_turn_max_tokens: 2048
 max_retries: 3
 db_path: "data/demo.db"
 log_level: "DEBUG"

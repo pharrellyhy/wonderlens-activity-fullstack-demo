@@ -11,14 +11,97 @@ export async function startSession(photo, tier) {
   return res.json();
 }
 
-export async function sendTurn(sessionId, text, isSilent) {
+export async function sendTurn(sessionId, text, isSilent, photoId = null) {
+  const body = { session_id: sessionId, text, is_silent: isSilent };
+  if (photoId) body.photo_id = photoId;
   const res = await fetch('/api/turn', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId, text, is_silent: isSilent }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Turn failed: ${res.status}`);
   return res.json();
+}
+
+/**
+ * Combined turn + TTS endpoint. Streams Script Agent output with pipelined TTS.
+ *
+ * Binary protocol:
+ *   [4-byte big-endian uint32: JSON length]
+ *   [N bytes: JSON turn data]
+ *   [remaining bytes: raw PCM 16-bit mono audio chunks]
+ *
+ * @returns {{ turnData: object, audioStream: ReadableStream|null, sampleRate: number }}
+ */
+export async function sendTurnSpeak(sessionId, text, isSilent, photoId = null) {
+  const body = { session_id: sessionId, text, is_silent: isSilent };
+  if (photoId) body.photo_id = photoId;
+
+  const res = await fetch('/api/turn-speak', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    // Error responses are regular JSON
+    const err = await res.json();
+    throw new Error(err.error || `Turn-speak failed: ${res.status}`);
+  }
+
+  const sampleRate = parseInt(res.headers.get('X-Sample-Rate') || '24000', 10);
+  const reader = res.body.getReader();
+
+  // Read 4-byte JSON length prefix
+  let headerBuf = new Uint8Array(0);
+  while (headerBuf.length < 4) {
+    const { done, value } = await reader.read();
+    if (done) throw new Error('Unexpected end of stream reading JSON header');
+    const merged = new Uint8Array(headerBuf.length + value.length);
+    merged.set(headerBuf);
+    merged.set(value, headerBuf.length);
+    headerBuf = merged;
+  }
+
+  const jsonLength = new DataView(headerBuf.buffer, headerBuf.byteOffset).getUint32(0, false);
+
+  // Read JSON bytes (may span multiple chunks)
+  let jsonBuf = headerBuf.slice(4); // leftover after the 4-byte header
+  while (jsonBuf.length < jsonLength) {
+    const { done, value } = await reader.read();
+    if (done) throw new Error('Unexpected end of stream reading JSON body');
+    const merged = new Uint8Array(jsonBuf.length + value.length);
+    merged.set(jsonBuf);
+    merged.set(value, jsonBuf.length);
+    jsonBuf = merged;
+  }
+
+  const jsonBytes = jsonBuf.slice(0, jsonLength);
+  const leftover = jsonBuf.slice(jsonLength);
+  const turnData = JSON.parse(new TextDecoder().decode(jsonBytes));
+
+  // Create a new ReadableStream for the remaining PCM audio data
+  const audioStream = new ReadableStream({
+    start(controller) {
+      // Push any leftover bytes from the JSON read
+      if (leftover.length > 0) {
+        controller.enqueue(leftover);
+      }
+    },
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) {
+        controller.close();
+        return;
+      }
+      controller.enqueue(value);
+    },
+    cancel() {
+      reader.cancel();
+    },
+  });
+
+  return { turnData, audioStream, sampleRate };
 }
 
 export async function transcribeAudio(audioBlob) {

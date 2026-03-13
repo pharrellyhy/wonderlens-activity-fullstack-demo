@@ -1,0 +1,277 @@
+"""Template state machine for Cat 1 and Cat 5 activity flows.
+
+Determines the next step, whether a step needs user input, and what screen
+frame to display for each step.
+"""
+
+from typing import Literal, Union
+
+try:
+    from .schemas import ScreenFrame
+    from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+except ImportError:
+    from schemas import ScreenFrame
+    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+
+# --- Step Constants ---
+
+# Cat 1 steps
+CAT1_STEP_1_HOOK = "STEP_1_HOOK"
+CAT1_STEP_2_RULES = "STEP_2_RULES"
+CAT1_STEP_3_ROUND = "STEP_3_ROUND"  # Appended with round number at runtime
+CAT1_STEP_4_CELEBRATE = "STEP_4_CELEBRATE"
+CAT1_STEP_5_CLOSING = "STEP_5_CLOSING"
+
+# Cat 5 steps
+CAT5_STEP_1_HOOK = "STEP_1_HOOK"
+CAT5_STEP_2_MISSION = "STEP_2_MISSION"
+CAT5_STEP_3_COLLECT = "STEP_3_COLLECT"  # Appended with round number at runtime
+CAT5_STEP_4_SYNTHESIS = "STEP_4_SYNTHESIS"
+CAT5_STEP_5_CELEBRATE = "STEP_5_CELEBRATE"
+CAT5_STEP_6_CLOSING = "STEP_6_CLOSING"
+
+# Shared
+EARLY_EXIT = "EARLY_EXIT"
+ENDED = "ENDED"
+
+
+def _parse_round_step(step: str) -> tuple[str, int]:
+    """Parse 'STEP_3_ROUND_2' into ('STEP_3_ROUND', 2)."""
+    for prefix in ("STEP_3_ROUND_", "STEP_3_COLLECT_"):
+        if step.startswith(prefix):
+            try:
+                return prefix.rstrip("_"), int(step[len(prefix) :])
+            except ValueError:
+                pass
+    return step, 0
+
+
+def next_step(
+    current_step: str,
+    template_type: Literal["cat1", "cat5"],
+    current_round: int,
+    total_rounds: int,
+) -> str:
+    """Determine the next step given current state."""
+    if current_step in (ENDED, EARLY_EXIT):
+        return ENDED
+
+    if template_type == "cat1":
+        return _next_step_cat1(current_step, current_round, total_rounds)
+    return _next_step_cat5(current_step, current_round, total_rounds)
+
+
+def _next_step_cat1(current_step: str, current_round: int, total_rounds: int) -> str:
+    if current_step == CAT1_STEP_1_HOOK:
+        return CAT1_STEP_2_RULES
+    if current_step == CAT1_STEP_2_RULES:
+        return "STEP_3_ROUND_1"
+    if current_step.startswith("STEP_3_ROUND_"):
+        _, rnd = _parse_round_step(current_step)
+        if rnd >= total_rounds:
+            return CAT1_STEP_4_CELEBRATE
+        return f"STEP_3_ROUND_{rnd + 1}"
+    if current_step == CAT1_STEP_4_CELEBRATE:
+        return CAT1_STEP_5_CLOSING
+    if current_step == CAT1_STEP_5_CLOSING:
+        return ENDED
+    return ENDED
+
+
+def _next_step_cat5(current_step: str, current_round: int, total_rounds: int) -> str:
+    if current_step == CAT5_STEP_1_HOOK:
+        return CAT5_STEP_2_MISSION
+    if current_step == CAT5_STEP_2_MISSION:
+        return "STEP_3_COLLECT_1"
+    if current_step.startswith("STEP_3_COLLECT_"):
+        _, rnd = _parse_round_step(current_step)
+        if rnd >= total_rounds:
+            return CAT5_STEP_4_SYNTHESIS
+        return f"STEP_3_COLLECT_{rnd + 1}"
+    if current_step == CAT5_STEP_4_SYNTHESIS:
+        return CAT5_STEP_5_CELEBRATE
+    if current_step == CAT5_STEP_5_CELEBRATE:
+        return CAT5_STEP_6_CLOSING
+    if current_step == CAT5_STEP_6_CLOSING:
+        return ENDED
+    return ENDED
+
+
+def is_terminal(step: str) -> bool:
+    """Check if a step is terminal (no more turns)."""
+    return step == ENDED
+
+
+def step_needs_user_input(step: str) -> bool:
+    """Check if the step requires the child to respond before advancing.
+
+    Round steps (STEP_3_*) and hook/rules/mission need input.
+    Celebration and closing auto-advance (frontend sends empty turn).
+    """
+    if step in (ENDED, EARLY_EXIT):
+        return False
+
+    # Auto-advance steps: celebration, closing, synthesis
+    auto_advance_steps = {
+        CAT1_STEP_4_CELEBRATE,
+        CAT1_STEP_5_CLOSING,
+        CAT5_STEP_4_SYNTHESIS,
+        CAT5_STEP_5_CELEBRATE,
+        CAT5_STEP_6_CLOSING,
+    }
+    return step not in auto_advance_steps
+
+
+def get_screen_frame(
+    step: str,
+    template_type: Literal["cat1", "cat5"],
+    creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots],
+    context: dict,
+) -> ScreenFrame:
+    """Map a step to the appropriate screen frame."""
+    entity = context.get("entity_name", context.get("entity", "object"))
+    key_concepts = context.get("ib_key_concepts", context.get("key_concepts", []))
+
+    # Hook step: show the photo
+    if step == "STEP_1_HOOK":
+        return ScreenFrame(
+            widget="photo_display",
+            widget_params={"description": f"Photo of {entity}", "entity": entity},
+            animation="sparkle_highlight",
+            trigger="on_enter",
+        )
+
+    # Cat 1 specific steps
+    if template_type == "cat1":
+        if step == "STEP_2_RULES":
+            return ScreenFrame(
+                widget="character_display",
+                widget_params={"description": "Kido explains the game", "entity": entity, "round_number": 0},
+                animation="appear",
+                trigger="on_enter",
+            )
+
+        if step.startswith("STEP_3_ROUND_"):
+            _, rnd = _parse_round_step(step)
+            return ScreenFrame(
+                widget="character_display",
+                widget_params={
+                    "description": f"Round {rnd} for {entity} activity",
+                    "round_number": rnd,
+                    "entity": entity,
+                },
+                animation="scene_transition" if rnd > 1 else "gentle_pulse",
+                trigger=f"on_round_{rnd}",
+            )
+
+        if step == "STEP_4_CELEBRATE":
+            role_title = creative_slots.role_title if isinstance(creative_slots, Cat1CreativeSlots) else "Explorer"
+            return ScreenFrame(
+                widget="badge_award",
+                widget_params={"title": role_title, "concepts": key_concepts, "entity": entity},
+                animation="celebration_burst",
+                trigger="on_correct",
+            )
+
+        if step == "STEP_5_CLOSING":
+            return ScreenFrame(
+                widget="badge_award",
+                widget_params={"title": "IB Concepts", "concepts": key_concepts, "entity": entity},
+                animation="badge_reveal",
+                trigger="on_correct",
+            )
+
+    # Cat 5 specific steps
+    if template_type == "cat5":
+        if step == "STEP_2_MISSION":
+            return ScreenFrame(
+                widget="character_display",
+                widget_params={
+                    "description": "Mission briefing",
+                    "entity": entity,
+                    "round_number": 0,
+                },
+                animation="appear",
+                trigger="on_enter",
+            )
+
+        if step.startswith("STEP_3_COLLECT_"):
+            _, rnd = _parse_round_step(step)
+            total = creative_slots.collection_count if isinstance(creative_slots, Cat5CreativeSlots) else 3
+            return ScreenFrame(
+                widget="progress_tracker",
+                widget_params={
+                    "filled": rnd,
+                    "total": total,
+                    "description": f"Collection progress: {rnd} of {total}",
+                },
+                animation="slot_fill_chime" if rnd < total else "celebration_burst",
+                trigger=f"on_round_{rnd}",
+            )
+
+        if step == "STEP_4_SYNTHESIS":
+            return ScreenFrame(
+                widget="photo_grid",
+                widget_params={"description": "All collected items", "entity": entity},
+                animation="sparkle_highlight",
+                trigger="on_enter",
+            )
+
+        if step == "STEP_5_CELEBRATE":
+            role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
+            return ScreenFrame(
+                widget="badge_award",
+                widget_params={"title": role_title, "concepts": key_concepts, "entity": entity},
+                animation="celebration_burst",
+                trigger="on_correct",
+            )
+
+        if step == "STEP_6_CLOSING":
+            return ScreenFrame(
+                widget="badge_award",
+                widget_params={"title": "IB Concepts", "concepts": key_concepts, "entity": entity},
+                animation="badge_reveal",
+                trigger="on_correct",
+            )
+
+    # Early exit / fallback
+    if step == EARLY_EXIT:
+        return ScreenFrame(
+            widget="badge_award",
+            widget_params={"title": "Great job!", "concepts": [], "entity": entity},
+            animation="badge_reveal",
+            trigger="on_correct",
+        )
+
+    # Default fallback
+    return ScreenFrame(
+        widget="photo_display",
+        widget_params={"description": f"Photo of {entity}", "entity": entity},
+        animation=None,
+        trigger="on_enter",
+    )
+
+
+def get_step_name(step: str) -> str:
+    """Return a human-readable name for a step (used in prompts)."""
+    step_names = {
+        "STEP_1_HOOK": "Transition Bridge (Hook)",
+        "STEP_2_RULES": "Game Rules Introduction",
+        "STEP_2_MISSION": "Mission Briefing",
+        "STEP_4_CELEBRATE": "Celebration",
+        "STEP_4_SYNTHESIS": "Collection Synthesis",
+        "STEP_5_CELEBRATE": "Celebration",
+        "STEP_5_CLOSING": "IB Closing",
+        "STEP_6_CLOSING": "IB Closing",
+        "EARLY_EXIT": "Graceful Exit",
+        "ENDED": "Session Ended",
+    }
+    if step in step_names:
+        return step_names[step]
+    if step.startswith("STEP_3_ROUND_"):
+        _, rnd = _parse_round_step(step)
+        return f"Dialogue Round {rnd}"
+    if step.startswith("STEP_3_COLLECT_"):
+        _, rnd = _parse_round_step(step)
+        return f"Collection Round {rnd}"
+    return step

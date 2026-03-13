@@ -5,7 +5,8 @@ export default function useTTS(onSpeakingDone) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const abortRef = useRef(null);
   const ctxRef = useRef(null);
-  const sourceRef = useRef(null);
+  const scheduledEndRef = useRef(0);
+  const lastSourceRef = useRef(null);
 
   const getAudioContext = useCallback((sampleRate) => {
     if (ctxRef.current && ctxRef.current.sampleRate === sampleRate) {
@@ -23,15 +24,16 @@ export default function useTTS(onSpeakingDone) {
       abortRef.current.abort();
       abortRef.current = null;
     }
-    if (sourceRef.current) {
-      sourceRef.current.onended = null;
-      sourceRef.current.stop();
-      sourceRef.current = null;
+    if (lastSourceRef.current) {
+      lastSourceRef.current.onended = null;
+      lastSourceRef.current.stop();
+      lastSourceRef.current = null;
     }
     if (ctxRef.current) {
       ctxRef.current.close();
       ctxRef.current = null;
     }
+    scheduledEndRef.current = 0;
     setIsSpeaking(false);
   }, []);
 
@@ -56,6 +58,92 @@ export default function useTTS(onSpeakingDone) {
     window.speechSynthesis.speak(utterance);
   }, [onSpeakingDone]);
 
+  /**
+   * Schedule a PCM chunk for seamless playback at the correct time offset.
+   * Returns the AudioBufferSourceNode for the chunk.
+   */
+  const scheduleChunk = useCallback((ctx, float32Data) => {
+    const buffer = ctx.createBuffer(1, float32Data.length, ctx.sampleRate);
+    buffer.getChannelData(0).set(float32Data);
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+
+    // Schedule at the end of the previous chunk (or now for the first)
+    const startAt = Math.max(ctx.currentTime, scheduledEndRef.current);
+    source.start(startAt);
+    scheduledEndRef.current = startAt + buffer.duration;
+
+    return source;
+  }, []);
+
+  /**
+   * Convert raw PCM 16-bit LE bytes to Float32 samples.
+   */
+  const pcmToFloat32 = useCallback((pcmBytes) => {
+    const pcm16 = new Int16Array(
+      pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength >> 1,
+    );
+    const float32 = new Float32Array(pcm16.length);
+    for (let i = 0; i < pcm16.length; i++) {
+      float32[i] = pcm16[i] / 32768;
+    }
+    return float32;
+  }, []);
+
+  /**
+   * Play audio progressively from a ReadableStream of PCM chunks.
+   * Each chunk is scheduled seamlessly after the previous one — no gaps, no noise.
+   * Audio starts playing as soon as the first chunk arrives (low TTFA).
+   */
+  const playStream = useCallback(async (audioStream, sampleRate, signal) => {
+    if (!audioStream) {
+      setIsSpeaking(false);
+      onSpeakingDone?.();
+      return;
+    }
+
+    const ctx = getAudioContext(sampleRate);
+    scheduledEndRef.current = 0;
+    const reader = audioStream.getReader();
+    let lastSource = null;
+
+    try {
+      while (true) {
+        if (signal?.aborted) return;
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value || value.byteLength < 2) continue;
+
+        const float32 = pcmToFloat32(value);
+        lastSource = scheduleChunk(ctx, float32);
+        lastSourceRef.current = lastSource;
+      }
+
+      // Set onended callback on the very last scheduled source
+      if (lastSource) {
+        lastSource.onended = () => {
+          lastSourceRef.current = null;
+          setIsSpeaking(false);
+          onSpeakingDone?.();
+        };
+      } else {
+        setIsSpeaking(false);
+        onSpeakingDone?.();
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.warn('Progressive playback failed:', err);
+      setIsSpeaking(false);
+      onSpeakingDone?.();
+    }
+  }, [getAudioContext, onSpeakingDone, pcmToFloat32, scheduleChunk]);
+
+  /**
+   * Speak text using /api/tts with progressive playback.
+   * Used for the first turn (from /api/start) and as fallback.
+   */
   const speak = useCallback(async (text, tier) => {
     if (!text) return;
 
@@ -72,63 +160,32 @@ export default function useTTS(onSpeakingDone) {
         return;
       }
 
-      const { stream, sampleRate } = result;
-      const reader = stream.getReader();
-
-      // Collect all PCM chunks, then play as one continuous buffer
-      const chunks = [];
-      let totalBytes = 0;
-
-      while (true) {
-        if (controller.signal.aborted) return;
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        totalBytes += value.byteLength;
-      }
-
-      if (controller.signal.aborted || totalBytes === 0) {
-        if (totalBytes === 0) fallbackSpeak(text);
-        return;
-      }
-
-      // Concatenate all chunks into a single PCM buffer
-      const pcmBytes = new Uint8Array(totalBytes);
-      let offset = 0;
-      for (const chunk of chunks) {
-        pcmBytes.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-
-      // Convert PCM 16-bit LE to Float32
-      const pcm16 = new Int16Array(pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength >> 1);
-      const float32 = new Float32Array(pcm16.length);
-      for (let i = 0; i < pcm16.length; i++) {
-        float32[i] = pcm16[i] / 32768;
-      }
-
-      // Play as a single AudioBuffer — no chunk boundary noise
-      const ctx = getAudioContext(sampleRate);
-      const buffer = ctx.createBuffer(1, float32.length, sampleRate);
-      buffer.getChannelData(0).set(float32);
-
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      sourceRef.current = source;
-
-      source.onended = () => {
-        sourceRef.current = null;
-        setIsSpeaking(false);
-        onSpeakingDone?.();
-      };
-
-      source.start();
+      await playStream(result.stream, result.sampleRate, controller.signal);
     } catch (err) {
       if (err.name === 'AbortError') return;
       fallbackSpeak(text);
     }
-  }, [stop, getAudioContext, fallbackSpeak, onSpeakingDone]);
+  }, [stop, fallbackSpeak, playStream]);
 
-  return { isSpeaking, speak, stop };
+  /**
+   * Play audio from an already-available stream (from /api/turn-speak).
+   * Skips the separate /api/tts call entirely.
+   */
+  const speakFromStream = useCallback(async (audioStream, sampleRate) => {
+    stop();
+    setIsSpeaking(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      await playStream(audioStream, sampleRate, controller.signal);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      setIsSpeaking(false);
+      onSpeakingDone?.();
+    }
+  }, [stop, playStream, onSpeakingDone]);
+
+  return { isSpeaking, speak, speakFromStream, stop };
 }

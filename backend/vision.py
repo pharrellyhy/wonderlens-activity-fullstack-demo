@@ -39,28 +39,28 @@ def _get_client() -> genai.Client:
     return client
 
 
-async def analyze_image(image_bytes: bytes, mime_type: str) -> dict[str, Any]:
+async def analyze_image(image_bytes: bytes, mime_type: str, max_retries: int = 1) -> dict[str, Any]:
     """Analyze an image to identify the main entity.
 
     Args:
         image_bytes: Raw image bytes.
         mime_type: MIME type of the image (e.g., "image/jpeg").
+        max_retries: Number of retry attempts on connection errors.
 
     Returns:
         Dict with entity, confidence, scene, and features.
     """
     settings = get_settings()
-    start = time.perf_counter()
+    _fallback = {"entity": "unknown", "confidence": 0.0, "scene": "unknown", "features": []}
 
-    try:
-        client = _get_client()
-        image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+    for attempt in range(max_retries + 1):
+        start = time.perf_counter()
+        try:
+            client = _get_client()
+            image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
 
-        loop = asyncio.get_running_loop()
-        response = await asyncio.wait_for(
-            loop.run_in_executor(
-                None,
-                lambda: client.models.generate_content(
+            response = await asyncio.wait_for(
+                client.aio.models.generate_content(
                     model=settings.gemini_model,
                     contents=[image_part, _VISION_PROMPT],
                     config=types.GenerateContentConfig(
@@ -69,21 +69,26 @@ async def analyze_image(image_bytes: bytes, mime_type: str) -> dict[str, Any]:
                         max_output_tokens=500,
                     ),
                 ),
-            ),
-            timeout=settings.vision_timeout_ms / 1000,
-        )
+                timeout=settings.vision_timeout_ms / 1000,
+            )
 
-        latency_ms = int((time.perf_counter() - start) * 1000)
-        result = json.loads(response.text) if response.text else {}
-        logger.info(f"Vision analysis: entity={result.get('entity')}, latency={latency_ms}ms")
-        return result
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            result = json.loads(response.text) if response.text else {}
+            logger.info(f"Vision analysis: entity={result.get('entity')}, latency={latency_ms}ms")
+            return result
 
-    except Exception as e:
-        latency_ms = int((time.perf_counter() - start) * 1000)
-        logger.error(f"Vision analysis failed ({latency_ms}ms): {e}")
-        return {
-            "entity": "unknown",
-            "confidence": 0.0,
-            "scene": "unknown",
-            "features": [],
-        }
+        except (ConnectionError, ConnectionResetError, OSError) as e:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            if attempt < max_retries:
+                logger.warning(f"Vision connection error ({latency_ms}ms), retry {attempt + 1}/{max_retries}: {e}")
+                await asyncio.sleep(0.5)
+            else:
+                logger.error(f"Vision analysis failed after {max_retries + 1} attempts ({latency_ms}ms): {e}")
+                return _fallback
+
+        except Exception as e:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.error(f"Vision analysis failed ({latency_ms}ms): {e}")
+            return _fallback
+
+    return _fallback

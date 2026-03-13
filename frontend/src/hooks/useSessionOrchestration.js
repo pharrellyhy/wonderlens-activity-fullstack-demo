@@ -8,6 +8,7 @@ export default function useSessionOrchestration(tier) {
   const [retryCount, setRetryCount] = useState(0);
   const silenceTimerRef = useRef({ start() {}, clear() {} });
   const lastSpokenIndexRef = useRef(-1);
+  const autoAdvancePendingRef = useRef(false);
 
   const {
     messages,
@@ -19,24 +20,35 @@ export default function useSessionOrchestration(tier) {
     error,
     latency,
     activityType,
+    templateType,
     photoUrl,
+    errorExit,
+    pendingAudioRef,
     start,
     sendMessage,
     sendSilence,
+    sendAutoAdvance,
+    sendPhotoCollection,
     reset,
   } = useConversation();
 
   const isActive = sessionState?.status === 'active';
-  const isEnded = sessionState?.status === 'completed' || sessionState?.status === 'exited';
+  const isEnded = sessionState?.status === 'completed' || sessionState?.status === 'exited' || sessionState?.status === 'error';
   const isInputDisabled = isEnded || loading || turnPending;
 
   const handleSpeakingDone = useCallback(() => {
     if (sessionState?.status === 'active') {
-      silenceTimerRef.current.start();
+      // Check if the last message was an auto-advance step
+      if (autoAdvancePendingRef.current) {
+        autoAdvancePendingRef.current = false;
+        sendAutoAdvance();
+      } else {
+        silenceTimerRef.current.start();
+      }
     }
-  }, [sessionState?.status]);
+  }, [sessionState?.status, sendAutoAdvance]);
 
-  const { isSpeaking, speak, stop: stopTTS } = useTTS(handleSpeakingDone);
+  const { isSpeaking, speak, speakFromStream, stop: stopTTS } = useTTS(handleSpeakingDone);
 
   const handleSilence = useCallback(() => {
     if (sessionState?.status === 'active') {
@@ -63,7 +75,7 @@ export default function useSessionOrchestration(tier) {
     sendMessage(speech.transcript);
   }, [isActive, sendMessage, silenceTimer, speech.resultId, speech.transcript]);
 
-  // Auto-speak AI messages (only when a new AI message appears)
+  // Auto-speak AI messages and handle auto-advance
   useEffect(() => {
     if (messages.length === 0) return;
     const lastIndex = messages.length - 1;
@@ -72,8 +84,22 @@ export default function useSessionOrchestration(tier) {
     if (lastIndex <= lastSpokenIndexRef.current) return;
     lastSpokenIndexRef.current = lastIndex;
     silenceTimer.clear();
-    speak(lastMsg.text, tier);
-  }, [messages, silenceTimer, speak, tier]);
+
+    // Set auto-advance flag if this step doesn't need user input
+    if (lastMsg.autoAdvance && !lastMsg.errorExit) {
+      autoAdvancePendingRef.current = true;
+    }
+
+    // Check if there's a pending audio stream from /api/turn-speak
+    const pendingAudio = pendingAudioRef.current;
+    if (pendingAudio) {
+      pendingAudioRef.current = null;
+      speakFromStream(pendingAudio.stream, pendingAudio.sampleRate);
+    } else {
+      // Fallback: use /api/tts (e.g., for the first turn from /api/start)
+      speak(lastMsg.text, tier);
+    }
+  }, [messages, silenceTimer, speak, speakFromStream, tier, pendingAudioRef]);
 
   // Clear silence timer when input is disabled
   useEffect(() => {
@@ -97,6 +123,12 @@ export default function useSessionOrchestration(tier) {
     sendMessage(text);
   }, [isActive, sendMessage, silenceTimer, turnPending]);
 
+  const handlePhotoCollection = useCallback((photoId) => {
+    if (!isActive || turnPending) return;
+    silenceTimer.clear();
+    sendPhotoCollection(photoId);
+  }, [isActive, sendPhotoCollection, silenceTimer, turnPending]);
+
   const toggleMic = useCallback(() => {
     if (turnPending) return;
     if (speech.isListening) {
@@ -114,6 +146,7 @@ export default function useSessionOrchestration(tier) {
     reset();
     setRetryCount(0);
     lastSpokenIndexRef.current = -1;
+    autoAdvancePendingRef.current = false;
   }, [reset, silenceTimer, speech, stopTTS]);
 
   return {
@@ -126,7 +159,9 @@ export default function useSessionOrchestration(tier) {
     error,
     latency,
     activityType,
+    templateType,
     photoUrl,
+    errorExit,
     retryCount,
     isActive,
     isEnded,
@@ -137,6 +172,7 @@ export default function useSessionOrchestration(tier) {
     silenceTimer,
     startSession,
     sendMessage: handleSendMessage,
+    sendPhotoCollection: handlePhotoCollection,
     toggleMic,
     resetSession,
   };

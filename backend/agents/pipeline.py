@@ -1,55 +1,66 @@
-"""Pipeline orchestrator — runs the full agent pipeline with retry and fallback."""
+"""Pipeline orchestrator — initializes sessions with Director + first Script turn."""
 
 import json
 from pathlib import Path
 
 try:
-    from ..config import get_settings
     from ..logger import setup_logger
-    from ..scenarios import build_activity_context, load_scenario
+    from ..scenarios import SCENARIO_CATEGORIES, build_activity_context, load_scenario
     from ..schemas import ActivityRecipe
+    from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from ..schemas.session_state import ConversationTurn, SessionStateModel
+    from ..schemas.turn_response import TurnResponse
+    from ..state_machine import next_step
     from .director import DirectorAgent
-    from .recipe_assembler import RecipeAssembler
-    from .script_agent import ScriptAgent
-    from .visual_agent import VisualAgent
+    from .script_agent import ScriptAgent, ScriptAgentError
 except ImportError:
-    from config import get_settings
     from logger import setup_logger
-    from scenarios import build_activity_context, load_scenario
+    from scenarios import SCENARIO_CATEGORIES, build_activity_context, load_scenario
     from schemas import ActivityRecipe
+    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.session_state import ConversationTurn, SessionStateModel
+    from schemas.turn_response import TurnResponse
+    from state_machine import next_step
 
     from agents.director import DirectorAgent
-    from agents.recipe_assembler import RecipeAssembler
-    from agents.script_agent import ScriptAgent
-    from agents.visual_agent import VisualAgent
+    from agents.script_agent import ScriptAgent, ScriptAgentError
 
 logger = setup_logger(__name__)
 
 _FALLBACKS_DIR = Path(__file__).parent.parent / "fallbacks"
 
+# Default hook lines for when Script Agent fails on the very first turn
+_DEFAULT_HOOKS = {
+    "cat1": "(excited) Wow, look at what you found! This is amazing! I have an idea for a really fun game we can play together!",
+    "cat5": "(curious) Oh, how interesting! Look at all the cool details! I wonder if there are more things like this around here...",
+}
+
 
 def load_fallback(activity_type: str) -> ActivityRecipe:
-    """Load a pre-authored fallback recipe."""
+    """Load a pre-authored fallback recipe (legacy support)."""
     path = _FALLBACKS_DIR / f"{activity_type}.json"
     if not path.exists():
-        # Try mood_changer_dog as ultimate fallback
         path = _FALLBACKS_DIR / "mood_changer_dog.json"
     with open(path) as f:
         data = json.load(f)
     return ActivityRecipe.model_validate(data)
 
 
-async def generate_recipe(context: dict, session_id: str = "") -> ActivityRecipe:
-    """Run the full agent pipeline to generate an ActivityRecipe.
+async def initialize_session(
+    context: dict,
+    session_id: str,
+) -> tuple[SessionStateModel, TurnResponse]:
+    """Initialize a new session: Director → create state → Script (hook turn).
 
-    Flow: Director → Script + Visual → Assembler
-    Retries up to max_retries times, then falls back to a pre-authored recipe.
+    Args:
+        context: Vision result + tier + activity info.
+        session_id: Unique session identifier.
+
+    Returns:
+        Tuple of (session state, first turn response).
     """
-    settings = get_settings()
     director = DirectorAgent()
     script_agent = ScriptAgent()
-    visual_agent = VisualAgent()
-    assembler = RecipeAssembler()
 
     # Enrich context with activity_context string from scenario
     if "activity_context" not in context:
@@ -60,34 +71,110 @@ async def generate_recipe(context: dict, session_id: str = "") -> ActivityRecipe
             "features": context.get("features", []),
         }
         context["activity_context"] = build_activity_context(scenario, vision_result)
-        # Pull key_concepts from scenario if not in context
         if "key_concepts" not in context:
             context["key_concepts"] = scenario.get("key_concepts", [])
         if "ib_theme" not in context:
             context["ib_theme"] = "Who We Are"
 
-    last_error = None
-    for attempt in range(settings.max_retries):
-        try:
-            plan = await director.run(context, session_id)
-            script = await script_agent.run(plan, context, session_id)
-            visuals = visual_agent.run(plan, context)
-            recipe = assembler.merge(script, visuals, plan, context)
+    # Step 1: Director Agent — fills creative slots
+    plan = await director.run(context, session_id)
 
-            logger.info(
-                f"Pipeline: attempt {attempt + 1} succeeded, "
-                f"rounds={len(recipe.voice_script.rounds)}, "
-                f"frames={len(recipe.screen_frames)}"
-            )
-            return recipe
-
-        except Exception as e:
-            last_error = e
-            logger.warning(f"Pipeline attempt {attempt + 1}/{settings.max_retries} failed: {e}")
-
-    # All retries failed → load fallback
+    # Determine template type
     activity_type = context.get("activity_type", "mood_changer_dog")
-    logger.error(
-        f"All {settings.max_retries} pipeline attempts failed, using fallback for {activity_type}. Last error: {last_error}"
+    template_type = plan.template_type
+    tier = context.get("tier", "T0")
+
+    # Ensure creative slots exist
+    if plan.creative_slots is None:
+        category = SCENARIO_CATEGORIES.get(activity_type, "category_1")
+        if category == "category_5":
+            plan.creative_slots = Cat5CreativeSlots(
+                observation_angle="shape",
+                collection_criterion="Find things with different shapes",
+                collection_count=2 if tier == "T0" else 3,
+                mission_metaphor="You are a Shape Detective!",
+                role_title="Shape Specialist",
+                synthesis_type="naming_story",
+                stuck_hint="Try looking around you!",
+                naming_prompt="What shape does this remind you of?",
+            )
+        else:
+            plan.creative_slots = Cat1CreativeSlots(
+                game_mechanic="what_would_it_say",
+                metaphor=f"This {context.get('entity', 'friend')} has so many stories!",
+                role_title="Story Whisperer",
+                round_scenarios=["relaxing at home", "at a big party", "flying through space"],
+                escalation_axis="everyday to fantastical",
+                observation_detail=f"the interesting features of this {context.get('entity', 'friend')}",
+            )
+
+    # Step 2: Create session state
+    state = SessionStateModel(
+        session_id=session_id,
+        tier=tier,
+        template_type=template_type,
+        activity_type=activity_type,
+        current_step="STEP_1_HOOK",
+        current_round=0,
+        total_rounds=plan.round_count,
+        creative_slots=plan.creative_slots,
+        entity_name=context.get("entity", "object"),
+        entity_attributes=context.get("features", []),
+        entity_category=context.get("entity_category", ""),
+        scene=context.get("scene", ""),
+        ib_key_concepts=context.get("key_concepts", []),
+        photo_url=context.get("photo_url", ""),
     )
+
+    # Step 3: Script Agent — generate hook turn
+    try:
+        first_turn = await script_agent.generate_turn(state)
+    except ScriptAgentError:
+        # Retry once
+        logger.warning("Script Agent failed for hook, retrying once")
+        try:
+            first_turn = await script_agent.generate_turn(state)
+        except ScriptAgentError:
+            # Use hardcoded generic hook
+            logger.error("Script Agent failed twice for hook, using default")
+            default_hook = _DEFAULT_HOOKS.get(template_type, _DEFAULT_HOOKS["cat1"])
+            first_turn = TurnResponse(
+                dialogue=default_hook,
+                tone_marker="excited",
+                screen_widget="photo_display",
+                screen_widget_params={"description": f"Photo of {state.entity_name}", "entity": state.entity_name},
+                screen_animation="sparkle_highlight",
+                sfx_cue="wonder_chime",
+            )
+
+    # Record hook in conversation history
+    state.conversation_history.append(
+        ConversationTurn(
+            role="ai",
+            text=first_turn.dialogue,
+            step=state.current_step,
+            round_number=None,
+        )
+    )
+
+    # Advance to next step
+    state.current_step = next_step(state.current_step, state.template_type, state.current_round, state.total_rounds)
+    state.turn_count = 1
+
+    logger.info(
+        f"Session initialized: {session_id}, activity={activity_type}, "
+        f"template={template_type}, rounds={plan.round_count}"
+    )
+
+    return state, first_turn
+
+
+# Legacy function for backward compatibility
+async def generate_recipe(context: dict, session_id: str = "") -> ActivityRecipe:
+    """Legacy pipeline — loads a fallback recipe.
+
+    The new architecture uses initialize_session() instead.
+    """
+    activity_type = context.get("activity_type", "mood_changer_dog")
+    logger.warning(f"generate_recipe() is deprecated, loading fallback for {activity_type}")
     return load_fallback(activity_type)

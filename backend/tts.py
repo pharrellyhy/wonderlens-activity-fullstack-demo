@@ -112,7 +112,7 @@ async def synthesize_speech(text: str, tier: str) -> bytes | None:
 
 
 async def synthesize_speech_stream(text: str, tier: str) -> AsyncIterator[bytes]:
-    """Stream PCM audio chunks from Gemini TTS.
+    """Stream PCM audio chunks from Gemini TTS (sync iteration, for /api/tts).
 
     Yields raw PCM 16-bit mono 24kHz chunks as they arrive from the model,
     enabling the frontend to start playback before the full response is ready.
@@ -164,3 +164,67 @@ async def synthesize_speech_stream(text: str, tier: str) -> AsyncIterator[bytes]
     except Exception as e:
         latency_ms = int((time.perf_counter() - start) * 1000)
         logger.error(f"TTS stream failed ({latency_ms}ms): {e}")
+
+
+async def synthesize_speech_stream_async(text: str, tier: str, max_retries: int = 2) -> AsyncIterator[bytes]:
+    """Fully async TTS streaming using client.aio with retry on connection errors.
+
+    Uses the async streaming API for proper event loop integration.
+    Preferred for server-side pipelining (e.g., combined turn+TTS endpoint).
+
+    Args:
+        text: Text to synthesize.
+        tier: Age tier (T0, T1, T2) for voice selection.
+        max_retries: Number of retry attempts on connection errors.
+
+    Yields:
+        Raw PCM 16-bit audio bytes chunks.
+    """
+    settings = get_settings()
+    voice_name = TIER_VOICES.get(tier, "Kore")
+
+    for attempt in range(max_retries + 1):
+        start = time.perf_counter()
+        total_bytes = 0
+        first_chunk = True
+
+        try:
+            client = _get_client()
+            speech_config = _get_speech_config(tier)
+
+            response_stream = await client.aio.models.generate_content_stream(
+                model=settings.tts_model,
+                contents=text,
+                config=types.GenerateContentConfig(speech_config=speech_config),
+            )
+
+            async for chunk in response_stream:
+                if not chunk.candidates or not chunk.candidates[0].content or not chunk.candidates[0].content.parts:
+                    continue
+                for part in chunk.candidates[0].content.parts:
+                    if hasattr(part, "inline_data") and part.inline_data and part.inline_data.data:
+                        pcm_chunk = part.inline_data.data
+                        total_bytes += len(pcm_chunk)
+                        if first_chunk:
+                            ttfb_ms = int((time.perf_counter() - start) * 1000)
+                            logger.info(f"TTS async: voice={voice_name}, first chunk at {ttfb_ms}ms")
+                            first_chunk = False
+                        yield pcm_chunk
+
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            duration_ms = (total_bytes // 2) * 1000 // SAMPLE_RATE
+            logger.info(f"TTS async done: voice={voice_name}, duration={duration_ms}ms, total_latency={latency_ms}ms")
+            return  # Success — exit retry loop
+
+        except (ConnectionError, ConnectionResetError, OSError) as e:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            if attempt < max_retries:
+                logger.warning(f"TTS async connection error ({latency_ms}ms), retry {attempt + 1}/{max_retries}: {e}")
+                await asyncio.sleep(0.5 * (attempt + 1))
+            else:
+                logger.error(f"TTS async stream failed after {max_retries + 1} attempts ({latency_ms}ms): {e}")
+
+        except Exception as e:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.error(f"TTS async stream failed ({latency_ms}ms): {e}")
+            return  # Non-retryable error

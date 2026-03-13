@@ -1,9 +1,12 @@
 """FastAPI server for the WonderLens Activity Demo."""
 
+import asyncio
+import json
+import re
+import struct
 import time
 import uuid
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
 
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,49 +14,56 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 try:
-    from .agents.pipeline import generate_recipe
+    from .agents.pipeline import initialize_session
+    from .agents.script_agent import ScriptAgent, ScriptAgentError
     from .config import get_settings
     from .db import init_db, log_session, log_turn, update_session_status
     from .logger import setup_logger
     from .scenarios import load_scenario, match_scenario
-    from .schemas import ActivityRecipe
+    from .schemas import ScreenFrame
+    from .schemas.session_state import ConversationTurn, SessionStateModel
+    from .schemas.turn_response import TurnResponse
+    from .state_machine import EARLY_EXIT, get_screen_frame, is_terminal, next_step, step_needs_user_input
     from .stt import transcribe_audio
-    from .tts import synthesize_speech_stream
+    from .tts import SAMPLE_RATE, synthesize_speech_stream_async
     from .vision import analyze_image
 except ImportError:
-    from agents.pipeline import generate_recipe
+    from agents.pipeline import initialize_session
+    from agents.script_agent import ScriptAgent, ScriptAgentError
     from config import get_settings
     from db import init_db, log_session, log_turn, update_session_status
     from logger import setup_logger
     from scenarios import load_scenario, match_scenario
-    from schemas import ActivityRecipe
+    from schemas import ScreenFrame
+    from schemas.session_state import ConversationTurn, SessionStateModel
+    from schemas.turn_response import TurnResponse
+    from state_machine import EARLY_EXIT, ENDED, get_screen_frame, is_terminal, next_step, step_needs_user_input
     from stt import transcribe_audio
-    from tts import synthesize_speech_stream
+    from tts import SAMPLE_RATE, synthesize_speech_stream, synthesize_speech_stream_async
     from vision import analyze_image
 
 logger = setup_logger(__name__)
 
 
-@dataclass
-class SessionState:
-    session_id: str
-    recipe: ActivityRecipe
-    tier: str
-    activity_type: str
-    current_round: int = 0
-    consecutive_silence: int = 0
-    status: str = "active"
-    turn_count: int = 0
-    photo_url: str = ""
-    vision_result: dict = field(default_factory=dict)
+_sessions: dict[str, SessionStateModel] = {}
 
 
-_sessions: dict[str, SessionState] = {}
+def _suppress_genai_close_error(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+    """Suppress the google-genai SDK's BaseApiClient.aclose() AttributeError.
+
+    The SDK lazily initializes _async_httpx_client but its finalizer always
+    tries to close it, causing a harmless AttributeError on cleanup.
+    """
+    exc = context.get("exception")
+    if isinstance(exc, AttributeError) and "_async_httpx_client" in str(exc):
+        return
+    loop.default_exception_handler(context)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
+    asyncio.get_event_loop().set_exception_handler(_suppress_genai_close_error)
     await init_db(settings.db_path)
     logger.info("WonderLens server started")
     yield
@@ -67,6 +77,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Sample-Rate"],
 )
 
 
@@ -77,6 +88,7 @@ class TurnRequest(BaseModel):
     session_id: str
     text: str = ""
     is_silent: bool = False
+    photo_id: str | None = None
 
 
 class TTSRequest(BaseModel):
@@ -106,62 +118,75 @@ async def start_session(
         image_bytes = await photo.read()
         mime_type = photo.content_type or "image/jpeg"
 
-        # 2. Vision analysis
-        vision_result = await analyze_image(image_bytes, mime_type)
-
-        # 3. Match scenario (use filename as fallback hint when vision fails)
-        activity_type = match_scenario(
-            vision_result.get("entity", "unknown"),
-            vision_result.get("features", []),
-            filename=photo.filename or "",
-        )
+        # 2. Match scenario from filename (instant — no LLM needed)
+        filename = photo.filename or ""
+        activity_type = match_scenario("unknown", [], filename=filename)
         scenario = load_scenario(activity_type)
 
-        # 4. Build pipeline context
+        # 3. Build pipeline context with filename-based entity for Director
+        filename_entity = _entity_from_filename(filename)
         context = {
-            "entity": vision_result.get("entity", "unknown"),
+            "entity": filename_entity,
+            "entity_category": "",
             "tier": tier,
             "activity_type": activity_type,
-            "scene": vision_result.get("scene", ""),
-            "features": vision_result.get("features", []),
+            "scene": "",
+            "features": [],
             "key_concepts": scenario.get("key_concepts", []),
             "ib_theme": "Who We Are",
         }
 
-        # 5. Run pipeline
-        recipe = await generate_recipe(context, session_id)
+        # 4. Run Vision + Director in parallel
+        vision_task = asyncio.create_task(analyze_image(image_bytes, mime_type))
+        session_task = asyncio.create_task(initialize_session(context, session_id))
+
+        # Wait for both — Director+Script don't need vision results
+        vision_result, (state, first_turn) = await asyncio.gather(vision_task, session_task)
+
+        # 5. Enrich session state with vision results (better entity info for future turns)
+        if vision_result.get("entity") and vision_result["entity"] != "unknown":
+            state.entity_name = vision_result["entity"]
+        if vision_result.get("features"):
+            state.entity_attributes = vision_result["features"]
+        if vision_result.get("category"):
+            state.entity_category = vision_result["category"]
+        if vision_result.get("scene"):
+            state.scene = vision_result["scene"]
 
         # 6. Log session to DB
         await log_session(settings.db_path, session_id, tier, activity_type)
 
-        # 7. Build first turn from recipe
-        first_screen_frame = recipe.screen_frames[0].model_dump() if recipe.screen_frames else None
-        first_turn = {
-            "dialogue": recipe.voice_script.hook_line,
-            "screen_frame": first_screen_frame,
-            "audio": {"sfx": "wonder_chime"},
+        # 7. Store session state
+        _sessions[session_id] = state
+
+        # 8. Build first turn response
+        first_turn_data = {
+            "dialogue": first_turn.dialogue,
+            "tone_marker": first_turn.tone_marker,
+            "screen_frame": {
+                "widget": first_turn.screen_widget,
+                "widget_params": first_turn.screen_widget_params,
+                "animation": first_turn.screen_animation,
+                "trigger": "on_enter",
+            },
+            "audio": {"sfx": first_turn.sfx_cue or "wonder_chime"},
             "response_type": "hook",
         }
 
-        # 8. Create session state
-        state = SessionState(
-            session_id=session_id,
-            recipe=recipe,
-            tier=tier,
-            activity_type=activity_type,
-            vision_result=vision_result,
-        )
-        _sessions[session_id] = state
-
         latency_ms = int((time.perf_counter() - start_time) * 1000)
-        logger.info(f"Session started: {session_id}, activity={activity_type}, tier={tier}, latency={latency_ms}ms")
+        logger.info(
+            f"Session started: {session_id}, activity={activity_type}, "
+            f"template={state.template_type}, tier={tier}, latency={latency_ms}ms"
+        )
 
         return JSONResponse(
             {
                 "session_id": session_id,
                 "vision_result": vision_result,
-                "recipe": recipe.model_dump(),
-                "first_turn": first_turn,
+                "first_turn": first_turn_data,
+                "activity_type": activity_type,
+                "template_type": state.template_type,
+                "session_state": _session_state_dict(state),
                 "status": "ok",
                 "latency_ms": latency_ms,
             }
@@ -194,9 +219,7 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
             status_code=400,
         )
 
-    recipe = state.recipe
-    rounds = recipe.voice_script.rounds
-    current_round = state.current_round
+    script_agent = ScriptAgent()
 
     # Handle consecutive silence → graceful exit
     if req.is_silent:
@@ -205,11 +228,13 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
         state.consecutive_silence = 0
 
     if state.consecutive_silence >= 2:
-        # Graceful exit
+        state.current_step = EARLY_EXIT
+        turn_response = await _generate_turn_with_retry(script_agent, state)
         state.status = "exited"
-        dialogue = "That was so fun! Your friend will be here whenever you want to play again. See you next time!"
-        screen_frame = recipe.celebration_frame.model_dump() if recipe.celebration_frame else None
-        response_type = "graceful_exit"
+
+        screen_frame = get_screen_frame(EARLY_EXIT, state.template_type, state.creative_slots, _state_context(state))
+
+        state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
 
         await update_session_status(settings.db_path, req.session_id, "exited", "consecutive_silence", state.turn_count)
         await log_turn(
@@ -217,8 +242,8 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
             req.session_id,
             state.turn_count,
             "ai",
-            dialogue,
-            response_type,
+            turn_response.dialogue,
+            "graceful_exit",
             is_silent=req.is_silent,
             consecutive_silence=state.consecutive_silence,
         )
@@ -226,78 +251,346 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
         latency_ms = int((time.perf_counter() - start_time) * 1000)
         return JSONResponse(
             {
+                "turn": _build_turn_response(turn_response, screen_frame, "graceful_exit"),
+                "session_state": _session_state_dict(state),
+                "latency_ms": latency_ms,
+            }
+        )
+
+    # Record child input in conversation history
+    if req.text or req.is_silent:
+        child_text = req.text if req.text else "..."
+        state.conversation_history.append(
+            ConversationTurn(
+                role="child",
+                text=child_text,
+                step=state.current_step,
+                round_number=state.current_round if state.current_round > 0 else None,
+            )
+        )
+
+    # For Cat 5 collection: record photo_id
+    if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
+        state.collected_photos.append(req.photo_id)
+
+    # Advance the state machine and keep round display/prompt state aligned with the active step.
+    state.current_step = next_step(state.current_step, state.template_type, state.current_round, state.total_rounds)
+    _sync_round_from_step(state)
+
+    # Check if session ended
+    if is_terminal(state.current_step):
+        state.status = "completed"
+        await update_session_status(settings.db_path, req.session_id, "completed", "all_steps_done", state.turn_count)
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        return JSONResponse(
+            {
                 "turn": {
-                    "dialogue": dialogue,
-                    "screen_frame": screen_frame,
-                    "audio": {"sfx": "badge_awarded"},
-                    "response_type": response_type,
+                    "dialogue": "",
+                    "response_type": "ended",
+                    "screen_frame": None,
+                    "audio": {},
                 },
                 "session_state": _session_state_dict(state),
                 "latency_ms": latency_ms,
             }
         )
 
-    # Normal turn processing
-    if current_round >= len(rounds):
-        # All rounds complete → closing
-        state.status = "completed"
-        dialogue = recipe.voice_script.closing_speech
-        screen_frame = recipe.celebration_frame.model_dump() if recipe.celebration_frame else None
-        response_type = "closing"
+    # Generate AI response for current step
+    turn_response = await _generate_turn_with_retry(script_agent, state)
 
-        await update_session_status(settings.db_path, req.session_id, "completed", "all_rounds_done", state.turn_count)
-    else:
-        rnd = rounds[current_round]
+    # Get screen frame from state machine
+    screen_frame = get_screen_frame(
+        state.current_step, state.template_type, state.creative_slots, _state_context(state)
+    )
 
-        # Match response to branching path
-        if req.is_silent:
-            dialogue = rnd.on_silence
-            response_type = "on_silence"
-        elif _matches_correct(req.text, rnd.correct_responses):
-            dialogue = rnd.on_correct
-            response_type = "on_correct"
-            state.current_round += 1
-        else:
-            dialogue = rnd.on_incorrect
-            response_type = "on_incorrect"
-            state.current_round += 1  # Advance even on incorrect in demo
+    error_exit = state.status == "error"
+    response_type = "error" if error_exit else _get_response_type(state.current_step)
 
-        # Get corresponding screen frame (offset by 1 for the initial photo frame)
-        frame_idx = min(state.current_round, len(recipe.screen_frames) - 1)
-        screen_frame = recipe.screen_frames[frame_idx].model_dump() if recipe.screen_frames else None
+    # Record AI response in conversation history
+    state.conversation_history.append(
+        ConversationTurn(
+            role="ai",
+            text=turn_response.dialogue,
+            step=state.current_step,
+            round_number=state.current_round if state.current_round > 0 else None,
+        )
+    )
 
-        # Check if this was the last round
-        if state.current_round >= len(rounds):
-            # Next turn will be closing
-            pass
+    # Trim history to last 6 entries for prompt management
+    if len(state.conversation_history) > 6:
+        state.conversation_history = state.conversation_history[-6:]
 
     state.turn_count += 1
+
+    if _is_closing_step(state.current_step) and not error_exit:
+        state.status = "completed"
+        await update_session_status(
+            settings.db_path, req.session_id, "completed", "closing_delivered", state.turn_count
+        )
+
+    # Determine if this is an auto-advance step (frontend should auto-send next turn)
+    auto_advance = _should_auto_advance(state, error_exit)
 
     await log_turn(
         settings.db_path,
         req.session_id,
         state.turn_count,
         "ai",
-        dialogue,
+        turn_response.dialogue,
         response_type,
         is_silent=req.is_silent,
         consecutive_silence=state.consecutive_silence,
     )
 
     latency_ms = int((time.perf_counter() - start_time) * 1000)
+    turn_data = _build_turn_response(turn_response, screen_frame, response_type, error_exit)
+    turn_data["auto_advance"] = auto_advance
+
     return JSONResponse(
         {
-            "turn": {
-                "dialogue": dialogue,
-                "screen_frame": screen_frame,
-                "audio": {
-                    "sfx": rounds[current_round].sfx_cue if current_round < len(rounds) else "celebration_fanfare"
-                },
-                "response_type": response_type,
-            },
+            "turn": turn_data,
             "session_state": _session_state_dict(state),
             "latency_ms": latency_ms,
         }
+    )
+
+
+@app.post("/api/turn-speak")
+async def turn_and_speak(req: TurnRequest) -> Response:
+    """Combined turn + TTS endpoint.
+
+    Streams Script Agent output, starts TTS as soon as dialogue is extracted,
+    and returns a binary response: [4-byte JSON length][JSON][PCM audio chunks].
+
+    This eliminates the round-trip between /api/turn and /api/tts, and allows
+    TTS generation to overlap with Script Agent completion.
+    """
+    start_time = time.perf_counter()
+    settings = get_settings()
+
+    state = _sessions.get(req.session_id)
+    if not state:
+        return JSONResponse({"error": "Session not found"}, status_code=404)
+
+    if state.status != "active":
+        return JSONResponse(
+            {"error": f"Session is {state.status}", "session_state": _session_state_dict(state)},
+            status_code=400,
+        )
+
+    async def _stream() -> bytes:  # type: ignore[return]
+        script_agent = ScriptAgent()
+
+        # --- State management (same as /api/turn) ---
+
+        if req.is_silent:
+            state.consecutive_silence += 1
+        else:
+            state.consecutive_silence = 0
+
+        # Handle consecutive silence → graceful exit
+        if state.consecutive_silence >= 2:
+            state.current_step = EARLY_EXIT
+            turn_response = await _generate_turn_with_retry(script_agent, state)
+            state.status = "exited"
+            screen_frame = get_screen_frame(
+                EARLY_EXIT, state.template_type, state.creative_slots, _state_context(state)
+            )
+            state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
+            await update_session_status(
+                settings.db_path, req.session_id, "exited", "consecutive_silence", state.turn_count
+            )
+            await log_turn(
+                settings.db_path,
+                req.session_id,
+                state.turn_count,
+                "ai",
+                turn_response.dialogue,
+                "graceful_exit",
+                is_silent=req.is_silent,
+                consecutive_silence=state.consecutive_silence,
+            )
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            turn_data = _build_turn_response(turn_response, screen_frame, "graceful_exit")
+            response_json = json.dumps(
+                {"turn": turn_data, "session_state": _session_state_dict(state), "latency_ms": latency_ms}
+            ).encode()
+            yield struct.pack(">I", len(response_json))
+            yield response_json
+            # Stream TTS audio
+            async for chunk in synthesize_speech_stream_async(turn_response.dialogue, state.tier):
+                yield chunk
+            return
+
+        # Record child input
+        if req.text or req.is_silent:
+            child_text = req.text if req.text else "..."
+            state.conversation_history.append(
+                ConversationTurn(
+                    role="child",
+                    text=child_text,
+                    step=state.current_step,
+                    round_number=state.current_round if state.current_round > 0 else None,
+                )
+            )
+
+        if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
+            state.collected_photos.append(req.photo_id)
+
+        state.current_step = next_step(state.current_step, state.template_type, state.current_round, state.total_rounds)
+        _sync_round_from_step(state)
+
+        # Terminal check
+        if is_terminal(state.current_step):
+            state.status = "completed"
+            await update_session_status(
+                settings.db_path, req.session_id, "completed", "all_steps_done", state.turn_count
+            )
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            response_json = json.dumps(
+                {
+                    "turn": {"dialogue": "", "response_type": "ended", "screen_frame": None, "audio": {}},
+                    "session_state": _session_state_dict(state),
+                    "latency_ms": latency_ms,
+                }
+            ).encode()
+            yield struct.pack(">I", len(response_json))
+            yield response_json
+            return
+
+        # --- Streaming Script Agent + pipelined TTS ---
+
+        dialogue_queue: asyncio.Queue[str] = asyncio.Queue(maxsize=1)
+        tts_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+
+        async def on_dialogue(text: str) -> None:
+            await dialogue_queue.put(text)
+
+        async def tts_producer(dialogue_text: str, audio_queue: asyncio.Queue[bytes | None]) -> None:
+            """Produce TTS audio chunks into the queue."""
+            try:
+                async for chunk in synthesize_speech_stream_async(dialogue_text, state.tier):
+                    await audio_queue.put(chunk)
+            except Exception as e:
+                logger.error(f"TTS producer failed: {e}")
+            await audio_queue.put(None)  # sentinel
+
+        # Start Script Agent streaming (extracts dialogue early via callback)
+        script_task = asyncio.create_task(script_agent.generate_turn_streaming(state, on_dialogue=on_dialogue))
+
+        # Wait for early dialogue extraction OR script completion
+        tts_task = None
+        tts_text = None
+        try:
+            dialogue_text = await asyncio.wait_for(dialogue_queue.get(), timeout=30)
+            # Start TTS immediately — overlaps with remaining Script Agent generation
+            tts_text = dialogue_text
+            tts_task = asyncio.create_task(tts_producer(dialogue_text, tts_queue))
+        except (asyncio.TimeoutError, Exception):
+            pass
+
+        # Wait for Script Agent to finish
+        try:
+            turn_response = await script_task
+        except ScriptAgentError:
+            logger.warning(f"Streaming Script Agent failed for {state.current_step}, retrying non-streaming")
+            try:
+                turn_response = await script_agent.generate_turn(state)
+            except ScriptAgentError:
+                logger.error(f"Script Agent retry failed for {state.current_step}, using fallback")
+                state.status = "error"
+                turn_response = TurnResponse(
+                    dialogue="(gentle) That was so much fun! Let's play again next time. See you soon!",
+                    tone_marker="gentle",
+                    screen_widget="badge_award",
+                    screen_widget_params={"title": "Great job!", "concepts": [], "entity": state.entity_name},
+                    screen_animation="badge_reveal",
+                    sfx_cue="badge_awarded",
+                )
+
+        # If early dialogue differs from the final turn, restart TTS with the canonical text.
+        if tts_task is not None and tts_text != turn_response.dialogue:
+            tts_task.cancel()
+            try:
+                await tts_task
+            except asyncio.CancelledError:
+                pass
+            tts_queue = asyncio.Queue()
+            tts_task = None
+
+        # If TTS wasn't started yet, or we canceled a stale early stream, start it now.
+        if tts_task is None:
+            tts_text = turn_response.dialogue
+            tts_task = asyncio.create_task(tts_producer(turn_response.dialogue, tts_queue))
+
+        # --- Post-processing ---
+
+        screen_frame = get_screen_frame(
+            state.current_step, state.template_type, state.creative_slots, _state_context(state)
+        )
+        error_exit = state.status == "error"
+        response_type = "error" if error_exit else _get_response_type(state.current_step)
+
+        state.conversation_history.append(
+            ConversationTurn(
+                role="ai",
+                text=turn_response.dialogue,
+                step=state.current_step,
+                round_number=state.current_round if state.current_round > 0 else None,
+            )
+        )
+        if len(state.conversation_history) > 6:
+            state.conversation_history = state.conversation_history[-6:]
+
+        state.turn_count += 1
+
+        if _is_closing_step(state.current_step) and not error_exit:
+            state.status = "completed"
+            await update_session_status(
+                settings.db_path, req.session_id, "completed", "closing_delivered", state.turn_count
+            )
+
+        auto_advance = _should_auto_advance(state, error_exit)
+
+        await log_turn(
+            settings.db_path,
+            req.session_id,
+            state.turn_count,
+            "ai",
+            turn_response.dialogue,
+            response_type,
+            is_silent=req.is_silent,
+            consecutive_silence=state.consecutive_silence,
+        )
+
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        turn_data = _build_turn_response(turn_response, screen_frame, response_type, error_exit)
+        turn_data["auto_advance"] = auto_advance
+
+        # Yield JSON header (4-byte length prefix + JSON)
+        response_json = json.dumps(
+            {
+                "turn": turn_data,
+                "session_state": _session_state_dict(state),
+                "latency_ms": latency_ms,
+            }
+        ).encode()
+        yield struct.pack(">I", len(response_json))
+        yield response_json
+
+        # Yield TTS audio chunks (already being produced in background)
+        while True:
+            chunk = await tts_queue.get()
+            if chunk is None:
+                break
+            yield chunk
+
+        await tts_task
+
+    return StreamingResponse(
+        _stream(),
+        media_type="application/octet-stream",
+        headers={"X-Sample-Rate": str(SAMPLE_RATE)},
     )
 
 
@@ -314,7 +607,7 @@ async def speech_to_text(audio: UploadFile = File(...)) -> JSONResponse:
 @app.post("/api/tts")
 async def text_to_speech(req: TTSRequest) -> Response:
     return StreamingResponse(
-        synthesize_speech_stream(req.text, req.tier),
+        synthesize_speech_stream_async(req.text, req.tier),
         media_type="audio/pcm",
         headers={"X-Sample-Rate": str(24000)},
     )
@@ -323,24 +616,117 @@ async def text_to_speech(req: TTSRequest) -> Response:
 # --- Helpers ---
 
 
-def _matches_correct(text: str, correct_responses: list[str]) -> bool:
-    """Check if the child's text matches any correct response (case-insensitive substring)."""
-    if not correct_responses:
-        return True  # Open-ended questions accept everything
-    text_lower = text.lower().strip()
-    if not text_lower:
-        return False
-    for response in correct_responses:
-        if response.lower() in text_lower or text_lower in response.lower():
-            return True
-    return False
+async def _generate_turn_with_retry(script_agent: ScriptAgent, state: SessionStateModel) -> TurnResponse:
+    """Generate a turn response with one retry on failure, then graceful exit."""
+    try:
+        return await script_agent.generate_turn(state)
+    except ScriptAgentError:
+        logger.warning(f"Script Agent failed for step {state.current_step}, retrying")
+        try:
+            return await script_agent.generate_turn(state)
+        except ScriptAgentError:
+            logger.error(f"Script Agent failed twice for step {state.current_step}, using fallback")
+            state.status = "error"
+            return TurnResponse(
+                dialogue="(gentle) That was so much fun! Let's play again next time. See you soon!",
+                tone_marker="gentle",
+                screen_widget="badge_award",
+                screen_widget_params={"title": "Great job!", "concepts": [], "entity": state.entity_name},
+                screen_animation="badge_reveal",
+                sfx_cue="badge_awarded",
+            )
 
 
-def _session_state_dict(state: SessionState) -> dict:
+def _build_turn_response(
+    turn: TurnResponse,
+    screen_frame: ScreenFrame,
+    response_type: str,
+    error_exit: bool = False,
+) -> dict:
+    """Build the turn response dict for the API."""
+    return {
+        "dialogue": turn.dialogue,
+        "tone_marker": turn.tone_marker,
+        "screen_frame": screen_frame.model_dump(),
+        "audio": {"sfx": turn.sfx_cue},
+        "response_type": response_type,
+        "error_exit": error_exit,
+    }
+
+
+def _get_response_type(step: str) -> str:
+    """Map a step to a response type string."""
+    if step == "STEP_1_HOOK":
+        return "hook"
+    if step in ("STEP_2_RULES", "STEP_2_MISSION"):
+        return "rules"
+    if step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
+        return "round"
+    if step in ("STEP_4_CELEBRATE", "STEP_5_CELEBRATE"):
+        return "celebration"
+    if step in ("STEP_4_SYNTHESIS",):
+        return "synthesis"
+    if step in ("STEP_5_CLOSING", "STEP_6_CLOSING"):
+        return "closing"
+    if step == EARLY_EXIT:
+        return "graceful_exit"
+    return "response"
+
+
+def _is_closing_step(step: str) -> bool:
+    """Return True when the active step is the final closing response."""
+    return step in {"STEP_5_CLOSING", "STEP_6_CLOSING"}
+
+
+def _should_auto_advance(state: SessionStateModel, error_exit: bool = False) -> bool:
+    """Auto-advance only active non-closing presentation steps."""
+    return (
+        state.status == "active"
+        and not error_exit
+        and not step_needs_user_input(state.current_step)
+        and not _is_closing_step(state.current_step)
+    )
+
+
+def _state_context(state: SessionStateModel) -> dict:
+    """Build a context dict from session state for screen frame generation."""
+    return {
+        "entity_name": state.entity_name,
+        "entity": state.entity_name,
+        "ib_key_concepts": state.ib_key_concepts,
+        "key_concepts": state.ib_key_concepts,
+    }
+
+
+def _sync_round_from_step(state: SessionStateModel) -> None:
+    """Keep current_round aligned with the active round/collect step."""
+    if state.current_step.startswith("STEP_3_ROUND_") or state.current_step.startswith("STEP_3_COLLECT_"):
+        state.current_round = _step_round_number(state.current_step)
+
+
+def _step_round_number(step: str) -> int:
+    """Extract a 1-based round number from a round/collect step."""
+    return int(step.rsplit("_", maxsplit=1)[-1])
+
+
+def _entity_from_filename(filename: str) -> str:
+    """Extract a best-guess entity name from the photo filename."""
+    if not filename:
+        return "object"
+    stem = filename.rsplit(".", 1)[0] if "." in filename else filename
+    name = re.sub(r"[\d_-]+", " ", stem).strip()
+    return name if name else "object"
+
+
+def _session_state_dict(state: SessionStateModel) -> dict:
     return {
         "status": state.status,
+        "current_step": state.current_step,
         "current_round": state.current_round,
-        "total_rounds": len(state.recipe.voice_script.rounds),
+        "total_rounds": state.total_rounds,
+        "collected_photos": state.collected_photos,
         "consecutive_silence": state.consecutive_silence,
         "turn_count": state.turn_count,
+        "template_type": state.template_type,
+        "auto_advance": _should_auto_advance(state),
     }

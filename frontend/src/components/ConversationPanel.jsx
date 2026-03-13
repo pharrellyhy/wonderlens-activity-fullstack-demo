@@ -12,6 +12,7 @@ export default function ConversationPanel({
   sttMode,
   loading,
   turnPending,
+  errorExit,
 }) {
   const scrollRef = useRef(null);
   const [sttBannerDismissed, setSttBannerDismissed] = useState(false);
@@ -62,7 +63,19 @@ export default function ConversationPanel({
           </div>
         ) : (
           <>
-            {messages.map((msg, i) => <ChatBubble key={i} message={msg} />)}
+            {messages.map((msg, i) => (
+              <div key={i} className={msg.errorExit ? 'border-l-2 border-amber-300 pl-2' : ''}>
+                <ChatBubble message={msg} />
+              </div>
+            ))}
+
+            {/* Error exit warning */}
+            {errorExit && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50/80 rounded-xl text-xs text-amber-600">
+                <span className="w-4 h-4 flex items-center justify-center rounded-full bg-amber-200 text-amber-700 text-[10px] font-bold flex-shrink-0">!</span>
+                <span>Session ended due to a connection issue</span>
+              </div>
+            )}
 
             {/* Typing indicator */}
             {isWaiting && (

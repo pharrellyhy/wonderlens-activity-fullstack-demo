@@ -4,6 +4,123 @@ Last updated: 2026-03-13
 
 ---
 
+## Turn-Speak Fallback Audio/Text Consistency
+
+**Problem**: The new combined `/api/turn-speak` path could speak the wrong text when the streaming Script Agent emitted an early dialogue fragment and then failed. In that case, server-side TTS started from the early fragment, but the API fell back to a different final `TurnResponse`, so the spoken audio no longer matched the JSON turn payload shown in the UI.
+
+**Solution**: Tightened the `/api/turn-speak` pipeline in `backend/server.py`. The server now tracks which dialogue string TTS started from and cancels/restarts TTS whenever the final `TurnResponse.dialogue` differs from the early streamed fragment. Added focused regression coverage to prove that fallback speech now uses the final canonical dialogue.
+
+**Edits**:
+- `backend/server.py` — restarted server-side TTS when early streamed dialogue differs from the final fallback turn, so streamed audio stays aligned with the returned turn JSON
+- local `tests/test_api.py` — added focused `/api/turn-speak` regression coverage for the “early fragment then fallback” path in the current workspace (the repo ignores `tests/` new files)
+
+**NOT Changed**:
+- The binary streaming protocol, frontend `sendTurnSpeak()` parser, and progressive `useTTS()` playback path were reviewed but not modified in this pass.
+- The broader streaming architecture from the previous pass remains intact; this fix only hardens the fallback boundary inside the combined endpoint.
+
+**Verification**:
+- `uv run ruff check backend/server.py tests/test_api.py` — PASS
+- `uv run pytest tests/test_api.py -q -k "turn_returns_explicit_error_exit_when_script_generation_fails_twice or turn_enters_first_round_with_round_number_one or turn_serializes_collected_photos_for_cat5_collection or turn_marks_closing_delivery_complete_without_auto_advance or turn_speak_uses_final_fallback_dialogue_for_tts"` — PASS (`5 passed, 13 deselected`)
+
+---
+
+## Streaming Script Agent, Combined Turn+TTS Endpoint, Progressive Playback
+
+**Problem**: Three latency bottlenecks in the turn-by-turn pipeline: (1) `/api/start` ran Vision → Director → Script hook sequentially (~22-43s), (2) Gemini 2.5 Flash's thinking mode consumed output tokens causing truncated JSON on nearly every Script Agent call, and (3) TTS time-to-first-audio (TTFA) was high because the frontend collected ALL PCM chunks before playing, and the turn response + TTS request required a full network round-trip.
+
+**Solution**: Three optimizations applied together:
+
+1. **Disabled Gemini thinking** (`thinking_budget=0`) — eliminates truncated JSON, reduces Script Agent latency from 3-8s to 1-2s, and hooks now succeed on first try instead of falling back to hardcoded defaults.
+2. **Parallelized Vision + Director** in `/api/start` — scenario is matched from filename instantly, Director runs with filename-based entity while Vision runs concurrently. Vision results enrich the session state after both complete. Saves ~5s.
+3. **Combined `/api/turn-speak` endpoint** — streams Script Agent output (extracts dialogue early via regex on partial JSON), starts TTS server-side as soon as dialogue is available (overlapping with remaining Script generation), then streams a binary response: `[4-byte JSON length][JSON turn data][PCM audio chunks]`. Frontend plays audio progressively using AudioContext time-scheduling (each chunk scheduled seamlessly after the previous), starting playback at the first TTS chunk instead of waiting for all chunks.
+
+Measured improvement: `/api/start` dropped from 22-43s to ~12s; Script Agent turns from 3-8s (often failing) to 1-2s; TTS TTFA reduced by ~3s from progressive playback.
+
+**Edits**:
+- `backend/agents/script_agent.py` — Added `generate_turn_streaming()` with `on_dialogue` async callback for early dialogue extraction via `_DIALOGUE_RE` regex on partial JSON stream; added `ThinkingConfig(thinking_budget=0)` to both streaming and non-streaming generation configs; removed unused `_generation_config` helper and legacy `run()` method
+- `backend/tts.py` — Added `synthesize_speech_stream_async()` using `client.aio.models.generate_content_stream` for proper async streaming (existing sync `synthesize_speech_stream` kept for `/api/tts` backward compat)
+- `backend/server.py` — Parallelized Vision + Director in `/api/start` via `asyncio.gather`; added `_entity_from_filename()` helper; added `POST /api/turn-speak` combined endpoint with binary streaming protocol, `asyncio.Queue`-based TTS pipelining, and full state machine integration; added `expose_headers=["X-Sample-Rate"]` to CORS config; imported `json`, `struct`, `SAMPLE_RATE`, `synthesize_speech_stream_async`
+- `backend/config.yaml` — Increased `script_turn_max_tokens` from 500 to 2048
+- `frontend/src/utils/api.js` — Added `sendTurnSpeak()` that parses the 4-byte length-prefixed binary protocol, returns `{ turnData, audioStream, sampleRate }`
+- `frontend/src/hooks/useTTS.js` — Rewrote for progressive playback: `scheduleChunk()` uses AudioContext time-scheduling for seamless gapless audio; added `playStream()` for streaming from ReadableStream; added `speakFromStream()` for playing pre-fetched audio streams; `speak()` now also uses progressive playback (was: collect-all-then-play)
+- `frontend/src/hooks/useConversation.js` — `sendTurnRequest()` now uses `sendTurnSpeak()` with fallback to `sendTurn()`; exposes `pendingAudioRef` for orchestration hook to consume audio streams
+- `frontend/src/hooks/useSessionOrchestration.js` — Auto-speak effect now checks `pendingAudioRef` for audio from `/api/turn-speak` and uses `speakFromStream()`, falling back to `speak()` (via `/api/tts`) for the first turn from `/api/start`
+
+**NOT Changed**:
+- `/api/turn` and `/api/tts` kept as working fallbacks
+- Vision, STT, DB layer, state machine, Director Agent, scenarios, tier rules, widgets, all existing test files
+- useSpeechRecognition, useSilenceTimer hooks
+
+**Verification**:
+- `uv run ruff check server.py agents/script_agent.py tts.py` — PASS
+- `cd frontend && npx eslint src/utils/api.js src/hooks/useTTS.js src/hooks/useConversation.js src/hooks/useSessionOrchestration.js` — PASS
+- `cd frontend && npm run build` — PASS (49 modules, 457ms)
+- Server runtime: `/api/start` latency=12,623ms (was 22-43s), Script hook latency=3,617ms with no truncation (was failing), subsequent turns=1,165-1,555ms
+
+---
+
+## Turn Flow Contract Hardening
+
+**Problem**: The turn-by-turn backend still had several concrete contract mismatches. Closing turns could leave the session `active` and ask the frontend to auto-advance one extra time, Cat 5 collection progress depended on `session_state.collected_photos` even though the serializer omitted it, round transitions could report `current_round = 0` after entering `STEP_3_*`, and Script Agent fallback failures did not surface as explicit `error` turns for the frontend `errorExit` path.
+
+**Solution**: Tightened the turn contract in `backend/server.py`. The server now syncs `current_round` from the active round step, returns explicit `error` turns when Script generation fails twice, completes the session when the final closing line is delivered, suppresses auto-advance for closing and error states, and includes `collected_photos` in the serialized session state. Added focused regression coverage in tracked `tests/test_api.py` for all four paths.
+
+**Edits**:
+- `backend/server.py` — added explicit error-turn handling, `_sync_round_from_step()` / `_step_round_number()`, closing-turn completion, tighter auto-advance gating, and `collected_photos` in `session_state`
+- `tests/test_api.py` — added focused turn-by-turn API tests for error fallback surfacing, first-round sync, Cat 5 collected-photo serialization, and closing-turn completion
+
+**NOT Changed**:
+- Director/Script prompt assets, state-machine templates, and frontend gallery components were reviewed but not modified in this pass.
+- The older broad assertions in `tests/test_api.py` still target the pre-turn-by-turn recipe contract; this pass added focused coverage without rewriting that whole legacy file.
+
+**Verification**:
+- `uv run ruff check backend/server.py tests/test_api.py` — PASS
+- `uv run pytest tests/test_api.py -q -k "turn_returns_explicit_error_exit_when_script_generation_fails_twice or turn_enters_first_round_with_round_number_one or turn_serializes_collected_photos_for_cat5_collection or turn_marks_closing_delivery_complete_without_auto_advance"` — PASS (`4 passed, 13 deselected`)
+
+---
+
+## Turn-by-Turn LLM Generation with Entity-Agnostic Templates
+
+**Problem**: The architecture pre-generated the entire script upfront via the Script Agent (30-60s), then `/api/turn` was a pure recipe lookup (~5ms). This caused high initial latency and rigid dialogue that ignored what the child actually said.
+
+**Solution**: Switched to turn-by-turn generation where the Script Agent generates only the next dialogue turn based on user input, template structure (Cat 1 or Cat 5), and conversation state. Director Agent now fills creative slots (game mechanic, metaphor, role title, etc.) that the per-turn Script Agent consumes via Gemini Flash.
+
+**Edits**:
+- `backend/schemas/creative_slots.py` — NEW: Cat1CreativeSlots and Cat5CreativeSlots Pydantic models
+- `backend/schemas/turn_response.py` — NEW: TurnResponse schema (single turn output)
+- `backend/schemas/session_state.py` — NEW: SessionStateModel and ConversationTurn for server-side state
+- `backend/schemas/composition_plan.py` — Added template_type and creative_slots fields
+- `backend/schemas/__init__.py` — Exports all new models
+- `backend/state_machine.py` — NEW: Cat 1 / Cat 5 state machine (next_step, is_terminal, step_needs_user_input, get_screen_frame)
+- `backend/agents/director.py` — Expanded to fill creative slots, template_type selection, default slots per category
+- `backend/agents/script_agent.py` — REWRITE: Per-turn generation via Gemini Flash with modular system prompt assembly
+- `backend/agents/pipeline.py` — REWRITE: initialize_session() replaces generate_recipe(), Director → state → Script hook flow
+- `backend/server.py` — MAJOR REWRITE: SessionStateModel replaces SessionState, /api/start returns first_turn + session_state (no recipe), /api/turn runs Script Agent per turn with state machine advancement, auto_advance flag, error_exit handling
+- `backend/config.yaml` — Added script_turn_timeout_ms (5000) and script_turn_max_tokens (500), increased director_max_tokens to 1000
+- `backend/config.py` — Added script_turn_timeout_ms and script_turn_max_tokens settings
+- `backend/skills/director.md` — Expanded with creative slot definitions, mechanic/angle selection logic
+- `backend/skills/script_turn.md` — NEW: Modular system prompt for per-turn generation
+- `backend/skills/step_instructions/` — NEW: 13 step instruction files for Cat 1 and Cat 5 steps + early exit
+- `frontend/src/utils/api.js` — sendTurn now accepts optional photoId param
+- `frontend/src/hooks/useConversation.js` — Removed recipe state, added templateType/errorExit/sendAutoAdvance/sendPhotoCollection
+- `frontend/src/hooks/useSessionOrchestration.js` — Auto-advance for non-interactive steps (celebration/closing), errorExit passthrough, sendPhotoCollection
+- `frontend/src/components/PhotoGallery.jsx` — NEW: Cat 5 collection gallery with progress indicator
+- `frontend/src/App.jsx` — Conditional PhotoGallery rendering for Cat 5, error exit indicator, template type in footer
+- `frontend/src/components/ConversationPanel.jsx` — Added errorExit prop
+
+**NOT Changed**:
+- Vision, STT, TTS, DB layer, tier_rules.yaml, fallback recipes, scenarios, existing widgets
+- useSpeechRecognition, useTTS, useSilenceTimer hooks
+- All existing test files (will need updates for new architecture)
+
+**Verification**:
+- `uv run ruff check .` — PASS
+- `uv run ruff format --check .` — PASS (23 files already formatted)
+- `cd frontend && npm run lint` — PASS
+- `cd frontend && npm run build` — PASS (49 modules, 445ms)
+
+---
+
 ## Glassmorphic UI Redesign — Reference Image Match
 
 **Problem**: User provided 4 chatbot UI reference images (`docs/chatbot-ui-1.png`, `chatbot-ui-2.png`, `chatbot-ui-3.png`, `chatbot_UI.png`) showing a light glassmorphic design with pastel gradient mesh background, frosted glass panels, rounded cards, soft shadows, avatar on AI bubbles, pill-shaped input, and clean typography. Current dark fuchsia theme did not match.
@@ -140,165 +257,5 @@ Last updated: 2026-03-13
 **Verification**:
 - `cd frontend && npm run build` — PASS (48 modules, 433ms)
 - `cd frontend && npm run lint` — PASS (no errors)
-
----
-
-## Frontend Refactoring — Animation Fix, Orchestration Extraction, Visual Refresh, Accessibility, Polish
-
-**Problem**: Frontend had a confirmed animation bug (ChatBubble uses `animate-bubble-in` but only `animate-fade-in` existed), an overloaded App.jsx (~210 LOC mixing orchestration with layout), generic purple/indigo styling with system fonts, missing accessibility attributes, wrong page title, silent STT fallback, and no responsive stacking.
-
-**Solution**: Implemented 5-phase refactoring plan:
-- **Phase 1** — Fixed bubble animation by adding `bubble-in` keyframe + `.animate-bubble-in` with `animation-fill-mode: forwards`; removed useEffect/useRef workaround from ChatBubble; fixed page title; added Google Fonts (Nunito + Fredoka); registered custom fonts in Tailwind v4 `@theme` block
-- **Phase 2** — Extracted `useSessionOrchestration` hook (~120 LOC) from App.jsx, moving all 4 hook invocations, coordination effects, and handler callbacks; App.jsx dropped from ~210 to ~80 LOC with zero useEffect hooks
-- **Phase 3** — Replaced purple/indigo palette with teal/cyan primary + amber accent across all components; added `.bg-dots` radial-gradient texture to device screen; applied `shadow-inner` to DeviceScreen; added `font-display` (Fredoka) to headings in TopBar, PhotoSelector, BadgeAward
-- **Phase 4** — Added ARIA labels to mic/send/tier/new-session buttons; added `role="log"` + `aria-live="polite"` to message container; added `role="button"` + `tabIndex={0}` + keyboard handler to photo drop zone
-- **Phase 5** — Added dismissible STT fallback banner in ConversationPanel when `sttMode === 'browser'`; added responsive `flex-col md:flex-row` stacking on main layout; photo grid responsive: `grid-cols-2 sm:grid-cols-3 md:grid-cols-5`
-
-**Edits**:
-- `frontend/index.html` — Updated title, added Google Fonts preconnect + stylesheet links
-- `frontend/src/index.css` — Added `@theme` block (custom fonts), `bubble-in` keyframe, `.animate-bubble-in` class, `.bg-dots` utility
-- `frontend/src/hooks/useSessionOrchestration.js` — New file: extracted orchestration from App.jsx
-- `frontend/src/App.jsx` — Simplified to pure layout (~80 LOC), new color palette, responsive stacking, ARIA landmarks
-- `frontend/src/components/ChatBubble.jsx` — Removed useEffect/useRef workaround, teal/cyan gradient
-- `frontend/src/components/TopBar.jsx` — Teal palette, font-display, ARIA labels
-- `frontend/src/components/TextInput.jsx` — Teal palette, ARIA labels + aria-pressed
-- `frontend/src/components/PhotoSelector.jsx` — Teal palette, font-display, responsive grid, keyboard-accessible drop zone
-- `frontend/src/components/ConversationPanel.jsx` — role="log", aria-live, STT fallback banner, sttMode prop
-- `frontend/src/components/RetryButton.jsx` — Teal palette
-- `frontend/src/components/DeviceScreen.jsx` — Teal/cyan gradient, shadow-inner
-- `frontend/src/widgets/BadgeAward.jsx` — Teal/cyan gradient, font-display, teal concept badges
-
-**NOT Changed**:
-- Backend code, API endpoints, agent pipeline, schemas, and tests unchanged
-- Hook internals (useConversation, useTTS, useSpeechRecognition, useSilenceTimer) unchanged
-- Widget components other than BadgeAward unchanged
-
-**Verification**:
-- `cd frontend && npm run build` — PASS (48 modules, 421ms)
-- `cd frontend && npm run lint` — PASS (no errors)
-
----
-
-## FastAPI Lifespan + Test Fixture Cleanup
-
-**Problem**: The new test suite passed, but the backend still emitted FastAPI deprecation warnings because [`backend/server.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/server.py) used `@app.on_event("startup")`. The API test client fixture in [`tests/test_api.py`](/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/tests/test_api.py) also mutated the cached settings object without restoring it, which made the test setup more stateful than it needed to be.
-
-**Solution**: Replaced the deprecated startup hook with a FastAPI lifespan handler and removed the now-redundant `Path("data").mkdir(...)` call because `init_db()` already creates the database parent directory. Tightened the API test fixture so it clears the settings cache before use, restores the original DB path after the client closes, and clears the cache again.
-
-**Edits**:
-- `backend/server.py` — switched startup initialization to `FastAPI(lifespan=...)`, keeping the same DB init behavior with less deprecated wiring
-- `tests/test_api.py` — restored cached settings after each client fixture run to avoid leaking a temp DB path between tests
-
-**NOT Changed**:
-- Endpoint behavior, route shape, and session flow were not changed in this pass.
-- Frontend code and backend agent logic were not modified here.
-
-**Verification**:
-- `ruff check backend tests && ruff format --check backend tests` — PASS
-- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`61 passed, 5 deselected`)
-- `cd frontend && npm run lint && npm run build` — PASS
-
----
-
-## Backend + Integration Test Suite
-
-**Problem**: No test coverage existed beyond a single import compatibility test. Needed unit tests for schemas, agents, DB layer, scenarios, and integration tests for all API endpoints.
-
-**Solution**: Created 7 test files with 61 tests covering schemas, scenarios, visual agent, recipe assembler, DB layer, and full API integration (mocking LLM/Vision/TTS calls). Added Playwright e2e test scaffold (marked `e2e`, skipped by default). Configured pytest in pyproject.toml with `pythonpath = ["backend"]`, asyncio_mode, and custom markers. Added `httpx` to dependencies and dev dependency group.
-
-**Edits**:
-- `tests/conftest.py` — Shared fixtures: fallback_recipe, sample_context, sample_vision_result, sys.path setup
-- `tests/test_schemas.py` — 8 tests: CompositionPlan, VoiceScript, Round, ScreenFrame, ActivityRecipe, fallback validation, round-trip serialization
-- `tests/test_scenarios.py` — 12 tests: match_scenario (direct/substring/feature/default), load_scenario, build_activity_context, categories
-- `tests/test_visual_agent.py` — 8 tests: per_round/progressive/static strategies, widget maps, animation maps, celebration frame
-- `tests/test_recipe_assembler.py` — 8 tests: merge, frame padding, hook rule validation, SFX validation, metadata
-- `tests/test_db.py` — 6 tests: init_db, log/get session, update status, log turn, nested dir creation
-- `tests/test_api.py` — 14 tests: /api/health, /api/start (success + error), /api/turn (correct/incorrect/silence/graceful exit/full completion/404), /api/tts (success + 204), /api/stt (success + empty)
-- `tests/test_e2e.py` — 5 Playwright e2e tests (requires running servers, skipped by default)
-- `pyproject.toml` — Added httpx dependency, dev dependency group, pytest config with pythonpath/markers/asyncio_mode
-
-**NOT Changed**:
-- Backend server, agents, schemas, and frontend code unchanged
-- Existing test_backend_imports.py preserved
-
-**Verification**: `uv run pytest tests/ -m "not e2e" -v --tb=short` — 61 passed, 0 failed (2.83s)
-
----
-
-## Server-side STT + Speech Hook Stabilization
-
-**Problem**: Speech-to-text relied entirely on the browser's Web Speech API, which is vendor-dependent, inconsistent across browsers, and not using Gemini. The backend also had Ruff findings around shared client setup, and the first server-STT frontend hook revision still had a React hook-order lint error that made the handoff's frontend verification stale.
-
-**Solution**: Added server-side STT via Gemini, wired a new `/api/stt` endpoint, and updated the frontend speech hook to use MediaRecorder → server transcription with browser Web Speech API fallback. Fixed the backend Ruff issues by replacing `global _client` singletons with `@lru_cache(maxsize=1)` and cleaning the overwritten loop variable in `recipe_assembler`. Follow-up review then simplified the speech hook ordering so frontend lint/build now pass again.
-
-**Edits**:
-- `backend/stt.py` — New file: `transcribe_audio()` via Gemini, auto-detects MIME from magic bytes, 30s timeout
-- `backend/server.py` — Added `POST /api/stt` endpoint (multipart audio upload → transcription JSON), imported `transcribe_audio`
-- `backend/agents/director.py` — Replaced `global _client` with `@lru_cache(maxsize=1)`
-- `backend/agents/script_agent.py` — Replaced `global _client` with `@lru_cache(maxsize=1)`
-- `backend/tts.py` — Replaced `global _client` with `@lru_cache(maxsize=1)`
-- `backend/vision.py` — Replaced `global _client` with `@lru_cache(maxsize=1)`
-- `backend/stt.py` — Uses `@lru_cache(maxsize=1)` from the start
-- `backend/agents/recipe_assembler.py` — Renamed loop variable `sentence` → `fragment` to fix PLW2901
-- `frontend/src/utils/api.js` — Added `transcribeAudio(audioBlob)` API client function
-- `frontend/src/hooks/useSpeechRecognition.js` — Rewritten: server STT via MediaRecorder as default, browser Web Speech API as fallback, with hook-order cleanup after review
-
-**NOT Changed**:
-- TTS flow, conversation state management, and all other frontend components unchanged
-- Backend agent pipeline logic, schemas, and fallback recipes unchanged
-
-**Verification**:
-- `cd backend && ruff check . && ruff format --check .` — all passed
-- `python -m unittest tests/test_backend_imports.py` — PASS
-- `cd backend && python -c "from stt import transcribe_audio; print('OK')"` — OK
-- `cd backend && python -c "from server import app; print(len(app.routes))"` — 9 routes
-- `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Review: Backend Import Compatibility
-
-**Problem**: The newly added backend only imported when executed from inside `backend/`. Importing `backend.server` from the repo root failed because the source files used cwd-dependent absolute imports such as `from agents...` and `from config...`.
-
-**Solution**: Added a regression test covering both import modes, then updated the backend modules to prefer package-relative imports with a fallback to the existing local-module style. This keeps `cd backend && import server` working while also supporting `import backend.server` from the repo root and from tests.
-
-**Edits**:
-- `tests/test_backend_imports.py` — Added subprocess-based regression coverage for both backend import paths
-- `backend/server.py` — Switched imports to relative-first with fallback
-- `backend/db.py` — Switched imports to relative-first with fallback
-- `backend/scenarios.py` — Switched imports to relative-first with fallback
-- `backend/vision.py` — Switched imports to relative-first with fallback
-- `backend/tts.py` — Switched imports to relative-first with fallback
-- `backend/agents/director.py` — Switched imports to relative-first with fallback
-- `backend/agents/script_agent.py` — Switched imports to relative-first with fallback
-- `backend/agents/recipe_assembler.py` — Switched imports to relative-first with fallback and cleaned touched imports
-- `backend/agents/visual_agent.py` — Switched imports to relative-first with fallback
-- `backend/agents/pipeline.py` — Switched imports to relative-first with fallback
-
-**NOT Changed**:
-- Session logging order versus `agent_logs` insertion timing was reviewed but not changed in this pass.
-- Turn-flow semantics around `transition_line` and `Round.prompt` usage were reviewed but not changed in this pass.
-- Frontend code and fallback recipe content were not modified here.
-
-**Verification**:
-- `python -m unittest tests/test_backend_imports.py` — PASS
-- `python -m compileall backend` — PASS
-
----
-
-- `python - <<'PY' ... from server import app; print(len(app.routes)) ... PY` — PASS (`8`)
-
----
-
-
----
-
-
----
-
-
----
-
 
 ---

@@ -4,6 +4,71 @@ Last updated: 2026-03-13
 
 ---
 
+## Cat 5 Pending Photo Tracking Fix
+
+**Problem**: The new Cat 5 wrong-photo feedback path still had a frontend state bug. `useConversation` recorded the tapped `photoId` before `sendTurnRequest()` checked `turnPending`, while `PhotoGallery` re-enabled itself after a fixed 1-second timer. If the user tapped again before the first request finished, the second tap could overwrite the pending photo ID even though that second request was ignored, causing the later `wrong_photo` response to highlight the wrong card.
+
+**Solution**: Moved pending photo tracking into the admitted request path so it only records the `photoId` for the turn that actually starts, and clear that ref on session start/reset. Simplified `PhotoGallery` so its temporary lock follows the `onPhotoSelect()` promise instead of an arbitrary timeout. Added focused local API coverage for the Cat 5 backend contract: wrong picks do not advance collection, and the second consecutive wrong pick exits cleanly.
+
+**Edits**:
+- `frontend/src/hooks/useConversation.js` — moved `pendingPhotoIdRef` assignment behind the `turnPending` guard; clear pending/wrong-photo state on start and reset; kept `sendPhotoCollection()` as a thin wrapper around `sendTurnRequest()`
+- `frontend/src/components/PhotoGallery.jsx` — replaced the fixed 1-second unlock timer with promise-based request lifecycle locking
+- local `tests/test_api.py` — added focused Cat 5 wrong-photo regression coverage in the current workspace
+
+**NOT Changed**:
+- The backend Cat 5 validation rules already added in `backend/server.py`, `backend/schemas/session_state.py`, and `backend/skills/step_instructions/cat5_step3_collect.md` were reviewed but not modified in this pass.
+- The broader App/orchestration styling changes in `frontend/src/App.jsx`, `frontend/src/components/ConversationPanel.jsx`, `frontend/src/hooks/useSessionOrchestration.js`, and `frontend/src/index.css` were also reviewed without further edits.
+
+**Verification**:
+- `uv run pytest tests/test_api.py -q -k "wrong_photo_without_advancing_cat5_collection or exits_after_two_wrong_cat5_photo_picks"` — PASS
+- `cd frontend && npm run lint` — PASS
+- `cd frontend && npm run build` — PASS
+- `uv run ruff check backend/schemas/session_state.py backend/server.py tests/test_api.py` — PASS
+- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`123 passed, 5 deselected`)
+
+---
+
+## Cat 5 Collection Validation + UI Polish
+
+**Problem**: Cat 5 collection activities accepted any photo selection as correct, advancing progress regardless of whether the pick matched the collection criterion. The photo displayed in the camera device showed a placeholder letter instead of the actual image. The device screen had no fade transition between frames. SFX/widget/animation labels were missing from the first turn. AI chat text appeared all at once instead of streaming. The SFX badge auto-hid after 3 seconds. The photo grid in collection mode was too small, and text input was still enabled when the user should be selecting photos.
+
+**Solution**: Multi-part fix across backend and frontend:
+- **Photo validation**: Added `VALID_COLLECTION_PHOTOS` mapping per activity type (polka_dot_patrol, fluffy_expedition_dandelion). Wrong picks return `response_type: "wrong_photo"` without advancing the step. 2 consecutive wrong picks trigger graceful exit. Updated `cat5_step3_collect.md` prompt with wrong-photo handling instructions.
+- **Photo display fix**: Changed `PhotoSelector` to use `/icons/*.png` as both thumbnails and the photo sent to the backend (the `/photos/` directory was empty).
+- **Device screen transitions**: Added fade-in/fade-out effect to `DeviceScreen` when screen frames change.
+- **First turn screen frame**: Fixed `/api/start` to use `get_screen_frame()` with Visual Agent frames instead of manually constructing a minimal dict.
+- **Typewriter chat**: Added `useTypewriter` hook to `ChatBubble` — only the latest AI message types character by character at 18ms/char with a blinking cursor.
+- **Persistent SFX badge**: Removed auto-hide timer from `SfxIndicator` — badge stays visible until replaced by a new frame's SFX.
+- **Collection UI**: Enlarged PhotoGallery grid (`max-w-md`, larger icons/progress circles), added shake animation for wrong picks, disabled text input during collection steps with a "Tap a photo" hint.
+- **Photo border**: Removed `border-2 border-[var(--color-forest)]/20 shadow-lg` from `PhotoDisplay`.
+
+**Edits**:
+- `backend/schemas/session_state.py` — Added `consecutive_wrong: int = 0` field
+- `backend/server.py` — Added `VALID_COLLECTION_PHOTOS` mapping, `_is_correct_collection_photo()` helper; both `/api/turn` and `/api/turn-speak` validate photo selections (correct → advance, wrong → stay + "wrong_photo" response, 2 wrong → exit); fixed `/api/start` first turn to use `get_screen_frame()` with visual frames; added `consecutive_wrong` to `_session_state_dict`
+- `backend/skills/step_instructions/cat5_step3_collect.md` — Added wrong-photo handling instructions for Script Agent
+- `frontend/src/components/PhotoSelector.jsx` — Changed photo sources from `/photos/*.jpg` to `/icons/*.png`; removed separate `icon` field
+- `frontend/src/components/DeviceScreen.jsx` — Added fade-in/fade-out transitions on screen frame changes via `useEffect` + opacity
+- `frontend/src/components/ChatBubble.jsx` — Added `useTypewriter` hook for streaming text effect on latest AI message
+- `frontend/src/components/ConversationPanel.jsx` — Pass `isLatestAi` to ChatBubble; added `collectMode` prop to replace TextInput with photo hint
+- `frontend/src/components/SfxIndicator.jsx` — Removed auto-hide timer and state; renders persistently when `sfxCue` is present
+- `frontend/src/components/PhotoGallery.jsx` — Larger grid (`max-w-md`), larger icons (`w-10 h-10`), larger progress circles (`w-9 h-9`); added `wrongPhotoId` prop with shake animation and red highlight
+- `frontend/src/widgets/PhotoDisplay.jsx` — Removed border and shadow from photo container
+- `frontend/src/index.css` — Added `@keyframes shake` and `.animate-shake`
+- `frontend/src/hooks/useConversation.js` — Track `lastWrongPhotoId` from `wrong_photo` responses; store pending photo ID via ref
+- `frontend/src/hooks/useSessionOrchestration.js` — Pass through `lastWrongPhotoId`
+- `frontend/src/App.jsx` — Pass `wrongPhotoId` to PhotoGallery, `collectMode` to ConversationPanel, disable text input during collection
+
+**NOT Changed**:
+- State machine, Director Agent, Visual Agent, pipeline, DB layer, STT, TTS, tier rules, scenarios, fallback recipes
+- useTTS, useSpeechRecognition, useSilenceTimer hooks
+- All widget components except PhotoDisplay
+
+**Verification**:
+- `cd backend && uv run ruff check . && uv run ruff format --check .` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
 ## Chat Bubble Typewriter + Local API Test Realignment
 
 **Problem**: The newly added typewriter effect in `ChatBubble` failed frontend lint because it synchronously reset React state inside an effect. In the same review pass, the local `tests/test_api.py` file still targeted removed server contracts (`server.generate_recipe`, `SessionState`, and sync TTS patching), so the non-e2e suite was no longer a useful regression signal.
@@ -229,61 +294,5 @@ Measured improvement: `/api/start` dropped from 22-43s to ~12s; Script Agent tur
 - `uv run ruff format --check .` — PASS (23 files already formatted)
 - `cd frontend && npm run lint` — PASS
 - `cd frontend && npm run build` — PASS (49 modules, 445ms)
-
----
-
-## Glassmorphic UI Redesign — Reference Image Match
-
-**Problem**: User provided 4 chatbot UI reference images (`docs/chatbot-ui-1.png`, `chatbot-ui-2.png`, `chatbot-ui-3.png`, `chatbot_UI.png`) showing a light glassmorphic design with pastel gradient mesh background, frosted glass panels, rounded cards, soft shadows, avatar on AI bubbles, pill-shaped input, and clean typography. Current dark fuchsia theme did not match.
-
-**Solution**: Complete visual redesign to match the reference. Fonts changed to Plus Jakarta Sans (display) + Outfit (body). Background uses multi-stop radial gradient mesh (lavender/mint/pink/blue washes). All surfaces use `.glass` / `.glass-strong` / `.glass-subtle` utility classes with `backdrop-blur` and semi-transparent white backgrounds. AI chat bubbles have a small indigo/purple avatar icon. User bubbles are `bg-gray-700` (dark, as shown in reference for user messages). Input is pill-shaped with mic inside the input container and a separate dark send button. All widgets use frosted glass surfaces with soft colored shadows.
-
-**Edits**:
-- `frontend/index.html` — Switched fonts to Plus Jakarta Sans 400-800 + Outfit 300-700
-- `frontend/src/index.css` — New `@theme` (Outfit + Plus Jakarta Sans), `.bg-mesh` multi-gradient background, `.glass` / `.glass-strong` / `.glass-subtle` utility classes
-- `frontend/src/App.jsx` — `bg-mesh`, glass panels with `rounded-3xl`, outer padding/gap, footer as glass pill
-- `frontend/src/components/TopBar.jsx` — Glass bar with indigo/purple gradient logo icon, dark "New Session" button, glass select
-- `frontend/src/components/ChatBubble.jsx` — AI bubbles: `bg-white/70` with indigo avatar circle. User: `bg-gray-700 text-white`. Tone badge: `bg-indigo-50 text-indigo-400`
-- `frontend/src/components/TextInput.jsx` — Pill container `bg-white/50` with inline mic button, separate dark send button with up-arrow icon
-- `frontend/src/components/ConversationPanel.jsx` — Empty state with gradient icon, glass timer bar
-- `frontend/src/components/PhotoSelector.jsx` — Gradient camera icon, glass photo cards with hover scale, indigo accents
-- `frontend/src/components/RetryButton.jsx` — Dark button, amber glass badge
-- `frontend/src/components/DeviceScreen.jsx` — Transparent device frame (inherits parent glass), white/40 surfaces
-- `frontend/src/widgets/BadgeAward.jsx` — Amber/gold badge with white/60 backdrop center, indigo concept tags
-- `frontend/src/widgets/PhotoDisplay.jsx` — `bg-white/40 border-white/60` glass frame
-- `frontend/src/widgets/ProgressTracker.jsx` — Emerald filled slots with colored shadow, glass empty slots
-- `frontend/src/widgets/CharacterDisplay.jsx` — Pastel gradient backgrounds with glass inner cards
-- `frontend/src/widgets/PhotoGrid.jsx` — Glass grid slots, indigo "Connected!" text
-
-**NOT Changed**:
-- Backend code, hooks, AnimationOverlay, API client, all ARIA attributes, responsive stacking unchanged
-
-**Verification**:
-- `cd frontend && npm run build` — PASS (48 modules, 630ms)
-- `cd frontend && npm run lint` — PASS (no errors)
-
----
-
-## OpenAI Agent Timeout Handling
-
-**Problem**: The latest backend change set switched the Director and Script agents from Gemini to `AsyncOpenAI`, but the timeout path still only caught built-in `TimeoutError`. In the installed OpenAI SDK, request timeouts raise `openai.APITimeoutError`, so the Director timeout fallback would miss the intended timeout branch and the Script agent would log a generic failure instead of an explicit timeout.
-
-**Solution**: Updated both OpenAI-backed agents to catch `APITimeoutError` directly and switched the parsed chat completion calls to `max_completion_tokens`, which matches the current SDK signature for structured chat completions more closely than the older `max_tokens` field.
-
-**Edits**:
-- `backend/agents/director.py` — catch `APITimeoutError` for the default-plan timeout path and use `max_completion_tokens`
-- `backend/agents/script_agent.py` — catch `APITimeoutError` explicitly for timeout logging and use `max_completion_tokens`
-
-**NOT Changed**:
-- Vision, TTS, and the rule-based Visual Agent remain on their existing implementations.
-- Config values, dependency pins, and the OpenAI migration plan doc were reviewed but not changed in this pass.
-
-**Verification**:
-- `ruff check backend/agents/director.py backend/agents/script_agent.py backend/config.py pyproject.toml` — PASS
-- `python - <<'PY' ... from agents.director import DirectorAgent; from agents.script_agent import ScriptAgent ... PY` — PASS
-- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`63 passed, 5 deselected`)
-
----
-
 
 ---

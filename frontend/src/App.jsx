@@ -13,8 +13,8 @@ function App() {
 
   const {
     messages, sessionId, sessionState, screenFrame, loading, turnPending, error,
-    latency, activityType, templateType, photoUrl, errorExit, retryCount,
-    isActive, isEnded, isInputDisabled,
+    latency, activityType, templateType, photoUrl, errorExit, lastWrongPhotoId,
+    retryCount, isActive, isEnded, isInputDisabled,
     isSpeaking, isMicActive, sttMode, silenceTimer,
     startSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
   } = useSessionOrchestration(tier);
@@ -46,6 +46,7 @@ function App() {
                 onPhotoSelect={sendPhotoCollection}
                 collectedPhotos={sessionState?.collected_photos || []}
                 totalToCollect={sessionState?.total_rounds || 3}
+                wrongPhotoId={lastWrongPhotoId}
               />
             ) : (
               <DeviceScreen
@@ -72,11 +73,12 @@ function App() {
               onMicToggle={toggleMic}
               isMicActive={isMicActive}
               silenceTimer={silenceTimer}
-              isInputDisabled={isInputDisabled}
+              isInputDisabled={isInputDisabled || showPhotoGallery}
               sttMode={sttMode}
               loading={loading}
               turnPending={turnPending}
               errorExit={errorExit}
+              collectMode={showPhotoGallery}
             />
           )}
         </section>

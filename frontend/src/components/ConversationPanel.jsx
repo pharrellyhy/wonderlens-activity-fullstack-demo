@@ -14,6 +14,7 @@ export default function ConversationPanel({
   loading,
   turnPending,
   errorExit,
+  collectMode,
 }) {
   const scrollRef = useRef(null);
   const [sttBannerDismissed, setSttBannerDismissed] = useState(false);
@@ -117,13 +118,21 @@ export default function ConversationPanel({
         </div>
       )}
 
-      {/* Text Input */}
-      <TextInput
-        onSubmit={onSendMessage}
-        onMicToggle={onMicToggle}
-        isMicActive={isMicActive}
-        disabled={isInputDisabled}
-      />
+      {/* Text Input or collection hint */}
+      {collectMode ? (
+        <div className="px-4 py-3 text-center">
+          <p className="text-xs text-[var(--color-teal)] font-medium">
+            Tap a photo in the camera above to collect it!
+          </p>
+        </div>
+      ) : (
+        <TextInput
+          onSubmit={onSendMessage}
+          onMicToggle={onMicToggle}
+          isMicActive={isMicActive}
+          disabled={isInputDisabled}
+        />
+      )}
     </>
   );
 }

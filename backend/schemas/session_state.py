@@ -30,6 +30,7 @@ class SessionStateModel(BaseModel):
     creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots]
     conversation_history: list[ConversationTurn] = Field(default_factory=list)
     collected_photos: list[str] = Field(default_factory=list, description="Cat 5 collected photo IDs")
+    consecutive_wrong: int = 0
     consecutive_silence: int = 0
     turn_count: int = 0
     status: Literal["active", "completed", "exited", "error"] = "active"

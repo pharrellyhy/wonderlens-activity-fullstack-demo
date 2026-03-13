@@ -96,6 +96,23 @@ class TTSRequest(BaseModel):
     tier: str = "T0"
 
 
+# --- Cat 5 collection validation ---
+
+# Maps activity_type → set of photo IDs that count as correct finds.
+VALID_COLLECTION_PHOTOS: dict[str, set[str]] = {
+    "polka_dot_patrol": {"leaf_round", "flower_small", "stone_smooth"},
+    "fluffy_expedition_dandelion": {"leaf_heart", "leaf_long", "flower_small"},
+}
+
+
+def _is_correct_collection_photo(activity_type: str, photo_id: str) -> bool:
+    """Check if the selected photo matches the activity's collection criterion."""
+    valid = VALID_COLLECTION_PHOTOS.get(activity_type)
+    if valid is None:
+        return True  # unknown activity — accept anything
+    return photo_id in valid
+
+
 # --- Endpoints ---
 
 
@@ -272,9 +289,77 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
             )
         )
 
-    # For Cat 5 collection: record photo_id
+    # For Cat 5 collection: validate photo_id before advancing
+    collection_wrong = False
     if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
-        state.collected_photos.append(req.photo_id)
+        if _is_correct_collection_photo(state.activity_type, req.photo_id):
+            state.collected_photos.append(req.photo_id)
+            state.consecutive_wrong = 0
+        else:
+            collection_wrong = True
+            state.consecutive_wrong += 1
+
+    # 2 consecutive wrong picks → graceful exit
+    if state.consecutive_wrong >= 2:
+        state.current_step = EARLY_EXIT
+        turn_response = await _generate_turn_with_retry(script_agent, state)
+        state.status = "exited"
+        screen_frame = get_screen_frame(
+            EARLY_EXIT,
+            state.template_type,
+            state.creative_slots,
+            _state_context(state),
+            visual_frames=state.visual_frames or None,
+            celebration_frame=state.celebration_frame,
+        )
+        state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
+        await update_session_status(settings.db_path, req.session_id, "exited", "wrong_photos", state.turn_count)
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        return JSONResponse(
+            {
+                "turn": _build_turn_response(turn_response, screen_frame, "graceful_exit"),
+                "session_state": _session_state_dict(state),
+                "latency_ms": latency_ms,
+            }
+        )
+
+    # Wrong pick but not exit yet — stay on same step, generate "try again" response
+    if collection_wrong:
+        state.conversation_history.append(
+            ConversationTurn(role="child", text=f"[selected wrong photo: {req.photo_id}]", step=state.current_step)
+        )
+        turn_response = await _generate_turn_with_retry(script_agent, state)
+        screen_frame = get_screen_frame(
+            state.current_step,
+            state.template_type,
+            state.creative_slots,
+            _state_context(state),
+            visual_frames=state.visual_frames or None,
+            celebration_frame=state.celebration_frame,
+        )
+        state.conversation_history.append(
+            ConversationTurn(role="ai", text=turn_response.dialogue, step=state.current_step)
+        )
+        state.turn_count += 1
+        await log_turn(
+            settings.db_path,
+            req.session_id,
+            state.turn_count,
+            "ai",
+            turn_response.dialogue,
+            "wrong_photo",
+            is_silent=False,
+        )
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        turn_data = _build_turn_response(turn_response, screen_frame, "wrong_photo")
+        turn_data["auto_advance"] = False
+        return JSONResponse(
+            {
+                "turn": turn_data,
+                "session_state": _session_state_dict(state),
+                "latency_ms": latency_ms,
+            }
+        )
 
     # Advance the state machine and keep round display/prompt state aligned with the active step.
     state.current_step = next_step(state.current_step, state.template_type, state.current_round, state.total_rounds)
@@ -447,8 +532,71 @@ async def turn_and_speak(req: TurnRequest) -> Response:
                 )
             )
 
+        # Cat 5 collection validation
+        collection_wrong = False
         if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
-            state.collected_photos.append(req.photo_id)
+            if _is_correct_collection_photo(state.activity_type, req.photo_id):
+                state.collected_photos.append(req.photo_id)
+                state.consecutive_wrong = 0
+            else:
+                collection_wrong = True
+                state.consecutive_wrong += 1
+
+        # 2 consecutive wrong picks → graceful exit
+        if state.consecutive_wrong >= 2:
+            state.current_step = EARLY_EXIT
+            turn_response = await _generate_turn_with_retry(script_agent, state)
+            state.status = "exited"
+            screen_frame = get_screen_frame(
+                EARLY_EXIT,
+                state.template_type,
+                state.creative_slots,
+                _state_context(state),
+                visual_frames=state.visual_frames or None,
+                celebration_frame=state.celebration_frame,
+            )
+            state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
+            await update_session_status(settings.db_path, req.session_id, "exited", "wrong_photos", state.turn_count)
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            turn_data = _build_turn_response(turn_response, screen_frame, "graceful_exit")
+            response_json = json.dumps(
+                {"turn": turn_data, "session_state": _session_state_dict(state), "latency_ms": latency_ms}
+            ).encode()
+            yield struct.pack(">I", len(response_json))
+            yield response_json
+            async for chunk in synthesize_speech_stream_async(turn_response.dialogue, state.tier):
+                yield chunk
+            return
+
+        # Wrong pick but not exit yet — stay on same step
+        if collection_wrong:
+            state.conversation_history.append(
+                ConversationTurn(role="child", text=f"[selected wrong photo: {req.photo_id}]", step=state.current_step)
+            )
+            turn_response = await _generate_turn_with_retry(script_agent, state)
+            screen_frame = get_screen_frame(
+                state.current_step,
+                state.template_type,
+                state.creative_slots,
+                _state_context(state),
+                visual_frames=state.visual_frames or None,
+                celebration_frame=state.celebration_frame,
+            )
+            state.conversation_history.append(
+                ConversationTurn(role="ai", text=turn_response.dialogue, step=state.current_step)
+            )
+            state.turn_count += 1
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            turn_data = _build_turn_response(turn_response, screen_frame, "wrong_photo")
+            turn_data["auto_advance"] = False
+            response_json = json.dumps(
+                {"turn": turn_data, "session_state": _session_state_dict(state), "latency_ms": latency_ms}
+            ).encode()
+            yield struct.pack(">I", len(response_json))
+            yield response_json
+            async for chunk in synthesize_speech_stream_async(turn_response.dialogue, state.tier):
+                yield chunk
+            return
 
         state.current_step = next_step(state.current_step, state.template_type, state.current_round, state.total_rounds)
         _sync_round_from_step(state)
@@ -747,6 +895,7 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         "total_rounds": state.total_rounds,
         "collected_photos": state.collected_photos,
         "consecutive_silence": state.consecutive_silence,
+        "consecutive_wrong": state.consecutive_wrong,
         "turn_count": state.turn_count,
         "template_type": state.template_type,
         "auto_advance": _should_auto_advance(state),

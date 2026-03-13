@@ -15,7 +15,9 @@ export default function useConversation() {
   const [templateType, setTemplateType] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [errorExit, setErrorExit] = useState(false);
+  const [lastWrongPhotoId, setLastWrongPhotoId] = useState(null);
   const photoUrlRef = useRef(null);
+  const pendingPhotoIdRef = useRef(null);
   // Holds the audio stream from the latest /api/turn-speak response
   const pendingAudioRef = useRef(null);
 
@@ -42,6 +44,14 @@ export default function useConversation() {
       setErrorExit(true);
     }
 
+    // Track wrong photo selections
+    if (data.turn?.response_type === 'wrong_photo') {
+      setLastWrongPhotoId(pendingPhotoIdRef.current);
+    } else {
+      setLastWrongPhotoId(null);
+    }
+    pendingPhotoIdRef.current = null;
+
     if (data.turn?.dialogue) {
       setMessages((prev) => [
         ...prev,
@@ -66,7 +76,9 @@ export default function useConversation() {
     setError(null);
     setMessages([]);
     setErrorExit(false);
+    setLastWrongPhotoId(null);
     clearPhotoUrl();
+    pendingPhotoIdRef.current = null;
     pendingAudioRef.current = null;
 
     // Create a local URL for the photo
@@ -124,6 +136,7 @@ export default function useConversation() {
    */
   const sendTurnRequest = useCallback(async (text, isSilent, photoId = null) => {
     if (!sessionId || turnPending) return null;
+    pendingPhotoIdRef.current = photoId;
     setTurnPending(true);
 
     // Only add child message for non-empty, non-auto-advance turns
@@ -185,7 +198,9 @@ export default function useConversation() {
     setTemplateType('');
     setTurnPending(false);
     setErrorExit(false);
+    setLastWrongPhotoId(null);
     clearPhotoUrl();
+    pendingPhotoIdRef.current = null;
     pendingAudioRef.current = null;
   }, [clearPhotoUrl]);
 
@@ -203,6 +218,7 @@ export default function useConversation() {
     templateType,
     photoUrl,
     errorExit,
+    lastWrongPhotoId,
     pendingAudioRef,
     start,
     sendMessage,

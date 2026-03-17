@@ -22,6 +22,7 @@ try:
     from .logger import setup_logger
     from .scenarios import load_scenario, match_scenario
     from .schemas import ScreenFrame
+    from .schemas.creative_slots import Cat5CreativeSlots
     from .schemas.session_state import ConversationTurn, SessionStateModel
     from .schemas.turn_response import TurnResponse
     from .state_machine import EARLY_EXIT, get_screen_frame, is_terminal, next_step, step_needs_user_input
@@ -36,6 +37,7 @@ except ImportError:
     from logger import setup_logger
     from scenarios import load_scenario, match_scenario
     from schemas import ScreenFrame
+    from schemas.creative_slots import Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel
     from schemas.turn_response import TurnResponse
     from state_machine import EARLY_EXIT, ENDED, get_screen_frame, is_terminal, next_step, step_needs_user_input
@@ -168,6 +170,35 @@ def _is_correct_collection_photo(state: SessionStateModel, photo_id: str) -> boo
     if round_idx < 0 or round_idx >= len(state.round_items):
         return True  # no round items — accept anything
     return any(item["id"] == photo_id and item.get("correct", False) for item in state.round_items[round_idx])
+
+
+def _get_item_label(state: SessionStateModel, photo_id: str) -> str:
+    """Look up the display label for a photo_id in the current round's items."""
+    round_num = _step_round_number(state.current_step)
+    round_idx = round_num - 1
+    if 0 <= round_idx < len(state.round_items):
+        for item in state.round_items[round_idx]:
+            if item["id"] == photo_id:
+                return item["label"]
+    return photo_id.replace("_", " ")
+
+
+def _append_child_turn(state: SessionStateModel, text: str, *, include_round_number: bool = True) -> None:
+    round_number = state.current_round if include_round_number and state.current_round > 0 else None
+    state.conversation_history.append(
+        ConversationTurn(
+            role="child",
+            text=text,
+            step=state.current_step,
+            round_number=round_number,
+        )
+    )
+
+
+def _record_correct_collection_pick(state: SessionStateModel, photo_id: str) -> None:
+    state.collected_photos.append(photo_id)
+    state.consecutive_wrong = 0
+    _append_child_turn(state, f"[collected correct item: {_get_item_label(state, photo_id)}]")
 
 
 # --- Endpoints ---
@@ -341,21 +372,13 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
     # Record child input in conversation history
     if req.text or req.is_silent:
         child_text = req.text if req.text else "..."
-        state.conversation_history.append(
-            ConversationTurn(
-                role="child",
-                text=child_text,
-                step=state.current_step,
-                round_number=state.current_round if state.current_round > 0 else None,
-            )
-        )
+        _append_child_turn(state, child_text)
 
     # For Cat 5 collection: validate photo_id before advancing
     collection_wrong = False
     if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
         if _is_correct_collection_photo(state, req.photo_id):
-            state.collected_photos.append(req.photo_id)
-            state.consecutive_wrong = 0
+            _record_correct_collection_pick(state, req.photo_id)
         else:
             collection_wrong = True
             state.consecutive_wrong += 1
@@ -386,9 +409,7 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
 
     # Wrong pick but not exit yet — stay on same step, generate "try again" response
     if collection_wrong:
-        state.conversation_history.append(
-            ConversationTurn(role="child", text=f"[selected wrong photo: {req.photo_id}]", step=state.current_step)
-        )
+        _append_child_turn(state, f"[selected wrong photo: {req.photo_id}]", include_round_number=False)
         turn_response = await _generate_turn_with_retry(script_agent, state)
         screen_frame = get_screen_frame(
             state.current_step,
@@ -584,21 +605,13 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         # Record child input
         if req.text or req.is_silent:
             child_text = req.text if req.text else "..."
-            state.conversation_history.append(
-                ConversationTurn(
-                    role="child",
-                    text=child_text,
-                    step=state.current_step,
-                    round_number=state.current_round if state.current_round > 0 else None,
-                )
-            )
+            _append_child_turn(state, child_text)
 
         # Cat 5 collection validation
         collection_wrong = False
         if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
             if _is_correct_collection_photo(state, req.photo_id):
-                state.collected_photos.append(req.photo_id)
-                state.consecutive_wrong = 0
+                _record_correct_collection_pick(state, req.photo_id)
             else:
                 collection_wrong = True
                 state.consecutive_wrong += 1
@@ -631,9 +644,7 @@ async def turn_and_speak(req: TurnRequest) -> Response:
 
         # Wrong pick but not exit yet — stay on same step
         if collection_wrong:
-            state.conversation_history.append(
-                ConversationTurn(role="child", text=f"[selected wrong photo: {req.photo_id}]", step=state.current_step)
-            )
+            _append_child_turn(state, f"[selected wrong photo: {req.photo_id}]", include_round_number=False)
             turn_response = await _generate_turn_with_retry(script_agent, state)
             screen_frame = get_screen_frame(
                 state.current_step,
@@ -962,7 +973,10 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         "auto_advance": _should_auto_advance(state),
     }
 
-    # Expose current round items for Cat 5 (strip correct flag)
+    # Expose Cat 5 collection context
+    if state.template_type == "cat5" and isinstance(state.creative_slots, Cat5CreativeSlots):
+        result["collection_criterion"] = state.creative_slots.collection_criterion
+
     if state.round_items and state.current_step.startswith("STEP_3_COLLECT_"):
         round_idx = _step_round_number(state.current_step) - 1
         if 0 <= round_idx < len(state.round_items):

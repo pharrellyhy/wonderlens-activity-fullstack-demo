@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     scenario TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
     recipe_status TEXT DEFAULT 'ok',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT (datetime('now', 'localtime')),
     ended_at TIMESTAMP,
     end_reason TEXT,
     total_turns INTEGER DEFAULT 0
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS turns (
     latency_ms INTEGER,
     is_silent BOOLEAN DEFAULT FALSE,
     consecutive_silence INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT (datetime('now', 'localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS agent_logs (
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS agent_logs (
     input_tokens INTEGER,
     output_tokens INTEGER,
     error_message TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT (datetime('now', 'localtime'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_turns_session ON turns(session_id);
@@ -153,12 +153,12 @@ async def update_session_status(
     async with aiosqlite.connect(db_path) as db:
         if end_reason is not None and total_turns is not None:
             await db.execute(
-                "UPDATE sessions SET status = ?, ended_at = CURRENT_TIMESTAMP, end_reason = ?, total_turns = ? WHERE session_id = ?",
+                "UPDATE sessions SET status = ?, ended_at = (datetime('now', 'localtime')), end_reason = ?, total_turns = ? WHERE session_id = ?",
                 (status, end_reason, total_turns, session_id),
             )
         elif end_reason is not None:
             await db.execute(
-                "UPDATE sessions SET status = ?, ended_at = CURRENT_TIMESTAMP, end_reason = ? WHERE session_id = ?",
+                "UPDATE sessions SET status = ?, ended_at = (datetime('now', 'localtime')), end_reason = ? WHERE session_id = ?",
                 (status, end_reason, session_id),
             )
         elif total_turns is not None:

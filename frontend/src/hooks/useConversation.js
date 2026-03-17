@@ -182,7 +182,12 @@ export default function useConversation() {
   const sendAutoAdvance = useCallback(() => sendTurnRequest('', false), [sendTurnRequest]);
 
   const sendPhotoCollection = useCallback(
-    (photoId) => sendTurnRequest('', false, photoId),
+    (photoId, label) => {
+      if (label) {
+        setMessages((prev) => [...prev, { role: 'child', text: label, isPhotoSelect: true }]);
+      }
+      return sendTurnRequest('', false, photoId);
+    },
     [sendTurnRequest],
   );
 

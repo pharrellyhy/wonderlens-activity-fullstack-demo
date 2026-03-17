@@ -4,6 +4,72 @@ Last updated: 2026-03-17
 
 ---
 
+## Review Latest Cat 5 Gallery Prompt Pass + Restore Request Locking
+
+**Problem**: The latest Cat 5 UI/backend pass added `collection_criterion` to the session payload and started passing the tapped item label through the frontend, but it also reintroduced a request-locking bug. `PhotoGallery` now waits on the promise returned by `onPhotoSelect()`, while `useSessionOrchestration.handlePhotoCollection()` stopped returning the `sendPhotoCollection()` promise. That meant the gallery could unlock immediately again, allowing fast repeat taps before the in-flight collection turn finished. The new backend payload field for the gallery prompt also had no explicit API coverage.
+
+**Solution**: Reviewed the active Cat 5 change set, kept the prompt/content changes intact, restored promise-based locking by returning the collection request from `handlePhotoCollection()`, and extended the focused Cat 5 API regression to assert the new `collection_criterion` field alongside the existing round-item payload. This keeps the frontend lock aligned with the admitted request lifecycle and gives the new gallery prompt contract a backend test.
+
+**Edits**:
+- `frontend/src/hooks/useSessionOrchestration.js` — returned `sendPhotoCollection(photoId, label)` from `handlePhotoCollection()` so `PhotoGallery` stays locked until the collection request settles
+- `tests/test_api.py` — added an assertion that Cat 5 turn responses serialize `session_state.collection_criterion` for the gallery prompt path
+- `HANDOFF.md` — added this review/update entry
+
+**NOT Changed**:
+- `frontend/src/App.jsx`, `frontend/src/components/PhotoGallery.jsx`, `frontend/src/hooks/useConversation.js`, `backend/server.py`, `backend/agents/script_agent.py`, `backend/db.py`, `backend/skills/step_instructions/cat5_step2_mission.md`, and `backend/skills/step_instructions/cat5_step3_collect.md` were reviewed in this pass and left as-is after the targeted fix above.
+- There is still no frontend unit/integration test harness in the current workspace, so the UI-side fix is covered by lint/build plus code-path review rather than an automated component test.
+
+**Verification**:
+- `uv run pytest tests/test_api.py -q -k "turn_serializes_collected_photos_for_cat5_collection or turn_returns_wrong_photo_without_advancing_cat5_collection or turn_speak_records_exact_collected_item_label_for_cat5_collection"` — PASS (`3 passed, 14 deselected`)
+- `uv run ruff check backend/server.py backend/agents/script_agent.py backend/db.py tests/test_api.py` — PASS
+- `cd frontend && npm run lint` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Review Cat 5 Correct-Pick Context Fix + Simplify Server Duplication
+
+**Problem**: The latest Cat 5 hallucination fix correctly added `[collected correct item: <label>]` to conversation history, but the same child-turn bookkeeping was duplicated in both `/api/turn` and `/api/turn-speak`. The review pass also found that the new behavior was untested, so a future cleanup could silently break the exact item-label context that the Script Agent now relies on.
+
+**Solution**: Reviewed the active Cat 5 change set, kept the prompt and Script Agent logging changes intact, and simplified the server-side implementation by extracting shared child-turn helpers. Added focused API regressions that prove both turn endpoints record the exact collected-item label in conversation history for correct Cat 5 picks.
+
+**Edits**:
+- `backend/server.py` — extracted `_append_child_turn()` and `_record_correct_collection_pick()` so both turn endpoints share the same correct-pick and child-turn bookkeeping
+- `tests/test_api.py` — extended Cat 5 coverage to assert `[collected correct item: Spotted mushroom]` is recorded after a correct `/api/turn` collection pick and after a correct `/api/turn-speak` collection pick
+- `HANDOFF.md` — added this review/update entry
+
+**NOT Changed**:
+- `backend/agents/script_agent.py` and `backend/skills/step_instructions/cat5_step3_collect.md` were reviewed against the server change and left as-is; no additional defect in the raw-response logging or prompt wording justified widening scope in this pass.
+- No frontend files changed; the review stayed on the active backend Cat 5 context fix and its API coverage.
+
+**Verification**:
+- `uv run pytest tests/test_api.py -q -k "turn_serializes_collected_photos_for_cat5_collection or turn_returns_wrong_photo_without_advancing_cat5_collection or turn_speak_records_exact_collected_item_label_for_cat5_collection"` — PASS (`3 passed, 14 deselected`)
+- `uv run ruff check backend/server.py tests/test_api.py` — PASS
+
+---
+
+## Fix Cat 5 LLM Hallucination + Add Response Logging
+
+**Problem**: LLM responses for Cat 5 collection rounds were hallucinating item descriptions (e.g., "fluffy white cloud", "Letter D", "super yellow flower") because the Script Agent never received which grid item the child actually tapped. On correct picks, the photo_id was added to `collected_photos` but no conversation history entry was recorded — the LLM had zero context about the selection and invented descriptions based on the activity theme or original photo.
+
+**Solution**: (1) On correct grid picks, append `[collected correct item: <label>]` to conversation history so the LLM knows exactly what was selected. (2) Added `_get_item_label()` helper to resolve photo_id → display label from current round items. (3) Updated the collect step prompt to instruct the LLM to reference the specific item from the message, not hallucinate. (4) Added raw LLM response logging to both `generate_turn()` and `generate_turn_streaming()` for ongoing monitoring.
+
+**Edits**:
+- `backend/server.py` — added `_get_item_label()` helper; both `/api/turn` and `/api/turn-speak` now record `[collected correct item: <label>]` in conversation history on correct picks
+- `backend/agents/script_agent.py` — added `logger.info` with full raw LLM JSON response for both streaming and non-streaming paths
+- `backend/skills/step_instructions/cat5_step3_collect.md` — added explicit instruction to reference the collected item by name from `[collected correct item: ...]` marker, not hallucinate
+
+**NOT Changed**:
+- Wrong-pick path already had `[selected wrong photo: ...]` marker — no change needed
+- Frontend components unchanged
+- Director/Visual agent logging not added (one-shot at session start, not the issue)
+
+**Verification**:
+- `uv run ruff check .` — PASS
+- `uv run ruff format --check .` — PASS
+
+---
+
 ## Cat 5 Test Contract Realignment
 
 **Problem**: The latest Cat 5 collection workflow switched from fixed accepted IDs to per-round `round_items` and `current_round_items`, but the local API regressions in `tests/test_api.py` still built pre-change session state and submitted old photo IDs like `leaf_round` and `bark_rough`. That made the focused wrong-photo tests fail for the wrong reason and left the new UI-facing session payload effectively unverified. The previous handoff entry also overstated this by claiming the existing tests already covered the updated backend contract.

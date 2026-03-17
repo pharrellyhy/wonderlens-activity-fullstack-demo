@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { CheckmarkIcon, LeafIcon } from '../icons';
 
-export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], totalToCollect = 3, wrongPhotoId, items = [] }) {
+export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], totalToCollect = 3, wrongPhotoId, items = [], criterion = '' }) {
   const [selecting, setSelecting] = useState(false);
 
-  const handleSelect = (photoId) => {
+  const handleSelect = (photoId, label) => {
     if (selecting || collectedPhotos.includes(photoId)) return;
     setSelecting(true);
-    Promise.resolve(onPhotoSelect(photoId)).finally(() => setSelecting(false));
+    Promise.resolve(onPhotoSelect(photoId, label)).finally(() => setSelecting(false));
   };
 
   const collected = collectedPhotos.length;
@@ -15,10 +15,12 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
   return (
     <div className="flex flex-col items-center justify-center gap-3 h-full p-3">
       <div className="text-center">
-        <p className="text-sm font-semibold text-[var(--color-forest-dark)]">
-          Tap a photo to collect it!
-        </p>
-        <p className="text-xs text-gray-400">
+        {criterion && (
+          <p className="text-sm font-semibold text-[var(--color-forest-dark)]">
+            {criterion}
+          </p>
+        )}
+        <p className="text-xs text-gray-400 mt-0.5">
           {collected} of {totalToCollect} found
         </p>
       </div>
@@ -30,7 +32,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
           return (
             <button
               key={photo.id}
-              onClick={() => handleSelect(photo.id)}
+              onClick={() => handleSelect(photo.id, photo.label)}
               disabled={isCollected || selecting}
               className={`
                 relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-2

@@ -48,6 +48,7 @@ function App() {
                 totalToCollect={sessionState?.total_rounds || 3}
                 wrongPhotoId={lastWrongPhotoId}
                 items={sessionState?.current_round_items || []}
+                criterion={sessionState?.collection_criterion || ''}
               />
             ) : (
               <DeviceScreen
@@ -117,7 +118,9 @@ function App() {
         <div className="flex items-center gap-4">
           <span>Round: {
             templateType === 'cat5'
-              ? `${sessionState?.collected_photos?.length ?? 0}/${sessionState?.total_rounds ?? '-'}`
+              ? (sessionState?.current_step?.startsWith('STEP_3_COLLECT_')
+                ? `${sessionState?.collected_photos?.length ?? 0}/${sessionState?.total_rounds ?? '-'}`
+                : '-')
               : `${sessionState?.current_round ?? 0}/${sessionState?.total_rounds ?? '-'}`
           }</span>
           <span className="text-gray-300">|</span>

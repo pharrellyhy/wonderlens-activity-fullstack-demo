@@ -143,11 +143,15 @@ def _load_step_instructions(state: SessionStateModel) -> str:
             replacements["{round_scenario}"] = "Continue the game with an appropriate challenge."
 
     elif isinstance(slots, Cat5CreativeSlots):
+        collected_count = len(state.collected_photos)
+        remaining_count = max(0, state.total_rounds - collected_count)
         replacements.update(
             {
                 "{observation_angle}": slots.observation_angle,
                 "{collection_criterion}": slots.collection_criterion,
                 "{collection_count}": str(slots.collection_count),
+                "{collected_count}": str(collected_count),
+                "{remaining_count}": str(remaining_count),
                 "{mission_metaphor}": slots.mission_metaphor,
                 "{role_title}": slots.role_title,
                 "{synthesis_type}": slots.synthesis_type,
@@ -257,6 +261,11 @@ class ScriptAgent:
             if not text:
                 raise ScriptAgentError("Empty response from LLM")
 
+            logger.info(
+                f"Script LLM response: step={state.current_step}, round={state.current_round}, "
+                f"activity={state.activity_type}\n--- LLM RAW ---\n{text}\n--- END ---"
+            )
+
             turn = TurnResponse.model_validate_json(text)
 
             logger.info(f"Script turn: step={state.current_step}, round={state.current_round}, latency={latency_ms}ms")
@@ -335,9 +344,14 @@ class ScriptAgent:
             if not accumulated:
                 raise ScriptAgentError("Empty response from LLM streaming")
 
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.info(
+                f"Script LLM response (stream): step={state.current_step}, round={state.current_round}, "
+                f"activity={state.activity_type}\n--- LLM RAW ---\n{accumulated}\n--- END ---"
+            )
+
             turn = TurnResponse.model_validate_json(accumulated)
 
-            latency_ms = int((time.perf_counter() - start) * 1000)
             logger.info(
                 f"Script turn (stream): step={state.current_step}, round={state.current_round}, latency={latency_ms}ms"
             )

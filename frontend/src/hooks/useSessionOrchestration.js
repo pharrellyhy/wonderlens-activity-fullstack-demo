@@ -124,10 +124,10 @@ export default function useSessionOrchestration(tier) {
     sendMessage(text);
   }, [isActive, sendMessage, silenceTimer, turnPending]);
 
-  const handlePhotoCollection = useCallback((photoId) => {
+  const handlePhotoCollection = useCallback((photoId, label) => {
     if (!isActive || turnPending) return;
     silenceTimer.clear();
-    sendPhotoCollection(photoId);
+    return sendPhotoCollection(photoId, label);
   }, [isActive, sendPhotoCollection, silenceTimer, turnPending]);
 
   const toggleMic = useCallback(() => {

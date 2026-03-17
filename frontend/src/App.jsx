@@ -47,6 +47,7 @@ function App() {
                 collectedPhotos={sessionState?.collected_photos || []}
                 totalToCollect={sessionState?.total_rounds || 3}
                 wrongPhotoId={lastWrongPhotoId}
+                items={sessionState?.current_round_items || []}
               />
             ) : (
               <DeviceScreen
@@ -114,7 +115,11 @@ function App() {
         aria-label="Session status"
       >
         <div className="flex items-center gap-4">
-          <span>Round: {sessionState?.current_round ?? 0}/{sessionState?.total_rounds ?? '-'}</span>
+          <span>Round: {
+            templateType === 'cat5'
+              ? `${sessionState?.collected_photos?.length ?? 0}/${sessionState?.total_rounds ?? '-'}`
+              : `${sessionState?.current_round ?? 0}/${sessionState?.total_rounds ?? '-'}`
+          }</span>
           <span className="text-gray-300">|</span>
           <span>Latency: {latency ? `${latency}ms` : '-'}</span>
           <span className="text-gray-300">|</span>

@@ -1,6 +1,9 @@
 ## Current Step: Photo Collection Round {round_number} of {total_rounds}
 
-The child has submitted a photo (or spoken) for their collection. Respond naturally.
+The child is on a collection round. They may have just arrived at this round (no photo selected yet) or submitted a photo selection.
+
+### If starting a new round (no photo submitted yet):
+The child just entered this round. Encourage them to go explore and find the next item! Be specific about what they're looking for based on `{collection_criterion}` and `{observation_angle}`. Example: "Time to find something new! Look around — can you spot something with {observation_angle}? When you find it, tap the matching picture!" Keep it brief and exciting — one or two sentences that launch them into action.
 
 ### Priority #1: Respond to the child's actual words.
 Read what the child just said. React to THEIR specific input — what they described, how they said it, what they noticed. If they said something unexpected or off-topic, engage with it warmly before connecting back.

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import random
 import re
 import struct
 import time
@@ -98,19 +99,75 @@ class TTSRequest(BaseModel):
 
 # --- Cat 5 collection validation ---
 
-# Maps activity_type → set of photo IDs that count as correct finds.
-VALID_COLLECTION_PHOTOS: dict[str, set[str]] = {
-    "polka_dot_patrol": {"leaf_round", "flower_small", "stone_smooth"},
-    "fluffy_expedition_dandelion": {"leaf_heart", "leaf_long", "flower_small"},
+COLLECTION_CATALOGS: dict[str, dict[str, list[dict]]] = {
+    "polka_dot_patrol": {
+        "correct": [
+            {"id": "spotted_mushroom", "label": "Spotted mushroom"},
+            {"id": "dotted_pebble", "label": "Dotted pebble"},
+            {"id": "speckled_leaf", "label": "Speckled leaf"},
+            {"id": "circle_flower", "label": "Flower with circles"},
+        ],
+        "distractors": [
+            {"id": "straight_stick", "label": "Straight stick"},
+            {"id": "plain_bark", "label": "Plain bark"},
+            {"id": "long_grass", "label": "Long grass blade"},
+            {"id": "smooth_stone", "label": "Smooth stone"},
+            {"id": "pine_needle", "label": "Pine needles"},
+            {"id": "plain_leaf", "label": "Plain leaf"},
+            {"id": "forked_twig", "label": "Forked twig"},
+            {"id": "acorn_cap", "label": "Acorn cap"},
+        ],
+    },
+    "fluffy_expedition_dandelion": {
+        "correct": [
+            {"id": "fuzzy_moss", "label": "Fuzzy moss"},
+            {"id": "fluffy_seed", "label": "Fluffy seed head"},
+            {"id": "soft_petal", "label": "Soft petal"},
+            {"id": "woolly_caterpillar", "label": "Woolly caterpillar"},
+        ],
+        "distractors": [
+            {"id": "hard_rock", "label": "Hard rock"},
+            {"id": "spiky_pinecone", "label": "Spiky pinecone"},
+            {"id": "rough_bark", "label": "Rough bark"},
+            {"id": "sharp_thorn", "label": "Sharp thorn"},
+            {"id": "dry_leaf", "label": "Dry crunchy leaf"},
+            {"id": "smooth_pebble", "label": "Smooth pebble"},
+            {"id": "stiff_branch", "label": "Stiff branch"},
+            {"id": "brittle_shell", "label": "Brittle shell"},
+        ],
+    },
 }
 
 
-def _is_correct_collection_photo(activity_type: str, photo_id: str) -> bool:
-    """Check if the selected photo matches the activity's collection criterion."""
-    valid = VALID_COLLECTION_PHOTOS.get(activity_type)
-    if valid is None:
-        return True  # unknown activity — accept anything
-    return photo_id in valid
+def generate_round_items(activity_type: str, total_rounds: int) -> list[list[dict]]:
+    """Generate per-round item sets: 1 correct + 2 distractors per round."""
+    catalog = COLLECTION_CATALOGS.get(activity_type)
+    if not catalog:
+        return []
+    correct = list(catalog["correct"])
+    distractors = list(catalog["distractors"])
+    random.shuffle(correct)
+    random.shuffle(distractors)
+
+    rounds: list[list[dict]] = []
+    dist_idx = 0
+    for r in range(total_rounds):
+        correct_item = {**correct[r % len(correct)], "correct": True}
+        items: list[dict] = [correct_item]
+        items.extend(distractors[dist_idx : dist_idx + 2])
+        dist_idx += 2
+        random.shuffle(items)
+        rounds.append(items)
+    return rounds
+
+
+def _is_correct_collection_photo(state: SessionStateModel, photo_id: str) -> bool:
+    """Check if the selected photo matches the current round's correct item."""
+    round_num = _step_round_number(state.current_step)
+    round_idx = round_num - 1
+    if round_idx < 0 or round_idx >= len(state.round_items):
+        return True  # no round items — accept anything
+    return any(item["id"] == photo_id and item.get("correct", False) for item in state.round_items[round_idx])
 
 
 # --- Endpoints ---
@@ -173,7 +230,11 @@ async def start_session(
         # 6. Log session to DB
         await log_session(settings.db_path, session_id, tier, activity_type)
 
-        # 7. Store session state
+        # 7. Generate per-round items for Cat 5
+        if state.template_type == "cat5":
+            state.round_items = generate_round_items(state.activity_type, state.total_rounds)
+
+        # 8. Store session state
         _sessions[session_id] = state
 
         # 8. Build first turn response using Visual Agent frames
@@ -292,7 +353,7 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
     # For Cat 5 collection: validate photo_id before advancing
     collection_wrong = False
     if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
-        if _is_correct_collection_photo(state.activity_type, req.photo_id):
+        if _is_correct_collection_photo(state, req.photo_id):
             state.collected_photos.append(req.photo_id)
             state.consecutive_wrong = 0
         else:
@@ -535,7 +596,7 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         # Cat 5 collection validation
         collection_wrong = False
         if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
-            if _is_correct_collection_photo(state.activity_type, req.photo_id):
+            if _is_correct_collection_photo(state, req.photo_id):
                 state.collected_photos.append(req.photo_id)
                 state.consecutive_wrong = 0
             else:
@@ -888,7 +949,7 @@ def _entity_from_filename(filename: str) -> str:
 
 
 def _session_state_dict(state: SessionStateModel) -> dict:
-    return {
+    result: dict = {
         "status": state.status,
         "current_step": state.current_step,
         "current_round": state.current_round,
@@ -900,3 +961,13 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         "template_type": state.template_type,
         "auto_advance": _should_auto_advance(state),
     }
+
+    # Expose current round items for Cat 5 (strip correct flag)
+    if state.round_items and state.current_step.startswith("STEP_3_COLLECT_"):
+        round_idx = _step_round_number(state.current_step) - 1
+        if 0 <= round_idx < len(state.round_items):
+            result["current_round_items"] = [
+                {"id": item["id"], "label": item["label"]} for item in state.round_items[round_idx]
+            ]
+
+    return result

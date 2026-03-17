@@ -1,16 +1,7 @@
 import { useState } from 'react';
 import { CheckmarkIcon, LeafIcon } from '../icons';
 
-const COLLECTION_PHOTOS = [
-  { id: 'leaf_heart', label: 'Heart-shaped leaf' },
-  { id: 'leaf_long', label: 'Long thin leaf' },
-  { id: 'leaf_round', label: 'Round leaf' },
-  { id: 'stone_smooth', label: 'Smooth stone' },
-  { id: 'flower_small', label: 'Small flower' },
-  { id: 'bark_rough', label: 'Rough bark' },
-];
-
-export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], totalToCollect = 3, wrongPhotoId }) {
+export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], totalToCollect = 3, wrongPhotoId, items = [] }) {
   const [selecting, setSelecting] = useState(false);
 
   const handleSelect = (photoId) => {
@@ -33,7 +24,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
       </div>
 
       <div className="grid grid-cols-3 gap-3 w-full max-w-md">
-        {COLLECTION_PHOTOS.slice(0, Math.max(totalToCollect + 2, 5)).map((photo) => {
+        {items.map((photo) => {
           const isCollected = collectedPhotos.includes(photo.id);
           const isWrong = wrongPhotoId === photo.id;
           return (

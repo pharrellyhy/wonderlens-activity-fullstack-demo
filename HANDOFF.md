@@ -1,6 +1,58 @@
 # Session Handoff
 
-Last updated: 2026-03-13
+Last updated: 2026-03-17
+
+---
+
+## Cat 5 Test Contract Realignment
+
+**Problem**: The latest Cat 5 collection workflow switched from fixed accepted IDs to per-round `round_items` and `current_round_items`, but the local API regressions in `tests/test_api.py` still built pre-change session state and submitted old photo IDs like `leaf_round` and `bark_rough`. That made the focused wrong-photo tests fail for the wrong reason and left the new UI-facing session payload effectively unverified. The previous handoff entry also overstated this by claiming the existing tests already covered the updated backend contract.
+
+**Solution**: Realigned the Cat 5 test fixtures to the current catalog-based contract by adding deterministic `round_items`, switching the requests to the new `spotted_mushroom` / `plain_bark` / `straight_stick` IDs, and asserting that `current_round_items` is serialized for the next collection round without leaking the internal `correct` flag. Reviewed the runtime backend/frontend changes in this pass, but did not find a new code defect worth widening beyond the tests and handoff.
+
+**Edits**:
+- local `tests/test_api.py` — added deterministic Cat 5 round-item fixtures, updated the collection/wrong-photo requests to current IDs, and asserted `current_round_items` serialization for the next round
+- `HANDOFF.md` — replaced the stale top-entry testing claim with the verified state from this review pass
+
+**NOT Changed**:
+- `backend/server.py`, `backend/schemas/session_state.py`, `backend/skills/step_instructions/cat5_step2_mission.md`, `backend/skills/step_instructions/cat5_step3_collect.md`, `frontend/src/App.jsx`, and `frontend/src/components/PhotoGallery.jsx` were reviewed but not modified in this pass.
+- No new frontend component tests were added; the UI path still relies on API coverage plus frontend lint/build.
+
+**Verification**:
+- `uv run pytest tests/test_api.py -q -k "turn_serializes_collected_photos_for_cat5_collection or turn_returns_wrong_photo_without_advancing_cat5_collection or turn_exits_after_two_wrong_cat5_photo_picks"` — PASS (`3 passed, 13 deselected`)
+- `uv run ruff check backend/schemas/session_state.py backend/server.py tests/test_api.py` — PASS
+- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`123 passed, 5 deselected`)
+- `cd frontend && npm run lint` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Fix Cat 5 Collection Workflow (4 bugs)
+
+**Problem**: Cat 5 out-of-device collection activities had four bugs: (1) AI dialogue didn't guide child to go find/collect items, (2) round counter off-by-one (status bar showed "Round: 4/4" while screen showed "3 of 4 found"), (3) both activities showed identical hardcoded grid items, (4) same grid every round with no variation.
+
+**Solution**: Added per-activity item catalogs with correct items and distractors. Each round now shows 3 items (1 correct + 2 distractors) shuffled randomly. Round counter in footer now shows collected count for Cat 5. Prompt templates updated to include "go explore" language.
+
+**Edits**:
+- `backend/schemas/session_state.py` — added `round_items: list[list[dict]]` field to `SessionStateModel`
+- `backend/server.py` — replaced `VALID_COLLECTION_PHOTOS` with `COLLECTION_CATALOGS` (per-activity correct/distractor items); added `generate_round_items()` function; changed `_is_correct_collection_photo()` to use per-round items with correct flag; populate `round_items` in `start_session()`; expose `current_round_items` (sans correct flag) in `_session_state_dict()`
+- `frontend/src/components/PhotoGallery.jsx` — removed hardcoded `COLLECTION_PHOTOS` array; accepts `items` prop; renders only provided items per round
+- `frontend/src/App.jsx` — passes `current_round_items` to PhotoGallery; fixed round counter for Cat 5 to show `collected_photos.length / total_rounds`
+- `backend/skills/step_instructions/cat5_step2_mission.md` — added "go explore NOW" call-to-action instruction
+- `backend/skills/step_instructions/cat5_step3_collect.md` — added preamble for new round start encouraging child to go find next item
+
+**NOT Changed**:
+- State machine step transitions (`state_machine.py`) — round advancement logic unchanged
+- Vision agent, recipe assembler, pipeline — unrelated to collection UI
+- Test files — no test updates were made in that pass; the next handoff entry records the later Cat 5 test realignment
+
+**Verification**:
+- `uv run ruff check .` — PASS
+- `uv run ruff format --check .` — PASS
+- Start `polka_dot_patrol` → grid shows 3 spotted-themed items
+- Start `fluffy_expedition_dandelion` → grid shows 3 fuzzy-themed items
+- Complete round 1 → round 2 shows different items
+- Status bar round count matches collected count on screen
 
 ---
 
@@ -232,67 +284,5 @@ Measured improvement: `/api/start` dropped from 22-43s to ~12s; Script Agent tur
 - `cd frontend && npx eslint src/utils/api.js src/hooks/useTTS.js src/hooks/useConversation.js src/hooks/useSessionOrchestration.js` — PASS
 - `cd frontend && npm run build` — PASS (49 modules, 457ms)
 - Server runtime: `/api/start` latency=12,623ms (was 22-43s), Script hook latency=3,617ms with no truncation (was failing), subsequent turns=1,165-1,555ms
-
----
-
-## Turn Flow Contract Hardening
-
-**Problem**: The turn-by-turn backend still had several concrete contract mismatches. Closing turns could leave the session `active` and ask the frontend to auto-advance one extra time, Cat 5 collection progress depended on `session_state.collected_photos` even though the serializer omitted it, round transitions could report `current_round = 0` after entering `STEP_3_*`, and Script Agent fallback failures did not surface as explicit `error` turns for the frontend `errorExit` path.
-
-**Solution**: Tightened the turn contract in `backend/server.py`. The server now syncs `current_round` from the active round step, returns explicit `error` turns when Script generation fails twice, completes the session when the final closing line is delivered, suppresses auto-advance for closing and error states, and includes `collected_photos` in the serialized session state. Added focused regression coverage in tracked `tests/test_api.py` for all four paths.
-
-**Edits**:
-- `backend/server.py` — added explicit error-turn handling, `_sync_round_from_step()` / `_step_round_number()`, closing-turn completion, tighter auto-advance gating, and `collected_photos` in `session_state`
-- `tests/test_api.py` — added focused turn-by-turn API tests for error fallback surfacing, first-round sync, Cat 5 collected-photo serialization, and closing-turn completion
-
-**NOT Changed**:
-- Director/Script prompt assets, state-machine templates, and frontend gallery components were reviewed but not modified in this pass.
-- The older broad assertions in `tests/test_api.py` still target the pre-turn-by-turn recipe contract; this pass added focused coverage without rewriting that whole legacy file.
-
-**Verification**:
-- `uv run ruff check backend/server.py tests/test_api.py` — PASS
-- `uv run pytest tests/test_api.py -q -k "turn_returns_explicit_error_exit_when_script_generation_fails_twice or turn_enters_first_round_with_round_number_one or turn_serializes_collected_photos_for_cat5_collection or turn_marks_closing_delivery_complete_without_auto_advance"` — PASS (`4 passed, 13 deselected`)
-
----
-
-## Turn-by-Turn LLM Generation with Entity-Agnostic Templates
-
-**Problem**: The architecture pre-generated the entire script upfront via the Script Agent (30-60s), then `/api/turn` was a pure recipe lookup (~5ms). This caused high initial latency and rigid dialogue that ignored what the child actually said.
-
-**Solution**: Switched to turn-by-turn generation where the Script Agent generates only the next dialogue turn based on user input, template structure (Cat 1 or Cat 5), and conversation state. Director Agent now fills creative slots (game mechanic, metaphor, role title, etc.) that the per-turn Script Agent consumes via Gemini Flash.
-
-**Edits**:
-- `backend/schemas/creative_slots.py` — NEW: Cat1CreativeSlots and Cat5CreativeSlots Pydantic models
-- `backend/schemas/turn_response.py` — NEW: TurnResponse schema (single turn output)
-- `backend/schemas/session_state.py` — NEW: SessionStateModel and ConversationTurn for server-side state
-- `backend/schemas/composition_plan.py` — Added template_type and creative_slots fields
-- `backend/schemas/__init__.py` — Exports all new models
-- `backend/state_machine.py` — NEW: Cat 1 / Cat 5 state machine (next_step, is_terminal, step_needs_user_input, get_screen_frame)
-- `backend/agents/director.py` — Expanded to fill creative slots, template_type selection, default slots per category
-- `backend/agents/script_agent.py` — REWRITE: Per-turn generation via Gemini Flash with modular system prompt assembly
-- `backend/agents/pipeline.py` — REWRITE: initialize_session() replaces generate_recipe(), Director → state → Script hook flow
-- `backend/server.py` — MAJOR REWRITE: SessionStateModel replaces SessionState, /api/start returns first_turn + session_state (no recipe), /api/turn runs Script Agent per turn with state machine advancement, auto_advance flag, error_exit handling
-- `backend/config.yaml` — Added script_turn_timeout_ms (5000) and script_turn_max_tokens (500), increased director_max_tokens to 1000
-- `backend/config.py` — Added script_turn_timeout_ms and script_turn_max_tokens settings
-- `backend/skills/director.md` — Expanded with creative slot definitions, mechanic/angle selection logic
-- `backend/skills/script_turn.md` — NEW: Modular system prompt for per-turn generation
-- `backend/skills/step_instructions/` — NEW: 13 step instruction files for Cat 1 and Cat 5 steps + early exit
-- `frontend/src/utils/api.js` — sendTurn now accepts optional photoId param
-- `frontend/src/hooks/useConversation.js` — Removed recipe state, added templateType/errorExit/sendAutoAdvance/sendPhotoCollection
-- `frontend/src/hooks/useSessionOrchestration.js` — Auto-advance for non-interactive steps (celebration/closing), errorExit passthrough, sendPhotoCollection
-- `frontend/src/components/PhotoGallery.jsx` — NEW: Cat 5 collection gallery with progress indicator
-- `frontend/src/App.jsx` — Conditional PhotoGallery rendering for Cat 5, error exit indicator, template type in footer
-- `frontend/src/components/ConversationPanel.jsx` — Added errorExit prop
-
-**NOT Changed**:
-- Vision, STT, TTS, DB layer, tier_rules.yaml, fallback recipes, scenarios, existing widgets
-- useSpeechRecognition, useTTS, useSilenceTimer hooks
-- All existing test files (will need updates for new architecture)
-
-**Verification**:
-- `uv run ruff check .` — PASS
-- `uv run ruff format --check .` — PASS (23 files already formatted)
-- `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS (49 modules, 445ms)
 
 ---

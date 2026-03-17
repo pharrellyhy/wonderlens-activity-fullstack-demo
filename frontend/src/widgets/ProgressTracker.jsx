@@ -13,9 +13,9 @@ export default function ProgressTracker({ filled = 0, total = 4, description }) 
             key={i}
             className={`w-20 h-20 rounded-full border-3 flex items-center justify-center transition-all duration-500 ${
               isFilled
-                ? 'bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-forest-dark)] border-white/80 scale-110 shadow-lg'
+                ? 'bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-forest-dark)] border-white/80 shadow-md'
                 : 'bg-[var(--color-sky-light)]/30 border-[var(--color-sky)]/50 border-dashed'
-            } ${!isFilled && i === filled ? 'animate-pulse border-[var(--color-teal)]' : ''}`}
+            } ${!isFilled && i === filled ? 'animate-gentle-glow border-[var(--color-teal)]' : ''}`}
           >
             {isFilled ? (
               <CheckmarkIcon className="w-8 h-8 text-white" />
@@ -26,12 +26,12 @@ export default function ProgressTracker({ filled = 0, total = 4, description }) 
         ))}
       </div>
 
-      <p className={`text-sm font-medium ${filled >= total ? 'text-[var(--color-forest)]' : 'text-gray-400'}`}>
+      <p className={`text-sm font-medium ${filled >= total ? 'text-[var(--color-forest)]' : 'text-gray-500'}`}>
         {filled >= total ? 'Collection Complete!' : `${filled} of ${total} found`}
       </p>
 
       {description && (
-        <p className="text-xs text-gray-400 text-center max-w-xs">{description}</p>
+        <p className="text-xs text-gray-500 text-center max-w-xs">{description}</p>
       )}
     </div>
   );

@@ -11,7 +11,6 @@ try:
     from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
     from ..schemas.session_state import ConversationTurn, SessionStateModel
     from ..schemas.turn_response import TurnResponse
-    from ..state_machine import next_step
     from .director import DirectorAgent
     from .script_agent import ScriptAgent, ScriptAgentError
     from .visual_agent import VisualAgent
@@ -22,7 +21,6 @@ except ImportError:
     from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel
     from schemas.turn_response import TurnResponse
-    from state_machine import next_step
 
     from agents.director import DirectorAgent
     from agents.script_agent import ScriptAgent, ScriptAgentError
@@ -173,8 +171,6 @@ async def initialize_session(
         )
     )
 
-    # Advance to next step
-    state.current_step = next_step(state.current_step, state.template_type, state.current_round, state.total_rounds)
     state.turn_count = 1
 
     logger.info(

@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, Field
 
+from .step_instruction import StepInstruction
 from .visual_composition import ScreenFrame
 from .voice_script import VoiceScript
 
@@ -24,3 +25,15 @@ class ActivityRecipe(BaseModel):
     screen_frames: list[ScreenFrame] = Field(description="Ordered screen frames")
     celebration_frame: ScreenFrame | None = Field(default=None, description="Special frame for activity completion")
     metadata: RecipeMetadata = Field(description="Activity metadata")
+
+
+class InstructionRecipe(BaseModel):
+    """Instruction-based recipe: goals + constraints per step, not exact dialogue."""
+
+    activity_type: str = Field(description="Activity type identifier")
+    step_instructions: StepInstruction = Field(description="Per-step goals and constraints")
+    screen_frames: list[ScreenFrame] = Field(description="Ordered screen frames")
+    celebration_frame: ScreenFrame | None = Field(default=None, description="Special frame for activity completion")
+    metadata: RecipeMetadata = Field(description="Activity metadata")
+    photo_features: list[str] = Field(default_factory=list, description="Cat1 visible feature anchors")
+    collection_items: dict = Field(default_factory=dict, description="Cat5 item metadata")

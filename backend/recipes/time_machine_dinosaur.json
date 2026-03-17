@@ -1,48 +1,60 @@
 {
   "activity_type": "time_machine_dinosaur",
-  "voice_script": {
-    "hook_line": "Whoa, look at that amazing dinosaur! Those big teeth and powerful legs — I wonder what it was like when dinosaurs roamed the Earth!",
-    "hook_tone": "excited",
-    "transition_line": "What if we had a magical time machine and could travel back to when dinosaurs lived? I'll describe a time period, and you tell me what our dinosaur friend would be doing there!",
-    "transition_tone": "playful",
+  "step_instructions": {
+    "hook": {
+      "goal": "Create an emotional connection with the dinosaur — notice its big teeth, powerful legs, and amazing appearance",
+      "constraint": "T0 max 2 sentences, personal feeling hook, invitational tone",
+      "emotion_tag": "excited"
+    },
+    "transition": {
+      "goal": "Invite the child to travel back in time with the dinosaur — introduce the what_would_it_say game where they imagine the dinosaur in different time periods",
+      "constraint": "T0 max 2 sentences, explain game simply, end with genuine invitation (Would you like to try?)",
+      "emotion_tag": "playful"
+    },
     "rounds": [
       {
-        "prompt": "We've landed in a giant prehistoric jungle! Huge trees and ferns everywhere. What is our dinosaur doing in this jungle?",
-        "correct_responses": ["eating", "walking", "exploring", "stomping", "looking", "running", "hiding", "playing"],
-        "on_correct": "Yes! I can totally see it — stomping through those giant ferns, having the best adventure ever!",
-        "on_incorrect": "Ooh, that's a fun idea! In a big jungle like that, our dinosaur might also be exploring and munching on some giant leaves!",
-        "on_silence": "Imagine you're in a huge jungle with trees as tall as buildings. What would a dinosaur do there? Maybe stomp around or munch on leaves?",
-        "hint": "Think about what you would do in a giant jungle — explore, play, or maybe find something to eat!",
-        "sfx_cue": "scene_woosh",
-        "tone_marker": "adventurous"
+        "round_number": 1,
+        "goal": "Explore what the dinosaur does in a giant prehistoric jungle with huge trees and ferns",
+        "scenario": "prehistoric jungle",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "adventurous",
+        "acceptable_themes": ["eating", "walking", "exploring", "stomping", "looking", "running", "hiding", "playing"],
+        "escalation_note": "comfortable, familiar jungle — easiest round"
       },
       {
-        "prompt": "Time jump! Now we're at a big volcano rumbling in the distance. The ground is shaking! What does our dinosaur do?",
-        "correct_responses": ["run", "scared", "roar", "hide", "escape", "surprised", "brave", "watch"],
-        "on_correct": "That makes so much sense! A big rumbling volcano would be quite the surprise for our dinosaur friend!",
-        "on_incorrect": "Interesting! With all that rumbling and shaking, our dinosaur might also feel surprised or want to run to a safe spot!",
-        "on_silence": "The ground is shaking and the volcano is making big booming sounds. Would the dinosaur feel scared? Brave? Would it run or roar back?",
-        "hint": "Think about how you'd feel if the ground was shaking — surprised? Scared? Brave?",
-        "sfx_cue": "scene_woosh",
-        "tone_marker": "dramatic"
+        "round_number": 2,
+        "goal": "Explore how the dinosaur reacts to a big rumbling volcano with shaking ground",
+        "scenario": "rumbling volcano",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "dramatic",
+        "acceptable_themes": ["run", "scared", "roar", "hide", "escape", "surprised", "brave", "watch"],
+        "escalation_note": "dramatic intensity — moderate to high"
       },
       {
-        "prompt": "Last time jump! We've landed at a beautiful lake at sunset, everything is calm and peaceful. What is our dinosaur doing now?",
-        "correct_responses": ["drinking", "resting", "sleeping", "swimming", "relaxing", "happy", "calm", "peaceful"],
-        "on_correct": "That's perfect! After all those adventures, a peaceful rest by the lake sounds just right!",
-        "on_incorrect": "What a lovely thought! By a calm lake at sunset, our dinosaur might also be relaxing and enjoying the beautiful view!",
-        "on_silence": "Picture a beautiful sunset over a quiet lake. Everything is calm. What would our dinosaur do? Maybe take a drink, or rest?",
-        "hint": "Think about what you like to do when everything is calm and peaceful — rest, relax, enjoy the view?",
-        "sfx_cue": "celebration_fanfare",
-        "tone_marker": "peaceful"
+        "round_number": 3,
+        "goal": "Explore what the dinosaur does at a peaceful lake at sunset, everything calm",
+        "scenario": "peaceful lake at sunset",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "peaceful",
+        "acceptable_themes": ["drinking", "resting", "sleeping", "swimming", "relaxing", "happy", "calm", "peaceful"],
+        "escalation_note": "gentle wind-down — peaceful resolution"
       }
     ],
-    "closing_speech": "What an incredible Time Traveler you are! You imagined our dinosaur exploring a jungle, reacting to a volcano, and relaxing by a lake. The same dinosaur acted differently in each time and place — that's the magic of Change! Things change depending on when and where they are.",
-    "closing_tone": "proud",
-    "tomorrow_hook": "Next time you see your dinosaur friend, try imagining what other time periods you could visit together!",
-    "tomorrow_tone": "warm",
-    "early_exit_speech": "What an amazing time-travel adventure we had! Our dinosaur friend had such a great time exploring with you. We can travel through time again whenever you're ready!",
-    "early_exit_tone": "gentle"
+    "celebrate": {
+      "goal": "Celebrate the child as a Time Traveler — they imagined the dinosaur in a jungle, at a volcano, and by a lake; connect to IB concept Change",
+      "constraint": "T0 max 2 sentences, name 1 IB concept naturally",
+      "emotion_tag": "proud"
+    },
+    "closing": {
+      "goal": "Leave the child with a cross-session hook — next time they see their dinosaur friend, imagine other time periods to visit",
+      "constraint": "T0 max 2 sentences, warm and gentle",
+      "emotion_tag": "warm"
+    },
+    "early_exit": {
+      "goal": "Gentle goodbye — they had an amazing time-travel adventure, the dinosaur had a great time exploring with them",
+      "constraint": "T0 max 2 sentences, no pressure to continue",
+      "emotion_tag": "gentle"
+    }
   },
   "screen_frames": [
     {
@@ -51,7 +63,10 @@
         "description": "Dinosaur photo centered with a prehistoric glow effect"
       },
       "animation": "sparkle_highlight",
-      "trigger": "on_enter"
+      "trigger": "on_enter",
+      "sfx_cue": "wonder_chime",
+      "widget_label": "Amazing Dinosaur",
+      "animation_label": "Prehistoric glow"
     },
     {
       "widget": "character_display",
@@ -59,7 +74,10 @@
         "description": "Illustration of a dinosaur in a lush prehistoric jungle"
       },
       "animation": "scene_transition",
-      "trigger": "on_round_1"
+      "trigger": "on_round_1",
+      "sfx_cue": "scene_woosh",
+      "widget_label": "Time Jump 1: Jungle",
+      "animation_label": "Scene transition"
     },
     {
       "widget": "character_display",
@@ -67,7 +85,10 @@
         "description": "Illustration of a dinosaur near a rumbling volcano"
       },
       "animation": "scene_transition",
-      "trigger": "on_round_2"
+      "trigger": "on_round_2",
+      "sfx_cue": "scene_woosh",
+      "widget_label": "Time Jump 2: Volcano",
+      "animation_label": "Scene transition"
     },
     {
       "widget": "character_display",
@@ -75,7 +96,10 @@
         "description": "Illustration of a dinosaur resting by a peaceful lake at sunset"
       },
       "animation": "gentle_pulse",
-      "trigger": "on_round_3"
+      "trigger": "on_round_3",
+      "sfx_cue": "celebration_fanfare",
+      "widget_label": "Time Jump 3: Peaceful Lake",
+      "animation_label": "Gentle glow"
     }
   ],
   "celebration_frame": {
@@ -85,7 +109,10 @@
       "concepts": ["Change"]
     },
     "animation": "badge_reveal",
-    "trigger": "on_correct"
+    "trigger": "on_correct",
+    "sfx_cue": "badge_awarded",
+    "widget_label": "Badge Earned!",
+    "animation_label": "Badge reveal"
   },
   "metadata": {
     "tier": "T0",
@@ -93,5 +120,6 @@
     "ib_key_concept": "Change",
     "concepts_earned": ["Change"],
     "round_count": 3
-  }
+  },
+  "photo_features": ["big teeth", "powerful legs", "scaly skin", "long tail"]
 }

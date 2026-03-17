@@ -19,6 +19,7 @@ export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Ask me anything ..."
+          aria-label="Type your message"
           disabled={disabled}
           className="flex-1 bg-transparent py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
         />
@@ -28,7 +29,7 @@ export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled
           disabled={disabled}
           aria-label={isMicActive ? 'Stop recording' : 'Voice input'}
           aria-pressed={isMicActive}
-          className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+          className={`w-11 h-11 flex items-center justify-center rounded-full transition-all ${
             isMicActive
               ? 'bg-red-500 text-white hover:bg-red-400 animate-pulse shadow-sm'
               : 'text-[var(--color-teal)] hover:text-[var(--color-teal-light)] hover:bg-[var(--color-teal)]/10'
@@ -48,7 +49,7 @@ export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled
         type="submit"
         disabled={disabled || !text.trim()}
         aria-label="Send message"
-        className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--color-forest)] text-white hover:bg-[var(--color-forest-dark)] transition-all shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-11 h-11 flex items-center justify-center rounded-full bg-[var(--color-forest)] text-white hover:bg-[var(--color-forest-dark)] transition-all shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path

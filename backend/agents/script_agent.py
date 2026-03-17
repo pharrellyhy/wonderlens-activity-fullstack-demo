@@ -16,7 +16,9 @@ try:
     from ..db import log_agent_call
     from ..logger import setup_logger
     from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from ..schemas.recipe import InstructionRecipe
     from ..schemas.session_state import SessionStateModel
+    from ..schemas.step_instruction import RoundInstruction, StepGoal
     from ..schemas.turn_response import TurnResponse
     from ..state_machine import get_step_name
 except ImportError:
@@ -24,7 +26,9 @@ except ImportError:
     from db import log_agent_call
     from logger import setup_logger
     from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.recipe import InstructionRecipe
     from schemas.session_state import SessionStateModel
+    from schemas.step_instruction import RoundInstruction, StepGoal
     from schemas.turn_response import TurnResponse
     from state_machine import get_step_name
 
@@ -36,6 +40,8 @@ _TIER_RULES_PATH = Path(__file__).parent.parent / "tier_rules.yaml"
 
 # Regex to extract dialogue value from partial JSON stream
 _DIALOGUE_RE = re.compile(r'"dialogue"\s*:\s*"((?:[^"\\]|\\.)*)"')
+# Regex to detect a leading bracket emotion tag like "[excited] "
+_EMOTION_TAG_RE = re.compile(r"^\[.+?\] ")
 
 
 class ScriptAgentError(Exception):
@@ -65,21 +71,31 @@ def _load_tier_constraints(tier: str) -> str:
     if not rules:
         return f"Tier: {tier}"
 
-    return (
-        f"Tier: {tier} ({rules.get('label', '')})\n"
-        f"Ages: {rules.get('ages', '')}\n"
-        f"Words per sentence: {rules.get('words_per_sentence', '')}\n"
-        f"Max sentences per turn: {rules.get('max_sentences', '')}\n"
-        f"Hook rule: {rules.get('hook_rule', '')} — {rules.get('hook_description', '')}\n"
-        f"Closing: {rules.get('closing_speech', '')} — {rules.get('closing_description', '')}\n"
-        f"Tone: {rules.get('tone', '')}\n"
-        f"Response style: {rules.get('response_style', '')}\n"
-        f"Round count range: {rules.get('pathway_rounds', '')}\n"
-        f"Available concepts: {rules.get('available_key_concepts', '')}\n"
-        f"Max concept badges: {rules.get('max_concept_badges', '')}\n"
-        f"Good hook example: {rules.get('example_good_hook', '')}\n"
-        f"Bad hook example: {rules.get('example_bad_hook', '')}"
-    )
+    lines = [
+        f"Tier: {tier} ({rules.get('label', '')})",
+        f"Ages: {rules.get('ages', '')}",
+        f"Words per sentence: {rules.get('words_per_sentence', '')}",
+        f"Max sentences per turn: {rules.get('max_sentences', '')}",
+        f"Hook rule: {rules.get('hook_rule', '')} — {rules.get('hook_description', '')}",
+        f"Closing: {rules.get('closing_speech', '')} — {rules.get('closing_description', '')}",
+        f"Tone: {rules.get('tone', '')}",
+        f"Response style: {rules.get('response_style', '')}",
+        f"Round count range: {rules.get('pathway_rounds', '')}",
+        f"Available concepts: {rules.get('available_key_concepts', '')}",
+        f"Max concept badges: {rules.get('max_concept_badges', '')}",
+        f"Good hook example: {rules.get('example_good_hook', '')}",
+        f"Bad hook example: {rules.get('example_bad_hook', '')}",
+    ]
+
+    invitational = rules.get("invitational_patterns", [])
+    if invitational:
+        lines.append(f"Invitational patterns: {', '.join(invitational)}")
+
+    forbidden = rules.get("forbidden_directives", [])
+    if forbidden:
+        lines.append(f"FORBIDDEN directives: {', '.join(forbidden)}")
+
+    return "\n".join(lines)
 
 
 def _load_step_instructions(state: SessionStateModel) -> str:
@@ -164,7 +180,111 @@ def _load_step_instructions(state: SessionStateModel) -> str:
     for key, value in replacements.items():
         text = text.replace(key, value)
 
+    # Append activity-specific overlay from instruction recipe
+    overlay = _build_instruction_overlay(state)
+    if overlay:
+        text += f"\n\n{overlay}"
+
     return text
+
+
+def _build_instruction_overlay(state: SessionStateModel) -> str:
+    """Build activity-specific instruction overlay from the instruction recipe."""
+    recipe = state.instruction_recipe
+    if not recipe:
+        return ""
+
+    step = state.current_step
+    instructions = recipe.step_instructions
+
+    goal_source: StepGoal | RoundInstruction | None = None
+
+    if step == "STEP_1_HOOK":
+        goal_source = instructions.hook
+    elif step in ("STEP_2_RULES", "STEP_2_MISSION"):
+        goal_source = instructions.transition
+    elif step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
+        round_num = int(step.rsplit("_", maxsplit=1)[-1])
+        round_idx = round_num - 1
+        if 0 <= round_idx < len(instructions.rounds):
+            goal_source = instructions.rounds[round_idx]
+    elif step in ("STEP_4_CELEBRATE", "STEP_5_CELEBRATE"):
+        goal_source = instructions.celebrate
+    elif step == "STEP_4_SYNTHESIS":
+        goal_source = instructions.synthesis
+    elif step in ("STEP_5_CLOSING", "STEP_6_CLOSING"):
+        goal_source = instructions.closing
+    elif step == "EARLY_EXIT":
+        goal_source = instructions.early_exit
+
+    if not goal_source:
+        return ""
+
+    lines = [
+        "### Activity-Specific Instructions:",
+        f"Goal: {goal_source.goal}",
+        f"Constraint: {goal_source.constraint}",
+        f"Suggested emotion tag: [{goal_source.emotion_tag}]",
+    ]
+
+    if isinstance(goal_source, RoundInstruction):
+        lines.append(f"Scenario: {goal_source.scenario}")
+        if goal_source.acceptable_themes:
+            lines.append(f"Acceptable themes: {', '.join(goal_source.acceptable_themes)}")
+        if goal_source.escalation_note:
+            lines.append(f"Escalation: {goal_source.escalation_note}")
+
+    # For Cat5 collection rounds, add explicit progress context to prevent hallucination
+    if isinstance(state.creative_slots, Cat5CreativeSlots) and (
+        step.startswith("STEP_3_COLLECT_") or step.startswith("STEP_3_ROUND_")
+    ):
+        collected = len(state.collected_photos)
+        remaining = max(0, state.total_rounds - collected)
+        lines.append(f"\n**PROGRESS (NON-NEGOTIABLE): {collected} items collected, {remaining} still needed.**")
+        if remaining > 0:
+            lines.append(
+                "The mission is NOT complete. You MUST prompt the child to find the next item. "
+                "Do NOT celebrate completion or say the mission is done."
+            )
+
+    return "\n".join(lines)
+
+
+def _get_suggested_emotion_tag(state: SessionStateModel) -> str:
+    """Get the suggested emotion tag for the current step from the instruction recipe."""
+    recipe = state.instruction_recipe
+    if not recipe:
+        return "gentle"
+
+    step = state.current_step
+    instructions = recipe.step_instructions
+
+    if step == "STEP_1_HOOK":
+        return instructions.hook.emotion_tag
+    if step in ("STEP_2_RULES", "STEP_2_MISSION"):
+        return instructions.transition.emotion_tag
+    if step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
+        round_num = int(step.rsplit("_", maxsplit=1)[-1])
+        round_idx = round_num - 1
+        if 0 <= round_idx < len(instructions.rounds):
+            return instructions.rounds[round_idx].emotion_tag
+    if step in ("STEP_4_CELEBRATE", "STEP_5_CELEBRATE"):
+        return instructions.celebrate.emotion_tag
+    if step == "STEP_4_SYNTHESIS" and instructions.synthesis:
+        return instructions.synthesis.emotion_tag
+    if step in ("STEP_5_CLOSING", "STEP_6_CLOSING"):
+        return instructions.closing.emotion_tag
+    if step == "EARLY_EXIT":
+        return instructions.early_exit.emotion_tag
+
+    return "gentle"
+
+
+def _ensure_emotion_tag(turn: TurnResponse, state: SessionStateModel) -> None:
+    """Ensure dialogue starts with a bracketed emotion tag; prepend one if missing."""
+    if not _EMOTION_TAG_RE.match(turn.dialogue):
+        tag = _get_suggested_emotion_tag(state)
+        turn.dialogue = f"[{tag}] {turn.dialogue}"
 
 
 def _build_conversation_context(state: SessionStateModel) -> str:
@@ -196,6 +316,17 @@ def _build_system_prompt(state: SessionStateModel) -> str:
     """Assemble the full system prompt from template + injections."""
     template = _SKILL_PATH.read_text() if _SKILL_PATH.exists() else ""
 
+    # Build photo feature anchors section
+    photo_feature_anchors = ""
+    recipe = state.instruction_recipe
+    if recipe and recipe.photo_features:
+        features = ", ".join(recipe.photo_features)
+        photo_feature_anchors = (
+            f"### Photo Feature Anchors:\n"
+            f"Only reference these visible features: {features}\n"
+            f"Do NOT invent features not in this list."
+        )
+
     replacements = {
         "{tier_constraints}": _load_tier_constraints(state.tier),
         "{step_instructions}": _load_step_instructions(state),
@@ -204,6 +335,7 @@ def _build_system_prompt(state: SessionStateModel) -> str:
         "{entity_category}": state.entity_category,
         "{entity_attributes}": ", ".join(state.entity_attributes) if state.entity_attributes else "not specified",
         "{scene}": state.scene or "not specified",
+        "{photo_feature_anchors}": photo_feature_anchors,
         "{template_type}": f"Category {'1' if state.template_type == 'cat1' else '5'} ({state.template_type})",
         "{current_step}": f"{state.current_step} — {get_step_name(state.current_step)}",
         "{current_round}": str(state.current_round),
@@ -267,6 +399,7 @@ class ScriptAgent:
             )
 
             turn = TurnResponse.model_validate_json(text)
+            _ensure_emotion_tag(turn, state)
 
             logger.info(f"Script turn: step={state.current_step}, round={state.current_round}, latency={latency_ms}ms")
             await log_agent_call(state.session_id, "script_turn", latency_ms, True)
@@ -351,6 +484,7 @@ class ScriptAgent:
             )
 
             turn = TurnResponse.model_validate_json(accumulated)
+            _ensure_emotion_tag(turn, state)
 
             logger.info(
                 f"Script turn (stream): step={state.current_step}, round={state.current_round}, latency={latency_ms}ms"
@@ -383,6 +517,11 @@ class ScriptAgent:
             if last.role == "child":
                 child_input = f'\n\nThe child just said: "{last.text}"'
 
+        # Include child_intent field for STEP_2 invitation handling
+        child_intent_field = ""
+        if state.current_step in ("STEP_2_RULES", "STEP_2_MISSION"):
+            child_intent_field = '  "child_intent": "accepted|declined|off_topic|null",\n'
+
         return (
             f"Generate the next turn for step: {step_name}.\n"
             f"This is turn {state.turn_count + 1} of the session.\n"
@@ -390,11 +529,12 @@ class ScriptAgent:
             f"{child_input}\n\n"
             f"Respond with EXACTLY this JSON structure (all fields required):\n"
             f"{{\n"
-            f'  "dialogue": "(tone_marker) Your dialogue text here",\n'
+            f'  "dialogue": "[emotion_tag] Your dialogue text here",\n'
             f'  "tone_marker": "excited|curious|mysterious|encouraging|impressed|gentle|celebrating|adventurous",\n'
             f'  "screen_widget": "photo_display|character_display|progress_tracker|badge_award|photo_grid",\n'
             f'  "screen_widget_params": {{}},\n'
             f'  "screen_animation": "sparkle_highlight|celebration_burst|appear|gentle_pulse|scene_transition|badge_reveal|null",\n'
-            f'  "sfx_cue": "wonder_chime|celebration_fanfare|badge_awarded|game_start_chime|null"\n'
+            f'  "sfx_cue": "wonder_chime|celebration_fanfare|badge_awarded|game_start_chime|null",\n'
+            f"{child_intent_field}"
             f"}}"
         )

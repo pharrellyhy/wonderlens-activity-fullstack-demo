@@ -34,6 +34,15 @@ tiers:
 
     example_good_hook: "Oh wow, a ladybug! Do you like ladybugs? It's so cute!"
     example_bad_hook: "This is a ladybug. How many legs does it have?"
+    invitational_patterns:
+      - "Would you like to imagine...?"
+      - "What if we pretend...?"
+      - "I wonder what would happen...?"
+    forbidden_directives:
+      - "Go find!"
+      - "Now let's..."
+      - "Look for..."
+      - "Tell me!"
 
   T1:
     label: "Function Discoverer"
@@ -60,6 +69,15 @@ tiers:
 
     example_good_hook: "A butterfly! Have you ever seen one this close? What do you think it's doing on that flower?"
     example_bad_hook: "This is a monarch butterfly. Butterflies go through metamorphosis."
+    invitational_patterns:
+      - "I wonder what would happen if...?"
+      - "Would you like to find out...?"
+      - "What do you think about...?"
+    forbidden_directives:
+      - "Go find!"
+      - "Now let's..."
+      - "Look for..."
+      - "Tell me!"
 
   T2:
     label: "System Thinker"
@@ -86,3 +104,12 @@ tiers:
 
     example_good_hook: "Interesting find! What do you think this creature's life is like? Does it remind you of anything you've learned about?"
     example_bad_hook: "This insect belongs to the order Coleoptera. Can you name three characteristics?"
+    invitational_patterns:
+      - "What do you think about...?"
+      - "I wonder why...?"
+      - "Would you like to explore...?"
+    forbidden_directives:
+      - "Go find!"
+      - "Now let's..."
+      - "Look for..."
+      - "Tell me!"

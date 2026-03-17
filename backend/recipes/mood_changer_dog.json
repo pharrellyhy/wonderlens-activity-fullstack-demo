@@ -1,48 +1,60 @@
 {
   "activity_type": "mood_changer_dog",
-  "voice_script": {
-    "hook_line": "Oh wow, it's your fluffy dog friend! Look at those cute floppy ears and that super soft fur!",
-    "hook_tone": "excited",
-    "transition_line": "What if we could hear what your doggy is thinking inside? I'll say something that happens, and you tell me what it would say or feel!",
-    "transition_tone": "playful",
+  "step_instructions": {
+    "hook": {
+      "goal": "Create an emotional connection with the stuffed dog — notice its soft fur, floppy ears, and cozy appearance",
+      "constraint": "T0 max 2 sentences, personal feeling hook, invitational tone",
+      "emotion_tag": "excited"
+    },
+    "transition": {
+      "goal": "Invite the child to imagine what the dog is thinking and feeling in different scenarios — introduce the what_would_it_say game",
+      "constraint": "T0 max 2 sentences, explain game simply, end with genuine invitation (Would you like to try?)",
+      "emotion_tag": "playful"
+    },
     "rounds": [
       {
-        "prompt": "Morning time! The sun is so warm and cozy on the doggy's belly. What does the doggy say?",
-        "correct_responses": ["happy", "cozy", "comfy", "warm", "so comfy", "nice", "sleepy", "relaxed"],
-        "on_correct": "That is perfect! The doggy feels so warm and safe. Its heart is dancing with happiness!",
-        "on_incorrect": "That sounds interesting! The warm sun might make it feel all cozy and comfy inside, like a big warm hug.",
-        "on_silence": "You can do it! Imagine the sun is warm on its belly. Maybe it says 'so warm!' or just goes 'hmmm'... which one?",
-        "hint": "Think about how you feel when you sit in the sunshine — warm and happy, right?",
-        "sfx_cue": "scene_woosh",
-        "tone_marker": "warm"
+        "round_number": 1,
+        "goal": "Explore how the dog feels about warm sunshine on its belly",
+        "scenario": "warm sunshine on belly",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "warm",
+        "acceptable_themes": ["happy", "cozy", "warm", "comfy", "nice", "sleepy", "relaxed"],
+        "escalation_note": "comfortable, familiar — easiest round"
       },
       {
-        "prompt": "Oops! The doggy tripped and went bump! What does it say now?",
-        "correct_responses": ["surprised", "startled", "oh no", "ouch", "shocked", "scared", "whoa"],
-        "on_correct": "Yes! That sounds like a big surprise! The doggy wasn't expecting that bump at all!",
-        "on_incorrect": "Woof woof! That sounds like a big surprise! When something unexpected happens, we might feel startled or say 'oh no!'",
-        "on_silence": "When something surprising happens, we might go 'whoa!' or 'oh no!' What do you think the doggy says?",
-        "hint": "Think about how you feel when you trip — you might say 'whoa!' or 'oh no!'",
-        "sfx_cue": "scene_woosh",
-        "tone_marker": "surprised"
+        "round_number": 2,
+        "goal": "Explore how the dog reacts to an unexpected bump or trip",
+        "scenario": "tripped and went bump",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "surprised",
+        "acceptable_themes": ["surprised", "startled", "oh no", "ouch", "shocked", "scared", "whoa"],
+        "escalation_note": "unexpected contrast — moderate intensity"
       },
       {
-        "prompt": "The owner brings the doggy's favorite treat! What does the doggy do?",
-        "correct_responses": ["excited", "happy", "yay", "wag", "treats", "hungry", "eager", "jump"],
-        "on_correct": "Yay! The doggy is so excited for that yummy snack! Its tail is wagging so fast!",
-        "on_incorrect": "That's fun! When the doggy sees its favorite treat, it gets SO excited — maybe its tail wags super fast!",
-        "on_silence": "Imagine your favorite snack is right in front of you. Would you feel excited? Maybe the doggy goes 'yay!' or wags its tail really fast!",
-        "hint": "Think about how you feel when someone gives you your favorite treat — super excited, right?",
-        "sfx_cue": "celebration_fanfare",
-        "tone_marker": "excited"
+        "round_number": 3,
+        "goal": "Explore how the dog reacts when its favorite treat arrives",
+        "scenario": "favorite treat arrives",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "excited",
+        "acceptable_themes": ["excited", "happy", "yay", "wag", "treats", "hungry", "eager", "jump"],
+        "escalation_note": "peak excitement — most energetic round"
       }
     ],
-    "closing_speech": "You are such a wonderful Emotion Translator! You heard your doggy being happy, surprised, and excited. The same doggy feels different things when different things happen — that's the magic of Perspective! Everyone sees the world a little differently.",
-    "closing_tone": "proud",
-    "tomorrow_hook": "Next time you see your fluffy friend, try imagining what it's thinking — you might discover a whole new feeling!",
-    "tomorrow_tone": "warm",
-    "early_exit_speech": "That was really fun listening to the doggy's feelings together! You're such a great friend. We can play again anytime you want!",
-    "early_exit_tone": "gentle"
+    "celebrate": {
+      "goal": "Celebrate the child as an Emotion Translator — they heard the dog feeling happy, surprised, and excited; connect to IB concept Perspective",
+      "constraint": "T0 max 2 sentences, name 1 IB concept naturally",
+      "emotion_tag": "proud"
+    },
+    "closing": {
+      "goal": "Leave the child with a cross-session hook — next time they see their fluffy friend, try imagining what it's thinking",
+      "constraint": "T0 max 2 sentences, warm and gentle",
+      "emotion_tag": "warm"
+    },
+    "early_exit": {
+      "goal": "Gentle goodbye that validates whatever they did — they are a great friend to the dog",
+      "constraint": "T0 max 2 sentences, no pressure to continue",
+      "emotion_tag": "gentle"
+    }
   },
   "screen_frames": [
     {
@@ -51,7 +63,10 @@
         "description": "Photo of the stuffed dog on the bed with a soft golden glow"
       },
       "animation": "sparkle_highlight",
-      "trigger": "on_enter"
+      "trigger": "on_enter",
+      "sfx_cue": "wonder_chime",
+      "widget_label": "Your Fluffy Friend",
+      "animation_label": "Sparkle highlight"
     },
     {
       "widget": "character_display",
@@ -59,7 +74,10 @@
         "description": "Illustration of a cozy dog napping in a sunbeam"
       },
       "animation": "gentle_pulse",
-      "trigger": "on_round_1"
+      "trigger": "on_round_1",
+      "sfx_cue": "scene_woosh",
+      "widget_label": "Round 1: Warm Sunshine",
+      "animation_label": "Gentle glow"
     },
     {
       "widget": "character_display",
@@ -67,7 +85,10 @@
         "description": "Illustration of a dog looking surprised after a little bump"
       },
       "animation": "scene_transition",
-      "trigger": "on_round_2"
+      "trigger": "on_round_2",
+      "sfx_cue": "scene_woosh",
+      "widget_label": "Round 2: Oops, a Bump!",
+      "animation_label": "Scene transition"
     },
     {
       "widget": "character_display",
@@ -75,7 +96,10 @@
         "description": "Illustration of a dog wagging its tail excitedly for a treat"
       },
       "animation": "gentle_pulse",
-      "trigger": "on_round_3"
+      "trigger": "on_round_3",
+      "sfx_cue": "celebration_fanfare",
+      "widget_label": "Round 3: Treat Time!",
+      "animation_label": "Gentle glow"
     }
   ],
   "celebration_frame": {
@@ -85,7 +109,10 @@
       "concepts": ["Perspective"]
     },
     "animation": "badge_reveal",
-    "trigger": "on_correct"
+    "trigger": "on_correct",
+    "sfx_cue": "badge_awarded",
+    "widget_label": "Badge Earned!",
+    "animation_label": "Badge reveal"
   },
   "metadata": {
     "tier": "T0",
@@ -93,5 +120,6 @@
     "ib_key_concept": "Perspective",
     "concepts_earned": ["Perspective"],
     "round_count": 3
-  }
+  },
+  "photo_features": ["floppy ears", "soft fur", "cute face", "fluffy body"]
 }

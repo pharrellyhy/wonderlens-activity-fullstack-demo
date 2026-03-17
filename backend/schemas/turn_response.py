@@ -12,3 +12,6 @@ class TurnResponse(BaseModel):
     screen_widget_params: dict = Field(default_factory=dict, description="Parameters for the screen widget")
     screen_animation: str | None = Field(default=None, description="Animation overlay for the screen")
     sfx_cue: str | None = Field(default=None, description="Sound effect cue ID")
+    child_intent: str | None = Field(
+        default=None, description="STEP_2 only: 'accepted', 'declined', 'off_topic', or null"
+    )

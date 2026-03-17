@@ -37,7 +37,8 @@ function App() {
         sessionActive={!!sessionId}
       />
 
-      <main className="flex flex-col flex-1 overflow-hidden p-3 gap-3">
+      <h1 className="sr-only">WonderLens Activity Demo</h1>
+      <main className="flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3">
         {/* TOP ~42% — Device Screen in Toy Camera */}
         <section className="h-[42%] flex-shrink-0" aria-label="Device screen">
           <ToyCameraFrame>
@@ -88,7 +89,7 @@ function App() {
 
       {/* Error exit indicator */}
       {errorExit && (
-        <div className="mx-3 mb-1 surface-card rounded-2xl p-3 text-center border border-amber-200/50">
+        <div className="mx-3 mb-2 surface-card rounded-2xl p-3 text-center border border-amber-200/50">
           <p className="text-xs text-amber-600">
             Session ended due to a connection issue. Your progress was saved!
           </p>
@@ -96,7 +97,7 @@ function App() {
       )}
 
       {isEnded && (
-        <div className="mx-3 mb-1 surface-card rounded-2xl p-4 text-center">
+        <div className="mx-3 mb-2 surface-card rounded-2xl p-4 text-center">
           <p className="text-sm text-gray-500 mb-2">
             {sessionState?.status === 'completed' ? 'Activity complete!' :
              sessionState?.status === 'error' ? 'Session ended early' :
@@ -112,10 +113,10 @@ function App() {
       )}
 
       <footer
-        className="flex items-center justify-between mx-3 mb-3 px-5 py-2.5 surface-card rounded-2xl text-gray-500 text-xs"
+        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mx-3 mb-3 px-5 py-2.5 surface-card rounded-2xl text-gray-500 text-xs"
         aria-label="Session status"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <span>Round: {
             templateType === 'cat5'
               ? (sessionState?.current_step?.startsWith('STEP_3_COLLECT_')
@@ -123,8 +124,8 @@ function App() {
                 : '-')
               : `${sessionState?.current_round ?? 0}/${sessionState?.total_rounds ?? '-'}`
           }</span>
-          <span className="text-gray-300">|</span>
-          <span>Latency: {latency ? `${latency}ms` : '-'}</span>
+          <span className="hidden sm:inline text-gray-300">|</span>
+          <span className="hidden sm:inline">Latency: {latency ? `${latency}ms` : '-'}</span>
           <span className="text-gray-300">|</span>
           <span>Tier: {tier}</span>
           {templateType && (
@@ -135,13 +136,16 @@ function App() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className={`inline-block w-2 h-2 rounded-full ${
-            isActive ? 'bg-[var(--color-forest)]' :
-            isEnded ? 'bg-[var(--color-sunflower)]' :
-            error ? 'bg-red-400' :
-            loading ? 'bg-[var(--color-teal)] animate-pulse' :
-            'bg-gray-300'
-          }`} />
+          <span
+            aria-hidden="true"
+            className={`inline-block w-2 h-2 rounded-full ${
+              isActive ? 'bg-[var(--color-forest)]' :
+              isEnded ? 'bg-[var(--color-sunflower)]' :
+              error ? 'bg-red-400' :
+              loading ? 'bg-[var(--color-teal)] animate-pulse' :
+              'bg-gray-300'
+            }`}
+          />
           <span className="capitalize text-gray-500">
             {loading ? 'generating...' :
              turnPending ? 'thinking...' :

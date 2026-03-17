@@ -1,48 +1,60 @@
 {
   "activity_type": "dream_whisperer_cat",
-  "voice_script": {
-    "hook_line": "Oh, look at this adorable sleepy cat! Those soft little paws and that fluffy fur — I think it might be dreaming right now!",
-    "hook_tone": "excited",
-    "transition_line": "What if we could peek inside this cat's dreams? I'll set the scene, and you tell me what the cat is dreaming about!",
-    "transition_tone": "playful",
+  "step_instructions": {
+    "hook": {
+      "goal": "Create an emotional connection with the sleeping cat — notice its soft paws, fluffy fur, and peaceful expression",
+      "constraint": "T0 max 2 sentences, personal feeling hook, invitational tone",
+      "emotion_tag": "excited"
+    },
+    "transition": {
+      "goal": "Invite the child to peek inside the cat's dreams — introduce the storytelling_chain game where they imagine dream scenes together",
+      "constraint": "T0 max 2 sentences, explain game simply, end with genuine invitation (Would you like to try?)",
+      "emotion_tag": "playful"
+    },
     "rounds": [
       {
-        "prompt": "The cat's whiskers are twitching! It's dreaming about floating through the sky on a fluffy cloud. What does it see up there?",
-        "correct_responses": ["birds", "stars", "moon", "sun", "rainbow", "sky", "clouds", "butterflies", "flying"],
-        "on_correct": "Oh yes! I can see it too — what a magical dream! The cat looks so happy floating up there!",
-        "on_incorrect": "What a wonderful dream that would be! Up in the sky, the cat might also see sparkly stars or colorful birds flying by!",
-        "on_silence": "Imagine floating on a cloud way up high. What would you see? Maybe birds, stars, or even a rainbow?",
-        "hint": "Think about what you see when you look up at the sky — birds, clouds, the sun, stars!",
-        "sfx_cue": "scene_woosh",
-        "tone_marker": "dreamy"
+        "round_number": 1,
+        "goal": "Explore what the cat sees while dreaming about floating on a cloud in the sky",
+        "scenario": "floating on a cloud in the sky",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "dreamy",
+        "acceptable_themes": ["birds", "stars", "moon", "sun", "rainbow", "sky", "clouds", "butterflies", "flying"],
+        "escalation_note": "familiar imagery — gentle start"
       },
       {
-        "prompt": "Now the cat's paws are paddling! It's dreaming about swimming in a magical ocean made of warm milk. What does it find down there?",
-        "correct_responses": ["fish", "treasure", "shells", "pearl", "seaweed", "coral", "mermaid", "boat"],
-        "on_correct": "Amazing! A milk ocean full of treasures — this cat has the most wonderful imagination!",
-        "on_incorrect": "That's so creative! In a magical milk ocean, the cat might also find shimmering fish or sparkling treasure chests!",
-        "on_silence": "Picture a warm, cozy ocean made of milk. What magical things could be swimming around down there? Maybe fish, or hidden treasure?",
-        "hint": "Think about what you might find in a magical ocean — treasure, colorful fish, sparkling shells!",
-        "sfx_cue": "scene_woosh",
-        "tone_marker": "curious"
+        "round_number": 2,
+        "goal": "Explore what the cat finds while dreaming about swimming in a magical milk ocean",
+        "scenario": "swimming in a milk ocean",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "curious",
+        "acceptable_themes": ["fish", "treasure", "shells", "pearl", "seaweed", "coral", "mermaid", "boat"],
+        "escalation_note": "fantastical but safe — moderate imagination"
       },
       {
-        "prompt": "The cat is purring so loudly now! It's dreaming about a magical garden where everything is made of its favorite things. What grows in this garden?",
-        "correct_responses": ["treats", "yarn", "catnip", "fish", "toys", "flowers", "mice", "food", "tuna"],
-        "on_correct": "That's the purr-fect dream garden! No wonder the cat is purring so loudly — it's the happiest dream ever!",
-        "on_incorrect": "What a delightful garden! The cat might also dream about yarn trees and treat bushes growing everywhere!",
-        "on_silence": "If you could grow anything in a magical garden, what would it be? The cat might dream about its favorite treats or toys growing like flowers!",
-        "hint": "Think about what a cat loves most — treats, yarn, toys — now imagine those growing in a garden!",
-        "sfx_cue": "celebration_fanfare",
-        "tone_marker": "excited"
+        "round_number": 3,
+        "goal": "Explore what grows in the cat's dream garden made of its favorite things",
+        "scenario": "magical garden of favorites",
+        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "emotion_tag": "excited",
+        "acceptable_themes": ["treats", "yarn", "catnip", "fish", "toys", "flowers", "mice", "food", "tuna"],
+        "escalation_note": "peak creativity — most fantastical round"
       }
     ],
-    "closing_speech": "You are the most wonderful Dream Whisperer! You peeked into three amazing dreams — floating in the sky, swimming in a milk ocean, and exploring a magical garden. Each dream came from your incredible Reflection — you thought about what the cat might feel and imagine. That's a truly special power!",
-    "closing_tone": "proud",
-    "tomorrow_hook": "Next time you see a sleeping cat, try whispering a dream to it — who knows what magical adventures it might have!",
-    "tomorrow_tone": "warm",
-    "early_exit_speech": "That was such a lovely dream adventure together! The cat is still dreaming away happily. We can peek at more dreams anytime you want!",
-    "early_exit_tone": "gentle"
+    "celebrate": {
+      "goal": "Celebrate the child as a Dream Whisperer — they peeked into three amazing dreams; connect to IB concept Reflection",
+      "constraint": "T0 max 2 sentences, name 1 IB concept naturally",
+      "emotion_tag": "proud"
+    },
+    "closing": {
+      "goal": "Leave the child with a cross-session hook — next time they see a sleeping cat, try whispering a dream to it",
+      "constraint": "T0 max 2 sentences, warm and gentle",
+      "emotion_tag": "warm"
+    },
+    "early_exit": {
+      "goal": "Gentle goodbye — the cat is still dreaming happily, they can peek at more dreams anytime",
+      "constraint": "T0 max 2 sentences, no pressure to continue",
+      "emotion_tag": "gentle"
+    }
   },
   "screen_frames": [
     {
@@ -51,7 +63,10 @@
         "description": "Cat photo centered with a dreamy soft-focus glow"
       },
       "animation": "sparkle_highlight",
-      "trigger": "on_enter"
+      "trigger": "on_enter",
+      "sfx_cue": "wonder_chime",
+      "widget_label": "Sleepy Cat Friend",
+      "animation_label": "Dreamy glow"
     },
     {
       "widget": "character_display",
@@ -59,7 +74,10 @@
         "description": "Illustration of a cat floating on a fluffy cloud in a starry sky"
       },
       "animation": "scene_transition",
-      "trigger": "on_round_1"
+      "trigger": "on_round_1",
+      "sfx_cue": "scene_woosh",
+      "widget_label": "Dream 1: Cloud Adventure",
+      "animation_label": "Scene transition"
     },
     {
       "widget": "character_display",
@@ -67,7 +85,10 @@
         "description": "Illustration of a cat swimming in a magical milk ocean"
       },
       "animation": "scene_transition",
-      "trigger": "on_round_2"
+      "trigger": "on_round_2",
+      "sfx_cue": "scene_woosh",
+      "widget_label": "Dream 2: Milk Ocean",
+      "animation_label": "Scene transition"
     },
     {
       "widget": "character_display",
@@ -75,7 +96,10 @@
         "description": "Illustration of a cat in a magical garden full of treats and toys"
       },
       "animation": "gentle_pulse",
-      "trigger": "on_round_3"
+      "trigger": "on_round_3",
+      "sfx_cue": "celebration_fanfare",
+      "widget_label": "Dream 3: Magic Garden",
+      "animation_label": "Gentle glow"
     }
   ],
   "celebration_frame": {
@@ -85,7 +109,10 @@
       "concepts": ["Reflection"]
     },
     "animation": "badge_reveal",
-    "trigger": "on_correct"
+    "trigger": "on_correct",
+    "sfx_cue": "badge_awarded",
+    "widget_label": "Badge Earned!",
+    "animation_label": "Badge reveal"
   },
   "metadata": {
     "tier": "T0",
@@ -93,5 +120,6 @@
     "ib_key_concept": "Reflection",
     "concepts_earned": ["Reflection"],
     "round_count": 3
-  }
+  },
+  "photo_features": ["soft paws", "fluffy fur", "closed eyes", "peaceful expression"]
 }

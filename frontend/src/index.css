@@ -13,42 +13,43 @@
   --color-sunflower-light: #FFD54F;
   --color-teal: #26A69A;
   --color-teal-light: #4DB6AC;
+  /* Nature background gradient stops */
+  --color-nature-sky: #E3F2FD;
+  --color-nature-grass: #F1F8E9;
+  --color-nature-warm: #FFF8E1;
+  /* Fallback canvas colors (mirror forest tokens for JS access) */
+  --color-nature-canvas-bg: #E8F5E9;
 }
 
 /* Nature sky background with subtle cloud shapes */
 .bg-nature {
-  background: linear-gradient(180deg, #E3F2FD 0%, #F1F8E9 40%, #FFF8E1 100%);
+  background: linear-gradient(180deg, var(--color-nature-sky) 0%, var(--color-nature-grass) 40%, var(--color-nature-warm) 100%);
   background-attachment: fixed;
 }
 
 /* Surface classes — nature card system */
 .surface-primary {
-  background: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, white 95%, transparent);
   border: 2px solid var(--color-forest);
   border-radius: 1.5rem;
 }
 
 .surface-card {
-  background: #FFF8E1;
-  border: 1px solid rgba(76, 175, 80, 0.2);
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.08);
+  background: var(--color-nature-warm);
+  border: 1px solid color-mix(in srgb, var(--color-forest) 20%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-forest) 8%, transparent);
 }
 
 .surface-accent {
-  background: rgba(135, 206, 235, 0.15);
-  border: 1px solid rgba(135, 206, 235, 0.3);
+  background: color-mix(in srgb, var(--color-sky) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-sky) 30%, transparent);
 }
 
-/* Decorative vine border */
-.border-vine {
-  border: 2px solid var(--color-forest);
-  border-image: repeating-linear-gradient(
-    90deg,
-    var(--color-forest) 0px,
-    var(--color-forest-light) 8px,
-    var(--color-forest) 16px
-  ) 2;
-  border-radius: 1rem;
+
+/* Easing tokens — natural deceleration curves */
+:root {
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Base animations */
@@ -62,11 +63,9 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes bounce-in {
-  0% { transform: scale(0.3); opacity: 0; }
-  50% { transform: scale(1.1); }
-  80% { transform: scale(0.95); }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes grow-in {
+  from { transform: scale(0.3); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 @keyframes slide-in {
@@ -82,12 +81,11 @@
 /* Larger animation variants */
 @keyframes sparkle-large {
   0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.15); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
 @keyframes celebration-large {
-  0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
-  50% { transform: scale(1.15) rotate(5deg); }
+  0% { transform: scale(0.5) rotate(-5deg); opacity: 0; }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
@@ -98,7 +96,7 @@
 
 @keyframes sfx-pulse {
   0%, 100% { opacity: 0.7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+  50% { opacity: 1; transform: scale(1.03); }
 }
 
 @keyframes shake {
@@ -109,44 +107,54 @@
   80% { transform: translateX(3px); }
 }
 
+/* Gentle glow for "current" indicators — replaces distracting animate-pulse */
+@keyframes gentle-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 8px 2px color-mix(in srgb, var(--color-teal) 30%, transparent); }
+}
+
 .animate-shake {
-  animation: shake 0.4s ease-in-out;
+  animation: shake 0.4s var(--ease-out-quart);
 }
 
 .animate-fade-in {
-  animation: fade-in 0.4s ease-out;
+  animation: fade-in 0.4s var(--ease-out-quart);
 }
 
 .animate-bubble-in {
-  animation: bubble-in 0.35s ease-out forwards;
+  animation: bubble-in 0.35s var(--ease-out-expo) forwards;
 }
 
 .animate-bounce-in {
-  animation: bounce-in 0.6s ease-out;
+  animation: grow-in 0.5s var(--ease-out-expo);
 }
 
 .animate-slide-in {
-  animation: slide-in 0.3s ease-out;
+  animation: slide-in 0.3s var(--ease-out-quart);
 }
 
 .animate-spin-slow {
-  animation: spin-slow 3s linear infinite;
+  animation: spin-slow 4s linear infinite;
 }
 
 .animate-sparkle-large {
-  animation: sparkle-large 2s ease-in-out infinite;
+  animation: sparkle-large 2.5s var(--ease-out-quart) infinite;
 }
 
 .animate-celebration-large {
-  animation: celebration-large 0.8s ease-out;
+  animation: celebration-large 0.7s var(--ease-out-expo);
 }
 
 .animate-slide-up-large {
-  animation: slide-up-large 0.5s ease-out;
+  animation: slide-up-large 0.5s var(--ease-out-expo);
 }
 
 .animate-sfx-pulse {
-  animation: sfx-pulse 1.5s ease-in-out infinite;
+  animation: sfx-pulse 2s ease-in-out infinite;
+}
+
+.animate-gentle-glow {
+  animation: gentle-glow 2s ease-in-out infinite;
 }
 
 /* Typing indicator dots */
@@ -165,4 +173,16 @@
 
 .typing-dot:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

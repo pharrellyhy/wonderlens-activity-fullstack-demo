@@ -50,14 +50,15 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
       const file = new File([blob], `${photo.id}.png`, { type: blob.type || 'image/png' });
       onPhotoSelect(file);
     } catch {
-      // Create fallback image with label text
+      // Create fallback image with label text — read colors from CSS tokens
       const canvas = document.createElement('canvas');
       canvas.width = 400;
       canvas.height = 400;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#E8F5E9';
+      const styles = getComputedStyle(document.documentElement);
+      ctx.fillStyle = styles.getPropertyValue('--color-nature-canvas-bg').trim() || '#E8F5E9';
       ctx.fillRect(0, 0, 400, 400);
-      ctx.fillStyle = '#4CAF50';
+      ctx.fillStyle = styles.getPropertyValue('--color-forest').trim() || '#4CAF50';
       ctx.font = '80px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -86,7 +87,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
         <CameraIcon className="w-7 h-7 text-white" />
       </div>
       <h2 className="text-2xl font-bold font-display text-[var(--color-forest-dark)] mb-1 tracking-tight">Pick a Photo to Explore!</h2>
-      <p className="text-gray-400 text-sm mb-6">Select a demo photo or upload your own</p>
+      <p className="text-gray-500 text-sm mb-8">Select a demo photo or upload your own</p>
 
       {isLoading ? (
         <div className="flex flex-col items-center gap-4">
@@ -98,11 +99,11 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
           {CATEGORIES.map((cat, catIdx) => (
             <div key={cat.id} className="w-full max-w-lg mb-6">
               {/* Category header */}
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-2">
                 <cat.Icon className="w-5 h-5 text-[var(--color-forest)]" />
                 <div>
                   <h3 className="text-sm font-bold text-[var(--color-forest-dark)]">{cat.title}</h3>
-                  <p className="text-xs text-gray-400">{cat.subtitle}</p>
+                  <p className="text-xs text-gray-500">{cat.subtitle}</p>
                 </div>
               </div>
 
@@ -112,14 +113,14 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
                   <button
                     key={photo.id}
                     onClick={() => handlePhotoClick(photo)}
-                    className="group relative w-full aspect-square rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105"
+                    className="group relative w-full aspect-square rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]"
                   >
                     <img
                       src={photo.src}
                       alt={photo.label}
                       className="w-full h-full object-cover"
                     />
-                    <span className="absolute bottom-0 inset-x-0 text-[11px] text-center text-[var(--color-forest-dark)] bg-white/90 py-1 truncate font-medium">
+                    <span className="absolute bottom-0 inset-x-0 text-xs text-center text-[var(--color-forest-dark)] bg-white/90 py-1 truncate font-medium">
                       {photo.label}
                     </span>
                   </button>
@@ -141,6 +142,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
           <div
             role="button"
             tabIndex={0}
+            aria-label="Upload a photo by dropping or clicking"
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
@@ -156,7 +158,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
               input.click();
             }}
           >
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-500 text-sm">
               Drop a photo here or <span className="text-[var(--color-forest)] font-medium">click to upload</span>
             </p>
           </div>

@@ -22,16 +22,20 @@ function getFrameKey(screenFrame) {
     return 'empty-frame';
   }
 
-  return JSON.stringify({
-    widget: screenFrame.widget,
-    trigger: screenFrame.trigger,
-    animation: screenFrame.animation,
-    widgetParams: screenFrame.widget_params,
-    widgetLabel: screenFrame.widget_label,
-    animationLabel: screenFrame.animation_label,
-    sfxCue: screenFrame.sfx_cue,
-    sfxLabel: screenFrame.sfx_label,
-  });
+  return [
+    screenFrame.widget,
+    screenFrame.trigger,
+    screenFrame.animation,
+    screenFrame.widget_label,
+    screenFrame.animation_label,
+    screenFrame.sfx_cue,
+    screenFrame.sfx_label,
+    screenFrame.widget_params?.filled,
+    screenFrame.widget_params?.total,
+    screenFrame.widget_params?.description,
+    screenFrame.widget_params?.title,
+    screenFrame.widget_params?.roundNumber,
+  ].join('|');
 }
 
 export default function DeviceScreen({ screenFrame, photoUrl }) {
@@ -53,7 +57,7 @@ export default function DeviceScreen({ screenFrame, photoUrl }) {
           <div className="w-16 h-16 rounded-2xl surface-accent flex items-center justify-center mx-auto mb-3 shadow-sm">
             <CameraIcon className="w-8 h-8 text-[var(--color-forest)]" />
           </div>
-          <p className="text-sm text-gray-400 font-medium">Device screen will appear here</p>
+          <p className="text-sm text-gray-500 font-medium">Device screen will appear here</p>
         </div>
       </div>
     );

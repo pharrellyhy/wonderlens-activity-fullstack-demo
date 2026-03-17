@@ -25,7 +25,7 @@ export default function CharacterDisplay({ description, animation, roundNumber =
 
       <div className="bg-white/60 rounded-xl p-4 w-full text-center shadow-sm">
         <p className="text-gray-700 font-medium text-base">{description || `Scene ${roundNumber}`}</p>
-        {entity && <p className="text-xs text-gray-400 mt-1">{entity}</p>}
+        {entity && <p className="text-xs text-gray-500 mt-1">{entity}</p>}
       </div>
 
       <div className="text-xs text-[var(--color-forest)] bg-white/50 px-3 py-1 rounded-full font-medium">

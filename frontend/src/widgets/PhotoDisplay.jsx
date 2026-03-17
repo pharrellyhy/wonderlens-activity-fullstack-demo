@@ -7,7 +7,7 @@ export default function PhotoDisplay({ photoUrl, description, animation, entity 
         animation === 'sparkle_highlight' ? 'animate-sparkle-large' : ''
       }`}>
         {photoUrl ? (
-          <img src={photoUrl} alt={entity || 'Photo'} className="w-full h-full object-cover" />
+          <img src={photoUrl} alt={entity || 'Photo'} loading="lazy" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-[var(--color-sky-light)]/20">
             <PhotoFrameIcon className="w-16 h-16 text-[var(--color-forest)]/40" />

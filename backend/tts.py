@@ -2,6 +2,7 @@
 
 import asyncio
 import io
+import re
 import time
 import wave
 from collections.abc import AsyncIterator
@@ -18,6 +19,40 @@ except ImportError:
     from logger import setup_logger
 
 logger = setup_logger(__name__)
+
+# Gemini TTS natively supported bracket tags — preserve these in text
+_GEMINI_TTS_TAGS: set[str] = {
+    "sigh",
+    "laughing",
+    "uhm",
+    "sarcasm",
+    "robotic",
+    "shouting",
+    "whispering",
+    "extremely fast",
+    "scared",
+    "curious",
+    "bored",
+    "short pause",
+    "medium pause",
+    "long pause",
+}
+
+# Matches any [tag] at the start of text (our emotion tags)
+_LEADING_TAG_RE = re.compile(r"^\[([^\]]+)\]\s*")
+
+
+def _strip_unsupported_tags(text: str) -> str:
+    """Strip bracket tags not supported by Gemini TTS.
+
+    Removes leading emotion tags like [excited], [warm], [proud] that would
+    be spoken as literal words. Preserves Gemini-native tags like [laughing],
+    [whispering], [curious] anywhere in the text.
+    """
+    match = _LEADING_TAG_RE.match(text)
+    if match and match.group(1).lower() not in _GEMINI_TTS_TAGS:
+        text = text[match.end():]
+    return text
 
 TIER_VOICES: dict[str, str] = {
     "T0": "Puck",
@@ -73,6 +108,7 @@ async def synthesize_speech(text: str, tier: str) -> bytes | None:
     Returns:
         WAV audio bytes, or None on failure.
     """
+    text = _strip_unsupported_tags(text)
     settings = get_settings()
     start = time.perf_counter()
     voice_name = TIER_VOICES.get(tier, "Kore")
@@ -127,6 +163,7 @@ async def synthesize_speech_stream(text: str, tier: str) -> AsyncIterator[bytes]
     Yields:
         Raw PCM 16-bit audio bytes chunks.
     """
+    text = _strip_unsupported_tags(text)
     settings = get_settings()
     start = time.perf_counter()
     voice_name = TIER_VOICES.get(tier, "Kore")
@@ -183,6 +220,7 @@ async def synthesize_speech_stream_async(text: str, tier: str, max_retries: int 
     Yields:
         Raw PCM 16-bit audio bytes chunks.
     """
+    text = _strip_unsupported_tags(text)
     settings = get_settings()
     voice_name = TIER_VOICES.get(tier, "Kore")
 

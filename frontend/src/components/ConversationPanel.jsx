@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ChatBubble from './ChatBubble';
 import TextInput from './TextInput';
-import { CompassIcon } from '../icons';
+import AiAvatar from './AiAvatar';
 
 export default function ConversationPanel({
   messages,
@@ -38,7 +38,7 @@ export default function ConversationPanel({
           <span>Server speech-to-text unavailable — using browser fallback</span>
           <button
             onClick={() => setSttBannerDismissed(true)}
-            className="ml-2 text-amber-400 hover:text-amber-600 font-bold"
+            className="ml-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-400 hover:text-amber-600 font-bold"
             aria-label="Dismiss notification"
           >
             x
@@ -55,11 +55,9 @@ export default function ConversationPanel({
       >
         {messages.length === 0 && !isWaiting ? (
           <div className="flex flex-col items-center justify-center h-full">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-teal)] flex items-center justify-center mb-4 shadow-lg">
-              <CompassIcon className="w-7 h-7 text-white" />
-            </div>
+            <AiAvatar size="md" className="mb-4" />
             <p className="text-sm font-semibold text-gray-500">No conversation yet</p>
-            <p className="text-xs text-gray-400 mt-1">Select a photo to get started</p>
+            <p className="text-xs text-gray-500 mt-1">Select a photo to get started</p>
           </div>
         ) : (
           <>
@@ -86,9 +84,7 @@ export default function ConversationPanel({
             {/* Typing indicator */}
             {isWaiting && (
               <div className="flex justify-start animate-fade-in">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-teal)] flex items-center justify-center mr-2 mt-1 flex-shrink-0 shadow-sm">
-                  <CompassIcon className="w-3.5 h-3.5 text-white" />
-                </div>
+                <AiAvatar size="sm" className="mr-2 mt-1" />
                 <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5 border border-[var(--color-forest)]/10">
                   <span className="w-2 h-2 rounded-full bg-[var(--color-forest)] typing-dot" />
                   <span className="w-2 h-2 rounded-full bg-[var(--color-forest)] typing-dot" />

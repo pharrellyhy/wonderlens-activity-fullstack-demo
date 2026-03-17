@@ -26,5 +26,13 @@ The mission briefing MUST end by **asking** the child if they want to go explore
 - "Now let's find something soft and fluffy!"
 - Any imperative command that tells the child what to do
 
+### Invitation (NON-NEGOTIABLE):
+- End with a genuine invitation: "Would you like to be the explorer?" — then WAIT.
+- Do NOT auto-start the mission. The child must accept first.
+- If the child previously declined (check conversation history), gently re-invite
+  with different wording. Do NOT repeat the same invitation.
+- Set `child_intent` in your response to indicate what the child said:
+  "accepted" if they want to play, "declined" if they said no, "off_topic" if unrelated.
+
 ### Screen Widget: `character_display`
 Display a mission card with mission title and checklist.

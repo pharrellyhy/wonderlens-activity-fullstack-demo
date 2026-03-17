@@ -5,7 +5,7 @@ export default function RetryButton({ onRetry, retryCount = 0, maxRetries = 3 })
         <div className="text-sm text-amber-600 surface-card px-4 py-2 rounded-full border border-amber-200/50">
           Using backup mode
         </div>
-        <p className="text-xs text-gray-400">The experience continues with a pre-authored recipe</p>
+        <p className="text-xs text-gray-500">The experience continues with a pre-authored recipe</p>
       </div>
     );
   }
@@ -20,7 +20,7 @@ export default function RetryButton({ onRetry, retryCount = 0, maxRetries = 3 })
         Let&apos;s try again!
       </button>
       {retryCount > 0 && (
-        <p className="text-xs text-gray-400">Attempt {retryCount} of {maxRetries}</p>
+        <p className="text-xs text-gray-500">Attempt {retryCount} of {maxRetries}</p>
       )}
     </div>
   );

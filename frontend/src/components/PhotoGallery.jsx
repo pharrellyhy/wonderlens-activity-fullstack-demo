@@ -20,7 +20,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
             {criterion}
           </p>
         )}
-        <p className="text-xs text-gray-400 mt-0.5">
+        <p className="text-xs text-gray-500 mt-0.5">
           {collected} of {totalToCollect} found
         </p>
       </div>
@@ -41,7 +41,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
                   ? 'bg-[var(--color-forest)]/10 border-[var(--color-forest)] opacity-60'
                   : isWrong
                     ? 'bg-red-50 border-red-300 animate-shake'
-                    : 'bg-white border-[var(--color-forest)]/20 hover:border-[var(--color-forest)] hover:shadow-lg cursor-pointer hover:scale-105'
+                    : 'bg-white border-[var(--color-forest)]/20 hover:border-[var(--color-forest)] hover:shadow-md cursor-pointer hover:scale-[1.02]'
                 }
                 ${selecting ? 'pointer-events-none' : ''}
               `}
@@ -74,7 +74,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
               i < collected
                 ? 'bg-[var(--color-forest)] border-[var(--color-forest)] text-white shadow-sm'
                 : i === collected
-                  ? 'border-[var(--color-teal)] text-[var(--color-teal)] animate-pulse'
+                  ? 'border-[var(--color-teal)] text-[var(--color-teal)] animate-gentle-glow'
                   : 'border-gray-200 text-gray-300'
             }`}
           >

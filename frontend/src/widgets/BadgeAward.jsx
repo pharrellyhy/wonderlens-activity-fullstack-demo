@@ -12,11 +12,11 @@ export default function BadgeAward({ title, concepts = [], animation, entity }) 
             <BadgeIcon className="w-16 h-16 text-[var(--color-sunflower)]" />
           </div>
         </div>
-        <div className="absolute -top-2 -right-2 animate-spin-slow">
-          <StarIcon className="w-8 h-8 text-[var(--color-sunflower)]" />
+        <div className="absolute -top-2 -right-2 animate-sparkle-large">
+          <StarIcon className="w-7 h-7 text-[var(--color-sunflower)]" />
         </div>
-        <div className="absolute -bottom-1 -left-2 animate-pulse">
-          <StarIcon className="w-6 h-6 text-[var(--color-forest)]" />
+        <div className="absolute -bottom-1 -left-2 animate-sparkle-large" style={{ animationDelay: '1s' }}>
+          <StarIcon className="w-5 h-5 text-[var(--color-forest)]" />
         </div>
       </div>
 
@@ -26,7 +26,7 @@ export default function BadgeAward({ title, concepts = [], animation, entity }) 
       </h2>
 
       {entity && (
-        <p className="text-sm text-gray-400">{entity}</p>
+        <p className="text-sm text-gray-500">{entity}</p>
       )}
 
       {/* Concepts */}

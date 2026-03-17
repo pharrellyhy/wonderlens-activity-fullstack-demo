@@ -1,53 +1,65 @@
 {
   "activity_type": "fluffy_expedition_dandelion",
-  "voice_script": {
-    "hook_line": "Oh wow, look at this fluffy dandelion! All those tiny white seeds just waiting to fly away on the wind — like a hundred tiny parachutes!",
-    "hook_tone": "excited",
-    "transition_line": "You are now a Fluffy Expedition Explorer! Your mission is to find three more fluffy, fuzzy, or soft things around you. Let's see what fluffy treasures are hiding nearby!",
-    "transition_tone": "playful",
+  "step_instructions": {
+    "hook": {
+      "goal": "Create an emotional connection with the dandelion — notice its fluffy white seeds like tiny parachutes waiting to fly",
+      "constraint": "T0 max 2 sentences, personal feeling hook, invitational tone",
+      "emotion_tag": "excited"
+    },
+    "transition": {
+      "goal": "Invite the child to become a Fluffy Expedition Explorer and find 3 more fluffy, fuzzy, or soft things nearby",
+      "constraint": "T0 max 2 sentences, frame as invitation not command, end with Would you like to...?",
+      "emotion_tag": "playful"
+    },
     "rounds": [
       {
-        "prompt": "Explorer, your first mission! Can you find something fluffy, fuzzy, or soft near you?",
-        "correct_responses": ["cloud", "cotton", "fur", "feather", "wool", "moss", "grass", "blanket", "fluffy", "soft", "fuzzy"],
-        "on_correct": "What an amazing fluffy find! Look how soft and gentle it is — just like our dandelion friend! That's one treasure found!",
-        "on_incorrect": "Great eye, Explorer! If we look really closely, there might be something soft or fuzzy about it. Every treasure counts!",
-        "on_silence": "Take a look around you, Explorer. Maybe feel something nearby — is there anything soft, fluffy, or fuzzy? Even a leaf can feel soft!",
-        "hint": "Try touching things around you — look for anything that feels soft, fuzzy, or fluffy like the dandelion!",
-        "sfx_cue": "photo_shutter_click",
-        "tone_marker": "encouraging",
-        "on_wrong_photo": "Hmm, that one doesn't feel very fluffy or soft. Would you like to look for something fuzzier?"
+        "round_number": 1,
+        "goal": "Guide child to find their first fluffy, fuzzy, or soft item nearby",
+        "scenario": "first fluffy find",
+        "constraint": "T0 max 2 sentences, invitational phrasing, suggest touching things",
+        "emotion_tag": "encouraging",
+        "acceptable_themes": ["cloud", "cotton", "fur", "feather", "wool", "moss", "grass", "blanket", "fluffy", "soft", "fuzzy"],
+        "escalation_note": "easy first find — common soft items"
       },
       {
-        "prompt": "Expedition report! We need our second fluffy find. Can you spot something else that's soft or fuzzy?",
-        "correct_responses": ["pet", "pillow", "carpet", "sweater", "plush", "stuffed", "teddy", "hair", "soft", "fuzzy", "fluffy"],
-        "on_correct": "Wonderful discovery! That's so soft and fluffy — our collection is growing! Two fluffy treasures found!",
-        "on_incorrect": "Interesting find! You know what, if we imagine really hard, everything has a little bit of softness to it. Good exploring!",
-        "on_silence": "You're doing great, Explorer. Maybe look at what you're wearing or sitting on — sometimes the fluffiest things are right next to us!",
-        "hint": "Think about things you like to cuddle or touch because they're soft — a pillow, a blanket, or a pet!",
-        "sfx_cue": "photo_shutter_click",
-        "tone_marker": "curious",
-        "on_wrong_photo": "That's not quite fluffy enough. Can you find something that feels soft or fuzzy to the touch?"
+        "round_number": 2,
+        "goal": "Guide child to find a second soft or fuzzy item",
+        "scenario": "second fluffy find",
+        "constraint": "T0 max 2 sentences, invitational phrasing, celebrate previous find",
+        "emotion_tag": "curious",
+        "acceptable_themes": ["pet", "pillow", "carpet", "sweater", "plush", "stuffed", "teddy", "hair", "soft", "fuzzy", "fluffy"],
+        "escalation_note": "moderate — requires more exploration"
       },
       {
-        "prompt": "Last mission, Explorer! Find one more fluffy or soft thing to complete your expedition!",
-        "correct_responses": ["cloud", "cotton", "feather", "moss", "flower", "seed", "fluffy", "soft", "fuzzy", "fur", "wool"],
-        "on_correct": "You did it, Explorer! Three fluffy treasures found! What an incredible Fluffy Expedition — you're a natural explorer!",
-        "on_incorrect": "That's a wonderful final find! Every explorer sees the world differently, and your collection is uniquely yours!",
-        "on_silence": "We're almost there! Try looking up at the sky, or down at the ground. Fluffy things can be anywhere — even clouds count!",
-        "hint": "Look up at the sky — clouds are the fluffiest things of all! Or try finding a soft flower or fuzzy leaf.",
-        "sfx_cue": "mission_complete_fanfare",
-        "tone_marker": "excited",
-        "on_wrong_photo": "Almost! That one isn't quite fluffy. One more look — can you find something really soft?"
+        "round_number": 3,
+        "goal": "Guide child to find one more fluffy or soft item — the third and last one",
+        "scenario": "third fluffy find",
+        "constraint": "T0 max 2 sentences, invitational phrasing, prompt child to go find it",
+        "emotion_tag": "excited",
+        "acceptable_themes": ["cloud", "cotton", "feather", "moss", "flower", "seed", "fluffy", "soft", "fuzzy", "fur", "wool"],
+        "escalation_note": "peak energy — but child still needs to find this item"
       }
     ],
-    "closing_speech": "Congratulations, Fluffy Expedition Explorer! You found three amazing soft treasures, all connected by their fluffiness — just like our dandelion! A tiny dandelion seed and all your fluffy finds share something special. That's the beauty of Connection — finding how different things are linked together!",
-    "closing_tone": "proud",
-    "tomorrow_hook": "Next time you're outside, keep your explorer senses open — fluffy and soft things are hiding everywhere, waiting to be discovered!",
-    "tomorrow_tone": "warm",
-    "synthesis_speech": "Now let's look at all your fluffy treasures together! Each one is soft and gentle, but they all feel a little different — some are fuzzy, some are silky, some are puffy. Isn't it wonderful how softness comes in so many different forms?",
-    "synthesis_tone": "amazed",
-    "early_exit_speech": "What a wonderful fluffy expedition we had! You found some amazing soft treasures. The fluffy things will be waiting for your next adventure!",
-    "early_exit_tone": "gentle"
+    "celebrate": {
+      "goal": "Celebrate the child as a Fluffy Expedition Explorer — they found three soft treasures all connected by fluffiness; connect to IB concept Connection",
+      "constraint": "T0 max 2 sentences, name 1 IB concept naturally",
+      "emotion_tag": "proud"
+    },
+    "closing": {
+      "goal": "Leave the child with a cross-session hook — keep explorer senses open for fluffy and soft things hiding everywhere",
+      "constraint": "T0 max 2 sentences, warm and gentle",
+      "emotion_tag": "warm"
+    },
+    "synthesis": {
+      "goal": "Look at all fluffy treasures together — notice how softness comes in many forms (fuzzy, silky, puffy) even though they are all soft",
+      "constraint": "T0 max 2 sentences, comparison focus",
+      "emotion_tag": "amazed"
+    },
+    "early_exit": {
+      "goal": "Gentle goodbye — wonderful fluffy expedition, soft treasures will be waiting for their next adventure",
+      "constraint": "T0 max 2 sentences, no pressure to continue",
+      "emotion_tag": "gentle"
+    }
   },
   "screen_frames": [
     {
@@ -56,7 +68,10 @@
         "description": "Dandelion photo centered with seeds gently floating"
       },
       "animation": "sparkle_highlight",
-      "trigger": "on_enter"
+      "trigger": "on_enter",
+      "sfx_cue": "wonder_chime",
+      "widget_label": "Fluffy Dandelion",
+      "animation_label": "Seeds floating"
     },
     {
       "widget": "progress_tracker",
@@ -65,7 +80,10 @@
         "total": 4
       },
       "animation": "card_slide_in",
-      "trigger": "on_round_1"
+      "trigger": "on_round_1",
+      "sfx_cue": "photo_shutter_click",
+      "widget_label": "Find 1: First Fluffy",
+      "animation_label": "Card slide in"
     },
     {
       "widget": "progress_tracker",
@@ -74,7 +92,10 @@
         "total": 4
       },
       "animation": "celebration_burst",
-      "trigger": "on_round_2"
+      "trigger": "on_round_2",
+      "sfx_cue": "photo_shutter_click",
+      "widget_label": "Find 2: More Fluff",
+      "animation_label": "Collection burst"
     },
     {
       "widget": "progress_tracker",
@@ -83,7 +104,10 @@
         "total": 4
       },
       "animation": "celebration_burst",
-      "trigger": "on_round_3"
+      "trigger": "on_round_3",
+      "sfx_cue": "mission_complete_fanfare",
+      "widget_label": "Find 3: Final Fluff",
+      "animation_label": "Collection burst"
     }
   ],
   "celebration_frame": {
@@ -93,7 +117,10 @@
       "concepts": ["Connection"]
     },
     "animation": "badge_reveal",
-    "trigger": "on_correct"
+    "trigger": "on_correct",
+    "sfx_cue": "badge_awarded",
+    "widget_label": "Badge Earned!",
+    "animation_label": "Badge reveal"
   },
   "metadata": {
     "tier": "T0",
@@ -101,5 +128,10 @@
     "ib_key_concept": "Connection",
     "concepts_earned": ["Connection"],
     "round_count": 3
+  },
+  "photo_features": ["white fluffy seeds", "round seed head", "thin stem", "delicate structure"],
+  "collection_items": {
+    "correct": ["fuzzy_moss", "fluffy_seed", "soft_petal", "woolly_caterpillar"],
+    "distractors": ["hard_rock", "spiky_pinecone", "rough_bark", "sharp_thorn"]
   }
 }

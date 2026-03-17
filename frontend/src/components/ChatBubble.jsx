@@ -1,28 +1,34 @@
 import { useState, useEffect, useRef } from 'react';
-import { CompassIcon } from '../icons';
+import AiAvatar from './AiAvatar';
+
+const CHARS_PER_FRAME = 2;
+const FRAME_INTERVAL = 30; // ~33fps is enough for text reveal
 
 function useTypewriter(text, enabled) {
   const [displayed, setDisplayed] = useState(enabled ? '' : text);
   const [done, setDone] = useState(!enabled);
   const indexRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const rafRef = useRef(null);
 
   useEffect(() => {
-    if (!enabled) {
-      return;
-    }
+    if (!enabled) return;
 
-    const interval = setInterval(() => {
-      indexRef.current += 1;
-      if (indexRef.current >= text.length) {
-        setDisplayed(text);
-        setDone(true);
-        clearInterval(interval);
-      } else {
+    const step = (timestamp) => {
+      if (timestamp - lastTimeRef.current >= FRAME_INTERVAL) {
+        lastTimeRef.current = timestamp;
+        indexRef.current = Math.min(indexRef.current + CHARS_PER_FRAME, text.length);
         setDisplayed(text.slice(0, indexRef.current));
+        if (indexRef.current >= text.length) {
+          setDone(true);
+          return;
+        }
       }
-    }, 18);
+      rafRef.current = requestAnimationFrame(step);
+    };
 
-    return () => clearInterval(interval);
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [text, enabled]);
 
   return {
@@ -38,9 +44,7 @@ export default function ChatBubble({ message, isLatestAi }) {
   return (
     <div className={`flex ${isAi ? 'justify-start' : 'justify-end'} opacity-0 animate-bubble-in`}>
       {isAi && (
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-teal)] flex items-center justify-center mr-2 mt-1 flex-shrink-0 shadow-sm">
-          <CompassIcon className="w-3.5 h-3.5 text-white" />
-        </div>
+        <AiAvatar size="sm" className="mr-2 mt-1" />
       )}
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
@@ -50,7 +54,7 @@ export default function ChatBubble({ message, isLatestAi }) {
         }`}
       >
         {message.tone && isAi && (
-          <span className="inline-block text-[10px] uppercase tracking-wide font-semibold text-[var(--color-forest)] mb-1 bg-[var(--color-forest)]/10 rounded-full px-2 py-0.5">
+          <span className="inline-block text-xs uppercase tracking-wide font-semibold text-[var(--color-forest)] mb-1 bg-[var(--color-forest)]/10 rounded-full px-2 py-0.5">
             {message.tone}
           </span>
         )}

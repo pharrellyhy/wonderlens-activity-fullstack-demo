@@ -1,8 +1,9 @@
-"""Pre-generated recipe loading and turn resolution for demo entities.
+"""Instruction-based recipe loading for demo entities.
 
-Demo entities (dog, cat, dinosaur, ladybug, dandelion) use pre-authored
-recipes with zero LLM calls. Custom photo uploads continue using the
-live agent pipeline.
+Demo entities (dog, cat, dinosaur, ladybug, dandelion) use instruction-based
+recipes where each step has goals and constraints instead of exact dialogue.
+The Script Agent LLM generates contextual responses guided by these instructions.
+Custom photo uploads continue using the live agent pipeline.
 """
 
 import json
@@ -13,21 +14,15 @@ from typing import Literal
 try:
     from .logger import setup_logger
     from .scenarios import SCENARIO_CATEGORIES
-    from .schemas import ActivityRecipe
     from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
-    from .schemas.session_state import ConversationTurn, SessionStateModel
-    from .schemas.turn_response import TurnResponse
-    from .schemas.voice_script import Round
-    from .state_machine import EARLY_EXIT, next_step
+    from .schemas.recipe import InstructionRecipe
+    from .schemas.session_state import SessionStateModel
 except ImportError:
     from logger import setup_logger
     from scenarios import SCENARIO_CATEGORIES
-    from schemas import ActivityRecipe
     from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
-    from schemas.session_state import ConversationTurn, SessionStateModel
-    from schemas.turn_response import TurnResponse
-    from schemas.voice_script import Round
-    from state_machine import EARLY_EXIT, next_step
+    from schemas.recipe import InstructionRecipe
+    from schemas.session_state import SessionStateModel
 
 logger = setup_logger(__name__)
 
@@ -102,25 +97,26 @@ def is_demo_entity(filename: str) -> bool:
 
 
 @lru_cache(maxsize=8)
-def load_demo_recipe(activity_type: str) -> ActivityRecipe:
-    """Load and cache a pre-authored recipe JSON file."""
+def load_instruction_recipe(activity_type: str) -> InstructionRecipe:
+    """Load and cache an instruction-based recipe JSON file."""
     path = _RECIPES_DIR / f"{activity_type}.json"
     if not path.exists():
         raise FileNotFoundError(f"Recipe not found: {path}")
     with open(path) as f:
         data = json.load(f)
-    return ActivityRecipe.model_validate(data)
+    return InstructionRecipe.model_validate(data)
 
 
 def recipe_to_session_state(
-    recipe: ActivityRecipe,
+    recipe: InstructionRecipe,
     session_id: str,
     tier: str,
     filename: str,
-) -> tuple[SessionStateModel, TurnResponse]:
-    """Build a SessionStateModel and first TurnResponse from a pre-authored recipe.
+) -> SessionStateModel:
+    """Build a SessionStateModel from an instruction recipe.
 
-    No agents are invoked — everything comes from the recipe JSON.
+    Unlike the old dialogue-based system, the hook turn is NOT pre-generated here.
+    The Script Agent will generate the hook turn using the recipe instructions.
     """
     activity_type = recipe.activity_type
     category = SCENARIO_CATEGORIES.get(activity_type, "category_1")
@@ -149,236 +145,14 @@ def recipe_to_session_state(
         scene="",
         ib_key_concepts=recipe.metadata.concepts_earned,
         photo_url="",
-        is_pregenerated=True,
-        recipe=recipe,
+        instruction_recipe=recipe,
         visual_frames=recipe.screen_frames,
         celebration_frame=recipe.celebration_frame,
     )
 
-    # Build hook turn response
-    vs = recipe.voice_script
-    first_turn = TurnResponse(
-        dialogue=vs.hook_line,
-        tone_marker=vs.hook_tone,
-        screen_widget="photo_display",
-        screen_widget_params={"description": f"Photo of {entity_name}", "entity": entity_name},
-        screen_animation="sparkle_highlight",
-        sfx_cue="wonder_chime",
-    )
-
-    # Record hook in conversation history and advance step
-    state.conversation_history.append(
-        ConversationTurn(role="ai", text=first_turn.dialogue, step=state.current_step, round_number=None)
-    )
-    state.current_step = next_step(state.current_step, state.template_type, state.current_round, state.total_rounds)
-    state.turn_count = 1
-
     logger.info(
-        f"Pre-generated session: {session_id}, activity={activity_type}, "
+        f"Instruction recipe session: {session_id}, activity={activity_type}, "
         f"template={template_type}, rounds={recipe.metadata.round_count}"
     )
 
-    return state, first_turn
-
-
-def resolve_turn_from_recipe(
-    state: SessionStateModel,
-    child_text: str,
-    is_silent: bool,
-    photo_id: str | None = None,
-) -> TurnResponse:
-    """Resolve the current turn from the pre-authored recipe.
-
-    Maps the current step to pre-authored dialogue with acknowledgment
-    selection based on child input.
-    """
-    recipe = state.recipe
-    if recipe is None:
-        raise ValueError("No recipe stored in session state")
-
-    vs = recipe.voice_script
-    step = state.current_step
-
-    # EARLY_EXIT
-    if step == EARLY_EXIT:
-        dialogue = vs.early_exit_speech or "(gentle) That was really fun! We can play again anytime!"
-        return TurnResponse(
-            dialogue=dialogue,
-            tone_marker=vs.early_exit_tone,
-            screen_widget="badge_award",
-            screen_widget_params={"title": "Great job!", "concepts": [], "entity": state.entity_name},
-            screen_animation="badge_reveal",
-            sfx_cue="badge_awarded",
-        )
-
-    # STEP_2_RULES / STEP_2_MISSION — transition line
-    if step in ("STEP_2_RULES", "STEP_2_MISSION"):
-        return TurnResponse(
-            dialogue=vs.transition_line,
-            tone_marker=vs.transition_tone,
-            screen_widget="character_display",
-            screen_widget_params={
-                "description": "Activity introduction",
-                "entity": state.entity_name,
-                "round_number": 0,
-            },
-            screen_animation="appear",
-            sfx_cue="game_start_chime",
-        )
-
-    # STEP_3_ROUND_N / STEP_3_COLLECT_N — round prompt with optional acknowledgment
-    if step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
-        round_num = int(step.rsplit("_", maxsplit=1)[-1])
-        round_idx = round_num - 1
-
-        if round_idx >= len(vs.rounds):
-            round_idx = len(vs.rounds) - 1
-        current_round = vs.rounds[round_idx]
-
-        # Build acknowledgment from previous round (if not the first round)
-        ack = ""
-        if round_num > 1:
-            prev_idx = round_idx - 1
-            if 0 <= prev_idx < len(vs.rounds):
-                ack = _select_round_transition_ack(vs.rounds[prev_idx], child_text, is_silent, photo_id)
-
-        dialogue = f"{ack} {current_round.prompt}".strip() if ack else current_round.prompt
-
-        return TurnResponse(
-            dialogue=dialogue,
-            tone_marker=current_round.tone_marker,
-            screen_widget="character_display",
-            screen_widget_params={
-                "description": f"Round {round_num}",
-                "entity": state.entity_name,
-                "round_number": round_num,
-            },
-            screen_animation="scene_transition" if round_num > 1 else "gentle_pulse",
-            sfx_cue=current_round.sfx_cue,
-        )
-
-    # STEP_4_SYNTHESIS (cat5 only) — synthesis speech with last round ack
-    if step == "STEP_4_SYNTHESIS":
-        ack = ""
-        if vs.rounds:
-            ack = _select_round_transition_ack(vs.rounds[-1], child_text, is_silent, photo_id)
-
-        dialogue_text = vs.synthesis_speech or "Let's look at everything you collected!"
-        dialogue = f"{ack} {dialogue_text}".strip() if ack else dialogue_text
-
-        return TurnResponse(
-            dialogue=dialogue,
-            tone_marker=vs.synthesis_tone,
-            screen_widget="photo_grid",
-            screen_widget_params={"description": "All collected items", "entity": state.entity_name},
-            screen_animation="sparkle_highlight",
-            sfx_cue=None,
-        )
-
-    # STEP_4_CELEBRATE / STEP_5_CELEBRATE — closing speech with last round ack
-    if step in ("STEP_4_CELEBRATE", "STEP_5_CELEBRATE"):
-        ack = ""
-        if vs.rounds:
-            ack = _select_acknowledgment(vs.rounds[-1], child_text, is_silent)
-
-        dialogue = f"{ack} {vs.closing_speech}".strip() if ack else vs.closing_speech
-        role_title = state.creative_slots.role_title
-
-        return TurnResponse(
-            dialogue=dialogue,
-            tone_marker=vs.closing_tone,
-            screen_widget="badge_award",
-            screen_widget_params={
-                "title": role_title,
-                "concepts": state.ib_key_concepts,
-                "entity": state.entity_name,
-            },
-            screen_animation="celebration_burst",
-            sfx_cue="celebration_fanfare",
-        )
-
-    # STEP_5_CLOSING / STEP_6_CLOSING — tomorrow hook
-    if step in ("STEP_5_CLOSING", "STEP_6_CLOSING"):
-        return TurnResponse(
-            dialogue=vs.tomorrow_hook,
-            tone_marker=vs.tomorrow_tone,
-            screen_widget="badge_award",
-            screen_widget_params={
-                "title": "IB Concepts",
-                "concepts": state.ib_key_concepts,
-                "entity": state.entity_name,
-            },
-            screen_animation="badge_reveal",
-            sfx_cue="badge_awarded",
-        )
-
-    # Fallback
-    logger.warning(f"Unhandled step in recipe resolution: {step}")
-    return TurnResponse(
-        dialogue=vs.closing_speech,
-        tone_marker="gentle",
-        screen_widget="badge_award",
-        screen_widget_params={"title": "Great job!", "concepts": [], "entity": state.entity_name},
-        screen_animation="badge_reveal",
-        sfx_cue="badge_awarded",
-    )
-
-
-def resolve_wrong_photo_turn(state: SessionStateModel, photo_id: str | None) -> TurnResponse:
-    """Return a 'try again' response for a wrong photo pick in cat5 collection rounds."""
-    recipe = state.recipe
-    if recipe is None:
-        raise ValueError("No recipe stored in session state")
-
-    vs = recipe.voice_script
-    step = state.current_step
-
-    # Get current round's on_wrong_photo if available
-    if step.startswith("STEP_3_COLLECT_"):
-        round_num = int(step.rsplit("_", maxsplit=1)[-1])
-        round_idx = round_num - 1
-        if 0 <= round_idx < len(vs.rounds):
-            wrong_text = vs.rounds[round_idx].on_wrong_photo
-            if wrong_text:
-                return TurnResponse(
-                    dialogue=wrong_text,
-                    tone_marker="encouraging",
-                    screen_widget="progress_tracker",
-                    screen_widget_params={"description": "Try again", "entity": state.entity_name},
-                    screen_animation="gentle_pulse",
-                    sfx_cue=None,
-                )
-
-    # Generic fallback
-    return TurnResponse(
-        dialogue="Hmm, that's not quite right. Would you like to try picking a different one?",
-        tone_marker="encouraging",
-        screen_widget="progress_tracker",
-        screen_widget_params={"description": "Try again", "entity": state.entity_name},
-        screen_animation="gentle_pulse",
-        sfx_cue=None,
-    )
-
-
-def _select_acknowledgment(round_data: Round, child_text: str, is_silent: bool) -> str:
-    """Select the appropriate acknowledgment based on child input."""
-    if is_silent:
-        return round_data.on_silence
-
-    if not child_text:
-        return ""
-
-    # Check for correct response (substring match)
-    child_lower = child_text.lower()
-    for correct in round_data.correct_responses:
-        if correct.lower() in child_lower:
-            return round_data.on_correct
-
-    return round_data.on_incorrect
-
-
-def _select_round_transition_ack(round_data: Round, child_text: str, is_silent: bool, photo_id: str | None) -> str:
-    """Choose the ack that bridges from the just-finished round into the next step."""
-    if photo_id is not None:
-        return round_data.on_correct
-    return _select_acknowledgment(round_data, child_text, is_silent)
+    return state

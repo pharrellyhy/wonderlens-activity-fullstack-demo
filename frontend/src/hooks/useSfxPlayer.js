@@ -20,6 +20,31 @@ const SFX_VALID = new Set(SFX_CUES);
 export default function useSfxPlayer() {
   const cacheRef = useRef({});
   const currentRef = useRef(null);
+  const unlockedRef = useRef(false);
+
+  /**
+   * Unlock audio playback by playing a silent buffer.
+   * Must be called synchronously from a user gesture (click/tap) handler
+   * BEFORE any async work (API calls) to satisfy browser autoplay policy.
+   */
+  const unlock = useCallback(() => {
+    if (unlockedRef.current) return;
+    try {
+      const ctx = new AudioContext();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      // Also unlock HTML Audio elements
+      const silence = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=');
+      silence.volume = 0;
+      silence.play().catch(() => {});
+      unlockedRef.current = true;
+    } catch {
+      // Ignore — best effort
+    }
+  }, []);
 
   const play = useCallback((sfxCue) => {
     if (!sfxCue || !SFX_VALID.has(sfxCue)) return;
@@ -46,5 +71,5 @@ export default function useSfxPlayer() {
     audio.play().catch(() => {});
   }, []);
 
-  return play;
+  return { play, unlock };
 }

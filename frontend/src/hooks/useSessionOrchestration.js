@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import useConversation from './useConversation';
+import useSfxPlayer from './useSfxPlayer';
 import useSilenceTimer from './useSilenceTimer';
 import useSpeechRecognition from './useSpeechRecognition';
 import useTTS from './useTTS';
@@ -32,6 +33,8 @@ export default function useSessionOrchestration(tier) {
     sendPhotoCollection,
     reset,
   } = useConversation();
+
+  const { unlock: unlockSfx } = useSfxPlayer();
 
   const isActive = sessionState?.status === 'active';
   const isEnded = sessionState?.status === 'completed' || sessionState?.status === 'exited' || sessionState?.status === 'error';
@@ -110,13 +113,16 @@ export default function useSessionOrchestration(tier) {
   }, [isInputDisabled, silenceTimer]);
 
   const startSession = useCallback(async (photo) => {
+    // Unlock audio playback synchronously in the user gesture context,
+    // before the async API call, to satisfy browser autoplay policy.
+    unlockSfx();
     try {
       setRetryCount(0);
       await start(photo, tier);
     } catch {
       setRetryCount(prev => prev + 1);
     }
-  }, [start, tier]);
+  }, [start, tier, unlockSfx]);
 
   const handleSendMessage = useCallback((text) => {
     if (!text.trim() || !isActive || turnPending) return;

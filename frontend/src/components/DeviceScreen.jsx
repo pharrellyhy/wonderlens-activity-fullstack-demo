@@ -39,7 +39,7 @@ function getFrameKey(screenFrame) {
 }
 
 export default function DeviceScreen({ screenFrame, photoUrl }) {
-  const playSfx = useSfxPlayer();
+  const { play: playSfx } = useSfxPlayer();
   const lastSfxFrameRef = useRef(null);
 
   useEffect(() => {

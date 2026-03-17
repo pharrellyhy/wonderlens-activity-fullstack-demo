@@ -13,6 +13,8 @@ class Round(BaseModel):
     on_silence: str = Field(description="Response after silence timeout")
     hint: str = Field(description="Help text if the child is stuck")
     sfx_cue: str | None = Field(default=None, description="Sound effect trigger")
+    tone_marker: str = Field(default="curious", description="Tone for round prompt delivery")
+    on_wrong_photo: str | None = Field(default=None, description="Cat5 wrong photo response")
 
 
 class VoiceScript(BaseModel):
@@ -23,3 +25,11 @@ class VoiceScript(BaseModel):
     rounds: list[Round] = Field(description="Per-round dialogue sequences")
     closing_speech: str = Field(description="Celebration speech incorporating IB concepts")
     tomorrow_hook: str = Field(description="Cross-session retention hook")
+    synthesis_speech: str | None = Field(default=None, description="Cat5 STEP_4_SYNTHESIS dialogue")
+    early_exit_speech: str | None = Field(default=None, description="EARLY_EXIT graceful goodbye")
+    hook_tone: str = Field(default="excited", description="Tone for hook delivery")
+    transition_tone: str = Field(default="playful", description="Tone for transition delivery")
+    closing_tone: str = Field(default="proud", description="Tone for closing speech delivery")
+    tomorrow_tone: str = Field(default="warm", description="Tone for tomorrow hook delivery")
+    synthesis_tone: str = Field(default="amazed", description="Tone for synthesis delivery")
+    early_exit_tone: str = Field(default="gentle", description="Tone for early exit delivery")

@@ -30,7 +30,7 @@ For `template_type: "cat1"`, you MUST fill `creative_slots` with:
 
 For `template_type: "cat5"`, you MUST fill `creative_slots` with:
 
-- `observation_angle`: ONE of: `color`, `shape`, `texture`, `size`, `pattern`, `function`, `habitat`
+- `observation_angle`: ONE of: `color`, `shape`, `texture`, `size`, `pattern`, `function`, `habitat`, `form`, `movement`, `smell`
 - `collection_criterion`: Specific rule for what to collect, derived from observation_angle
 - `collection_count`: T0=2, T1=3, T2=3-4
 - `mission_metaphor`: Playful frame for the collection mission

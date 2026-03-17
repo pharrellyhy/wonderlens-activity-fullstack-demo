@@ -26,9 +26,9 @@ class Cat1CreativeSlots(BaseModel):
 class Cat5CreativeSlots(BaseModel):
     """Creative slots for Category 5 (Out-of-Device Collection) activities."""
 
-    observation_angle: Literal["color", "shape", "texture", "size", "pattern", "function", "habitat"] = Field(
-        description="Visual/sensory feature to anchor the collection mission"
-    )
+    observation_angle: Literal[
+        "color", "shape", "texture", "size", "pattern", "function", "habitat", "form", "movement", "smell"
+    ] = Field(description="Visual/sensory feature to anchor the collection mission")
     collection_criterion: str = Field(description="Specific rule for what to collect")
     collection_count: int = Field(ge=2, le=4, description="Number of items to find (T0=2, T1=3, T2=3-4)")
     mission_metaphor: str = Field(description="Playful frame for the collection mission")

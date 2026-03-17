@@ -5,6 +5,7 @@ from typing import Literal, Union
 from pydantic import BaseModel, Field
 
 from .creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+from .recipe import ActivityRecipe
 from .visual_composition import ScreenFrame
 
 
@@ -39,6 +40,10 @@ class SessionStateModel(BaseModel):
     # Visual Agent output
     visual_frames: list[ScreenFrame] = Field(default_factory=list)
     celebration_frame: ScreenFrame | None = None
+
+    # Pre-generated recipe support
+    is_pregenerated: bool = False
+    recipe: ActivityRecipe | None = None
 
     # Vision/entity context
     entity_name: str = ""

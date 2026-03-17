@@ -20,6 +20,13 @@ try:
     from .config import get_settings
     from .db import init_db, log_session, log_turn, update_session_status
     from .logger import setup_logger
+    from .recipe_loader import (
+        is_demo_entity,
+        load_demo_recipe,
+        recipe_to_session_state,
+        resolve_turn_from_recipe,
+        resolve_wrong_photo_turn,
+    )
     from .scenarios import load_scenario, match_scenario
     from .schemas import ScreenFrame
     from .schemas.creative_slots import Cat5CreativeSlots
@@ -35,6 +42,13 @@ except ImportError:
     from config import get_settings
     from db import init_db, log_session, log_turn, update_session_status
     from logger import setup_logger
+    from recipe_loader import (
+        is_demo_entity,
+        load_demo_recipe,
+        recipe_to_session_state,
+        resolve_turn_from_recipe,
+        resolve_wrong_photo_turn,
+    )
     from scenarios import load_scenario, match_scenario
     from schemas import ScreenFrame
     from schemas.creative_slots import Cat5CreativeSlots
@@ -226,6 +240,54 @@ async def start_session(
         # 2. Match scenario from filename (instant — no LLM needed)
         filename = photo.filename or ""
         activity_type = match_scenario("unknown", [], filename=filename)
+
+        # --- Pre-generated recipe path (demo entities) ---
+        if is_demo_entity(filename):
+            recipe = load_demo_recipe(activity_type)
+            state, first_turn = recipe_to_session_state(recipe, session_id, tier, filename)
+
+            if state.template_type == "cat5":
+                state.round_items = generate_round_items(state.activity_type, state.total_rounds)
+
+            await log_session(settings.db_path, session_id, tier, activity_type)
+            _sessions[session_id] = state
+
+            hook_frame = get_screen_frame(
+                "STEP_1_HOOK",
+                state.template_type,
+                state.creative_slots,
+                {"entity_name": state.entity_name, "ib_key_concepts": state.ib_key_concepts},
+                visual_frames=state.visual_frames or None,
+            )
+            first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
+
+            vision_result = {
+                "entity": state.entity_name,
+                "category": "",
+                "scene": "",
+                "features": [],
+            }
+
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            logger.info(
+                f"Pre-gen session started: {session_id}, activity={activity_type}, "
+                f"template={state.template_type}, tier={tier}, latency={latency_ms}ms"
+            )
+
+            return JSONResponse(
+                {
+                    "session_id": session_id,
+                    "vision_result": vision_result,
+                    "first_turn": first_turn_data,
+                    "activity_type": activity_type,
+                    "template_type": state.template_type,
+                    "session_state": _session_state_dict(state),
+                    "status": "ok",
+                    "latency_ms": latency_ms,
+                }
+            )
+
+        # --- Live pipeline path (custom photo uploads) ---
         scenario = load_scenario(activity_type)
 
         # 3. Build pipeline context with filename-based entity for Director
@@ -268,7 +330,7 @@ async def start_session(
         # 8. Store session state
         _sessions[session_id] = state
 
-        # 8. Build first turn response using Visual Agent frames
+        # 9. Build first turn response using Visual Agent frames
         hook_frame = get_screen_frame(
             "STEP_1_HOOK",
             state.template_type,
@@ -334,7 +396,10 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
 
     if state.consecutive_silence >= 2:
         state.current_step = EARLY_EXIT
-        turn_response = await _generate_turn_with_retry(script_agent, state)
+        if state.is_pregenerated:
+            turn_response = resolve_turn_from_recipe(state, req.text, req.is_silent, req.photo_id)
+        else:
+            turn_response = await _generate_turn_with_retry(script_agent, state)
         state.status = "exited"
 
         screen_frame = get_screen_frame(
@@ -386,7 +451,10 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
     # 2 consecutive wrong picks → graceful exit
     if state.consecutive_wrong >= 2:
         state.current_step = EARLY_EXIT
-        turn_response = await _generate_turn_with_retry(script_agent, state)
+        if state.is_pregenerated:
+            turn_response = resolve_turn_from_recipe(state, req.text, req.is_silent, req.photo_id)
+        else:
+            turn_response = await _generate_turn_with_retry(script_agent, state)
         state.status = "exited"
         screen_frame = get_screen_frame(
             EARLY_EXIT,
@@ -410,7 +478,10 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
     # Wrong pick but not exit yet — stay on same step, generate "try again" response
     if collection_wrong:
         _append_child_turn(state, f"[selected wrong photo: {req.photo_id}]", include_round_number=False)
-        turn_response = await _generate_turn_with_retry(script_agent, state)
+        if state.is_pregenerated:
+            turn_response = resolve_wrong_photo_turn(state, req.photo_id)
+        else:
+            turn_response = await _generate_turn_with_retry(script_agent, state)
         screen_frame = get_screen_frame(
             state.current_step,
             state.template_type,
@@ -466,7 +537,10 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
         )
 
     # Generate AI response for current step
-    turn_response = await _generate_turn_with_retry(script_agent, state)
+    if state.is_pregenerated:
+        turn_response = resolve_turn_from_recipe(state, req.text, req.is_silent, req.photo_id)
+    else:
+        turn_response = await _generate_turn_with_retry(script_agent, state)
 
     # Get screen frame from state machine (with Visual Agent frames if available)
     screen_frame = get_screen_frame(
@@ -566,7 +640,10 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         # Handle consecutive silence → graceful exit
         if state.consecutive_silence >= 2:
             state.current_step = EARLY_EXIT
-            turn_response = await _generate_turn_with_retry(script_agent, state)
+            if state.is_pregenerated:
+                turn_response = resolve_turn_from_recipe(state, req.text, req.is_silent, req.photo_id)
+            else:
+                turn_response = await _generate_turn_with_retry(script_agent, state)
             state.status = "exited"
             screen_frame = get_screen_frame(
                 EARLY_EXIT,
@@ -619,7 +696,10 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         # 2 consecutive wrong picks → graceful exit
         if state.consecutive_wrong >= 2:
             state.current_step = EARLY_EXIT
-            turn_response = await _generate_turn_with_retry(script_agent, state)
+            if state.is_pregenerated:
+                turn_response = resolve_turn_from_recipe(state, req.text, req.is_silent, req.photo_id)
+            else:
+                turn_response = await _generate_turn_with_retry(script_agent, state)
             state.status = "exited"
             screen_frame = get_screen_frame(
                 EARLY_EXIT,
@@ -645,7 +725,10 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         # Wrong pick but not exit yet — stay on same step
         if collection_wrong:
             _append_child_turn(state, f"[selected wrong photo: {req.photo_id}]", include_round_number=False)
-            turn_response = await _generate_turn_with_retry(script_agent, state)
+            if state.is_pregenerated:
+                turn_response = resolve_wrong_photo_turn(state, req.photo_id)
+            else:
+                turn_response = await _generate_turn_with_retry(script_agent, state)
             screen_frame = get_screen_frame(
                 state.current_step,
                 state.template_type,
@@ -689,6 +772,66 @@ async def turn_and_speak(req: TurnRequest) -> Response:
             ).encode()
             yield struct.pack(">I", len(response_json))
             yield response_json
+            return
+
+        # --- Pre-generated recipe: skip streaming, go straight to TTS ---
+        if state.is_pregenerated:
+            turn_response = resolve_turn_from_recipe(state, req.text, req.is_silent, req.photo_id)
+
+            screen_frame = get_screen_frame(
+                state.current_step,
+                state.template_type,
+                state.creative_slots,
+                _state_context(state),
+                visual_frames=state.visual_frames or None,
+                celebration_frame=state.celebration_frame,
+            )
+            error_exit = state.status == "error"
+            response_type = "error" if error_exit else _get_response_type(state.current_step)
+
+            state.conversation_history.append(
+                ConversationTurn(
+                    role="ai",
+                    text=turn_response.dialogue,
+                    step=state.current_step,
+                    round_number=state.current_round if state.current_round > 0 else None,
+                )
+            )
+            if len(state.conversation_history) > 6:
+                state.conversation_history = state.conversation_history[-6:]
+
+            state.turn_count += 1
+
+            if _is_closing_step(state.current_step) and not error_exit:
+                state.status = "completed"
+                await update_session_status(
+                    settings.db_path, req.session_id, "completed", "closing_delivered", state.turn_count
+                )
+
+            auto_advance = _should_auto_advance(state, error_exit)
+
+            await log_turn(
+                settings.db_path,
+                req.session_id,
+                state.turn_count,
+                "ai",
+                turn_response.dialogue,
+                response_type,
+                is_silent=req.is_silent,
+                consecutive_silence=state.consecutive_silence,
+            )
+
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            turn_data = _build_turn_response(turn_response, screen_frame, response_type, error_exit)
+            turn_data["auto_advance"] = auto_advance
+
+            response_json = json.dumps(
+                {"turn": turn_data, "session_state": _session_state_dict(state), "latency_ms": latency_ms}
+            ).encode()
+            yield struct.pack(">I", len(response_json))
+            yield response_json
+            async for chunk in synthesize_speech_stream_async(turn_response.dialogue, state.tier):
+                yield chunk
             return
 
         # --- Streaming Script Agent + pipelined TTS ---

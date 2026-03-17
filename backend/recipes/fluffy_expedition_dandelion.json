@@ -2,7 +2,9 @@
   "activity_type": "fluffy_expedition_dandelion",
   "voice_script": {
     "hook_line": "Oh wow, look at this fluffy dandelion! All those tiny white seeds just waiting to fly away on the wind — like a hundred tiny parachutes!",
+    "hook_tone": "excited",
     "transition_line": "You are now a Fluffy Expedition Explorer! Your mission is to find three more fluffy, fuzzy, or soft things around you. Let's see what fluffy treasures are hiding nearby!",
+    "transition_tone": "playful",
     "rounds": [
       {
         "prompt": "Explorer, your first mission! Can you find something fluffy, fuzzy, or soft near you?",
@@ -11,7 +13,9 @@
         "on_incorrect": "Great eye, Explorer! If we look really closely, there might be something soft or fuzzy about it. Every treasure counts!",
         "on_silence": "Take a look around you, Explorer. Maybe feel something nearby — is there anything soft, fluffy, or fuzzy? Even a leaf can feel soft!",
         "hint": "Try touching things around you — look for anything that feels soft, fuzzy, or fluffy like the dandelion!",
-        "sfx_cue": "photo_shutter_click"
+        "sfx_cue": "photo_shutter_click",
+        "tone_marker": "encouraging",
+        "on_wrong_photo": "Hmm, that one doesn't feel very fluffy or soft. Would you like to look for something fuzzier?"
       },
       {
         "prompt": "Expedition report! We need our second fluffy find. Can you spot something else that's soft or fuzzy?",
@@ -20,7 +24,9 @@
         "on_incorrect": "Interesting find! You know what, if we imagine really hard, everything has a little bit of softness to it. Good exploring!",
         "on_silence": "You're doing great, Explorer. Maybe look at what you're wearing or sitting on — sometimes the fluffiest things are right next to us!",
         "hint": "Think about things you like to cuddle or touch because they're soft — a pillow, a blanket, or a pet!",
-        "sfx_cue": "photo_shutter_click"
+        "sfx_cue": "photo_shutter_click",
+        "tone_marker": "curious",
+        "on_wrong_photo": "That's not quite fluffy enough. Can you find something that feels soft or fuzzy to the touch?"
       },
       {
         "prompt": "Last mission, Explorer! Find one more fluffy or soft thing to complete your expedition!",
@@ -29,11 +35,19 @@
         "on_incorrect": "That's a wonderful final find! Every explorer sees the world differently, and your collection is uniquely yours!",
         "on_silence": "We're almost there! Try looking up at the sky, or down at the ground. Fluffy things can be anywhere — even clouds count!",
         "hint": "Look up at the sky — clouds are the fluffiest things of all! Or try finding a soft flower or fuzzy leaf.",
-        "sfx_cue": "mission_complete_fanfare"
+        "sfx_cue": "mission_complete_fanfare",
+        "tone_marker": "excited",
+        "on_wrong_photo": "Almost! That one isn't quite fluffy. One more look — can you find something really soft?"
       }
     ],
     "closing_speech": "Congratulations, Fluffy Expedition Explorer! You found three amazing soft treasures, all connected by their fluffiness — just like our dandelion! A tiny dandelion seed and all your fluffy finds share something special. That's the beauty of Connection — finding how different things are linked together!",
-    "tomorrow_hook": "Next time you're outside, keep your explorer senses open — fluffy and soft things are hiding everywhere, waiting to be discovered!"
+    "closing_tone": "proud",
+    "tomorrow_hook": "Next time you're outside, keep your explorer senses open — fluffy and soft things are hiding everywhere, waiting to be discovered!",
+    "tomorrow_tone": "warm",
+    "synthesis_speech": "Now let's look at all your fluffy treasures together! Each one is soft and gentle, but they all feel a little different — some are fuzzy, some are silky, some are puffy. Isn't it wonderful how softness comes in so many different forms?",
+    "synthesis_tone": "amazed",
+    "early_exit_speech": "What a wonderful fluffy expedition we had! You found some amazing soft treasures. The fluffy things will be waiting for your next adventure!",
+    "early_exit_tone": "gentle"
   },
   "screen_frames": [
     {

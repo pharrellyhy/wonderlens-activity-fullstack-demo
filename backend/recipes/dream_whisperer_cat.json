@@ -2,7 +2,9 @@
   "activity_type": "dream_whisperer_cat",
   "voice_script": {
     "hook_line": "Oh, look at this adorable sleepy cat! Those soft little paws and that fluffy fur — I think it might be dreaming right now!",
+    "hook_tone": "excited",
     "transition_line": "What if we could peek inside this cat's dreams? I'll set the scene, and you tell me what the cat is dreaming about!",
+    "transition_tone": "playful",
     "rounds": [
       {
         "prompt": "The cat's whiskers are twitching! It's dreaming about floating through the sky on a fluffy cloud. What does it see up there?",
@@ -11,7 +13,8 @@
         "on_incorrect": "What a wonderful dream that would be! Up in the sky, the cat might also see sparkly stars or colorful birds flying by!",
         "on_silence": "Imagine floating on a cloud way up high. What would you see? Maybe birds, stars, or even a rainbow?",
         "hint": "Think about what you see when you look up at the sky — birds, clouds, the sun, stars!",
-        "sfx_cue": "scene_woosh"
+        "sfx_cue": "scene_woosh",
+        "tone_marker": "dreamy"
       },
       {
         "prompt": "Now the cat's paws are paddling! It's dreaming about swimming in a magical ocean made of warm milk. What does it find down there?",
@@ -20,7 +23,8 @@
         "on_incorrect": "That's so creative! In a magical milk ocean, the cat might also find shimmering fish or sparkling treasure chests!",
         "on_silence": "Picture a warm, cozy ocean made of milk. What magical things could be swimming around down there? Maybe fish, or hidden treasure?",
         "hint": "Think about what you might find in a magical ocean — treasure, colorful fish, sparkling shells!",
-        "sfx_cue": "scene_woosh"
+        "sfx_cue": "scene_woosh",
+        "tone_marker": "curious"
       },
       {
         "prompt": "The cat is purring so loudly now! It's dreaming about a magical garden where everything is made of its favorite things. What grows in this garden?",
@@ -29,11 +33,16 @@
         "on_incorrect": "What a delightful garden! The cat might also dream about yarn trees and treat bushes growing everywhere!",
         "on_silence": "If you could grow anything in a magical garden, what would it be? The cat might dream about its favorite treats or toys growing like flowers!",
         "hint": "Think about what a cat loves most — treats, yarn, toys — now imagine those growing in a garden!",
-        "sfx_cue": "celebration_fanfare"
+        "sfx_cue": "celebration_fanfare",
+        "tone_marker": "excited"
       }
     ],
     "closing_speech": "You are the most wonderful Dream Whisperer! You peeked into three amazing dreams — floating in the sky, swimming in a milk ocean, and exploring a magical garden. Each dream came from your incredible Reflection — you thought about what the cat might feel and imagine. That's a truly special power!",
-    "tomorrow_hook": "Next time you see a sleeping cat, try whispering a dream to it — who knows what magical adventures it might have!"
+    "closing_tone": "proud",
+    "tomorrow_hook": "Next time you see a sleeping cat, try whispering a dream to it — who knows what magical adventures it might have!",
+    "tomorrow_tone": "warm",
+    "early_exit_speech": "That was such a lovely dream adventure together! The cat is still dreaming away happily. We can peek at more dreams anytime you want!",
+    "early_exit_tone": "gentle"
   },
   "screen_frames": [
     {

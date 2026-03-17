@@ -30,7 +30,7 @@ except ImportError:
 
 logger = setup_logger(__name__)
 
-_FALLBACKS_DIR = Path(__file__).parent.parent / "fallbacks"
+_RECIPES_DIR = Path(__file__).parent.parent / "recipes"
 
 # Default hook lines for when Script Agent fails on the very first turn
 _DEFAULT_HOOKS = {
@@ -39,11 +39,11 @@ _DEFAULT_HOOKS = {
 }
 
 
-def load_fallback(activity_type: str) -> ActivityRecipe:
-    """Load a pre-authored fallback recipe (legacy support)."""
-    path = _FALLBACKS_DIR / f"{activity_type}.json"
+def load_recipe(activity_type: str) -> ActivityRecipe:
+    """Load a pre-authored recipe JSON file."""
+    path = _RECIPES_DIR / f"{activity_type}.json"
     if not path.exists():
-        path = _FALLBACKS_DIR / "mood_changer_dog.json"
+        path = _RECIPES_DIR / "mood_changer_dog.json"
     with open(path) as f:
         data = json.load(f)
     return ActivityRecipe.model_validate(data)
@@ -192,5 +192,5 @@ async def generate_recipe(context: dict, session_id: str = "") -> ActivityRecipe
     The new architecture uses initialize_session() instead.
     """
     activity_type = context.get("activity_type", "mood_changer_dog")
-    logger.warning(f"generate_recipe() is deprecated, loading fallback for {activity_type}")
-    return load_fallback(activity_type)
+    logger.warning(f"generate_recipe() is deprecated, loading recipe for {activity_type}")
+    return load_recipe(activity_type)

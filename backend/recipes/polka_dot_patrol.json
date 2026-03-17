@@ -2,7 +2,9 @@
   "activity_type": "polka_dot_patrol",
   "voice_script": {
     "hook_line": "Oh my goodness, look at that tiny little friend! A ladybug wearing a beautiful red coat with fancy black polka dots!",
+    "hook_tone": "excited",
     "transition_line": "I bet this ladybug isn't the only spotty thing around here. You are now an official Polka-Dot Patrol Officer! Your mission is to find three more things with dots, spots, or circles.",
+    "transition_tone": "playful",
     "rounds": [
       {
         "prompt": "Keep your eyes super wide open! Can you find something with spots or dots on it? Maybe a flower, a rock, or a leaf?",
@@ -11,7 +13,9 @@
         "on_incorrect": "That's a great find! Let me look more closely — I can see a little pattern there! Every little detail counts on patrol.",
         "on_silence": "It's okay to take your time, Officer. Maybe try looking at flowers up close, or at the ground near your feet. Do you see anything with dots?",
         "hint": "Try looking at flowers up close — sometimes their petals have the most amazing tiny dots!",
-        "sfx_cue": "photo_shutter_click"
+        "sfx_cue": "photo_shutter_click",
+        "tone_marker": "encouraging",
+        "on_wrong_photo": "Hmm, that one doesn't have dots on it. Would you like to look for something with spots or circles instead?"
       },
       {
         "prompt": "Patrol report! We need our second find. Can you spot something else with dots, spots, or speckles nearby?",
@@ -20,7 +24,9 @@
         "on_incorrect": "Hmm, let me look closer — you know what, I can see a little pattern there! Good spotting, Officer!",
         "on_silence": "You're doing such a great job, Officer. Maybe look down at the ground near our feet? Sometimes pebbles or tree bark have the best little speckles.",
         "hint": "Try looking at the ground — little pebbles and stones sometimes have amazing spotted patterns!",
-        "sfx_cue": "photo_shutter_click"
+        "sfx_cue": "photo_shutter_click",
+        "tone_marker": "curious",
+        "on_wrong_photo": "That's not quite what we're looking for. Can you find something with dots or speckles on it?"
       },
       {
         "prompt": "Last one, Officer! Can you find one more thing with spots or dots to complete our patrol collection?",
@@ -29,11 +35,19 @@
         "on_incorrect": "You know what, I think that counts! Every little pattern tells a story. Our collection is complete, Officer!",
         "on_silence": "We're so close! Try looking at tree bark up close, or the underside of a leaf. Even tiny things can have beautiful dot patterns.",
         "hint": "Try looking at tree bark up close — it often has amazing little spotted patterns!",
-        "sfx_cue": "mission_complete_fanfare"
+        "sfx_cue": "mission_complete_fanfare",
+        "tone_marker": "excited",
+        "on_wrong_photo": "Almost! That one doesn't have dots though. One more look — can you spot something with a dotty pattern?"
       }
     ],
     "closing_speech": "Congratulations, Polka-Dot Patrol Officer! You noticed the beautiful Form of spots and patterns everywhere, and found a surprising Connection between all these different spotted things. A tiny ladybug, and all your amazing finds — all connected by their wonderful dots!",
-    "tomorrow_hook": "Next time you're outside, keep your patrol eyes open — spots and dots are hiding everywhere, waiting for you to discover them!"
+    "closing_tone": "proud",
+    "tomorrow_hook": "Next time you're outside, keep your patrol eyes open — spots and dots are hiding everywhere, waiting for you to discover them!",
+    "tomorrow_tone": "warm",
+    "synthesis_speech": "Now let's look at all your spotted treasures together! Each one has dots or spots, but they all look so different — big dots, tiny speckles, round circles. Isn't it amazing how the same pattern can look so many different ways?",
+    "synthesis_tone": "amazed",
+    "early_exit_speech": "Great patrol work today, Officer! You found some wonderful spotted treasures. The polka dots will be waiting for you next time!",
+    "early_exit_tone": "gentle"
   },
   "screen_frames": [
     {

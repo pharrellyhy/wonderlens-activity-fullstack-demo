@@ -2,7 +2,9 @@
   "activity_type": "mood_changer_dog",
   "voice_script": {
     "hook_line": "Oh wow, it's your fluffy dog friend! Look at those cute floppy ears and that super soft fur!",
+    "hook_tone": "excited",
     "transition_line": "What if we could hear what your doggy is thinking inside? I'll say something that happens, and you tell me what it would say or feel!",
+    "transition_tone": "playful",
     "rounds": [
       {
         "prompt": "Morning time! The sun is so warm and cozy on the doggy's belly. What does the doggy say?",
@@ -11,7 +13,8 @@
         "on_incorrect": "That sounds interesting! The warm sun might make it feel all cozy and comfy inside, like a big warm hug.",
         "on_silence": "You can do it! Imagine the sun is warm on its belly. Maybe it says 'so warm!' or just goes 'hmmm'... which one?",
         "hint": "Think about how you feel when you sit in the sunshine — warm and happy, right?",
-        "sfx_cue": "scene_woosh"
+        "sfx_cue": "scene_woosh",
+        "tone_marker": "warm"
       },
       {
         "prompt": "Oops! The doggy tripped and went bump! What does it say now?",
@@ -20,7 +23,8 @@
         "on_incorrect": "Woof woof! That sounds like a big surprise! When something unexpected happens, we might feel startled or say 'oh no!'",
         "on_silence": "When something surprising happens, we might go 'whoa!' or 'oh no!' What do you think the doggy says?",
         "hint": "Think about how you feel when you trip — you might say 'whoa!' or 'oh no!'",
-        "sfx_cue": "scene_woosh"
+        "sfx_cue": "scene_woosh",
+        "tone_marker": "surprised"
       },
       {
         "prompt": "The owner brings the doggy's favorite treat! What does the doggy do?",
@@ -29,11 +33,16 @@
         "on_incorrect": "That's fun! When the doggy sees its favorite treat, it gets SO excited — maybe its tail wags super fast!",
         "on_silence": "Imagine your favorite snack is right in front of you. Would you feel excited? Maybe the doggy goes 'yay!' or wags its tail really fast!",
         "hint": "Think about how you feel when someone gives you your favorite treat — super excited, right?",
-        "sfx_cue": "celebration_fanfare"
+        "sfx_cue": "celebration_fanfare",
+        "tone_marker": "excited"
       }
     ],
     "closing_speech": "You are such a wonderful Emotion Translator! You heard your doggy being happy, surprised, and excited. The same doggy feels different things when different things happen — that's the magic of Perspective! Everyone sees the world a little differently.",
-    "tomorrow_hook": "Next time you see your fluffy friend, try imagining what it's thinking — you might discover a whole new feeling!"
+    "closing_tone": "proud",
+    "tomorrow_hook": "Next time you see your fluffy friend, try imagining what it's thinking — you might discover a whole new feeling!",
+    "tomorrow_tone": "warm",
+    "early_exit_speech": "That was really fun listening to the doggy's feelings together! You're such a great friend. We can play again anytime you want!",
+    "early_exit_tone": "gentle"
   },
   "screen_frames": [
     {

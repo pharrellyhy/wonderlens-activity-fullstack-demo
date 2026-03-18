@@ -37,6 +37,7 @@ logger = setup_logger(__name__)
 _SKILL_PATH = Path(__file__).parent.parent / "skills" / "script_turn.md"
 _STEP_INSTRUCTIONS_DIR = Path(__file__).parent.parent / "skills" / "step_instructions"
 _TIER_RULES_PATH = Path(__file__).parent.parent / "tier_rules.yaml"
+_FRAGMENTABLE_STEP_PREFIXES = {"STEP_2_RULES", "STEP_3_ROUND", "STEP_3_COLLECT", "STEP_4_SYNTHESIS"}
 
 # Regex to extract dialogue value from partial JSON stream
 _DIALOGUE_RE = re.compile(r'"dialogue"\s*:\s*"((?:[^"\\]|\\.)*)"')
@@ -134,8 +135,25 @@ def _load_step_instructions(state: SessionStateModel) -> str:
 
     text = path.read_text()
 
+    fragment_prefix = step
+    if step.startswith(("STEP_3_ROUND_", "STEP_3_COLLECT_")):
+        fragment_prefix = step.rsplit("_", maxsplit=1)[0]
+
+    if fragment_prefix in _FRAGMENTABLE_STEP_PREFIXES:
+        style_key: str | None = None
+        if isinstance(slots, Cat1CreativeSlots):
+            style_key = slots.game_mechanic
+        elif isinstance(slots, Cat5CreativeSlots):
+            style_key = slots.synthesis_type
+        if style_key:
+            base_name = filename.removesuffix(".md")
+            fragment_path = _STEP_INSTRUCTIONS_DIR / f"{base_name}__{style_key}.md"
+            if fragment_path.exists():
+                text += "\n\n" + fragment_path.read_text()
+
     # Fill template variables from creative slots
     replacements: dict[str, str] = {
+        "{entity_name}": state.entity_name,
         "{round_number}": str(state.current_round),
         "{total_rounds}": str(state.total_rounds),
         "{ib_key_concepts}": ", ".join(state.ib_key_concepts),
@@ -252,7 +270,7 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
             )
         else:
             lines.append(
-                "\n The mission IS complete — all items found! " "Celebrate this final find. Do NOT ask any questions."
+                "\n The mission IS complete — all items found! Celebrate this final find. Do NOT ask any questions."
             )
 
     return "\n".join(lines)

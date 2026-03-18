@@ -11,14 +11,6 @@ If the child said something in response to the hook, acknowledge it before intro
 3. Run one demo round WITH the answer included, so the child sees how it works.
 4. End by inviting the child to try: "Would you like to give it a try?" or "Do you want to go next?" — NOT "Now it's your turn!" or "Let's go!"
 
-### Game Mechanics Reference:
-- `true_or_silly`: AI states facts about the entity, child judges true/silly.
-- `mood_guessing`: AI describes scenarios, child guesses entity's feeling.
-- `what_would_it_say`: AI sets a scene, child voices what entity would say.
-- `storytelling_chain`: AI starts a story about entity, child adds the next part.
-- `riddle_game`: AI gives clues about things related to entity, child guesses.
-- `sound_imitation`: AI describes how entity might sound in scenarios, child performs.
-
 ### Invitation (NON-NEGOTIABLE):
 - End with a genuine invitation: "Would you like to try?" — then WAIT.
 - Do NOT auto-start the game. The child must accept first.

@@ -174,9 +174,9 @@ ENTITY_REGISTRY: list[EntityConfig] = [
             collection_count=3,
             mission_metaphor="You are a Fluffy Expedition Explorer!",
             role_title="Fluffy Expedition Explorer",
-            synthesis_type="comparison_chart",
+            synthesis_type="naming_story",
             stuck_hint="Try touching things around you — look for anything soft or fuzzy",
-            naming_prompt="How does this feel? Is it fuzzy, silky, or puffy?",
+            naming_prompt="What would you name this fluffy friend?",
         ),
         collection_catalog=CollectionCatalog(
             correct=[

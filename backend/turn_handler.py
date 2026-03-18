@@ -521,8 +521,22 @@ async def resolve_turn(
             error_exit=state.status == "error",
         )
 
-    # Interactive step already prompted: child responded → advance past it
+    # Interactive step already prompted: generate response, then advance only if done
     if step_needs_user_input(state.current_step):
+        turn_response = await _generate_with_retry(script_agent, state)
+        if turn_response.stay_on_step:
+            # Child needs help (stuck, confused) — stay and respond
+            _append_ai_turn(state, turn_response.dialogue)
+            state.turn_count += 1
+            return TurnResult(
+                turn_response=turn_response,
+                screen_frame=_get_screen_frame(state),
+                auto_advance=False,
+                response_type=_get_response_type(state.current_step),
+                error_exit=state.status == "error",
+            )
+        # Child engaged and step is complete — advance
+        _append_ai_turn(state, turn_response.dialogue)
         _advance_state(state)
     else:
         # Auto-advance step (celebrate, closing): advance first, then generate

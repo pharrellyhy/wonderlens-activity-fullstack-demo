@@ -240,11 +240,19 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
     ):
         collected = len(state.collected_photos)
         remaining = max(0, state.total_rounds - collected)
-        lines.append(f"\n**PROGRESS (NON-NEGOTIABLE): {collected} items collected, {remaining} still needed.**")
+        lines.append("\n**PROGRESS — ACTUAL COUNT (NON-NEGOTIABLE):**")
+        lines.append(f"- Items collected so far: **{collected}**")
+        lines.append(f"- Items still needed: **{remaining}**")
+        lines.append(f"- Total required: **{state.total_rounds}**")
         if remaining > 0:
             lines.append(
-                "The mission is NOT complete. You MUST prompt the child to find the next item. "
-                "Do NOT celebrate completion or say the mission is done."
+                "\n The mission is NOT complete — DO NOT say 'all done', 'found them all', "
+                "'mission complete', 'collection is complete', or anything similar. "
+                "You MUST end with an invitational question about finding the NEXT item."
+            )
+        else:
+            lines.append(
+                "\n The mission IS complete — all items found! " "Celebrate this final find. Do NOT ask any questions."
             )
 
     return "\n".join(lines)
@@ -522,9 +530,13 @@ class ScriptAgent:
         if state.current_step in ("STEP_2_RULES", "STEP_2_MISSION"):
             child_intent_field = '  "child_intent": "accepted|declined|off_topic|null",\n'
 
-        # Include stay_on_step for round steps where child might need help
+        # Include stay_on_step for round and synthesis steps where child might need help
         stay_on_step_field = ""
-        if state.current_step.startswith("STEP_3_ROUND_") or state.current_step.startswith("STEP_3_COLLECT_"):
+        if (
+            state.current_step.startswith("STEP_3_ROUND_")
+            or state.current_step.startswith("STEP_3_COLLECT_")
+            or state.current_step == "STEP_4_SYNTHESIS"
+        ):
             stay_on_step_field = (
                 '  "stay_on_step": true/false,  // Set true if child said "I don\'t know", '
                 "is confused, or needs a hint before moving on\n"

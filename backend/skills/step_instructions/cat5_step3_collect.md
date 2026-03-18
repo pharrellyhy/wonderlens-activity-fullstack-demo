@@ -1,7 +1,9 @@
 ## Current Step: Photo Collection Round {round_number} of {total_rounds}
 
-**Collection progress: {collected_count} of {total_rounds} items collected so far.**
-The child still needs to find {remaining_count} more item(s) to complete the mission.
+**ACTUAL COLLECTION COUNT — trust these numbers, not your memory:**
+- Collected: **{collected_count}** of **{total_rounds}**
+- Still needed: **{remaining_count}**
+- If remaining > 0: the mission is NOT done — do NOT say "all found" or "mission complete"
 
 The child is on a collection round. They may have just arrived at this round (no photo selected yet) or submitted a photo selection.
 

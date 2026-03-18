@@ -13,19 +13,19 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
   const collected = collectedPhotos.length;
 
   return (
-    <div className="flex flex-col items-center justify-center gap-3 h-full p-3">
+    <div className="flex flex-col items-center justify-center gap-5 h-full p-4">
       <div className="text-center">
         {criterion && (
-          <p className="text-sm font-semibold text-[var(--color-forest-dark)]">
+          <p className="text-base font-semibold text-[var(--color-forest-dark)]">
             {criterion}
           </p>
         )}
-        <p className="text-xs text-gray-500 mt-0.5">
+        <p className="text-sm text-gray-500 mt-1">
           {collected} of {totalToCollect} found
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 w-full max-w-md">
+      <div className="grid grid-cols-3 gap-4 w-full max-w-lg">
         {items.map((photo) => {
           const isCollected = collectedPhotos.includes(photo.id);
           const isWrong = wrongPhotoId === photo.id;
@@ -56,17 +56,17 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = ''; }}
                 />
               ) : null}
-              <LeafIcon className={`w-10 h-10 ${photo.image ? 'hidden' : ''} ${
+              <LeafIcon className={`w-14 h-14 ${photo.image ? 'hidden' : ''} ${
                 isCollected ? 'text-[var(--color-forest)]' :
                 isWrong ? 'text-red-300' :
                 'text-[var(--color-forest)]/40'
               }`} />
-              <span className="absolute bottom-0 inset-x-0 text-xs text-gray-700 leading-tight px-1 py-1 font-medium bg-white/80 rounded-b-2xl text-center">
+              <span className="absolute bottom-0 inset-x-0 text-sm text-gray-700 leading-tight px-1.5 py-1.5 font-medium bg-white/80 rounded-b-2xl text-center">
                 {photo.label}
               </span>
               {isCollected && (
-                <span className="absolute top-1.5 right-1.5 w-6 h-6 bg-[var(--color-forest)] text-white rounded-full flex items-center justify-center shadow-sm">
-                  <CheckmarkIcon className="w-3.5 h-3.5" />
+                <span className="absolute top-2 right-2 w-8 h-8 bg-[var(--color-forest)] text-white rounded-full flex items-center justify-center shadow-sm">
+                  <CheckmarkIcon className="w-4.5 h-4.5" />
                 </span>
               )}
             </button>
@@ -75,11 +75,11 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
       </div>
 
       {/* Progress circles */}
-      <div className="flex gap-2.5 justify-center">
+      <div className="flex gap-3 justify-center">
         {Array.from({ length: totalToCollect }).map((_, i) => (
           <div
             key={i}
-            className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+            className={`w-11 h-11 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-all duration-300 ${
               i < collected
                 ? 'bg-[var(--color-forest)] border-[var(--color-forest)] text-white shadow-sm'
                 : i === collected
@@ -87,7 +87,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
                   : 'border-gray-200 text-gray-300'
             }`}
           >
-            {i < collected ? <CheckmarkIcon className="w-3.5 h-3.5" /> : i + 1}
+            {i < collected ? <CheckmarkIcon className="w-4.5 h-4.5" /> : i + 1}
           </div>
         ))}
       </div>

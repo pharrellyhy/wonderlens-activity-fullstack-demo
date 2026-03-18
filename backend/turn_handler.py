@@ -468,6 +468,15 @@ async def resolve_turn(
         turn_response = await _generate_with_retry(script_agent, state)
         auto_advance = False
 
+        # Override stay_on_step when Cat5 collection is objectively complete
+        if (
+            turn_response.stay_on_step
+            and state.current_step.startswith("STEP_3_COLLECT_")
+            and len(state.collected_photos) >= state.total_rounds
+        ):
+            logger.info("Overriding stay_on_step: collection complete, forcing advancement")
+            turn_response.stay_on_step = False
+
         if not turn_response.stay_on_step and has_child_input:
             if state.current_step.startswith("STEP_3_COLLECT_"):
                 # Cat5 collect: advance immediately — single combined response

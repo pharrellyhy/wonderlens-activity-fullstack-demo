@@ -51,7 +51,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
                 <img
                   src={photo.image}
                   alt={photo.label}
-                  className="w-16 h-16 object-contain rounded-lg"
+                  className="absolute inset-0 w-full h-full object-cover rounded-2xl"
                   draggable={false}
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = ''; }}
                 />
@@ -61,7 +61,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
                 isWrong ? 'text-red-300' :
                 'text-[var(--color-forest)]/40'
               }`} />
-              <span className="text-xs text-gray-600 leading-tight px-1 font-medium">
+              <span className="absolute bottom-0 inset-x-0 text-xs text-gray-700 leading-tight px-1 py-1 font-medium bg-white/80 rounded-b-2xl text-center">
                 {photo.label}
               </span>
               {isCollected && (

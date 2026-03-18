@@ -38,7 +38,7 @@ function getFrameKey(screenFrame) {
   ].join('|');
 }
 
-export default function DeviceScreen({ screenFrame, photoUrl }) {
+export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
   const { play: playSfx } = useSfxPlayer();
   const lastSfxFrameRef = useRef(null);
 
@@ -82,7 +82,7 @@ export default function DeviceScreen({ screenFrame, photoUrl }) {
       <div className="flex-1 flex items-center justify-center min-h-0">
         <AnimationOverlay animation={screenFrame.animation}>
           {WidgetComponent ? (
-            <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} />
+            <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
           ) : (
             <div className="text-center p-8 surface-card rounded-2xl">
               <p className="text-gray-500 text-sm">Widget: {screenFrame.widget}</p>

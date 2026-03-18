@@ -28,9 +28,11 @@ export default function CharacterDisplay({ description, animation, roundNumber =
         {entity && <p className="text-xs text-gray-500 mt-1">{entity}</p>}
       </div>
 
-      <div className="text-xs text-[var(--color-forest)] bg-white/50 px-3 py-1 rounded-full font-medium">
-        Round {roundNumber}
-      </div>
+      {roundNumber > 0 && (
+        <div className="text-xs text-[var(--color-forest)] bg-white/50 px-3 py-1 rounded-full font-medium">
+          Round {roundNumber}
+        </div>
+      )}
     </div>
   );
 }

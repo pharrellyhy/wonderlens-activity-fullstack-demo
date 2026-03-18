@@ -50,6 +50,7 @@ Probable environment: {scene}.
 - `screen_animation`: Optional. One of: sparkle_highlight, celebration_burst, appear, gentle_pulse, scene_transition, badge_reveal, or null
 - `sfx_cue`: Optional. One of: wonder_chime, celebration_fanfare, badge_awarded, game_start_chime, or null
 - `child_intent`: (STEP_2 only) One of: "accepted", "declined", "off_topic", or null. Determine from the child's response whether they accepted the invitation to play.
+- `stay_on_step`: (Round steps only) Set to true if the child said "I don't know", is confused, or needs a hint before the round can advance. When true, you should offer a simpler choice or hint — do NOT move to celebration or the next step.
 
 ## SECTION 7: Conversation State
 

@@ -1,6 +1,6 @@
 """Pydantic schema for instruction-based recipe steps."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class StepGoal(BaseModel):
@@ -35,3 +35,11 @@ class StepInstruction(BaseModel):
     closing: StepGoal = Field(description="Closing / tomorrow hook instructions")
     synthesis: StepGoal | None = Field(default=None, description="Cat5 synthesis step instructions")
     early_exit: StepGoal = Field(description="Early exit / graceful goodbye instructions")
+
+    @model_validator(mode="after")
+    def validate_round_numbers(self) -> "StepInstruction":
+        expected_numbers = list(range(1, len(self.rounds) + 1))
+        actual_numbers = [round_instruction.round_number for round_instruction in self.rounds]
+        if actual_numbers != expected_numbers:
+            raise ValueError("Round numbers must be sequential starting at 1")
+        return self

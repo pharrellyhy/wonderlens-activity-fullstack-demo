@@ -2,37 +2,37 @@
   "activity_type": "fluffy_expedition_dandelion",
   "step_instructions": {
     "hook": {
-      "goal": "Create an emotional connection with the dandelion — notice its fluffy white seeds like tiny parachutes waiting to fly",
-      "constraint": "T0 max 2 sentences, personal feeling hook, invitational tone",
+      "goal": "React with wonder to the dandelion's fluffiness — notice its white seeds like tiny parachutes, then ask the child an IMAGINATIVE question about what the seeds look like or what they might do (e.g. 'Where do you think all those tiny parachutes are going to fly to?')",
+      "constraint": "T0 max 2 sentences, personal feeling hook, MUST end with an imaginative question about the fluffiness",
       "emotion_tag": "excited"
     },
     "transition": {
-      "goal": "Invite the child to become a Fluffy Expedition Explorer and find 3 more fluffy, fuzzy, or soft things nearby",
-      "constraint": "T0 max 2 sentences, frame as invitation not command, end with Would you like to...?",
+      "goal": "Build on the child's response to NATURALLY introduce the Fluffy Expedition Explorer mission — the dandelion isn't the only soft thing around! Frame the collection as an explorer adventure. Invite the child to find 3 more fluffy/fuzzy/soft things nearby. End with a genuine invitation.",
+      "constraint": "T0 max 2 sentences, build mission from child's response (not a sudden topic switch), frame as invitation not command, end with Would you like to be the explorer?",
       "emotion_tag": "playful"
     },
     "rounds": [
       {
         "round_number": 1,
-        "goal": "Guide child to find their first fluffy, fuzzy, or soft item nearby",
+        "goal": "Spark curiosity about finding the first fluffy item — suggest WHERE to look or WHAT to touch as an invitation, then ask the child to describe HOW it feels (fuzzy? silky? puffy?)",
         "scenario": "first fluffy find",
-        "constraint": "T0 max 2 sentences, invitational phrasing, suggest touching things",
+        "constraint": "T0 max 2 sentences, invitational phrasing, encourage the child to describe the texture",
         "emotion_tag": "encouraging",
         "acceptable_themes": ["cloud", "cotton", "fur", "feather", "wool", "moss", "grass", "blanket", "fluffy", "soft", "fuzzy"],
         "escalation_note": "easy first find — common soft items"
       },
       {
         "round_number": 2,
-        "goal": "Guide child to find a second soft or fuzzy item",
+        "goal": "Celebrate the previous find, then spark curiosity for the next — ask child to COMPARE how this one feels different from the first (softer? fuzzier? more like a cloud?), suggest a new place to look",
         "scenario": "second fluffy find",
-        "constraint": "T0 max 2 sentences, invitational phrasing, celebrate previous find",
+        "constraint": "T0 max 2 sentences, invitational phrasing, encourage comparison between textures",
         "emotion_tag": "curious",
         "acceptable_themes": ["pet", "pillow", "carpet", "sweater", "plush", "stuffed", "teddy", "hair", "soft", "fuzzy", "fluffy"],
         "escalation_note": "moderate — requires more exploration"
       },
       {
         "round_number": 3,
-        "goal": "Guide child to find one more fluffy or soft item — the third and last one",
+        "goal": "Guide child to find one more fluffy or soft item — the third and last one. Build excitement but remind them they still need to FIND it. Ask them to give this treasure a fun name.",
         "scenario": "third fluffy find",
         "constraint": "T0 max 2 sentences, invitational phrasing, prompt child to go find it",
         "emotion_tag": "excited",
@@ -41,18 +41,18 @@
       }
     ],
     "celebrate": {
-      "goal": "Celebrate the child as a Fluffy Expedition Explorer — they found three soft treasures all connected by fluffiness; connect to IB concept Connection",
-      "constraint": "T0 max 2 sentences, name 1 IB concept naturally",
+      "goal": "Award the child the title 'Fluffy Expedition Explorer' with ceremony — recap their soft discoveries. Celebrate the PROCESS of touching and feeling different textures.",
+      "constraint": "T0 max 2 sentences, announce role title ceremonially, reference specific finds from the expedition",
       "emotion_tag": "proud"
     },
     "closing": {
-      "goal": "Leave the child with a cross-session hook — keep explorer senses open for fluffy and soft things hiding everywhere",
-      "constraint": "T0 max 2 sentences, warm and gentle",
+      "goal": "Teach the IB concept: they found soft treasures all connected by fluffiness — that's the beauty of Connection (finding how different things are linked together). Plant a curiosity seed for next time.",
+      "constraint": "T0 max 2 sentences, name Connection naturally connected to what they discovered, warm goodbye",
       "emotion_tag": "warm"
     },
     "synthesis": {
-      "goal": "Look at all fluffy treasures together — notice how softness comes in many forms (fuzzy, silky, puffy) even though they are all soft",
-      "constraint": "T0 max 2 sentences, comparison focus",
+      "goal": "Look at all fluffy treasures together — guide a comparison: how does softness come in DIFFERENT forms? Fuzzy vs silky vs puffy. Invite child to give each find a fun texture name (e.g. 'cloud puff', 'fuzzy friend').",
+      "constraint": "T0 max 2 sentences, comparison + creative naming, frame as invitation",
       "emotion_tag": "amazed"
     },
     "early_exit": {

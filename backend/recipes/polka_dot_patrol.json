@@ -2,37 +2,37 @@
   "activity_type": "polka_dot_patrol",
   "step_instructions": {
     "hook": {
-      "goal": "Create an emotional connection with the ladybug — notice its red coat with black polka dots, tiny legs, and cute appearance",
-      "constraint": "T1 max 3 sentences, experience/preference hook, invitational tone",
+      "goal": "React with wonder to the ladybug's spots — notice its red coat with black polka dots, then ask the child an IMAGINATIVE question about what the dots look like or remind them of (e.g. 'Do you think those dots are like little buttons, or maybe tiny windows?')",
+      "constraint": "T1 max 3 sentences, experience/preference hook, MUST end with an imaginative question about the dots",
       "emotion_tag": "excited"
     },
     "transition": {
-      "goal": "Invite the child to become a Polka-Dot Patrol Officer and find 3 more things with dots, spots, or circles nearby",
-      "constraint": "T1 max 3 sentences, frame as invitation not command, end with Would you like to...?",
+      "goal": "Build on the child's response to NATURALLY introduce the Polka-Dot Patrol Officer mission — the ladybug isn't the only spotty thing around! Frame the collection as a detective adventure: find 3 more things with dots/spots/circles nearby. Use a narrative metaphor (patrol, detective, treasure hunt). End with a genuine invitation.",
+      "constraint": "T1 max 3 sentences, build mission from child's response (not a sudden topic switch), frame as invitation not command, end with Would you like to be the Patrol Officer?",
       "emotion_tag": "playful"
     },
     "rounds": [
       {
         "round_number": 1,
-        "goal": "Guide child to find their first spotted or dotted item nearby",
+        "goal": "Spark curiosity about finding the first spotted item — suggest WHERE to look (flowers up close, ground near feet) as an invitation, then ask the child to NAME or describe what they find",
         "scenario": "first collection find — spots or dots",
-        "constraint": "T1 max 3 sentences, invitational phrasing, suggest looking at flowers or ground",
+        "constraint": "T1 max 3 sentences, invitational phrasing, encourage the child to describe or name the find",
         "emotion_tag": "encouraging",
         "acceptable_themes": ["flower", "dots", "spots", "petals", "pattern", "circles"],
         "escalation_note": "easy first find — accessible items"
       },
       {
         "round_number": 2,
-        "goal": "Guide child to find a second spotted or speckled item",
+        "goal": "Celebrate the previous find, then spark curiosity for the next — ask child to COMPARE this find to the first one (bigger dots? tinier speckles?), suggest a new place to look",
         "scenario": "second collection find — speckles or spots",
-        "constraint": "T1 max 3 sentences, invitational phrasing, celebrate previous find",
+        "constraint": "T1 max 3 sentences, invitational phrasing, encourage comparison between finds",
         "emotion_tag": "curious",
         "acceptable_themes": ["rock", "spots", "speckles", "stone", "bark", "dots", "pattern"],
         "escalation_note": "moderate — requires more looking"
       },
       {
         "round_number": 3,
-        "goal": "Guide child to find one more spotted item — the third and last one",
+        "goal": "Guide child to find one more spotted item — the third and last one. Build excitement but remind them they still need to FIND it. Ask them to name this final treasure.",
         "scenario": "third collection find",
         "constraint": "T1 max 3 sentences, invitational phrasing, prompt child to go find it",
         "emotion_tag": "excited",
@@ -41,18 +41,18 @@
       }
     ],
     "celebrate": {
-      "goal": "Celebrate the child as a Polka-Dot Patrol Officer — they noticed Form of spots and found Connection between spotted things; connect to IB concepts Form and Connection",
-      "constraint": "T1 max 3 sentences, name 2 IB concepts naturally",
+      "goal": "Award the child the title 'Polka-Dot Patrol Officer' with ceremony — recap their spotted discoveries. Celebrate the PROCESS of looking closely and finding patterns everywhere.",
+      "constraint": "T1 max 3 sentences, announce role title ceremonially, reference specific finds from the patrol",
       "emotion_tag": "proud"
     },
     "closing": {
-      "goal": "Leave the child with a cross-session hook — keep patrol eyes open for spots and dots hiding everywhere",
-      "constraint": "T1 max 3 sentences, warm and encouraging",
+      "goal": "Teach the IB concepts: they noticed the beautiful Form of spots/patterns everywhere, and found a surprising Connection between all these different spotted things. Plant a curiosity seed for next time.",
+      "constraint": "T1 max 3 sentences, name Form and Connection naturally connected to what they discovered, warm goodbye",
       "emotion_tag": "warm"
     },
     "synthesis": {
-      "goal": "Look at all spotted treasures together — notice how the same pattern (dots/spots) looks different on each item (big dots, tiny speckles, round circles)",
-      "constraint": "T1 max 3 sentences, comparison focus",
+      "goal": "Look at all spotted treasures together — guide a comparison: how is the SAME pattern (dots/spots) DIFFERENT on each item? Big dots vs tiny speckles vs round circles. Invite child to give each find a fun name (e.g. 'freckle stone', 'polka petal').",
+      "constraint": "T1 max 3 sentences, comparison + creative naming, frame as invitation",
       "emotion_tag": "amazed"
     },
     "early_exit": {

@@ -2,56 +2,56 @@
   "activity_type": "time_machine_dinosaur",
   "step_instructions": {
     "hook": {
-      "goal": "Create an emotional connection with the dinosaur — notice its big teeth, powerful legs, and amazing appearance",
-      "constraint": "T0 max 2 sentences, personal feeling hook, invitational tone",
+      "goal": "React with wonder to the dinosaur — notice its big teeth and powerful legs, then ask the child an EMOTIONAL question about what it would be like when dinosaurs roamed the Earth (e.g. 'What do you think it was like to be THIS big?')",
+      "constraint": "T0 max 2 sentences, personal feeling hook, MUST end with an emotional question (never factual)",
       "emotion_tag": "excited"
     },
     "transition": {
-      "goal": "Invite the child to travel back in time with the dinosaur — introduce the what_would_it_say game where they imagine the dinosaur in different time periods",
-      "constraint": "T0 max 2 sentences, explain game simply, end with genuine invitation (Would you like to try?)",
+      "goal": "Introduce the what_would_it_say game as a time machine adventure — explain you will describe a time period and the child says what the dinosaur does. Include ONE demo round with the answer shown (e.g. 'If the dinosaur landed in a candy shop, it might try to eat ALL the lollipops!'). End with genuine invitation.",
+      "constraint": "T0 max 3 sentences, demo round WITH answer included, end with Would you like to travel through time?",
       "emotion_tag": "playful"
     },
     "rounds": [
       {
         "round_number": 1,
-        "goal": "Explore what the dinosaur does in a giant prehistoric jungle with huge trees and ferns",
-        "scenario": "prehistoric jungle",
-        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "goal": "Set the scene vividly: WHOOSH the time machine lands in a giant prehistoric jungle! Huge trees, giant ferns, mysterious sounds everywhere — then ask what the dinosaur does here",
+        "scenario": "Whoosh! We landed in a GIANT prehistoric jungle! Huge trees tower over us and giant ferns are everywhere!",
+        "constraint": "T0 max 2 sentences, paint the scene with size/sound details, then ask what the dinosaur would do",
         "emotion_tag": "adventurous",
         "acceptable_themes": ["eating", "walking", "exploring", "stomping", "looking", "running", "hiding", "playing"],
         "escalation_note": "comfortable, familiar jungle — easiest round"
       },
       {
         "round_number": 2,
-        "goal": "Explore how the dinosaur reacts to a big rumbling volcano with shaking ground",
-        "scenario": "rumbling volcano",
-        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "goal": "Set the scene vividly: time jump! Now there's a big volcano rumbling in the distance — BOOM BOOM — the ground is shaking! — then ask what the dinosaur does",
+        "scenario": "Time jump! A big volcano is rumbling — BOOM BOOM! The ground is shaking under our feet!",
+        "constraint": "T0 max 2 sentences, use onomatopoeia (boom, rumble, shake), then ask what the dinosaur does",
         "emotion_tag": "dramatic",
         "acceptable_themes": ["run", "scared", "roar", "hide", "escape", "surprised", "brave", "watch"],
         "escalation_note": "dramatic intensity — moderate to high"
       },
       {
         "round_number": 3,
-        "goal": "Explore what the dinosaur does at a peaceful lake at sunset, everything calm",
-        "scenario": "peaceful lake at sunset",
-        "constraint": "T0 max 2 sentences, invitational phrasing",
+        "goal": "Set the scene vividly: last time jump! A beautiful lake at sunset — everything is calm and golden and quiet — birds singing softly — then ask what the dinosaur does now",
+        "scenario": "Last time jump! A beautiful lake at sunset. Everything is golden and calm. Birds are singing softly...",
+        "constraint": "T0 max 2 sentences, contrast with previous drama using peaceful sensory details, then ask what the dinosaur does",
         "emotion_tag": "peaceful",
         "acceptable_themes": ["drinking", "resting", "sleeping", "swimming", "relaxing", "happy", "calm", "peaceful"],
         "escalation_note": "gentle wind-down — peaceful resolution"
       }
     ],
     "celebrate": {
-      "goal": "Celebrate the child as a Time Traveler — they imagined the dinosaur in a jungle, at a volcano, and by a lake; connect to IB concept Change",
-      "constraint": "T0 max 2 sentences, name 1 IB concept naturally",
+      "goal": "Award the child the title 'Time Traveler' with fanfare — recap the three time periods they explored (jungle, volcano, peaceful lake). Make the child feel like a brave explorer.",
+      "constraint": "T0 max 2 sentences, announce role title ceremonially, reference specific adventures from the game",
       "emotion_tag": "proud"
     },
     "closing": {
-      "goal": "Leave the child with a cross-session hook — next time they see their dinosaur friend, imagine other time periods to visit",
-      "constraint": "T0 max 2 sentences, warm and gentle",
+      "goal": "Teach the IB concept: the same dinosaur acted differently in each time and place — that's the magic of Change (things change depending on when and where they are). Plant a curiosity seed for next time.",
+      "constraint": "T0 max 2 sentences, name Change naturally connected to what they experienced, warm goodbye",
       "emotion_tag": "warm"
     },
     "early_exit": {
-      "goal": "Gentle goodbye — they had an amazing time-travel adventure, the dinosaur had a great time exploring with them",
+      "goal": "Gentle goodbye — amazing time-travel adventure, the dinosaur had a great time exploring with them",
       "constraint": "T0 max 2 sentences, no pressure to continue",
       "emotion_tag": "gentle"
     }

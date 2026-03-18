@@ -1,6 +1,208 @@
 # Session Handoff
 
-Last updated: 2026-03-17
+Last updated: 2026-03-18
+
+---
+
+## Review Step Transition Refactor: Deferred Round Advance Fix
+
+**Problem**: Reviewing the current uncommitted step-transition refactor exposed a real regression in the new unified `turn_handler`: round completion advanced `current_step` before the next step's prompt was generated. That let `/api/turn` and `/api/turn-speak` pair a previous-round line with the next step's screen frame, and it could drop the first real `STEP_4_SYNTHESIS` prompt entirely. The existing tests checked state changes, but they did not verify which step the Script Agent was actually generating for after a round completion.
+
+**Solution**: Kept the unified turn-handler design, but split round completion into two paths. When a round ends and the next step is another round or an auto-advance presentation step, the handler now keeps the current round active, returns the current-step acknowledgement, and marks a pending round advance for the next empty auto-turn. When a round ends and the next step needs fresh child interaction (notably `STEP_4_SYNTHESIS`), the handler now advances immediately and generates that new step's first prompt right away. Added focused regression coverage at both the unit and API layers, then simplified the handler slightly by extracting the repeated terminal-response builder.
+
+**Edits**:
+- `backend/turn_handler.py` — fixed round completion flow with deferred round advance, immediate synthesis entry, and a small terminal-response simplification
+- `backend/schemas/session_state.py` — added `round_advance_pending` session state to support the deferred round-to-round transition
+- local `tests/test_turn_handler.py` — strengthened round-transition coverage to assert which step actually generated the returned dialogue (this repo currently ignores `tests/`, so the change is local-only unless the ignore rule changes)
+- local `tests/test_api.py` — updated Cat 5 collection and Cat 1 celebration-frame integration coverage to reflect the intended two-turn auto-advance flow (also local-only under the current ignore rule)
+- `HANDOFF.md` — added this review/update entry
+
+**NOT Changed**:
+- `backend/server.py` was reviewed in this pass and left unchanged; the endpoint logic still routes through `resolve_turn()`
+- `frontend/src/App.jsx`, `frontend/src/components/PhotoGallery.jsx`, and `frontend/src/widgets/CharacterDisplay.jsx` were reviewed against the current backend contract and left unchanged in this pass
+- Recipe JSON files, prompt markdown, and the asset-generation scripts currently in the worktree were not changed by this pass
+
+**Verification**:
+- `cd backend && uv run pytest ../tests/test_turn_handler.py -q` — PASS (`10 passed`)
+- `cd backend && uv run pytest ../tests/test_api.py -q` — PASS (`22 passed`)
+- `cd backend && uv run pytest ../tests/test_turn_handler.py ../tests/test_api.py ../tests/test_server_visual.py ../tests/test_turn_flow.py ../tests/test_pipeline_visual.py -q` — PASS (`44 passed`)
+- `cd backend && uv run ruff check turn_handler.py schemas/session_state.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
+- `cd backend && uv run ruff format --check turn_handler.py schemas/session_state.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
+
+---
+
+## Gemini 2.5 Flash Image Smoke Test for Cat 5 Icons
+
+**Problem**: After the `gpt-image-1.5` proxy path failed to return image payloads, the next attempt was to generate Cat 5 item icons with `gemini-2.5-flash-image`, following the Gemini provider setup referenced in `backend/refs/vision/providers/gemini.py`.
+
+**Solution**: Added `scripts/generate_cat5_icons_gemini.py`, which reuses the Cat 5 prompts and supports three modes: `vertex`, `api-key`, and `auto`. Verified the Gemini response shape: `response.parts[0].inline_data.data` contains PNG bytes, while `part.as_image()` returns a Google SDK `Image` wrapper rather than a Pillow image. Updated the script to decode the inline PNG bytes directly and successfully generated `frontend/public/icons/spotted_mushroom.png` via the Vertex-style client.
+
+**Edits**:
+- `scripts/generate_cat5_icons_gemini.py` — new Gemini image generator for Cat 5 assets, with provider-style Vertex setup, API-key fallback mode, shared prompt reuse, and inline PNG decoding
+
+**NOT Changed**:
+- Existing OpenAI generator scripts
+- Backend/frontend runtime wiring
+- Secrets in `backend/.env`
+
+**Verification**:
+- Vertex-style smoke test using `gemini-2.5-flash-image` — PASS for one sample; saved `frontend/public/icons/spotted_mushroom.png`
+- Visual check of `spotted_mushroom.png` — PASS; output is child-friendly and reads clearly at icon size
+- Full batch attempt with `python scripts/generate_cat5_icons_gemini.py --overwrite --mode auto` — FAIL after the sample due `429 RESOURCE_EXHAUSTED`
+- API-key mode also returns quota exhaustion for `gemini-2.5-flash-preview-image`
+- Additional environment finding: `GOOGLE_APPLICATION_CREDENTIALS` path from `backend/.env` does not exist locally, but the successful sample still came back through the Vertex-style client before quota was exhausted
+
+---
+
+## Step Transition Refactor + QA Bug Fixes
+
+**Problem**: Step transition logic was duplicated between `/api/turn` and `/api/turn-speak` with 6+ bugs: double responses on invitation acceptance, gallery appearing before collect prompt, STEP_4_SYNTHESIS being skipped, LLM hallucinating collections, consecutive AI messages without user interaction, and inconsistent auto-advance between endpoints. Also fixed: Cat1 round display always showing "Round 1", footer showing "0/3" before rounds start.
+
+**Solution**: Extracted all step transition logic into a single `resolve_turn()` function in `backend/turn_handler.py`. Both endpoints now call this function — `/api/turn` wraps the result in JSON, `/api/turn-speak` adds TTS streaming. Key design decisions: (1) Invitation acceptance uses deferred advance — stays on STEP_2 with `auto_advance=True`, advances on the next turn so gallery appears with the collect prompt. (2) Round acknowledgments only auto-advance into other rounds or auto-advance steps, never into interactive steps like STEP_4_SYNTHESIS. (3) Interactive steps generate their prompt on first visit, advance on second visit. (4) Conversation history increased from 6 to 8 entries.
+
+**Edits**:
+- `backend/turn_handler.py` — **NEW**: `resolve_turn()`, `TurnInput`, `TurnResult` dataclasses, all step transition helpers ported from server.py (invitation, round, synthesis, auto-advance, photo validation, retry logic)
+- `backend/server.py` — `/api/turn` and `/api/turn-speak` now call `resolve_turn()`; removed duplicated helpers (`_resolve_invitation_turn`, `_is_invitation_step`, `_is_round_step`, `_generate_turn_with_retry`, etc.)
+- `backend/state_machine.py` — `"round_number"` → `"roundNumber"` in widget_params (Bug 1 fix)
+- `frontend/src/App.jsx` — footer shows `-` before rounds start for cat1; cat5 shows `-` until first photo collected
+- `frontend/src/widgets/CharacterDisplay.jsx` — hides round badge when `roundNumber` is 0
+- `backend/skills/step_instructions/cat5_step3_collect.md` — explicit `stay_on_step` guidance for correct/wrong/stuck; last round must not ask questions
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — no double celebration
+- `backend/skills/step_instructions/cat5_step2_mission.md` — re-invitation must not negotiate down item count
+- `backend/skills/step_instructions/cat1_step2_rules.md` — same fix for cat1
+- `tests/test_turn_handler.py` — **NEW**: 10 unit tests for invitation, round, synthesis, silence flows
+- `tests/test_api.py` — updated tests for deferred acceptance (two-turn flow)
+- `tests/test_server_visual.py` — updated visual frame tests for deferred acceptance
+
+**NOT Changed**:
+- Frontend hooks (useSessionOrchestration, useConversation) — auto-advance mechanism unchanged
+- State machine step constants and transitions — unchanged
+- Script Agent LLM generation — unchanged
+- TTS, STT, DB layer — unchanged
+
+**Verification**:
+- `cd backend && uv run pytest ../tests/ -k "not e2e" -q` — PASS (144 passed)
+- `cd backend && uv run ruff check server.py turn_handler.py` — PASS
+- `cd backend && uv run ruff format --check server.py turn_handler.py` — PASS
+
+---
+
+## Fix Cat1 Round Display + Pre-Round Counter
+
+**Problem**: Two display bugs: (1) Cat1 device panel always showed "Round 1" regardless of actual round because `state_machine.py` sent `round_number` (snake_case) in `widget_params` but `CharacterDisplay.jsx` destructured `roundNumber` (camelCase), defaulting to 1. (2) Footer showed "0/3" before rounds started because `current_round` was 0 pre-round.
+
+**Solution**: (1) Renamed `round_number` → `roundNumber` in all `widget_params` in `state_machine.py` (3 occurrences) and all 5 recipe JSON files (15 occurrences). (2) Updated `App.jsx` footer to show `-/3` instead of `0/3` for cat1 when `current_step` hasn't reached `STEP_3_ROUND_*` yet.
+
+**Edits**:
+- `backend/state_machine.py` — `"round_number"` → `"roundNumber"` in all `widget_params` dicts (lines 182, 193, 225)
+- `backend/recipes/*.json` (5 files) — `"round_number"` → `"roundNumber"` in all `character_display` widget_params
+- `frontend/src/App.jsx` — footer round counter for cat1 now checks `current_step?.startsWith('STEP_3_ROUND_')` before showing numeric round; shows `-` otherwise
+
+**NOT Changed**:
+- `server.py` `round_number` fields in `ConversationTurn` model — those are internal Python fields, not widget_params
+- `CharacterDisplay.jsx` — already used correct `roundNumber` camelCase prop
+- Cat5 footer logic — already handled correctly with `-` display
+
+**Verification**:
+- `cd backend && uv run ruff check state_machine.py` — PASS
+- Start Cat1 activity → device panel should show correct round numbers (1, 2, 3)
+- Before rounds start → footer should show `-/3` not `0/3`
+
+---
+
+## Attempt gpt-image-1.5 Asset Generation via backend/.env
+
+**Problem**: The user requested that the Cat 5 item icons be regenerated with `gpt-image-1.5` using `OPENAI_API_KEY` and `OPENAI_BASE_URL` from `backend/.env` instead of the local Pillow renderer.
+
+**Solution**: Added an OpenAI-backed generator script at `scripts/generate_cat5_icons_openai.py` that reads `backend/.env`, builds per-item prompts from the Cat 5 asset list, and saves outputs into `frontend/public/icons/`. Smoke-tested it against a single file before attempting the full 24-image batch.
+
+**Edits**:
+- `scripts/generate_cat5_icons_openai.py` — new generator for `gpt-image-1.5`, including `.env` parsing that tolerates trailing inline comments and an optional `--base-url` override for testing alternate OpenAI-compatible endpoints without editing secrets
+
+**NOT Changed**:
+- Existing generated PNG assets in `frontend/public/icons/`
+- `backend/.env` itself
+- Frontend/backend runtime wiring
+
+**Verification**:
+- Confirmed `backend/.env` contains both `OPENAI_API_KEY` and `OPENAI_BASE_URL`
+- `python scripts/generate_cat5_icons_openai.py --only spotted_mushroom.png --overwrite` — FAIL: configured proxy returns no image bytes for `/images/generations`
+- Proxy model listing via OpenAI client reports `gpt-image-1.5` as available
+- Same key against official `https://api.openai.com/v1` — FAIL (`401 invalid_api_key`), indicating the key is proxy-scoped rather than a direct OpenAI key
+- Responses API image-generation path against the configured proxy — FAIL (`unsupported operation`)
+
+---
+
+## Generate Cat 5 Illustrated Item Icons
+
+**Problem**: The Cat 5 collection games referenced 24 per-item icon files in `frontend/public/icons/`, but those PNGs did not exist yet. The runtime wiring was already in place, so the remaining gap was the actual illustrated assets for both the polka-dot and fluffy item sets.
+
+**Solution**: Added a reproducible local generator at `scripts/generate_cat5_icons.py` that renders all 24 icons as warm storybook-style PNGs sized to match the existing entity icon set. Ran the generator to create the missing files under `frontend/public/icons/` and manually spot-checked the rendered output across both games.
+
+**Edits**:
+- `scripts/generate_cat5_icons.py` — new Pillow-based asset generator for all 24 Cat 5 item icons
+- `frontend/public/icons/*.png` — added 24 generated item icons:
+  `spotted_mushroom`, `dotted_pebble`, `speckled_leaf`, `circle_flower`, `straight_stick`, `plain_bark`, `long_grass`, `smooth_stone`, `pine_needle`, `plain_leaf`, `forked_twig`, `acorn_cap`, `fuzzy_moss`, `fluffy_seed`, `soft_petal`, `woolly_caterpillar`, `hard_rock`, `spiky_pinecone`, `rough_bark`, `sharp_thorn`, `dry_leaf`, `smooth_pebble`, `stiff_branch`, `brittle_shell`
+
+**NOT Changed**:
+- Backend/frontend runtime code — already referenced these filenames and was left unchanged in this pass
+- Existing entity icons such as `ladybug.png` and `dandelion.png`
+- Recipe/scenario files
+
+**Verification**:
+- `python scripts/generate_cat5_icons.py` — PASS (`Generated 24 icons ...`)
+- `find frontend/public/icons ... | wc -l` — PASS (`24`)
+- `file frontend/public/icons/{sample}.png` — PASS (`PNG image data, 256 x 256, 8-bit/color RGBA`) on sampled outputs
+- Manual visual review via generated contact sheets for both game sets — PASS
+
+---
+
+## Cat 5 Image Asset Wiring
+
+**Problem**: Cat 5 collection items (spotted_mushroom, fuzzy_moss, etc.) displayed with a generic LeafIcon. No per-item images existed, and the data pipeline didn't support an `image` field.
+
+**Solution**: Added `image` path field to all `COLLECTION_CATALOGS` items in `server.py`, pointing to `/icons/{id}.png`. Updated `_session_state_dict()` to pass `image` to the frontend. Updated `PhotoGallery.jsx` to render `<img>` when `photo.image` is present, with `onError` fallback to the existing LeafIcon. Actual PNG images must be generated externally (DALL-E) and placed in `frontend/public/icons/`.
+
+**Edits**:
+- `backend/server.py` — added `"image": "/icons/{id}.png"` to all 24 items in `COLLECTION_CATALOGS`; included `image` in `current_round_items` response dict
+- `frontend/src/components/PhotoGallery.jsx` — renders `<img>` when `photo.image` is truthy, with `onError` handler that hides broken image and shows LeafIcon fallback
+- `docs/plans/cat5-image-assets.md` — plan document listing all 16+8 images needed
+
+**NOT Changed**:
+- Recipe JSON files — `collection_items` lists remain unchanged (IDs match catalog)
+- Entity icon images (ladybug.png, dandelion.png) — already exist
+- State machine, script agent, other agents — unrelated
+
+**Verification**:
+- `cd backend && uv run ruff check server.py` — PASS
+- `cd frontend && npm run build` — verify no build errors
+- Without actual PNG files, items gracefully fall back to LeafIcon via `onError` handler
+
+---
+
+## Review Latest Recipe/Audio Changes + Harden Recipe Contracts
+
+**Problem**: `HANDOFF.md` was behind the current repo state. The latest reviewed changes spanned two areas: the committed frontend audio-unlock fix (`fix(sfx): unlock audio before async API call`) and the new recipe wording/design pass reflected in `docs/WonderLens_Game_Designs.md` plus the five modified `backend/recipes/*.json` files. The frontend fix itself looked coherent on review, but the recipe updates still depended on informal reviewer checks: schema validation did not enforce sequential round numbering, metadata round counts could drift from the actual rounds, and collection recipes could omit a synthesis step without failing fast.
+
+**Solution**: Reviewed the latest committed frontend audio path and left it unchanged after lint/build validation. Reviewed `docs/WonderLens_Game_Designs.md` against the currently modified instruction recipes and kept those recipe edits intact. Hardened the instruction-recipe schema layer so malformed recipe structure now fails at load time: round numbers must be sequential from 1, `metadata.round_count` must match the actual round list, and any recipe with `collection_items` must define a synthesis step. Added focused local schema regressions covering those contracts so future recipe copy/design edits are checked immediately.
+
+**Edits**:
+- `backend/schemas/step_instruction.py` — added post-validation for sequential round numbering
+- `backend/schemas/recipe.py` — added post-validation for round-count consistency and collection-recipe synthesis requirements
+- local `tests/test_schemas.py` — added regression tests for the new instruction-recipe contracts (note: this path is ignored by the repo git config, so the coverage is local-only unless the ignore rule changes)
+- `HANDOFF.md` — added this review/update entry
+
+**NOT Changed**:
+- `frontend/src/hooks/useSfxPlayer.js`, `frontend/src/hooks/useSessionOrchestration.js`, and `frontend/src/components/DeviceScreen.jsx` were reviewed against the latest committed SFX unlock fix and left unchanged
+- `docs/WonderLens_Game_Designs.md` was reviewed for context and left unchanged
+- `backend/recipes/dream_whisperer_cat.json`, `backend/recipes/fluffy_expedition_dandelion.json`, `backend/recipes/mood_changer_dog.json`, `backend/recipes/polka_dot_patrol.json`, and `backend/recipes/time_machine_dinosaur.json` were reviewed against the new design direction and left unchanged in this pass
+
+**Verification**:
+- `cd backend && uv run pytest ../tests/test_schemas.py -q` — PASS (`17 passed`)
+- `cd backend && uv run pytest ../tests/test_api.py ../tests/test_schemas.py -q` — PASS (`39 passed`)
+- `cd backend && uv run ruff check schemas/recipe.py schemas/step_instruction.py ../tests/test_schemas.py` — PASS
+- `cd frontend && npm run lint` — PASS
+- `cd frontend && npm run build` — PASS
 
 ---
 
@@ -141,166 +343,6 @@ Last updated: 2026-03-17
 - `uv run pytest tests/test_api.py -q -k "turn_serializes_collected_photos_for_cat5_collection or turn_returns_wrong_photo_without_advancing_cat5_collection or turn_speak_records_exact_collected_item_label_for_cat5_collection"` — PASS (`3 passed, 14 deselected`)
 - `uv run ruff check backend/server.py backend/agents/script_agent.py backend/db.py tests/test_api.py` — PASS
 - `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Review Cat 5 Correct-Pick Context Fix + Simplify Server Duplication
-
-**Problem**: The latest Cat 5 hallucination fix correctly added `[collected correct item: <label>]` to conversation history, but the same child-turn bookkeeping was duplicated in both `/api/turn` and `/api/turn-speak`. The review pass also found that the new behavior was untested, so a future cleanup could silently break the exact item-label context that the Script Agent now relies on.
-
-**Solution**: Reviewed the active Cat 5 change set, kept the prompt and Script Agent logging changes intact, and simplified the server-side implementation by extracting shared child-turn helpers. Added focused API regressions that prove both turn endpoints record the exact collected-item label in conversation history for correct Cat 5 picks.
-
-**Edits**:
-- `backend/server.py` — extracted `_append_child_turn()` and `_record_correct_collection_pick()` so both turn endpoints share the same correct-pick and child-turn bookkeeping
-- `tests/test_api.py` — extended Cat 5 coverage to assert `[collected correct item: Spotted mushroom]` is recorded after a correct `/api/turn` collection pick and after a correct `/api/turn-speak` collection pick
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `backend/agents/script_agent.py` and `backend/skills/step_instructions/cat5_step3_collect.md` were reviewed against the server change and left as-is; no additional defect in the raw-response logging or prompt wording justified widening scope in this pass.
-- No frontend files changed; the review stayed on the active backend Cat 5 context fix and its API coverage.
-
-**Verification**:
-- `uv run pytest tests/test_api.py -q -k "turn_serializes_collected_photos_for_cat5_collection or turn_returns_wrong_photo_without_advancing_cat5_collection or turn_speak_records_exact_collected_item_label_for_cat5_collection"` — PASS (`3 passed, 14 deselected`)
-- `uv run ruff check backend/server.py tests/test_api.py` — PASS
-
----
-
-## Fix Cat 5 LLM Hallucination + Add Response Logging
-
-**Problem**: LLM responses for Cat 5 collection rounds were hallucinating item descriptions (e.g., "fluffy white cloud", "Letter D", "super yellow flower") because the Script Agent never received which grid item the child actually tapped. On correct picks, the photo_id was added to `collected_photos` but no conversation history entry was recorded — the LLM had zero context about the selection and invented descriptions based on the activity theme or original photo.
-
-**Solution**: (1) On correct grid picks, append `[collected correct item: <label>]` to conversation history so the LLM knows exactly what was selected. (2) Added `_get_item_label()` helper to resolve photo_id → display label from current round items. (3) Updated the collect step prompt to instruct the LLM to reference the specific item from the message, not hallucinate. (4) Added raw LLM response logging to both `generate_turn()` and `generate_turn_streaming()` for ongoing monitoring.
-
-**Edits**:
-- `backend/server.py` — added `_get_item_label()` helper; both `/api/turn` and `/api/turn-speak` now record `[collected correct item: <label>]` in conversation history on correct picks
-- `backend/agents/script_agent.py` — added `logger.info` with full raw LLM JSON response for both streaming and non-streaming paths
-- `backend/skills/step_instructions/cat5_step3_collect.md` — added explicit instruction to reference the collected item by name from `[collected correct item: ...]` marker, not hallucinate
-
-**NOT Changed**:
-- Wrong-pick path already had `[selected wrong photo: ...]` marker — no change needed
-- Frontend components unchanged
-- Director/Visual agent logging not added (one-shot at session start, not the issue)
-
-**Verification**:
-- `uv run ruff check .` — PASS
-- `uv run ruff format --check .` — PASS
-
----
-
-## Cat 5 Test Contract Realignment
-
-**Problem**: The latest Cat 5 collection workflow switched from fixed accepted IDs to per-round `round_items` and `current_round_items`, but the local API regressions in `tests/test_api.py` still built pre-change session state and submitted old photo IDs like `leaf_round` and `bark_rough`. That made the focused wrong-photo tests fail for the wrong reason and left the new UI-facing session payload effectively unverified. The previous handoff entry also overstated this by claiming the existing tests already covered the updated backend contract.
-
-**Solution**: Realigned the Cat 5 test fixtures to the current catalog-based contract by adding deterministic `round_items`, switching the requests to the new `spotted_mushroom` / `plain_bark` / `straight_stick` IDs, and asserting that `current_round_items` is serialized for the next collection round without leaking the internal `correct` flag. Reviewed the runtime backend/frontend changes in this pass, but did not find a new code defect worth widening beyond the tests and handoff.
-
-**Edits**:
-- local `tests/test_api.py` — added deterministic Cat 5 round-item fixtures, updated the collection/wrong-photo requests to current IDs, and asserted `current_round_items` serialization for the next round
-- `HANDOFF.md` — replaced the stale top-entry testing claim with the verified state from this review pass
-
-**NOT Changed**:
-- `backend/server.py`, `backend/schemas/session_state.py`, `backend/skills/step_instructions/cat5_step2_mission.md`, `backend/skills/step_instructions/cat5_step3_collect.md`, `frontend/src/App.jsx`, and `frontend/src/components/PhotoGallery.jsx` were reviewed but not modified in this pass.
-- No new frontend component tests were added; the UI path still relies on API coverage plus frontend lint/build.
-
-**Verification**:
-- `uv run pytest tests/test_api.py -q -k "turn_serializes_collected_photos_for_cat5_collection or turn_returns_wrong_photo_without_advancing_cat5_collection or turn_exits_after_two_wrong_cat5_photo_picks"` — PASS (`3 passed, 13 deselected`)
-- `uv run ruff check backend/schemas/session_state.py backend/server.py tests/test_api.py` — PASS
-- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`123 passed, 5 deselected`)
-- `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Fix Cat 5 Collection Workflow (4 bugs)
-
-**Problem**: Cat 5 out-of-device collection activities had four bugs: (1) AI dialogue didn't guide child to go find/collect items, (2) round counter off-by-one (status bar showed "Round: 4/4" while screen showed "3 of 4 found"), (3) both activities showed identical hardcoded grid items, (4) same grid every round with no variation.
-
-**Solution**: Added per-activity item catalogs with correct items and distractors. Each round now shows 3 items (1 correct + 2 distractors) shuffled randomly. Round counter in footer now shows collected count for Cat 5. Prompt templates updated to include "go explore" language.
-
-**Edits**:
-- `backend/schemas/session_state.py` — added `round_items: list[list[dict]]` field to `SessionStateModel`
-- `backend/server.py` — replaced `VALID_COLLECTION_PHOTOS` with `COLLECTION_CATALOGS` (per-activity correct/distractor items); added `generate_round_items()` function; changed `_is_correct_collection_photo()` to use per-round items with correct flag; populate `round_items` in `start_session()`; expose `current_round_items` (sans correct flag) in `_session_state_dict()`
-- `frontend/src/components/PhotoGallery.jsx` — removed hardcoded `COLLECTION_PHOTOS` array; accepts `items` prop; renders only provided items per round
-- `frontend/src/App.jsx` — passes `current_round_items` to PhotoGallery; fixed round counter for Cat 5 to show `collected_photos.length / total_rounds`
-- `backend/skills/step_instructions/cat5_step2_mission.md` — added "go explore NOW" call-to-action instruction
-- `backend/skills/step_instructions/cat5_step3_collect.md` — added preamble for new round start encouraging child to go find next item
-
-**NOT Changed**:
-- State machine step transitions (`state_machine.py`) — round advancement logic unchanged
-- Vision agent, recipe assembler, pipeline — unrelated to collection UI
-- Test files — no test updates were made in that pass; the next handoff entry records the later Cat 5 test realignment
-
-**Verification**:
-- `uv run ruff check .` — PASS
-- `uv run ruff format --check .` — PASS
-- Start `polka_dot_patrol` → grid shows 3 spotted-themed items
-- Start `fluffy_expedition_dandelion` → grid shows 3 fuzzy-themed items
-- Complete round 1 → round 2 shows different items
-- Status bar round count matches collected count on screen
-
----
-
-## Cat 5 Pending Photo Tracking Fix
-
-**Problem**: The new Cat 5 wrong-photo feedback path still had a frontend state bug. `useConversation` recorded the tapped `photoId` before `sendTurnRequest()` checked `turnPending`, while `PhotoGallery` re-enabled itself after a fixed 1-second timer. If the user tapped again before the first request finished, the second tap could overwrite the pending photo ID even though that second request was ignored, causing the later `wrong_photo` response to highlight the wrong card.
-
-**Solution**: Moved pending photo tracking into the admitted request path so it only records the `photoId` for the turn that actually starts, and clear that ref on session start/reset. Simplified `PhotoGallery` so its temporary lock follows the `onPhotoSelect()` promise instead of an arbitrary timeout. Added focused local API coverage for the Cat 5 backend contract: wrong picks do not advance collection, and the second consecutive wrong pick exits cleanly.
-
-**Edits**:
-- `frontend/src/hooks/useConversation.js` — moved `pendingPhotoIdRef` assignment behind the `turnPending` guard; clear pending/wrong-photo state on start and reset; kept `sendPhotoCollection()` as a thin wrapper around `sendTurnRequest()`
-- `frontend/src/components/PhotoGallery.jsx` — replaced the fixed 1-second unlock timer with promise-based request lifecycle locking
-- local `tests/test_api.py` — added focused Cat 5 wrong-photo regression coverage in the current workspace
-
-**NOT Changed**:
-- The backend Cat 5 validation rules already added in `backend/server.py`, `backend/schemas/session_state.py`, and `backend/skills/step_instructions/cat5_step3_collect.md` were reviewed but not modified in this pass.
-- The broader App/orchestration styling changes in `frontend/src/App.jsx`, `frontend/src/components/ConversationPanel.jsx`, `frontend/src/hooks/useSessionOrchestration.js`, and `frontend/src/index.css` were also reviewed without further edits.
-
-**Verification**:
-- `uv run pytest tests/test_api.py -q -k "wrong_photo_without_advancing_cat5_collection or exits_after_two_wrong_cat5_photo_picks"` — PASS
-- `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS
-- `uv run ruff check backend/schemas/session_state.py backend/server.py tests/test_api.py` — PASS
-- `uv run pytest tests/ -m 'not e2e' -q` — PASS (`123 passed, 5 deselected`)
-
----
-
-## Cat 5 Collection Validation + UI Polish
-
-**Problem**: Cat 5 collection activities accepted any photo selection as correct, advancing progress regardless of whether the pick matched the collection criterion. The photo displayed in the camera device showed a placeholder letter instead of the actual image. The device screen had no fade transition between frames. SFX/widget/animation labels were missing from the first turn. AI chat text appeared all at once instead of streaming. The SFX badge auto-hid after 3 seconds. The photo grid in collection mode was too small, and text input was still enabled when the user should be selecting photos.
-
-**Solution**: Multi-part fix across backend and frontend:
-- **Photo validation**: Added `VALID_COLLECTION_PHOTOS` mapping per activity type (polka_dot_patrol, fluffy_expedition_dandelion). Wrong picks return `response_type: "wrong_photo"` without advancing the step. 2 consecutive wrong picks trigger graceful exit. Updated `cat5_step3_collect.md` prompt with wrong-photo handling instructions.
-- **Photo display fix**: Changed `PhotoSelector` to use `/icons/*.png` as both thumbnails and the photo sent to the backend (the `/photos/` directory was empty).
-- **Device screen transitions**: Added fade-in/fade-out effect to `DeviceScreen` when screen frames change.
-- **First turn screen frame**: Fixed `/api/start` to use `get_screen_frame()` with Visual Agent frames instead of manually constructing a minimal dict.
-- **Typewriter chat**: Added `useTypewriter` hook to `ChatBubble` — only the latest AI message types character by character at 18ms/char with a blinking cursor.
-- **Persistent SFX badge**: Removed auto-hide timer from `SfxIndicator` — badge stays visible until replaced by a new frame's SFX.
-- **Collection UI**: Enlarged PhotoGallery grid (`max-w-md`, larger icons/progress circles), added shake animation for wrong picks, disabled text input during collection steps with a "Tap a photo" hint.
-- **Photo border**: Removed `border-2 border-[var(--color-forest)]/20 shadow-lg` from `PhotoDisplay`.
-
-**Edits**:
-- `backend/schemas/session_state.py` — Added `consecutive_wrong: int = 0` field
-- `backend/server.py` — Added `VALID_COLLECTION_PHOTOS` mapping, `_is_correct_collection_photo()` helper; both `/api/turn` and `/api/turn-speak` validate photo selections (correct → advance, wrong → stay + "wrong_photo" response, 2 wrong → exit); fixed `/api/start` first turn to use `get_screen_frame()` with visual frames; added `consecutive_wrong` to `_session_state_dict`
-- `backend/skills/step_instructions/cat5_step3_collect.md` — Added wrong-photo handling instructions for Script Agent
-- `frontend/src/components/PhotoSelector.jsx` — Changed photo sources from `/photos/*.jpg` to `/icons/*.png`; removed separate `icon` field
-- `frontend/src/components/DeviceScreen.jsx` — Added fade-in/fade-out transitions on screen frame changes via `useEffect` + opacity
-- `frontend/src/components/ChatBubble.jsx` — Added `useTypewriter` hook for streaming text effect on latest AI message
-- `frontend/src/components/ConversationPanel.jsx` — Pass `isLatestAi` to ChatBubble; added `collectMode` prop to replace TextInput with photo hint
-- `frontend/src/components/SfxIndicator.jsx` — Removed auto-hide timer and state; renders persistently when `sfxCue` is present
-- `frontend/src/components/PhotoGallery.jsx` — Larger grid (`max-w-md`), larger icons (`w-10 h-10`), larger progress circles (`w-9 h-9`); added `wrongPhotoId` prop with shake animation and red highlight
-- `frontend/src/widgets/PhotoDisplay.jsx` — Removed border and shadow from photo container
-- `frontend/src/index.css` — Added `@keyframes shake` and `.animate-shake`
-- `frontend/src/hooks/useConversation.js` — Track `lastWrongPhotoId` from `wrong_photo` responses; store pending photo ID via ref
-- `frontend/src/hooks/useSessionOrchestration.js` — Pass through `lastWrongPhotoId`
-- `frontend/src/App.jsx` — Pass `wrongPhotoId` to PhotoGallery, `collectMode` to ConversationPanel, disable text input during collection
-
-**NOT Changed**:
-- State machine, Director Agent, Visual Agent, pipeline, DB layer, STT, TTS, tier rules, scenarios, fallback recipes
-- useTTS, useSpeechRecognition, useSilenceTimer hooks
-- All widget components except PhotoDisplay
-
-**Verification**:
-- `cd backend && uv run ruff check . && uv run ruff format --check .` — PASS
 - `cd frontend && npm run build` — PASS
 
 ---

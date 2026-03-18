@@ -111,11 +111,10 @@ def step_needs_user_input(step: str) -> bool:
     if step in (ENDED, EARLY_EXIT):
         return False
 
-    # Auto-advance steps: celebration, closing, synthesis
+    # Auto-advance steps: celebration, closing (NOT synthesis — it needs child interaction)
     auto_advance_steps = {
         CAT1_STEP_4_CELEBRATE,
         CAT1_STEP_5_CLOSING,
-        CAT5_STEP_4_SYNTHESIS,
         CAT5_STEP_5_CELEBRATE,
         CAT5_STEP_6_CLOSING,
     }
@@ -180,7 +179,7 @@ def get_screen_frame(
         if step == "STEP_2_RULES":
             return ScreenFrame(
                 widget="character_display",
-                widget_params={"description": "Kido explains the game", "entity": entity, "round_number": 0},
+                widget_params={"description": "Kido explains the game", "entity": entity, "roundNumber": 0},
                 animation="appear",
                 trigger="on_enter",
             )
@@ -191,7 +190,7 @@ def get_screen_frame(
                 widget="character_display",
                 widget_params={
                     "description": f"Round {rnd} for {entity} activity",
-                    "round_number": rnd,
+                    "roundNumber": rnd,
                     "entity": entity,
                 },
                 animation="scene_transition" if rnd > 1 else "gentle_pulse",
@@ -223,7 +222,7 @@ def get_screen_frame(
                 widget_params={
                     "description": "Mission briefing",
                     "entity": entity,
-                    "round_number": 0,
+                    "roundNumber": 0,
                 },
                 animation="appear",
                 trigger="on_enter",

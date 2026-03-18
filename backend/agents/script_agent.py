@@ -55,7 +55,7 @@ def _get_client() -> AsyncOpenAI:
         api_key=settings.ali_api_key,
         base_url=settings.ali_base_url,
         max_retries=0,
-        timeout=httpx.Timeout(30.0, connect=5.0),
+        timeout=httpx.Timeout(60.0, connect=15.0),
     )
 
 
@@ -522,6 +522,14 @@ class ScriptAgent:
         if state.current_step in ("STEP_2_RULES", "STEP_2_MISSION"):
             child_intent_field = '  "child_intent": "accepted|declined|off_topic|null",\n'
 
+        # Include stay_on_step for round steps where child might need help
+        stay_on_step_field = ""
+        if state.current_step.startswith("STEP_3_ROUND_") or state.current_step.startswith("STEP_3_COLLECT_"):
+            stay_on_step_field = (
+                '  "stay_on_step": true/false,  // Set true if child said "I don\'t know", '
+                "is confused, or needs a hint before moving on\n"
+            )
+
         return (
             f"Generate the next turn for step: {step_name}.\n"
             f"This is turn {state.turn_count + 1} of the session.\n"
@@ -536,5 +544,6 @@ class ScriptAgent:
             f'  "screen_animation": "sparkle_highlight|celebration_burst|appear|gentle_pulse|scene_transition|badge_reveal|null",\n'
             f'  "sfx_cue": "wonder_chime|celebration_fanfare|badge_awarded|game_start_chime|null",\n'
             f"{child_intent_field}"
+            f"{stay_on_step_field}"
             f"}}"
         )

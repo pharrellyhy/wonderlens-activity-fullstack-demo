@@ -47,7 +47,16 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
               `}
               aria-label={`${isCollected ? 'Collected: ' : 'Select: '}${photo.label}`}
             >
-              <LeafIcon className={`w-10 h-10 ${
+              {photo.image ? (
+                <img
+                  src={photo.image}
+                  alt={photo.label}
+                  className="w-16 h-16 object-contain rounded-lg"
+                  draggable={false}
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = ''; }}
+                />
+              ) : null}
+              <LeafIcon className={`w-10 h-10 ${photo.image ? 'hidden' : ''} ${
                 isCollected ? 'text-[var(--color-forest)]' :
                 isWrong ? 'text-red-300' :
                 'text-[var(--color-forest)]/40'

@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 try:
     from .agents.pipeline import initialize_session
-    from .agents.script_agent import ScriptAgent, ScriptAgentError
+    from .agents.script_agent import ScriptAgent
     from .config import get_settings
     from .db import init_db, log_session, log_turn, update_session_status
     from .logger import setup_logger
@@ -26,13 +26,21 @@ try:
     from .schemas.creative_slots import Cat5CreativeSlots
     from .schemas.session_state import ConversationTurn, SessionStateModel
     from .schemas.turn_response import TurnResponse
-    from .state_machine import EARLY_EXIT, get_screen_frame, is_terminal, next_step, step_needs_user_input
+    from .state_machine import get_screen_frame
     from .stt import transcribe_audio
     from .tts import SAMPLE_RATE, synthesize_speech_stream_async
+    from .turn_handler import (
+        TurnInput,
+        TurnResult,
+        _generate_with_retry,
+        _should_auto_advance,
+        _step_round_number,
+        resolve_turn,
+    )
     from .vision import analyze_image
 except ImportError:
     from agents.pipeline import initialize_session
-    from agents.script_agent import ScriptAgent, ScriptAgentError
+    from agents.script_agent import ScriptAgent
     from config import get_settings
     from db import init_db, log_session, log_turn, update_session_status
     from logger import setup_logger
@@ -42,9 +50,17 @@ except ImportError:
     from schemas.creative_slots import Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel
     from schemas.turn_response import TurnResponse
-    from state_machine import EARLY_EXIT, get_screen_frame, is_terminal, next_step, step_needs_user_input
+    from state_machine import get_screen_frame
     from stt import transcribe_audio
     from tts import SAMPLE_RATE, synthesize_speech_stream_async
+    from turn_handler import (
+        TurnInput,
+        TurnResult,
+        _generate_with_retry,
+        _should_auto_advance,
+        _step_round_number,
+        resolve_turn,
+    )
     from vision import analyze_image
 
 logger = setup_logger(__name__)
@@ -106,38 +122,38 @@ class TTSRequest(BaseModel):
 COLLECTION_CATALOGS: dict[str, dict[str, list[dict]]] = {
     "polka_dot_patrol": {
         "correct": [
-            {"id": "spotted_mushroom", "label": "Spotted mushroom"},
-            {"id": "dotted_pebble", "label": "Dotted pebble"},
-            {"id": "speckled_leaf", "label": "Speckled leaf"},
-            {"id": "circle_flower", "label": "Flower with circles"},
+            {"id": "spotted_mushroom", "label": "Spotted mushroom", "image": "/icons/spotted_mushroom.png"},
+            {"id": "dotted_pebble", "label": "Dotted pebble", "image": "/icons/dotted_pebble.png"},
+            {"id": "speckled_leaf", "label": "Speckled leaf", "image": "/icons/speckled_leaf.png"},
+            {"id": "circle_flower", "label": "Flower with circles", "image": "/icons/circle_flower.png"},
         ],
         "distractors": [
-            {"id": "straight_stick", "label": "Straight stick"},
-            {"id": "plain_bark", "label": "Plain bark"},
-            {"id": "long_grass", "label": "Long grass blade"},
-            {"id": "smooth_stone", "label": "Smooth stone"},
-            {"id": "pine_needle", "label": "Pine needles"},
-            {"id": "plain_leaf", "label": "Plain leaf"},
-            {"id": "forked_twig", "label": "Forked twig"},
-            {"id": "acorn_cap", "label": "Acorn cap"},
+            {"id": "straight_stick", "label": "Straight stick", "image": "/icons/straight_stick.png"},
+            {"id": "plain_bark", "label": "Plain bark", "image": "/icons/plain_bark.png"},
+            {"id": "long_grass", "label": "Long grass blade", "image": "/icons/long_grass.png"},
+            {"id": "smooth_stone", "label": "Smooth stone", "image": "/icons/smooth_stone.png"},
+            {"id": "pine_needle", "label": "Pine needles", "image": "/icons/pine_needle.png"},
+            {"id": "plain_leaf", "label": "Plain leaf", "image": "/icons/plain_leaf.png"},
+            {"id": "forked_twig", "label": "Forked twig", "image": "/icons/forked_twig.png"},
+            {"id": "acorn_cap", "label": "Acorn cap", "image": "/icons/acorn_cap.png"},
         ],
     },
     "fluffy_expedition_dandelion": {
         "correct": [
-            {"id": "fuzzy_moss", "label": "Fuzzy moss"},
-            {"id": "fluffy_seed", "label": "Fluffy seed head"},
-            {"id": "soft_petal", "label": "Soft petal"},
-            {"id": "woolly_caterpillar", "label": "Woolly caterpillar"},
+            {"id": "fuzzy_moss", "label": "Fuzzy moss", "image": "/icons/fuzzy_moss.png"},
+            {"id": "fluffy_seed", "label": "Fluffy seed head", "image": "/icons/fluffy_seed.png"},
+            {"id": "soft_petal", "label": "Soft petal", "image": "/icons/soft_petal.png"},
+            {"id": "woolly_caterpillar", "label": "Woolly caterpillar", "image": "/icons/woolly_caterpillar.png"},
         ],
         "distractors": [
-            {"id": "hard_rock", "label": "Hard rock"},
-            {"id": "spiky_pinecone", "label": "Spiky pinecone"},
-            {"id": "rough_bark", "label": "Rough bark"},
-            {"id": "sharp_thorn", "label": "Sharp thorn"},
-            {"id": "dry_leaf", "label": "Dry crunchy leaf"},
-            {"id": "smooth_pebble", "label": "Smooth pebble"},
-            {"id": "stiff_branch", "label": "Stiff branch"},
-            {"id": "brittle_shell", "label": "Brittle shell"},
+            {"id": "hard_rock", "label": "Hard rock", "image": "/icons/hard_rock.png"},
+            {"id": "spiky_pinecone", "label": "Spiky pinecone", "image": "/icons/spiky_pinecone.png"},
+            {"id": "rough_bark", "label": "Rough bark", "image": "/icons/rough_bark.png"},
+            {"id": "sharp_thorn", "label": "Sharp thorn", "image": "/icons/sharp_thorn.png"},
+            {"id": "dry_leaf", "label": "Dry crunchy leaf", "image": "/icons/dry_leaf.png"},
+            {"id": "smooth_pebble", "label": "Smooth pebble", "image": "/icons/smooth_pebble.png"},
+            {"id": "stiff_branch", "label": "Stiff branch", "image": "/icons/stiff_branch.png"},
+            {"id": "brittle_shell", "label": "Brittle shell", "image": "/icons/brittle_shell.png"},
         ],
     },
 }
@@ -163,44 +179,6 @@ def generate_round_items(activity_type: str, total_rounds: int) -> list[list[dic
         random.shuffle(items)
         rounds.append(items)
     return rounds
-
-
-def _is_correct_collection_photo(state: SessionStateModel, photo_id: str) -> bool:
-    """Check if the selected photo matches the current round's correct item."""
-    round_num = _step_round_number(state.current_step)
-    round_idx = round_num - 1
-    if round_idx < 0 or round_idx >= len(state.round_items):
-        return True  # no round items — accept anything
-    return any(item["id"] == photo_id and item.get("correct", False) for item in state.round_items[round_idx])
-
-
-def _get_item_label(state: SessionStateModel, photo_id: str) -> str:
-    """Look up the display label for a photo_id in the current round's items."""
-    round_num = _step_round_number(state.current_step)
-    round_idx = round_num - 1
-    if 0 <= round_idx < len(state.round_items):
-        for item in state.round_items[round_idx]:
-            if item["id"] == photo_id:
-                return item["label"]
-    return photo_id.replace("_", " ")
-
-
-def _append_child_turn(state: SessionStateModel, text: str, *, include_round_number: bool = True) -> None:
-    round_number = state.current_round if include_round_number and state.current_round > 0 else None
-    state.conversation_history.append(
-        ConversationTurn(
-            role="child",
-            text=text,
-            step=state.current_step,
-            round_number=round_number,
-        )
-    )
-
-
-def _record_correct_collection_pick(state: SessionStateModel, photo_id: str) -> None:
-    state.collected_photos.append(photo_id)
-    state.consecutive_wrong = 0
-    _append_child_turn(state, f"[collected correct item: {_get_item_label(state, photo_id)}]")
 
 
 # --- Endpoints ---
@@ -241,7 +219,7 @@ async def start_session(
 
             # Generate hook turn via Script Agent (uses instruction recipe)
             script_agent = ScriptAgent()
-            first_turn = await _generate_turn_with_retry(script_agent, state)
+            first_turn = await _generate_with_retry(script_agent, state)
 
             # Record hook in conversation history; STEP_2 is generated on the first follow-up turn.
             state.conversation_history.append(
@@ -387,206 +365,37 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
 
     script_agent = ScriptAgent()
 
-    # Handle consecutive silence → graceful exit
-    if req.is_silent:
-        state.consecutive_silence += 1
-    else:
-        state.consecutive_silence = 0
-
-    if state.consecutive_silence >= 2:
-        state.current_step = EARLY_EXIT
-        turn_response = await _generate_turn_with_retry(script_agent, state)
-        state.status = "exited"
-
-        screen_frame = get_screen_frame(
-            EARLY_EXIT,
-            state.template_type,
-            state.creative_slots,
-            _state_context(state),
-            visual_frames=state.visual_frames or None,
-            celebration_frame=state.celebration_frame,
-        )
-
-        state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
-
-        await update_session_status(settings.db_path, req.session_id, "exited", "consecutive_silence", state.turn_count)
-        await log_turn(
-            settings.db_path,
-            req.session_id,
-            state.turn_count,
-            "ai",
-            turn_response.dialogue,
-            "graceful_exit",
-            is_silent=req.is_silent,
-            consecutive_silence=state.consecutive_silence,
-        )
-
-        latency_ms = int((time.perf_counter() - start_time) * 1000)
-        return JSONResponse(
-            {
-                "turn": _build_turn_response(turn_response, screen_frame, "graceful_exit"),
-                "session_state": _session_state_dict(state),
-                "latency_ms": latency_ms,
-            }
-        )
-
-    # Record child input in conversation history
-    if req.text or req.is_silent:
-        child_text = req.text if req.text else "..."
-        _append_child_turn(state, child_text)
-
-    # For Cat 5 collection: validate photo_id before advancing
-    collection_wrong = False
-    if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
-        if _is_correct_collection_photo(state, req.photo_id):
-            _record_correct_collection_pick(state, req.photo_id)
-        else:
-            collection_wrong = True
-            state.consecutive_wrong += 1
-
-    # 2 consecutive wrong picks → graceful exit
-    if state.consecutive_wrong >= 2:
-        state.current_step = EARLY_EXIT
-        turn_response = await _generate_turn_with_retry(script_agent, state)
-        state.status = "exited"
-        screen_frame = get_screen_frame(
-            EARLY_EXIT,
-            state.template_type,
-            state.creative_slots,
-            _state_context(state),
-            visual_frames=state.visual_frames or None,
-            celebration_frame=state.celebration_frame,
-        )
-        state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
-        await update_session_status(settings.db_path, req.session_id, "exited", "wrong_photos", state.turn_count)
-        latency_ms = int((time.perf_counter() - start_time) * 1000)
-        return JSONResponse(
-            {
-                "turn": _build_turn_response(turn_response, screen_frame, "graceful_exit"),
-                "session_state": _session_state_dict(state),
-                "latency_ms": latency_ms,
-            }
-        )
-
-    # Wrong pick but not exit yet — stay on same step, generate "try again" response
-    if collection_wrong:
-        _append_child_turn(state, f"[selected wrong photo: {req.photo_id}]", include_round_number=False)
-        turn_response = await _generate_turn_with_retry(script_agent, state)
-        screen_frame = get_screen_frame(
-            state.current_step,
-            state.template_type,
-            state.creative_slots,
-            _state_context(state),
-            visual_frames=state.visual_frames or None,
-            celebration_frame=state.celebration_frame,
-        )
-        state.conversation_history.append(
-            ConversationTurn(role="ai", text=turn_response.dialogue, step=state.current_step)
-        )
-        state.turn_count += 1
-        await log_turn(
-            settings.db_path,
-            req.session_id,
-            state.turn_count,
-            "ai",
-            turn_response.dialogue,
-            "wrong_photo",
-            is_silent=False,
-        )
-        latency_ms = int((time.perf_counter() - start_time) * 1000)
-        turn_data = _build_turn_response(turn_response, screen_frame, "wrong_photo")
-        turn_data["auto_advance"] = False
-        return JSONResponse(
-            {
-                "turn": turn_data,
-                "session_state": _session_state_dict(state),
-                "latency_ms": latency_ms,
-            }
-        )
-
-    if _is_invitation_step(state.current_step):
-        turn_response = await _resolve_invitation_turn(script_agent, state)
-    else:
-        # Advance the state machine and keep round display/prompt state aligned with the active step.
-        _advance_state(state)
-
-        # Check if session ended
-        if is_terminal(state.current_step):
-            state.status = "completed"
-            await update_session_status(
-                settings.db_path, req.session_id, "completed", "all_steps_done", state.turn_count
-            )
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
-            return JSONResponse(
-                {
-                    "turn": {
-                        "dialogue": "",
-                        "response_type": "ended",
-                        "screen_frame": None,
-                        "audio": {},
-                    },
-                    "session_state": _session_state_dict(state),
-                    "latency_ms": latency_ms,
-                }
-            )
-
-        # Generate AI response for current step (always via Script Agent)
-        turn_response = await _generate_turn_with_retry(script_agent, state)
-
-    # Get screen frame from state machine (with Visual Agent frames if available)
-    screen_frame = get_screen_frame(
-        state.current_step,
-        state.template_type,
-        state.creative_slots,
-        _state_context(state),
-        visual_frames=state.visual_frames or None,
-        celebration_frame=state.celebration_frame,
+    # Resolve the turn using unified turn handler
+    result = await resolve_turn(
+        state, TurnInput(text=req.text, is_silent=req.is_silent, photo_id=req.photo_id), script_agent
     )
 
-    error_exit = state.status == "error"
-    response_type = "error" if error_exit else _get_response_type(state.current_step)
-
-    # Record AI response in conversation history
-    state.conversation_history.append(
-        ConversationTurn(
-            role="ai",
-            text=turn_response.dialogue,
-            step=state.current_step,
-            round_number=state.current_round if state.current_round > 0 else None,
-        )
-    )
-
-    # Trim history to last 6 entries for prompt management
-    if len(state.conversation_history) > 6:
-        state.conversation_history = state.conversation_history[-6:]
-
-    state.turn_count += 1
+    # DB logging based on result
+    response_type = "error" if result.error_exit else result.response_type
 
     if state.status == "exited":
-        await update_session_status(settings.db_path, req.session_id, "exited", "invitation_declined", state.turn_count)
-    elif _is_closing_step(state.current_step) and not error_exit:
-        state.status = "completed"
-        await update_session_status(
-            settings.db_path, req.session_id, "completed", "closing_delivered", state.turn_count
-        )
-
-    # Determine if this is an auto-advance step (frontend should auto-send next turn)
-    auto_advance = _should_auto_advance(state, error_exit)
+        exit_reason = "consecutive_silence" if state.consecutive_silence >= 2 else "invitation_declined"
+        if state.consecutive_wrong >= 2:
+            exit_reason = "wrong_photos"
+        await update_session_status(settings.db_path, req.session_id, "exited", exit_reason, state.turn_count)
+    elif state.status == "completed":
+        completion_reason = "closing_delivered" if result.response_type == "closing" else "all_steps_done"
+        await update_session_status(settings.db_path, req.session_id, "completed", completion_reason, state.turn_count)
 
     await log_turn(
         settings.db_path,
         req.session_id,
         state.turn_count,
         "ai",
-        turn_response.dialogue,
+        result.turn_response.dialogue,
         response_type,
         is_silent=req.is_silent,
         consecutive_silence=state.consecutive_silence,
     )
 
     latency_ms = int((time.perf_counter() - start_time) * 1000)
-    turn_data = _build_turn_response(turn_response, screen_frame, response_type, error_exit)
-    turn_data["auto_advance"] = auto_advance
+    turn_data = _build_turn_response(result.turn_response, result.screen_frame, response_type, result.error_exit)
+    turn_data["auto_advance"] = result.auto_advance
 
     return JSONResponse(
         {
@@ -623,315 +432,39 @@ async def turn_and_speak(req: TurnRequest) -> Response:
     async def _stream() -> bytes:  # type: ignore[return]
         script_agent = ScriptAgent()
 
-        # --- State management (same as /api/turn) ---
-
-        if req.is_silent:
-            state.consecutive_silence += 1
-        else:
-            state.consecutive_silence = 0
-
-        # Handle consecutive silence → graceful exit
-        if state.consecutive_silence >= 2:
-            state.current_step = EARLY_EXIT
-            turn_response = await _generate_turn_with_retry(script_agent, state)
-            state.status = "exited"
-            screen_frame = get_screen_frame(
-                EARLY_EXIT,
-                state.template_type,
-                state.creative_slots,
-                _state_context(state),
-                visual_frames=state.visual_frames or None,
-                celebration_frame=state.celebration_frame,
-            )
-            state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
-            await update_session_status(
-                settings.db_path, req.session_id, "exited", "consecutive_silence", state.turn_count
-            )
-            await log_turn(
-                settings.db_path,
-                req.session_id,
-                state.turn_count,
-                "ai",
-                turn_response.dialogue,
-                "graceful_exit",
-                is_silent=req.is_silent,
-                consecutive_silence=state.consecutive_silence,
-            )
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
-            turn_data = _build_turn_response(turn_response, screen_frame, "graceful_exit")
-            response_json = json.dumps(
-                {"turn": turn_data, "session_state": _session_state_dict(state), "latency_ms": latency_ms}
-            ).encode()
-            yield struct.pack(">I", len(response_json))
-            yield response_json
-            async for chunk in synthesize_speech_stream_async(turn_response.dialogue, state.tier):
-                yield chunk
-            return
-
-        # Record child input
-        if req.text or req.is_silent:
-            child_text = req.text if req.text else "..."
-            _append_child_turn(state, child_text)
-
-        # Cat 5 collection validation
-        collection_wrong = False
-        if req.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
-            if _is_correct_collection_photo(state, req.photo_id):
-                _record_correct_collection_pick(state, req.photo_id)
-            else:
-                collection_wrong = True
-                state.consecutive_wrong += 1
-
-        # 2 consecutive wrong picks → graceful exit
-        if state.consecutive_wrong >= 2:
-            state.current_step = EARLY_EXIT
-            turn_response = await _generate_turn_with_retry(script_agent, state)
-            state.status = "exited"
-            screen_frame = get_screen_frame(
-                EARLY_EXIT,
-                state.template_type,
-                state.creative_slots,
-                _state_context(state),
-                visual_frames=state.visual_frames or None,
-                celebration_frame=state.celebration_frame,
-            )
-            state.conversation_history.append(ConversationTurn(role="ai", text=turn_response.dialogue, step=EARLY_EXIT))
-            await update_session_status(settings.db_path, req.session_id, "exited", "wrong_photos", state.turn_count)
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
-            turn_data = _build_turn_response(turn_response, screen_frame, "graceful_exit")
-            response_json = json.dumps(
-                {"turn": turn_data, "session_state": _session_state_dict(state), "latency_ms": latency_ms}
-            ).encode()
-            yield struct.pack(">I", len(response_json))
-            yield response_json
-            async for chunk in synthesize_speech_stream_async(turn_response.dialogue, state.tier):
-                yield chunk
-            return
-
-        # Wrong pick but not exit yet — stay on same step
-        if collection_wrong:
-            _append_child_turn(state, f"[selected wrong photo: {req.photo_id}]", include_round_number=False)
-            turn_response = await _generate_turn_with_retry(script_agent, state)
-            screen_frame = get_screen_frame(
-                state.current_step,
-                state.template_type,
-                state.creative_slots,
-                _state_context(state),
-                visual_frames=state.visual_frames or None,
-                celebration_frame=state.celebration_frame,
-            )
-            state.conversation_history.append(
-                ConversationTurn(role="ai", text=turn_response.dialogue, step=state.current_step)
-            )
-            state.turn_count += 1
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
-            turn_data = _build_turn_response(turn_response, screen_frame, "wrong_photo")
-            turn_data["auto_advance"] = False
-            response_json = json.dumps(
-                {"turn": turn_data, "session_state": _session_state_dict(state), "latency_ms": latency_ms}
-            ).encode()
-            yield struct.pack(">I", len(response_json))
-            yield response_json
-            async for chunk in synthesize_speech_stream_async(turn_response.dialogue, state.tier):
-                yield chunk
-            return
-
-        if _is_invitation_step(state.current_step):
-            turn_response = await _resolve_invitation_turn(script_agent, state)
-            screen_frame = get_screen_frame(
-                state.current_step,
-                state.template_type,
-                state.creative_slots,
-                _state_context(state),
-                visual_frames=state.visual_frames or None,
-                celebration_frame=state.celebration_frame,
-            )
-            error_exit = state.status == "error"
-            response_type = "error" if error_exit else _get_response_type(state.current_step)
-
-            state.conversation_history.append(
-                ConversationTurn(
-                    role="ai",
-                    text=turn_response.dialogue,
-                    step=state.current_step,
-                    round_number=state.current_round if state.current_round > 0 else None,
-                )
-            )
-            if len(state.conversation_history) > 6:
-                state.conversation_history = state.conversation_history[-6:]
-
-            state.turn_count += 1
-
-            if state.status == "exited":
-                await update_session_status(
-                    settings.db_path, req.session_id, "exited", "invitation_declined", state.turn_count
-                )
-            elif _is_closing_step(state.current_step) and not error_exit:
-                state.status = "completed"
-                await update_session_status(
-                    settings.db_path, req.session_id, "completed", "closing_delivered", state.turn_count
-                )
-
-            await log_turn(
-                settings.db_path,
-                req.session_id,
-                state.turn_count,
-                "ai",
-                turn_response.dialogue,
-                response_type,
-                is_silent=req.is_silent,
-                consecutive_silence=state.consecutive_silence,
-            )
-
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
-            turn_data = _build_turn_response(turn_response, screen_frame, response_type, error_exit)
-            turn_data["auto_advance"] = _should_auto_advance(state, error_exit)
-            response_json = json.dumps(
-                {"turn": turn_data, "session_state": _session_state_dict(state), "latency_ms": latency_ms}
-            ).encode()
-            yield struct.pack(">I", len(response_json))
-            yield response_json
-            async for chunk in synthesize_speech_stream_async(turn_response.dialogue, state.tier):
-                yield chunk
-            return
-
-        _advance_state(state)
-
-        # Terminal check
-        if is_terminal(state.current_step):
-            state.status = "completed"
-            await update_session_status(
-                settings.db_path, req.session_id, "completed", "all_steps_done", state.turn_count
-            )
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
-            response_json = json.dumps(
-                {
-                    "turn": {"dialogue": "", "response_type": "ended", "screen_frame": None, "audio": {}},
-                    "session_state": _session_state_dict(state),
-                    "latency_ms": latency_ms,
-                }
-            ).encode()
-            yield struct.pack(">I", len(response_json))
-            yield response_json
-            return
-
-        # --- Streaming Script Agent + pipelined TTS ---
-
-        dialogue_queue: asyncio.Queue[str] = asyncio.Queue(maxsize=1)
-        tts_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
-
-        async def on_dialogue(text: str) -> None:
-            await dialogue_queue.put(text)
-
-        async def tts_producer(dialogue_text: str, audio_queue: asyncio.Queue[bytes | None]) -> None:
-            """Produce TTS audio chunks into the queue."""
-            try:
-                async for chunk in synthesize_speech_stream_async(dialogue_text, state.tier):
-                    await audio_queue.put(chunk)
-            except Exception as e:
-                logger.error(f"TTS producer failed: {e}")
-            await audio_queue.put(None)  # sentinel
-
-        # Start Script Agent streaming (extracts dialogue early via callback)
-        script_task = asyncio.create_task(script_agent.generate_turn_streaming(state, on_dialogue=on_dialogue))
-
-        # Wait for early dialogue extraction OR script completion
-        tts_task = None
-        tts_text = None
-        try:
-            dialogue_text = await asyncio.wait_for(dialogue_queue.get(), timeout=30)
-            # Start TTS immediately — overlaps with remaining Script Agent generation
-            tts_text = dialogue_text
-            tts_task = asyncio.create_task(tts_producer(dialogue_text, tts_queue))
-        except (asyncio.TimeoutError, Exception):
-            pass
-
-        # Wait for Script Agent to finish
-        try:
-            turn_response = await script_task
-        except ScriptAgentError:
-            logger.warning(f"Streaming Script Agent failed for {state.current_step}, retrying non-streaming")
-            try:
-                turn_response = await script_agent.generate_turn(state)
-            except ScriptAgentError:
-                logger.error(f"Script Agent retry failed for {state.current_step}, using fallback")
-                state.status = "error"
-                turn_response = TurnResponse(
-                    dialogue="[gentle] That was so much fun! Would you like to play again next time? See you soon!",
-                    tone_marker="gentle",
-                    screen_widget="badge_award",
-                    screen_widget_params={"title": "Great job!", "concepts": [], "entity": state.entity_name},
-                    screen_animation="badge_reveal",
-                    sfx_cue="badge_awarded",
-                )
-
-        # If early dialogue differs from the final turn, restart TTS with the canonical text.
-        if tts_task is not None and tts_text != turn_response.dialogue:
-            tts_task.cancel()
-            try:
-                await tts_task
-            except asyncio.CancelledError:
-                pass
-            tts_queue = asyncio.Queue()
-            tts_task = None
-
-        # If TTS wasn't started yet, or we canceled a stale early stream, start it now.
-        if tts_task is None:
-            tts_text = turn_response.dialogue
-            tts_task = asyncio.create_task(tts_producer(turn_response.dialogue, tts_queue))
-
-        # --- Post-processing ---
-
-        screen_frame = get_screen_frame(
-            state.current_step,
-            state.template_type,
-            state.creative_slots,
-            _state_context(state),
-            visual_frames=state.visual_frames or None,
-            celebration_frame=state.celebration_frame,
+        # Resolve the turn using unified turn handler
+        result = await resolve_turn(
+            state, TurnInput(text=req.text, is_silent=req.is_silent, photo_id=req.photo_id), script_agent
         )
-        error_exit = state.status == "error"
-        response_type = "error" if error_exit else _get_response_type(state.current_step)
 
-        state.conversation_history.append(
-            ConversationTurn(
-                role="ai",
-                text=turn_response.dialogue,
-                step=state.current_step,
-                round_number=state.current_round if state.current_round > 0 else None,
-            )
-        )
-        if len(state.conversation_history) > 6:
-            state.conversation_history = state.conversation_history[-6:]
-
-        state.turn_count += 1
+        # DB logging based on result
+        response_type = "error" if result.error_exit else result.response_type
 
         if state.status == "exited":
+            exit_reason = "consecutive_silence" if state.consecutive_silence >= 2 else "invitation_declined"
+            if state.consecutive_wrong >= 2:
+                exit_reason = "wrong_photos"
+            await update_session_status(settings.db_path, req.session_id, "exited", exit_reason, state.turn_count)
+        elif state.status == "completed":
+            completion_reason = "closing_delivered" if result.response_type == "closing" else "all_steps_done"
             await update_session_status(
-                settings.db_path, req.session_id, "exited", "invitation_declined", state.turn_count
+                settings.db_path, req.session_id, "completed", completion_reason, state.turn_count
             )
-        elif _is_closing_step(state.current_step) and not error_exit:
-            state.status = "completed"
-            await update_session_status(
-                settings.db_path, req.session_id, "completed", "closing_delivered", state.turn_count
-            )
-
-        auto_advance = _should_auto_advance(state, error_exit)
 
         await log_turn(
             settings.db_path,
             req.session_id,
             state.turn_count,
             "ai",
-            turn_response.dialogue,
+            result.turn_response.dialogue,
             response_type,
             is_silent=req.is_silent,
             consecutive_silence=state.consecutive_silence,
         )
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
-        turn_data = _build_turn_response(turn_response, screen_frame, response_type, error_exit)
-        turn_data["auto_advance"] = auto_advance
+        turn_data = _build_turn_response(result.turn_response, result.screen_frame, response_type, result.error_exit)
+        turn_data["auto_advance"] = result.auto_advance
 
         # Yield JSON header (4-byte length prefix + JSON)
         response_json = json.dumps(
@@ -944,14 +477,9 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         yield struct.pack(">I", len(response_json))
         yield response_json
 
-        # Yield TTS audio chunks (already being produced in background)
-        while True:
-            chunk = await tts_queue.get()
-            if chunk is None:
-                break
+        # Stream TTS audio
+        async for chunk in synthesize_speech_stream_async(result.turn_response.dialogue, state.tier):
             yield chunk
-
-        await tts_task
 
     return StreamingResponse(
         _stream(),
@@ -982,57 +510,6 @@ async def text_to_speech(req: TTSRequest) -> Response:
 # --- Helpers ---
 
 
-async def _generate_turn_with_retry(script_agent: ScriptAgent, state: SessionStateModel) -> TurnResponse:
-    """Generate a turn response with one retry on failure, then graceful exit."""
-    try:
-        return await script_agent.generate_turn(state)
-    except ScriptAgentError:
-        logger.warning(f"Script Agent failed for step {state.current_step}, retrying")
-        try:
-            return await script_agent.generate_turn(state)
-        except ScriptAgentError:
-            logger.error(f"Script Agent failed twice for step {state.current_step}, using fallback")
-            state.status = "error"
-            return TurnResponse(
-                dialogue="[gentle] That was so much fun! Would you like to play again next time? See you soon!",
-                tone_marker="gentle",
-                screen_widget="badge_award",
-                screen_widget_params={"title": "Great job!", "concepts": [], "entity": state.entity_name},
-                screen_animation="badge_reveal",
-                sfx_cue="badge_awarded",
-            )
-
-
-def _is_invitation_step(step: str) -> bool:
-    return step in {"STEP_2_RULES", "STEP_2_MISSION"}
-
-
-def _advance_state(state: SessionStateModel) -> None:
-    state.current_step = next_step(state.current_step, state.template_type, state.current_round, state.total_rounds)
-    _sync_round_from_step(state)
-
-
-async def _resolve_invitation_turn(script_agent: ScriptAgent, state: SessionStateModel) -> TurnResponse:
-    """Handle the child's response to the STEP_2 invitation.
-
-    A decline stays on STEP_2 for one more re-invitation, then exits.
-    Acceptance/off-topic advances into the first activity round.
-    """
-    invitation_turn = await _generate_turn_with_retry(script_agent, state)
-
-    if invitation_turn.child_intent == "declined":
-        state.invitation_decline_count += 1
-        if state.invitation_decline_count >= 2:
-            state.current_step = EARLY_EXIT
-            state.status = "exited"
-            return await _generate_turn_with_retry(script_agent, state)
-        return invitation_turn
-
-    state.invitation_decline_count = 0
-    _advance_state(state)
-    return await _generate_turn_with_retry(script_agent, state)
-
-
 def _build_turn_response(
     turn: TurnResponse,
     screen_frame: ScreenFrame,
@@ -1058,40 +535,6 @@ def _build_turn_response(
     }
 
 
-def _get_response_type(step: str) -> str:
-    """Map a step to a response type string."""
-    if step == "STEP_1_HOOK":
-        return "hook"
-    if step in ("STEP_2_RULES", "STEP_2_MISSION"):
-        return "rules"
-    if step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
-        return "round"
-    if step in ("STEP_4_CELEBRATE", "STEP_5_CELEBRATE"):
-        return "celebration"
-    if step in ("STEP_4_SYNTHESIS",):
-        return "synthesis"
-    if step in ("STEP_5_CLOSING", "STEP_6_CLOSING"):
-        return "closing"
-    if step == EARLY_EXIT:
-        return "graceful_exit"
-    return "response"
-
-
-def _is_closing_step(step: str) -> bool:
-    """Return True when the active step is the final closing response."""
-    return step in {"STEP_5_CLOSING", "STEP_6_CLOSING"}
-
-
-def _should_auto_advance(state: SessionStateModel, error_exit: bool = False) -> bool:
-    """Auto-advance only active non-closing presentation steps."""
-    return (
-        state.status == "active"
-        and not error_exit
-        and not step_needs_user_input(state.current_step)
-        and not _is_closing_step(state.current_step)
-    )
-
-
 def _state_context(state: SessionStateModel) -> dict:
     """Build a context dict from session state for screen frame generation."""
     return {
@@ -1100,17 +543,6 @@ def _state_context(state: SessionStateModel) -> dict:
         "ib_key_concepts": state.ib_key_concepts,
         "key_concepts": state.ib_key_concepts,
     }
-
-
-def _sync_round_from_step(state: SessionStateModel) -> None:
-    """Keep current_round aligned with the active round/collect step."""
-    if state.current_step.startswith("STEP_3_ROUND_") or state.current_step.startswith("STEP_3_COLLECT_"):
-        state.current_round = _step_round_number(state.current_step)
-
-
-def _step_round_number(step: str) -> int:
-    """Extract a 1-based round number from a round/collect step."""
-    return int(step.rsplit("_", maxsplit=1)[-1])
 
 
 def _entity_from_filename(filename: str) -> str:
@@ -1145,7 +577,8 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         round_idx = _step_round_number(state.current_step) - 1
         if 0 <= round_idx < len(state.round_items):
             result["current_round_items"] = [
-                {"id": item["id"], "label": item["label"]} for item in state.round_items[round_idx]
+                {"id": item["id"], "label": item["label"], "image": item.get("image", "")}
+                for item in state.round_items[round_idx]
             ]
 
     return result

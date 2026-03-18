@@ -119,10 +119,12 @@ function App() {
         <div className="flex items-center gap-3">
           <span>Round: {
             templateType === 'cat5'
-              ? (sessionState?.current_step?.startsWith('STEP_3_COLLECT_')
-                ? `${sessionState?.collected_photos?.length ?? 0}/${sessionState?.total_rounds ?? '-'}`
+              ? (sessionState?.current_step?.startsWith('STEP_3_COLLECT_') && (sessionState?.collected_photos?.length ?? 0) > 0
+                ? `${sessionState.collected_photos.length}/${sessionState?.total_rounds ?? '-'}`
                 : '-')
-              : `${sessionState?.current_round ?? 0}/${sessionState?.total_rounds ?? '-'}`
+              : (sessionState?.current_step?.startsWith('STEP_3_ROUND_')
+                ? `${Math.max(sessionState?.current_round ?? 0, 1)}/${sessionState?.total_rounds ?? '-'}`
+                : `-/${sessionState?.total_rounds ?? '-'}`)
           }</span>
           <span className="hidden sm:inline text-gray-300">|</span>
           <span className="hidden sm:inline">Latency: {latency ? `${latency}ms` : '-'}</span>

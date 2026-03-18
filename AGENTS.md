@@ -45,7 +45,19 @@ Key files/locations (current and near-term):
 - Prefer adding or updating child-facing copy in prompt/scenario/fallback assets rather than scattering hardcoded strings across the codebase.
 - Never revert user changes you did not make.
 
-## 4) How to Work
+## 4) Python Code Style
+
+- Target Python 3.12+ only. Do not add compatibility shims for older versions.
+- Do not use `__future__` imports in this repo. In particular, skip `from __future__ import annotations`.
+- Add type hints to all functions and methods.
+- Use PascalCase for classes, snake_case for functions and variables, and UPPERCASE_WITH_UNDERSCORES for constants.
+- Keep Python lines at or under 120 characters.
+- Write Google-style docstrings for public APIs.
+- Prefer dataclasses or Pydantic models for structured data instead of ad hoc dictionaries where shape matters.
+- Catch specific exception types. Do not use bare `except:`.
+- Keep all imports at the top of the module and order them per PEP 8: standard library, third-party, then local imports. Do not import inside functions, methods, or conditional blocks.
+
+## 5) How to Work
 
 1. Read relevant code paths and the build spec first; state assumptions if behavior is unclear.
 2. Make the smallest change that solves the request.
@@ -53,7 +65,7 @@ Key files/locations (current and near-term):
 4. Stop on failing checks, summarize root cause, then fix incrementally.
 5. Show concise diffs and list exactly what was verified.
 
-## 5) Canonical Commands
+## 6) Canonical Commands
 
 Run from repo root unless noted. Verify the referenced manifest or entrypoint exists before running setup or app commands.
 
@@ -80,7 +92,7 @@ Validation policy:
 - If required tooling is not scaffolded yet, document that clearly and perform manual verification against the build spec and touched files.
 - Stop on first failure; summarize root cause before broadening scope.
 
-## 6) Change-Specific Guardrails
+## 7) Change-Specific Guardrails
 
 - Backend pipeline changes:
   - Keep agent boundaries clear and consistent with the build spec.
@@ -101,7 +113,7 @@ Validation policy:
   - Keep Vertex AI related configuration consistent with documented environment variables.
   - Do not hardcode credentials or machine-specific paths into code or docs.
 
-## 7) Documentation and Session State
+## 8) Documentation and Session State
 
 Update docs when behavior, operator workflow, or implementation status changes:
 
@@ -117,14 +129,14 @@ Update docs when behavior, operator workflow, or implementation status changes:
 
 Keep docs concise and factual; avoid aspirational text not reflected in code.
 
-## 8) External Docs and Uncertainty
+## 9) External Docs and Uncertainty
 
 - Use Context7 for library/framework API uncertainty before coding.
 - Prefer official docs and repo source over memory when APIs are version-sensitive.
 - When WonderLens project behavior is unclear, check the build spec before inferring architecture from partial scaffold files.
 - If API uncertainty remains, build a minimal reproducible check locally and report the result.
 
-## 9) Completion Checklist
+## 10) Completion Checklist
 
 Before declaring completion:
 

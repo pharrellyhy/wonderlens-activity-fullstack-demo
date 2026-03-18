@@ -44,6 +44,8 @@ class SessionStateModel(BaseModel):
     # Instruction-based recipe support
     instruction_recipe: InstructionRecipe | None = None
     invitation_decline_count: int = 0
+    invitation_accepted: bool = False
+    round_advance_pending: bool = False
 
     # Vision/entity context
     entity_name: str = ""

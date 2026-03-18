@@ -1,6 +1,6 @@
 """Pydantic schema for the final merged activity recipe."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .step_instruction import StepInstruction
 from .visual_composition import ScreenFrame
@@ -37,3 +37,14 @@ class InstructionRecipe(BaseModel):
     metadata: RecipeMetadata = Field(description="Activity metadata")
     photo_features: list[str] = Field(default_factory=list, description="Cat1 visible feature anchors")
     collection_items: dict = Field(default_factory=dict, description="Cat5 item metadata")
+
+    @model_validator(mode="after")
+    def validate_instruction_contract(self) -> "InstructionRecipe":
+        round_count = len(self.step_instructions.rounds)
+        if self.metadata.round_count != round_count:
+            raise ValueError(
+                f"metadata.round_count must match the number of step rounds ({round_count})"
+            )
+        if self.collection_items and self.step_instructions.synthesis is None:
+            raise ValueError("Collection recipes must define a synthesis step")
+        return self

@@ -6,8 +6,10 @@ from typing import Any
 import yaml
 
 try:
+    from .entity_registry import SCENARIO_CATEGORIES, get_feature_keyword_map, get_keyword_map
     from .logger import setup_logger
 except ImportError:
+    from entity_registry import SCENARIO_CATEGORIES, get_feature_keyword_map, get_keyword_map
     from logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -15,33 +17,8 @@ logger = setup_logger(__name__)
 _SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 _CONTEXT_TEMPLATE_PATH = Path(__file__).parent / "skills" / "activity_context_template.md"
 
-# Entity keywords → scenario mapping for quick matching
-_ENTITY_SCENARIO_MAP: dict[str, str] = {
-    "dog": "mood_changer_dog",
-    "puppy": "mood_changer_dog",
-    "stuffed dog": "mood_changer_dog",
-    "toy dog": "mood_changer_dog",
-    "cat": "dream_whisperer_cat",
-    "kitten": "dream_whisperer_cat",
-    "stuffed cat": "dream_whisperer_cat",
-    "dinosaur": "time_machine_dinosaur",
-    "dino": "time_machine_dinosaur",
-    "toy dinosaur": "time_machine_dinosaur",
-    "ladybug": "polka_dot_patrol",
-    "ladybird": "polka_dot_patrol",
-    "beetle": "polka_dot_patrol",
-    "dandelion": "fluffy_expedition_dandelion",
-    "flower": "fluffy_expedition_dandelion",
-}
-
-# Category mapping for default plan generation
-SCENARIO_CATEGORIES: dict[str, str] = {
-    "mood_changer_dog": "category_1",
-    "dream_whisperer_cat": "category_1",
-    "time_machine_dinosaur": "category_1",
-    "polka_dot_patrol": "category_5",
-    "fluffy_expedition_dandelion": "category_5",
-}
+# Re-export for backward compatibility (used by director.py, pipeline.py, recipe_loader.py)
+__all__ = ["SCENARIO_CATEGORIES", "load_scenario", "match_scenario", "build_activity_context"]
 
 
 def load_scenario(activity_type: str) -> dict[str, Any]:
@@ -57,30 +34,29 @@ def load_scenario(activity_type: str) -> dict[str, Any]:
 def match_scenario(entity: str, features: list[str] | None = None, filename: str = "") -> str:
     """Map a vision entity to the best matching scenario using keyword matching."""
     entity_lower = entity.lower().strip()
+    keyword_map = get_keyword_map()
 
     # Direct match
-    if entity_lower in _ENTITY_SCENARIO_MAP:
-        return _ENTITY_SCENARIO_MAP[entity_lower]
+    if entity_lower in keyword_map:
+        return keyword_map[entity_lower]
 
     # Substring match
-    for keyword, scenario in _ENTITY_SCENARIO_MAP.items():
+    for keyword, scenario in keyword_map.items():
         if keyword in entity_lower or entity_lower in keyword:
             return scenario
 
     # Feature-based matching
     if features:
         feature_text = " ".join(f.lower() for f in features)
-        if any(kw in feature_text for kw in ["spot", "dot", "polka"]):
-            return "polka_dot_patrol"
-        if any(kw in feature_text for kw in ["fluffy", "dandelion", "soft", "fuzzy"]):
-            return "fluffy_expedition_dandelion"
-        if any(kw in feature_text for kw in ["plush", "stuffed", "toy"]):
-            return "mood_changer_dog"
+        feature_keyword_map = get_feature_keyword_map()
+        for fkw, activity_type in feature_keyword_map.items():
+            if fkw in feature_text:
+                return activity_type
 
     # Filename-based fallback (e.g., "ladybug.jpg" → "ladybug")
     if filename:
         name_lower = Path(filename).stem.lower()
-        for keyword, scenario in _ENTITY_SCENARIO_MAP.items():
+        for keyword, scenario in keyword_map.items():
             if keyword in name_lower:
                 logger.info(f"Matched scenario from filename '{filename}': {scenario}")
                 return scenario

@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import random
 import re
 import struct
 import time
@@ -19,8 +18,14 @@ try:
     from .agents.script_agent import ScriptAgent
     from .config import get_settings
     from .db import init_db, log_session, log_turn, update_session_status
+    from .entity_registry import (
+        all_entities_for_api,
+        generate_round_items,
+        is_demo_entity,
+        validate_registry,
+    )
     from .logger import setup_logger
-    from .recipe_loader import is_demo_entity, load_instruction_recipe, recipe_to_session_state
+    from .recipe_loader import load_instruction_recipe, recipe_to_session_state
     from .scenarios import load_scenario, match_scenario
     from .schemas import ScreenFrame
     from .schemas.creative_slots import Cat5CreativeSlots
@@ -31,7 +36,6 @@ try:
     from .tts import SAMPLE_RATE, synthesize_speech_stream_async
     from .turn_handler import (
         TurnInput,
-        TurnResult,
         _generate_with_retry,
         _should_auto_advance,
         _step_round_number,
@@ -43,8 +47,14 @@ except ImportError:
     from agents.script_agent import ScriptAgent
     from config import get_settings
     from db import init_db, log_session, log_turn, update_session_status
+    from entity_registry import (
+        all_entities_for_api,
+        generate_round_items,
+        is_demo_entity,
+        validate_registry,
+    )
     from logger import setup_logger
-    from recipe_loader import is_demo_entity, load_instruction_recipe, recipe_to_session_state
+    from recipe_loader import load_instruction_recipe, recipe_to_session_state
     from scenarios import load_scenario, match_scenario
     from schemas import ScreenFrame
     from schemas.creative_slots import Cat5CreativeSlots
@@ -55,7 +65,6 @@ except ImportError:
     from tts import SAMPLE_RATE, synthesize_speech_stream_async
     from turn_handler import (
         TurnInput,
-        TurnResult,
         _generate_with_retry,
         _should_auto_advance,
         _step_round_number,
@@ -85,6 +94,7 @@ def _suppress_genai_close_error(loop: asyncio.AbstractEventLoop, context: dict) 
 async def lifespan(_: FastAPI):
     settings = get_settings()
     asyncio.get_event_loop().set_exception_handler(_suppress_genai_close_error)
+    validate_registry()
     await init_db(settings.db_path)
     logger.info("WonderLens server started")
     yield
@@ -117,76 +127,18 @@ class TTSRequest(BaseModel):
     tier: str = "T0"
 
 
-# --- Cat 5 collection validation ---
-
-COLLECTION_CATALOGS: dict[str, dict[str, list[dict]]] = {
-    "polka_dot_patrol": {
-        "correct": [
-            {"id": "spotted_mushroom", "label": "Spotted mushroom", "image": "/icons/spotted_mushroom.png"},
-            {"id": "dotted_pebble", "label": "Dotted pebble", "image": "/icons/dotted_pebble.png"},
-            {"id": "speckled_leaf", "label": "Speckled leaf", "image": "/icons/speckled_leaf.png"},
-            {"id": "circle_flower", "label": "Flower with circles", "image": "/icons/circle_flower.png"},
-        ],
-        "distractors": [
-            {"id": "straight_stick", "label": "Straight stick", "image": "/icons/straight_stick.png"},
-            {"id": "plain_bark", "label": "Plain bark", "image": "/icons/plain_bark.png"},
-            {"id": "long_grass", "label": "Long grass blade", "image": "/icons/long_grass.png"},
-            {"id": "smooth_stone", "label": "Smooth stone", "image": "/icons/smooth_stone.png"},
-            {"id": "pine_needle", "label": "Pine needles", "image": "/icons/pine_needle.png"},
-            {"id": "plain_leaf", "label": "Plain leaf", "image": "/icons/plain_leaf.png"},
-            {"id": "forked_twig", "label": "Forked twig", "image": "/icons/forked_twig.png"},
-            {"id": "acorn_cap", "label": "Acorn cap", "image": "/icons/acorn_cap.png"},
-        ],
-    },
-    "fluffy_expedition_dandelion": {
-        "correct": [
-            {"id": "fuzzy_moss", "label": "Fuzzy moss", "image": "/icons/fuzzy_moss.png"},
-            {"id": "fluffy_seed", "label": "Fluffy seed head", "image": "/icons/fluffy_seed.png"},
-            {"id": "soft_petal", "label": "Soft petal", "image": "/icons/soft_petal.png"},
-            {"id": "woolly_caterpillar", "label": "Woolly caterpillar", "image": "/icons/woolly_caterpillar.png"},
-        ],
-        "distractors": [
-            {"id": "hard_rock", "label": "Hard rock", "image": "/icons/hard_rock.png"},
-            {"id": "spiky_pinecone", "label": "Spiky pinecone", "image": "/icons/spiky_pinecone.png"},
-            {"id": "rough_bark", "label": "Rough bark", "image": "/icons/rough_bark.png"},
-            {"id": "sharp_thorn", "label": "Sharp thorn", "image": "/icons/sharp_thorn.png"},
-            {"id": "dry_leaf", "label": "Dry crunchy leaf", "image": "/icons/dry_leaf.png"},
-            {"id": "smooth_pebble", "label": "Smooth pebble", "image": "/icons/smooth_pebble.png"},
-            {"id": "stiff_branch", "label": "Stiff branch", "image": "/icons/stiff_branch.png"},
-            {"id": "brittle_shell", "label": "Brittle shell", "image": "/icons/brittle_shell.png"},
-        ],
-    },
-}
-
-
-def generate_round_items(activity_type: str, total_rounds: int) -> list[list[dict]]:
-    """Generate per-round item sets: 1 correct + 2 distractors per round."""
-    catalog = COLLECTION_CATALOGS.get(activity_type)
-    if not catalog:
-        return []
-    correct = list(catalog["correct"])
-    distractors = list(catalog["distractors"])
-    random.shuffle(correct)
-    random.shuffle(distractors)
-
-    rounds: list[list[dict]] = []
-    dist_idx = 0
-    for r in range(total_rounds):
-        correct_item = {**correct[r % len(correct)], "correct": True}
-        items: list[dict] = [correct_item]
-        items.extend(distractors[dist_idx : dist_idx + 2])
-        dist_idx += 2
-        random.shuffle(items)
-        rounds.append(items)
-    return rounds
-
-
 # --- Endpoints ---
 
 
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/api/entities")
+async def list_entities() -> JSONResponse:
+    """Return all demo entities grouped by category for the frontend."""
+    return JSONResponse({"categories": all_entities_for_api()})
 
 
 @app.post("/api/start")

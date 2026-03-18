@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CameraIcon, BinocularsIcon, MagnifyingGlassIcon, LeafIcon } from '../icons';
 
-const CATEGORIES = [
+const FALLBACK_CATEGORIES = [
   {
     id: 'cat1',
     title: 'In-Device Verbal',
     subtitle: 'Imagine stories with your photo friend!',
-    Icon: BinocularsIcon,
     photos: [
       { id: 'dog', label: 'Stuffed Dog', src: '/icons/dog.png' },
       { id: 'cat', label: 'Cat', src: '/icons/cat.png' },
@@ -17,7 +16,6 @@ const CATEGORIES = [
     id: 'cat5',
     title: 'Out-of-Device Collection',
     subtitle: 'Go on a real-world scavenger hunt!',
-    Icon: MagnifyingGlassIcon,
     photos: [
       { id: 'ladybug', label: 'Ladybug', src: '/icons/ladybug.png' },
       { id: 'dandelion', label: 'Dandelion', src: '/icons/dandelion.png' },
@@ -25,8 +23,30 @@ const CATEGORIES = [
   },
 ];
 
+const CATEGORY_ICONS = {
+  cat1: BinocularsIcon,
+  cat5: MagnifyingGlassIcon,
+};
+
 export default function PhotoSelector({ onPhotoSelect, isLoading }) {
   const [dragOver, setDragOver] = useState(false);
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
+
+  useEffect(() => {
+    fetch('/api/entities')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch entities');
+        return res.json();
+      })
+      .then((data) => {
+        if (data.categories && data.categories.length > 0) {
+          setCategories(data.categories);
+        }
+      })
+      .catch(() => {
+        // Keep fallback categories on error
+      });
+  }, []);
 
   const handleFileUpload = (file) => {
     if (file && file.type.startsWith('image/')) {
@@ -96,47 +116,50 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
         </div>
       ) : (
         <>
-          {CATEGORIES.map((cat, catIdx) => (
-            <div key={cat.id} className="w-full max-w-lg mb-6">
-              {/* Category header */}
-              <div className="flex items-center gap-2 mb-2">
-                <cat.Icon className="w-5 h-5 text-[var(--color-forest)]" />
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--color-forest-dark)]">{cat.title}</h3>
-                  <p className="text-xs text-gray-500">{cat.subtitle}</p>
+          {categories.map((cat, catIdx) => {
+            const Icon = CATEGORY_ICONS[cat.id] || BinocularsIcon;
+            return (
+              <div key={cat.id} className="w-full max-w-lg mb-6">
+                {/* Category header */}
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className="w-5 h-5 text-[var(--color-forest)]" />
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--color-forest-dark)]">{cat.title}</h3>
+                    <p className="text-xs text-gray-500">{cat.subtitle}</p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Photo cards */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                {cat.photos.map((photo) => (
-                  <button
-                    key={photo.id}
-                    onClick={() => handlePhotoClick(photo)}
-                    className="group relative w-full aspect-square rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]"
-                  >
-                    <img
-                      src={photo.src}
-                      alt={photo.label}
-                      className="w-full h-full object-cover"
-                    />
-                    <span className="absolute bottom-0 inset-x-0 text-xs text-center text-[var(--color-forest-dark)] bg-white/90 py-1 truncate font-medium">
-                      {photo.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Vine divider between categories */}
-              {catIdx < CATEGORIES.length - 1 && (
-                <div className="flex items-center gap-2 my-4">
-                  <div className="flex-1 h-px bg-[var(--color-forest)]/20" />
-                  <LeafIcon className="w-4 h-4 text-[var(--color-forest)]/30" />
-                  <div className="flex-1 h-px bg-[var(--color-forest)]/20" />
+                {/* Photo cards */}
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {cat.photos.map((photo) => (
+                    <button
+                      key={photo.id}
+                      onClick={() => handlePhotoClick(photo)}
+                      className="group relative w-full aspect-square rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]"
+                    >
+                      <img
+                        src={photo.src}
+                        alt={photo.label}
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute bottom-0 inset-x-0 text-xs text-center text-[var(--color-forest-dark)] bg-white/90 py-1 truncate font-medium">
+                        {photo.label}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
-          ))}
+
+                {/* Vine divider between categories */}
+                {catIdx < categories.length - 1 && (
+                  <div className="flex items-center gap-2 my-4">
+                    <div className="flex-1 h-px bg-[var(--color-forest)]/20" />
+                    <LeafIcon className="w-4 h-4 text-[var(--color-forest)]/30" />
+                    <div className="flex-1 h-px bg-[var(--color-forest)]/20" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {/* Upload zone */}
           <div

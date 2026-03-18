@@ -382,24 +382,7 @@ async def resolve_turn(
 
     # --- 7. Step-specific logic ---
 
-    # 7a. Invitation: deferred acceptance (auto-advance from previous turn)
-    if _is_invitation_step(state.current_step) and state.invitation_accepted:
-        state.invitation_accepted = False
-        _advance_state(state)
-        turn_response = await _generate_with_retry(script_agent, state)
-        _append_ai_turn(state, turn_response.dialogue)
-        state.turn_count += 1
-        # Don't auto-advance into round steps — child needs to interact with the gallery
-        auto_advance = not _is_round_step(state.current_step) and _should_auto_advance(state)
-        return TurnResult(
-            turn_response=turn_response,
-            screen_frame=_get_screen_frame(state),
-            auto_advance=auto_advance,
-            response_type=_get_response_type(state.current_step),
-            error_exit=state.status == "error",
-        )
-
-    # 7b. Invitation: normal handling (first delivery, acceptance, decline, off-topic)
+    # 7a. Invitation: normal handling (first delivery, acceptance, decline, off-topic)
     if _is_invitation_step(state.current_step):
         turn_response = await _generate_with_retry(script_agent, state)
 
@@ -432,15 +415,15 @@ async def resolve_turn(
 
         if turn_response.child_intent == "accepted":
             state.invitation_decline_count = 0
-            state.invitation_accepted = True
-            # Stay on STEP_2, but signal auto-advance so frontend
-            # sends the next turn (which will advance to STEP_3).
+            # Advance immediately to first round/collect step — single response
+            _advance_state(state)
+            turn_response = await _generate_with_retry(script_agent, state)
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
             return TurnResult(
                 turn_response=turn_response,
                 screen_frame=_get_screen_frame(state),
-                auto_advance=True,
+                auto_advance=_should_auto_advance(state),
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
             )
@@ -486,24 +469,32 @@ async def resolve_turn(
         auto_advance = False
 
         if not turn_response.stay_on_step and has_child_input:
-            next_step_name = next_step(
-                state.current_step,
-                state.template_type,
-                state.current_round,
-                state.total_rounds,
-            )
-            next_step_needs_input = step_needs_user_input(next_step_name)
-
-            if _is_round_step(next_step_name) or not next_step_needs_input:
-                state.round_advance_pending = True
-                auto_advance = True
-            else:
+            if state.current_step.startswith("STEP_3_COLLECT_"):
+                # Cat5 collect: advance immediately — single combined response
                 _advance_state(state)
-
                 if is_terminal(state.current_step):
                     return _ended_result(state)
-
                 turn_response = await _generate_with_retry(script_agent, state)
+            else:
+                # Cat1 round: check whether to defer or advance immediately
+                next_step_name = next_step(
+                    state.current_step,
+                    state.template_type,
+                    state.current_round,
+                    state.total_rounds,
+                )
+                next_step_needs_input = step_needs_user_input(next_step_name)
+
+                if _is_round_step(next_step_name) or not next_step_needs_input:
+                    state.round_advance_pending = True
+                    auto_advance = True
+                else:
+                    _advance_state(state)
+
+                    if is_terminal(state.current_step):
+                        return _ended_result(state)
+
+                    turn_response = await _generate_with_retry(script_agent, state)
 
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1

@@ -23,6 +23,133 @@ class AssetPrompt:
     game_theme: str
 
 
+PHOTO_ASSETS: tuple[AssetPrompt, ...] = (
+    # --- Polka-Dot Patrol: correct ---
+    AssetPrompt(
+        "spotted_mushroom_photo.png",
+        "A small wild mushroom with a pale cream cap covered in brown spots and speckles, growing on forest floor among moss and fallen leaves. Macro close-up, natural outdoor lighting.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "dotted_pebble_photo.png",
+        "A smooth river pebble with natural dot-like speckles and circular mineral patterns on its surface, sitting on dirt and gravel. Warm sunlight, child's-eye perspective looking down.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "speckled_leaf_photo.png",
+        "A green leaf with natural speckled markings — small dots of yellow, brown, or red scattered across the surface. Lying on the ground, natural light.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "circle_flower_photo.png",
+        "A daisy or similar flower with circular petals arranged in a radial pattern around a round center disc. Shot from above looking down at the circular form. Garden setting, natural light.",
+        "Polka-Dot Patrol",
+    ),
+    # --- Polka-Dot Patrol: distractors ---
+    AssetPrompt(
+        "straight_stick_photo.png",
+        "A plain straight wooden stick or twig lying on the ground. No spots, no dots — just smooth bark with linear grain. Natural forest floor setting.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "plain_bark_photo.png",
+        "A piece of tree bark with rough linear texture but no spots or dots. Vertical ridges and furrows. Close-up of a tree trunk, natural lighting.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "long_grass_photo.png",
+        "A few blades of tall grass or a small tuft of grass showing long linear shapes with no circular patterns. Outdoor meadow setting, natural light.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "smooth_stone_photo.png",
+        "A completely smooth plain grey stone with no markings, spots, or patterns. Uniform color and texture, sitting on dirt or sand.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "pine_needle_photo.png",
+        "A small cluster of long thin pine needles lying on the forest floor, fanning out from a single bundle point. Dark green with smooth linear texture, no spots or dots.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "plain_leaf_photo.png",
+        "A single plain green leaf with smooth uniform color — no speckles, no spots. Simple oval shape with visible veins but no dot patterns. Lying on brown soil, natural light.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "forked_twig_photo.png",
+        "A small Y-shaped twig or forked branch lying on the ground. Smooth brown bark with a clear fork and split. No spots or circular markings. Natural forest floor.",
+        "Polka-Dot Patrol",
+    ),
+    AssetPrompt(
+        "acorn_cap_photo.png",
+        "A single acorn cap (the bumpy cup without the nut) sitting on fallen leaves. Rough cross-hatched texture on the cap surface. Natural outdoor light.",
+        "Polka-Dot Patrol",
+    ),
+    # --- Fluffy Expedition: correct ---
+    AssetPrompt(
+        "fuzzy_moss_photo.png",
+        "A patch of soft fuzzy green moss growing on a rock or tree base. Velvety texture clearly visible in macro close-up. Damp forest setting, soft diffused light.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "fluffy_seed_photo.png",
+        "A single fluffy seed like a dandelion seed or milkweed fluff floating or caught on a branch. Wispy white filaments catching the light. Macro close-up, backlit with golden light.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "soft_petal_photo.png",
+        "A single velvety flower petal (rose or peony) lying on the ground. Soft silky texture visible. Pastel pink or lavender color. Close-up with soft natural lighting.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "woolly_caterpillar_photo.png",
+        "A fuzzy woolly bear caterpillar with visible soft furry bristles crawling on a leaf or twig. Macro close-up showing the fluffy texture, warm outdoor lighting.",
+        "Fluffy Expedition Dandelion",
+    ),
+    # --- Fluffy Expedition: distractors ---
+    AssetPrompt(
+        "hard_rock_photo.png",
+        "A hard angular rock with rough rigid surface. Clearly solid and unyielding. Sitting on dry ground, natural outdoor lighting.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "spiky_pinecone_photo.png",
+        "A pinecone with sharp pointed scales sticking out. Prickly texture clearly visible. Lying on forest floor among pine needles. Natural lighting.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "rough_bark_photo.png",
+        "Close-up of rough coarse tree bark with deep cracks and rigid texture. Hard and scratchy looking. Natural lighting on tree trunk.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "sharp_thorn_photo.png",
+        "A thorny branch or stem with visible sharp thorns and spines. Clearly pointy and prickly. Close-up, natural outdoor setting with green blurred background.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "dry_leaf_photo.png",
+        "A single dry crunchy autumn leaf curled at the edges. Brittle brown and orange color with visible cracking and stiff veins. Lying on dry ground. Natural light.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "smooth_pebble_photo.png",
+        "A small smooth river-washed pebble with a hard polished surface. Cool grey or beige, sitting on sand or gravel. Natural outdoor light.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "stiff_branch_photo.png",
+        "A short rigid tree branch — thick, woody, and unbending. Dark brown bark, snapped end visible. Lying on forest floor. Natural light.",
+        "Fluffy Expedition Dandelion",
+    ),
+    AssetPrompt(
+        "brittle_shell_photo.png",
+        "A thin brittle snail shell or broken eggshell fragment on the ground. Hard, fragile, and delicate. Pale cream and white color on soil. Natural outdoor light.",
+        "Fluffy Expedition Dandelion",
+    ),
+)
+
 ASSETS: tuple[AssetPrompt, ...] = (
     AssetPrompt(
         "spotted_mushroom.png",
@@ -56,7 +183,7 @@ ASSETS: tuple[AssetPrompt, ...] = (
     ),
     AssetPrompt(
         "long_grass.png",
-        "Wispy green grass blades with flowing linear strokes and no dots or circles anywhere.",
+        "A small tuft of tall green grass blades growing from the ground, swaying gently with flowing linear strokes and no dots or circles.",
         "Polka-Dot Patrol",
     ),
     AssetPrompt(
@@ -86,7 +213,7 @@ ASSETS: tuple[AssetPrompt, ...] = (
     ),
     AssetPrompt(
         "fuzzy_moss.png",
-        "A pillowy mound of bright green moss with a velvety, touchable texture and soft edges.",
+        "A close-up patch of soft fuzzy green moss growing on a rock, with velvety plush texture clearly visible.",
         "Fluffy Expedition Dandelion",
     ),
     AssetPrompt(
@@ -175,8 +302,20 @@ def build_prompt(asset: AssetPrompt) -> str:
         f"Main subject: {asset.description} "
         "Use a warm children's-book illustration style with gentle outlines, soft painterly shading, and natural earth-toned colors. "
         "Show exactly one main object centered and large in frame, with a simple soft outdoor background and no text. "
+        "The background must extend to ALL edges of the image — no black borders, no white borders, no empty margins, no rounded corner mask. "
         "Keep the silhouette very clear and easy to recognize at small UI icon size for ages 2-8. "
         "Do not add extra objects, characters, labels, borders, frames, or watermarks."
+    )
+
+
+def build_prompt_photo(asset: AssetPrompt) -> str:
+    return (
+        f"A close-up photograph of {asset.description} found outdoors in a garden, park, or forest. "
+        "Natural warm lighting, shallow depth of field with soft blurred green background. "
+        "Child's-eye perspective looking down. Shot on iPhone, candid nature photography style. "
+        "The subject must fill most of the frame — large and close-up, edge-to-edge, with minimal background padding. "
+        "The image must have sharp square corners with NO rounded corners, NO border radius, NO vignette, and NO card-like framing. "
+        "Square format. No text, no labels, no watermarks."
     )
 
 

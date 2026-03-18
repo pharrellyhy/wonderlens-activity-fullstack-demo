@@ -12,88 +12,21 @@ from pathlib import Path
 from typing import Literal
 
 try:
+    from .entity_registry import entity_name_for_filename, get_creative_slots, is_demo_entity
     from .logger import setup_logger
     from .scenarios import SCENARIO_CATEGORIES
-    from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
     from .schemas.recipe import InstructionRecipe
     from .schemas.session_state import SessionStateModel
 except ImportError:
+    from entity_registry import entity_name_for_filename, get_creative_slots, is_demo_entity
     from logger import setup_logger
     from scenarios import SCENARIO_CATEGORIES
-    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
     from schemas.recipe import InstructionRecipe
     from schemas.session_state import SessionStateModel
 
 logger = setup_logger(__name__)
 
 _RECIPES_DIR = Path(__file__).parent / "recipes"
-
-_DEMO_FILENAMES: set[str] = {"dog.png", "cat.png", "dinosaur.png", "ladybug.png", "dandelion.png"}
-
-# Map demo filenames to entity names used in session state
-_FILENAME_ENTITIES: dict[str, str] = {
-    "dog.png": "dog",
-    "cat.png": "cat",
-    "dinosaur.png": "dinosaur",
-    "ladybug.png": "ladybug",
-    "dandelion.png": "dandelion",
-}
-
-# Default creative slots per activity type (derived from scenario YAML defaults)
-_CAT1_SLOTS: dict[str, Cat1CreativeSlots] = {
-    "mood_changer_dog": Cat1CreativeSlots(
-        game_mechanic="what_would_it_say",
-        metaphor="This fluffy dog friend has so many feelings inside!",
-        role_title="Emotion Translator",
-        round_scenarios=["warm sunshine on belly", "tripped and went bump", "favorite treat arrives"],
-        escalation_axis="comfortable to excited",
-        observation_detail="those cute floppy ears and super soft fur",
-    ),
-    "dream_whisperer_cat": Cat1CreativeSlots(
-        game_mechanic="storytelling_chain",
-        metaphor="This sleepy cat is dreaming the most magical dreams!",
-        role_title="Dream Whisperer",
-        round_scenarios=["floating on a cloud in the sky", "swimming in a milk ocean", "magical garden of favorites"],
-        escalation_axis="familiar to fantastical",
-        observation_detail="those soft little paws and fluffy fur",
-    ),
-    "time_machine_dinosaur": Cat1CreativeSlots(
-        game_mechanic="what_would_it_say",
-        metaphor="This amazing dinosaur has traveled through all of history!",
-        role_title="Time Traveler",
-        round_scenarios=["prehistoric jungle", "rumbling volcano", "peaceful lake at sunset"],
-        escalation_axis="everyday to dramatic to peaceful",
-        observation_detail="those big teeth and powerful legs",
-    ),
-}
-
-_CAT5_SLOTS: dict[str, Cat5CreativeSlots] = {
-    "polka_dot_patrol": Cat5CreativeSlots(
-        observation_angle="pattern",
-        collection_criterion="Find things with dots, spots, or circles",
-        collection_count=3,
-        mission_metaphor="You are a Polka-Dot Patrol Officer!",
-        role_title="Polka-Dot Patrol Officer",
-        synthesis_type="comparison_chart",
-        stuck_hint="Try looking at flowers up close, or at the ground near your feet",
-        naming_prompt="What kind of dots or spots do you see on this?",
-    ),
-    "fluffy_expedition_dandelion": Cat5CreativeSlots(
-        observation_angle="texture",
-        collection_criterion="Find things that are fluffy, fuzzy, or soft",
-        collection_count=3,
-        mission_metaphor="You are a Fluffy Expedition Explorer!",
-        role_title="Fluffy Expedition Explorer",
-        synthesis_type="comparison_chart",
-        stuck_hint="Try touching things around you — look for anything soft or fuzzy",
-        naming_prompt="How does this feel? Is it fuzzy, silky, or puffy?",
-    ),
-}
-
-
-def is_demo_entity(filename: str) -> bool:
-    """Check if the filename matches a demo icon."""
-    return filename.lower() in _DEMO_FILENAMES
 
 
 @lru_cache(maxsize=8)
@@ -122,13 +55,8 @@ def recipe_to_session_state(
     category = SCENARIO_CATEGORIES.get(activity_type, "category_1")
     template_type: Literal["cat1", "cat5"] = "cat5" if category == "category_5" else "cat1"
 
-    # Get creative slots for this activity
-    if template_type == "cat5":
-        creative_slots = _CAT5_SLOTS[activity_type]
-    else:
-        creative_slots = _CAT1_SLOTS[activity_type]
-
-    entity_name = _FILENAME_ENTITIES.get(filename.lower(), "object")
+    creative_slots = get_creative_slots(activity_type)
+    entity_name = entity_name_for_filename(filename)
 
     state = SessionStateModel(
         session_id=session_id,

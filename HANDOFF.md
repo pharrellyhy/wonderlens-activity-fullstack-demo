@@ -4,6 +4,57 @@ Last updated: 2026-03-18
 
 ---
 
+## Review Entity Registry Follow-Up: PhotoSelector Cleanup
+
+**Problem**: The latest entity-registry pass introduced runtime-backed entity loading in `PhotoSelector`, but the component still carried a `loadingEntities` state that was never read. That left the freshly modified frontend file failing the repo lint rules even though the backend registry/API work itself held up under focused review.
+
+**Solution**: Reviewed the registry refactor and its immediate integrations (`entity_registry.py`, `scenarios.py`, `recipe_loader.py`, `server.py`, local registry/API tests) and left that backend surface unchanged. Simplified `frontend/src/components/PhotoSelector.jsx` by removing the unused `loadingEntities` state and the redundant `.finally(...)` branch, preserving the existing `/api/entities` fetch with fallback categories.
+
+**Edits**:
+- `frontend/src/components/PhotoSelector.jsx` — removed unused `loadingEntities` state from the new `/api/entities` loading path
+- `HANDOFF.md` — added this review/update entry
+
+**NOT Changed**:
+- `backend/entity_registry.py`, `backend/scenarios.py`, `backend/recipe_loader.py`, `backend/server.py`, and `backend/turn_handler.py` were reviewed in this pass and left unchanged
+- local `tests/test_entity_registry.py` and local `tests/test_api.py` were reviewed and executed without modification
+- Asset-generation scripts and generated icon files currently in the worktree were not changed in this pass
+
+**Verification**:
+- `cd backend && uv run pytest ../tests/test_entity_registry.py ../tests/test_api.py -q` — PASS (`50 passed`)
+- `cd backend && uv run ruff check entity_registry.py scenarios.py recipe_loader.py server.py turn_handler.py` — PASS
+- `cd frontend && npm run lint -- src/components/PhotoSelector.jsx` — PASS
+
+---
+
+## Entity Registry — Consolidate Scattered Entity Config
+
+**Problem**: Adding a new entity required editing 5-6 files with hardcoded dicts that had to stay in sync (`scenarios.py` keyword maps, `recipe_loader.py` filename/slot dicts, `server.py` collection catalogs, `PhotoSelector.jsx` hardcoded categories). No validation caught missing pieces.
+
+**Solution**: Created `backend/entity_registry.py` as the single source of truth for all entity configuration. All 5 entities are defined once with Pydantic models (`EntityConfig`, `CollectionCatalog`, `CollectionItem`). Other modules import lookup helpers instead of maintaining their own dicts. Added `GET /api/entities` endpoint for the frontend. Added `validate_registry()` that runs at server startup to catch missing recipe/scenario files. Frontend fetches entities from the API with hardcoded fallback.
+
+**Edits**:
+- `backend/entity_registry.py` — **NEW**: registry module with all entity config, Pydantic models, derived lookup helpers, `generate_round_items()` (moved from server.py), `all_entities_for_api()`, `validate_registry()`
+- `backend/scenarios.py` — removed `_ENTITY_SCENARIO_MAP` and `SCENARIO_CATEGORIES` dicts; imports from `entity_registry`; re-exports `SCENARIO_CATEGORIES` for backward compatibility; `match_scenario()` uses registry keyword/feature maps
+- `backend/recipe_loader.py` — removed `_DEMO_FILENAMES`, `_FILENAME_ENTITIES`, `_CAT1_SLOTS`, `_CAT5_SLOTS`, `is_demo_entity()`; imports `is_demo_entity`, `entity_name_for_filename`, `get_creative_slots` from registry
+- `backend/server.py` — removed `COLLECTION_CATALOGS` dict and `generate_round_items()` function; imports from `entity_registry`; added `GET /api/entities` endpoint; calls `validate_registry()` in `lifespan()` startup; removed unused `random` import
+- `frontend/src/components/PhotoSelector.jsx` — fetches entities from `/api/entities` on mount with `useEffect`; hardcoded categories kept as fallback; category icons resolved via lookup map
+- `tests/test_entity_registry.py` — **NEW**: 22 tests covering registry data, lookups, `generate_round_items()`, `all_entities_for_api()`, `validate_registry()`
+- `tests/test_api.py` — added `TestEntitiesEndpoint` with 2 tests for the new `/api/entities` endpoint
+
+**NOT Changed**:
+- `backend/agents/director.py` and `backend/agents/pipeline.py` — import `SCENARIO_CATEGORIES` from `scenarios.py` which re-exports it; no changes needed
+- Recipe JSON files, scenario YAML files, prompt/skill markdown
+- Frontend hooks, App.jsx, other components
+- State machine, DB layer, STT, TTS, Script Agent
+
+**Verification**:
+- `cd backend && uv run pytest ../tests/ -k "not e2e" -q` — PASS (175 passed)
+- `cd backend && uv run ruff check entity_registry.py scenarios.py recipe_loader.py server.py` — PASS
+- `cd backend && uv run ruff format --check entity_registry.py scenarios.py recipe_loader.py server.py` — PASS
+- `cd backend && uv run mypy entity_registry.py scenarios.py recipe_loader.py server.py` — no new errors (all pre-existing)
+
+---
+
 ## Review Step Transition Refactor: Deferred Round Advance Fix
 
 **Problem**: Reviewing the current uncommitted step-transition refactor exposed a real regression in the new unified `turn_handler`: round completion advanced `current_step` before the next step's prompt was generated. That let `/api/turn` and `/api/turn-speak` pair a previous-round line with the next step's screen frame, and it could drop the first real `STEP_4_SYNTHESIS` prompt entirely. The existing tests checked state changes, but they did not verify which step the Script Agent was actually generating for after a round completion.
@@ -177,172 +228,5 @@ Last updated: 2026-03-18
 - `cd backend && uv run ruff check server.py` — PASS
 - `cd frontend && npm run build` — verify no build errors
 - Without actual PNG files, items gracefully fall back to LeafIcon via `onError` handler
-
----
-
-## Review Latest Recipe/Audio Changes + Harden Recipe Contracts
-
-**Problem**: `HANDOFF.md` was behind the current repo state. The latest reviewed changes spanned two areas: the committed frontend audio-unlock fix (`fix(sfx): unlock audio before async API call`) and the new recipe wording/design pass reflected in `docs/WonderLens_Game_Designs.md` plus the five modified `backend/recipes/*.json` files. The frontend fix itself looked coherent on review, but the recipe updates still depended on informal reviewer checks: schema validation did not enforce sequential round numbering, metadata round counts could drift from the actual rounds, and collection recipes could omit a synthesis step without failing fast.
-
-**Solution**: Reviewed the latest committed frontend audio path and left it unchanged after lint/build validation. Reviewed `docs/WonderLens_Game_Designs.md` against the currently modified instruction recipes and kept those recipe edits intact. Hardened the instruction-recipe schema layer so malformed recipe structure now fails at load time: round numbers must be sequential from 1, `metadata.round_count` must match the actual round list, and any recipe with `collection_items` must define a synthesis step. Added focused local schema regressions covering those contracts so future recipe copy/design edits are checked immediately.
-
-**Edits**:
-- `backend/schemas/step_instruction.py` — added post-validation for sequential round numbering
-- `backend/schemas/recipe.py` — added post-validation for round-count consistency and collection-recipe synthesis requirements
-- local `tests/test_schemas.py` — added regression tests for the new instruction-recipe contracts (note: this path is ignored by the repo git config, so the coverage is local-only unless the ignore rule changes)
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `frontend/src/hooks/useSfxPlayer.js`, `frontend/src/hooks/useSessionOrchestration.js`, and `frontend/src/components/DeviceScreen.jsx` were reviewed against the latest committed SFX unlock fix and left unchanged
-- `docs/WonderLens_Game_Designs.md` was reviewed for context and left unchanged
-- `backend/recipes/dream_whisperer_cat.json`, `backend/recipes/fluffy_expedition_dandelion.json`, `backend/recipes/mood_changer_dog.json`, `backend/recipes/polka_dot_patrol.json`, and `backend/recipes/time_machine_dinosaur.json` were reviewed against the new design direction and left unchanged in this pass
-
-**Verification**:
-- `cd backend && uv run pytest ../tests/test_schemas.py -q` — PASS (`17 passed`)
-- `cd backend && uv run pytest ../tests/test_api.py ../tests/test_schemas.py -q` — PASS (`39 passed`)
-- `cd backend && uv run ruff check schemas/recipe.py schemas/step_instruction.py ../tests/test_schemas.py` — PASS
-- `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Review Instruction-Recipe STEP_2 Flow + Refresh Tests
-
-**Problem**: The new instruction-based recipe pass landed with two concrete gaps. First, the actual turn flow still skipped over STEP_2 in practice: sessions advanced away from the hook immediately, `/api/turn` moved past STEP_2 before invitation replies could be interpreted, and `/api/turn-speak` could start streaming audio for the wrong line before a second decline switched into `EARLY_EXIT`. Second, the tests had drifted from the implementation: shared fixtures still pointed at the deleted `backend/fallbacks/` path, API tests still imported removed pre-generated helpers, and schema coverage still targeted the old `ActivityRecipe` format instead of the new instruction-recipe models.
-
-**Solution**: Reviewed the active instruction-recipe code against `docs/plans/instruction-based-recipes.md`, kept the instruction-driven architecture intact, and fixed the STEP_2 invitation flow instead of papering over it in tests. Session initialization now leaves the hook as the active delivered step, STEP_2 invitation replies are resolved explicitly before advancing into round 1, second declines exit cleanly in both `/api/turn` and `/api/turn-speak`, and the session payload now surfaces `invitation_decline_count`. The test suite was updated to match the current contract: instruction-recipe fixtures now load from `backend/recipes/`, schema tests validate `InstructionRecipe`/`StepInstruction`, and API/visual tests cover the real STEP_2 rules, acceptance, decline, and streamed early-exit behavior.
-
-**Edits**:
-- `backend/server.py` — fixed the active-step flow for instruction recipes; added shared invitation-step helpers; kept STEP_2 declines on the invitation step until exit/acceptance; added `invitation_decline_count` to the serialized session state; made `/api/turn-speak` resolve STEP_2 invitation replies non-streaming so TTS speaks the final canonical turn
-- `backend/agents/pipeline.py` — stopped pre-advancing past the hook during session initialization so STEP_2 can actually be delivered on the next turn
-- `tests/conftest.py` — replaced deleted fallback fixtures with recipe fixtures from `backend/recipes/`
-- `tests/test_schemas.py` — shifted schema coverage from the removed dialogue-based recipe JSONs to `InstructionRecipe`, `StepInstruction`, and the current demo recipe files
-- `tests/test_api.py` — replaced stale pre-generated-path assertions with instruction-recipe coverage for demo `/api/start`, STEP_2 rules delivery, STEP_2 acceptance, first decline, second decline exit, and `/api/turn-speak` early-exit audio
-- `tests/test_server_visual.py` — updated visual-frame tests to account for the new STEP_2 acceptance branch before round rendering
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `backend/agents/script_agent.py`, `backend/recipe_loader.py`, the new instruction recipe JSON files, the prompt/skill markdown files, and the tier rules added in the instruction-recipe pass were reviewed in this pass and left unchanged
-- Frontend files currently modified in the worktree were not changed in this pass; they remain whatever state they were already in before this review started
-- No broader state-machine refactor or frontend orchestration change was introduced beyond the backend/session flow fix above
-
-**Verification**:
-- `cd backend && uv run pytest ../tests/test_api.py ../tests/test_server_visual.py ../tests/test_turn_flow.py ../tests/test_schemas.py ../tests/test_pipeline_visual.py -q` — PASS (`48 passed`)
-- `cd backend && uv run ruff check agents/pipeline.py server.py ../tests/test_api.py ../tests/test_server_visual.py ../tests/test_schemas.py ../tests/conftest.py` — PASS
-- `cd backend && uv run ruff format --check agents/pipeline.py server.py ../tests/test_api.py ../tests/test_server_visual.py ../tests/test_schemas.py ../tests/conftest.py` — PASS
-
----
-
-## Instruction-Based Recipe System
-
-**Problem**: Pre-generated recipes contained exact sentences — if a child said something unexpected, they got a canned response that didn't acknowledge what they said. Prompts also used directive tone ("Tell me!", "Go find!") instead of invitational language ("Would you like to...?"). No feature validation ensured AI only referenced visible photo features.
-
-**Solution**: Converted recipes from fixed dialogue scripts to instruction documents (goal + constraints per step). Every turn now calls the Script Agent LLM, which generates contextual, invitational, emotion-tagged responses guided by the recipe instructions. Added invitation decline handling at STEP_2 with graceful exit after 2 declines.
-
-**Edits**:
-- `backend/schemas/step_instruction.py` — **NEW**: `StepGoal`, `RoundInstruction`, `StepInstruction` models for instruction-based recipes
-- `backend/schemas/recipe.py` — Added `InstructionRecipe` model with `step_instructions`, `photo_features`, `collection_items`
-- `backend/schemas/turn_response.py` — Added `child_intent` field for STEP_2 invitation handling
-- `backend/schemas/session_state.py` — Replaced `is_pregenerated`/`recipe` with `instruction_recipe`/`invitation_decline_count`
-- `backend/schemas/__init__.py` — Exported new models
-- `backend/recipes/*.json` (5 files) — Converted from exact dialogue to instruction format with goals, constraints, emotion tags, acceptable themes, photo features
-- `backend/agents/script_agent.py` — Added instruction overlay (`_build_instruction_overlay`), emotion tag fallback (`_ensure_emotion_tag`, `_get_suggested_emotion_tag`), photo feature anchors in system prompt, invitational patterns in tier constraints, updated user prompt for bracket emotion tags and child_intent
-- `backend/skills/script_turn.md` — Changed emotion format from `(excited)` to `[excited]`, added feature anchors section, added invitational language rules, added `child_intent` output rule
-- `backend/skills/step_instructions/cat1_step2_rules.md` — Added invitation handling with child_intent
-- `backend/skills/step_instructions/cat5_step2_mission.md` — Added invitation handling with child_intent
-- `backend/tier_rules.yaml` — Added `invitational_patterns` and `forbidden_directives` per tier
-- `backend/recipe_loader.py` — Major rewrite: removed `resolve_turn_from_recipe`, `resolve_wrong_photo_turn`, `_select_acknowledgment`, `_select_round_transition_ack`; renamed `load_demo_recipe` to `load_instruction_recipe`; simplified `recipe_to_session_state` (no first turn generation)
-- `backend/server.py` — Demo entities now use Script Agent for hook turn; removed all `is_pregenerated` branching; always calls Script Agent for turn generation; added invitation decline logic at STEP_2 in both `/api/turn` and `/api/turn-speak`
-
-**NOT Changed**:
-- Frontend components — no changes needed, responses use the same API shape
-- Live pipeline path (custom photo uploads) — unchanged
-- State machine, DB layer, STT, TTS, scenarios, pipeline.py
-- `polka_dot_patrol_hard.json` — not a demo recipe, different format
-
-**Verification**:
-- `uv run ruff check . && uv run ruff format .` — PASS
-- `uv run python -c "from recipe_loader import load_instruction_recipe; ..."` — all 5 recipes validated
-- `uv run python -c "from recipe_loader import ..., recipe_to_session_state; ..."` — session state creation OK
-- `uv run python -c "from agents.script_agent import _build_system_prompt; ..."` — prompt includes feature anchors, invitational patterns, forbidden directives
-- `uv run python -c "from agents.script_agent import _ensure_emotion_tag; ..."` — emotion tag enforcement OK
-
----
-
-## Review Pre-generated Recipe Path + Restore Cat5 Round Acknowledgment
-
-**Problem**: The new pre-generated recipe feature added a no-LLM path for demo entities, but the turn resolver had a cat5 regression and no matching API coverage. After a correct collection pick, `/api/turn` advanced to the next step and called `resolve_turn_from_recipe()`, but the resolver ignored the successful `photo_id` and dropped the previous round’s `on_correct` acknowledgment entirely. The current test file also still hardcoded the old `backend/fallbacks/` recipe path and had no coverage for the demo `/api/start` shortcut or the pre-generated `/api/turn-speak` bypass path.
-
-**Solution**: Reviewed the pre-generated recipe implementation, kept the no-LLM architecture intact, and fixed the cat5 transition logic by treating a non-null `photo_id` as a successful round completion when building the acknowledgment that bridges into the next round or synthesis step. Added focused API regressions for the demo start shortcut, the cat5 correct-pick acknowledgment, the cat5 wrong-photo recipe retry line, and the `/api/turn-speak` pre-generated bypass path. Updated the legacy recipe test path from `fallbacks/` to `recipes/`.
-
-**Edits**:
-- `backend/recipe_loader.py` — added `_select_round_transition_ack()` and used it for pre-generated round/synthesis transitions so cat5 correct photo picks retain the prior round’s `on_correct` acknowledgment before the next prompt
-- `tests/test_api.py` — switched the recipe fixture path to `backend/recipes/`; added focused coverage for demo `/api/start`, pre-generated cat5 correct-pick acknowledgment, pre-generated cat5 wrong-photo retry text, and pre-generated `/api/turn-speak` bypass behavior
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `backend/server.py`, `backend/agents/pipeline.py`, `backend/schemas/creative_slots.py`, `backend/schemas/session_state.py`, `backend/schemas/voice_script.py`, the updated prompt files, and `docs/plans/pre-generated-recipes.md` were reviewed in this pass and left unchanged after the targeted fix above.
-- `backend/recipes/polka_dot_patrol_hard.json` remains in its older non-`ActivityRecipe` format and was not rewritten in this pass; the pre-generated demo path and the new validation run cover only the five demo recipes listed in the feature plan.
-- No frontend files changed; this pass stayed on the new backend pre-generated recipe path and its missing regression coverage.
-
-**Verification**:
-- `uv run pytest tests/test_api.py -q -k "start_session_uses_pregenerated_recipe_for_demo_entity or pregenerated_cat5_correct_pick_keeps_round_acknowledgment or pregenerated_cat5_wrong_photo_uses_recipe_retry_line or turn_speak_uses_pregenerated_recipe_without_streaming_agent"` — PASS (`4 passed, 17 deselected`)
-- `uv run ruff check backend/server.py backend/recipe_loader.py backend/agents/pipeline.py backend/schemas/creative_slots.py backend/schemas/session_state.py backend/schemas/voice_script.py tests/test_api.py` — PASS
-- `uv run ruff format --check backend/recipe_loader.py tests/test_api.py` — PASS
-- `cd backend && uv run python - <<'PY' ...` — PASS (`validated 5 demo recipes`)
-
----
-
-## Pre-generated Static Recipes for Demo Entities
-
-**Problem**: Each demo session ran the full LLM pipeline (~580ms on `/api/start`, ~200-400ms per `/api/turn`) for the 5 fixed demo entities (dog, cat, dinosaur, ladybug, dandelion), adding latency and API cost for content that could be pre-authored.
-
-**Solution**: Pre-authored complete recipe JSON files for all 5 demo entities. Demo sessions now load recipes directly — zero LLM calls (Vision, Director, Script Agent all bypassed). Custom photo uploads continue using the live pipeline unchanged.
-
-**Edits**:
-- `backend/schemas/voice_script.py` — Added `synthesis_speech`, `early_exit_speech`, tone markers (`hook_tone`, `transition_tone`, `closing_tone`, `tomorrow_tone`, `synthesis_tone`, `early_exit_tone`) to `VoiceScript`; added `tone_marker`, `on_wrong_photo` to `Round`
-- `backend/schemas/session_state.py` — Added `is_pregenerated: bool`, `recipe: ActivityRecipe | None` fields to `SessionStateModel`
-- `backend/agents/pipeline.py` — Renamed `_FALLBACKS_DIR` → `_RECIPES_DIR`, `load_fallback()` → `load_recipe()`, path now points to `recipes/`
-- `backend/fallbacks/` → `backend/recipes/` — Git-moved directory
-- `backend/recipes/*.json` (5 files) — Enriched with `early_exit_speech`, tone markers on all fields, `on_wrong_photo` on cat5 rounds, `synthesis_speech` on cat5 recipes
-- `backend/recipe_loader.py` — **NEW**: `is_demo_entity()`, `load_demo_recipe()` (with `@lru_cache`), `recipe_to_session_state()`, `resolve_turn_from_recipe()`, `resolve_wrong_photo_turn()`, `_select_acknowledgment()` for correct/incorrect/silence branching
-- `backend/server.py` — `/api/start` branches on `is_demo_entity()` to skip Vision/Director/Script pipeline; `/api/turn` and `/api/turn-speak` branch on `state.is_pregenerated` at all 4 turn-generation points (silence exit, wrong-photo exit, wrong-photo retry, main turn); pre-gen `/api/turn-speak` bypasses streaming Script Agent entirely
-
-**NOT Changed**:
-- Live pipeline path (custom photo uploads) — unchanged, still runs full Vision + Director + Script + Visual agents
-- Frontend components — no changes needed, pre-gen responses use the same API response shape
-- State machine, DB layer, STT, TTS, scenarios, tier rules, tests
-- `polka_dot_patrol_hard.json` — kept as-is (not a core demo entity)
-
-**Verification**:
-- `uv run ruff check .` — PASS
-- `uv run ruff format --check .` — PASS
-- Recipe JSON validation: all 5 files parse against updated `ActivityRecipe` schema
-- Integration test: full cat1 turn flow (hook → rules → 3 rounds with correct/incorrect/silence ack → celebrate → closing → early_exit)
-- Integration test: cat5 wrong photo returns `on_wrong_photo` text from recipe
-- `is_demo_entity()` matches all 5 demo filenames, rejects custom uploads
-
----
-
-## Review Latest Cat 5 Gallery Prompt Pass + Restore Request Locking
-
-**Problem**: The latest Cat 5 UI/backend pass added `collection_criterion` to the session payload and started passing the tapped item label through the frontend, but it also reintroduced a request-locking bug. `PhotoGallery` now waits on the promise returned by `onPhotoSelect()`, while `useSessionOrchestration.handlePhotoCollection()` stopped returning the `sendPhotoCollection()` promise. That meant the gallery could unlock immediately again, allowing fast repeat taps before the in-flight collection turn finished. The new backend payload field for the gallery prompt also had no explicit API coverage.
-
-**Solution**: Reviewed the active Cat 5 change set, kept the prompt/content changes intact, restored promise-based locking by returning the collection request from `handlePhotoCollection()`, and extended the focused Cat 5 API regression to assert the new `collection_criterion` field alongside the existing round-item payload. This keeps the frontend lock aligned with the admitted request lifecycle and gives the new gallery prompt contract a backend test.
-
-**Edits**:
-- `frontend/src/hooks/useSessionOrchestration.js` — returned `sendPhotoCollection(photoId, label)` from `handlePhotoCollection()` so `PhotoGallery` stays locked until the collection request settles
-- `tests/test_api.py` — added an assertion that Cat 5 turn responses serialize `session_state.collection_criterion` for the gallery prompt path
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `frontend/src/App.jsx`, `frontend/src/components/PhotoGallery.jsx`, `frontend/src/hooks/useConversation.js`, `backend/server.py`, `backend/agents/script_agent.py`, `backend/db.py`, `backend/skills/step_instructions/cat5_step2_mission.md`, and `backend/skills/step_instructions/cat5_step3_collect.md` were reviewed in this pass and left as-is after the targeted fix above.
-- There is still no frontend unit/integration test harness in the current workspace, so the UI-side fix is covered by lint/build plus code-path review rather than an automated component test.
-
-**Verification**:
-- `uv run pytest tests/test_api.py -q -k "turn_serializes_collected_photos_for_cat5_collection or turn_returns_wrong_photo_without_advancing_cat5_collection or turn_speak_records_exact_collected_item_label_for_cat5_collection"` — PASS (`3 passed, 14 deselected`)
-- `uv run ruff check backend/server.py backend/agents/script_agent.py backend/db.py tests/test_api.py` — PASS
-- `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS
 
 ---

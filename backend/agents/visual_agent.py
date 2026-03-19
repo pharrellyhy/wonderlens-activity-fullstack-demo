@@ -233,7 +233,7 @@ class VisualAgent:
                         widget=widget,
                         widget_params={
                             "description": f"Scene {i} for {entity} activity",
-                            "round_number": i,
+                            "roundNumber": i,
                             "entity": entity,
                         },
                         animation="scene_transition" if i > 1 else arc_animation,

@@ -160,6 +160,10 @@ def get_screen_frame(
     if visual_frames:
         matched = _match_visual_frame(step, visual_frames)
         if matched:
+            # Ensure roundNumber is correct for round/collect steps
+            if step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
+                _, rnd = _parse_round_step(step)
+                matched.widget_params["roundNumber"] = rnd
             return matched
 
     entity = context.get("entity_name", context.get("entity", "object"))

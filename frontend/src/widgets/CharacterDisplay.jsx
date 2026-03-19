@@ -16,9 +16,8 @@ export default function CharacterDisplay({ description, animation, roundNumber =
   const IconComponent = ROUND_ICONS[idx];
 
   return (
-    <div className={`flex flex-col items-center gap-4 p-6 rounded-2xl bg-gradient-to-br ${colorClass} border-2 w-full max-w-lg transition-all duration-500 ${
-      animation === 'scene_transition' ? 'animate-fade-in' : ''
-    }`}>
+    <div className={`flex flex-col items-center gap-4 p-6 rounded-2xl bg-gradient-to-br ${colorClass} border-2 w-full max-w-lg transition-all duration-500 ${animation === 'scene_transition' ? 'animate-fade-in' : ''
+      }`}>
       <div className="w-14 h-14 rounded-full bg-white/60 flex items-center justify-center shadow-sm">
         <IconComponent className="w-8 h-8 text-[var(--color-forest)]" />
       </div>
@@ -28,11 +27,11 @@ export default function CharacterDisplay({ description, animation, roundNumber =
         {entity && <p className="text-xs text-gray-500 mt-1">{entity}</p>}
       </div>
 
-      {roundNumber > 0 && (
-        <div className="text-xs text-[var(--color-forest)] bg-white/50 px-3 py-1 rounded-full font-medium">
-          Round {roundNumber}
-        </div>
-      )}
+      {/* {roundNumber > 0 && ( */}
+      {/*   <div className="text-xs text-[var(--color-forest)] bg-white/50 px-3 py-1 rounded-full font-medium"> */}
+      {/*     Round {roundNumber} */}
+      {/*   </div> */}
+      {/* )} */}
     </div>
   );
 }

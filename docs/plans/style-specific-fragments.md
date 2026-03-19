@@ -29,11 +29,11 @@ If no fragment exists, the base template is used alone (backward-compatible).
 ```
 skills/step_instructions/
 ├── cat1_step2_rules.md                            ← base
-├── cat1_step2_rules__what_would_it_say.md         ← fragment
+├── cat1_step2_rules__voice_acting.md         ← fragment
 ├── cat1_step2_rules__storytelling_chain.md
 ├── cat1_step2_rules__riddle_game.md                ← NEW style
 ├── cat1_step3_round.md                             ← base
-├── cat1_step3_round__what_would_it_say.md
+├── cat1_step3_round__voice_acting.md
 ├── cat1_step3_round__storytelling_chain.md
 ├── cat1_step3_round__riddle_game.md                ← NEW style
 ├── cat5_step3_collect.md                           ← base
@@ -61,7 +61,7 @@ Steps 1 (Hook), 4/5 (Celebrate), 5/6 (Closing) stay shared — variables handle 
 ### Styles to implement
 
 **Cat 1 (3 fragments each for steps 2+3 = 6 fragment files):**
-- `what_would_it_say` — AI sets scene, child voices entity (dog, dinosaur)
+- `voice_acting` — AI sets scene, child voices entity (dog, dinosaur)
 - `storytelling_chain` — AI starts story, child continues (cat)
 - `riddle_game` — AI gives clues, child guesses (**NEW**, unassigned for now)
 
@@ -171,10 +171,10 @@ Similarly, `"riddle_game"` is already in `game_mechanic` Literal. No change need
 
 | File | Style |
 |------|-------|
-| `cat1_step2_rules__what_would_it_say.md` | Extracted from current guidance |
+| `cat1_step2_rules__voice_acting.md` | Extracted from current guidance |
 | `cat1_step2_rules__storytelling_chain.md` | Extracted from current guidance |
 | `cat1_step2_rules__riddle_game.md` | New |
-| `cat1_step3_round__what_would_it_say.md` | Extracted from current guidance |
+| `cat1_step3_round__voice_acting.md` | Extracted from current guidance |
 | `cat1_step3_round__storytelling_chain.md` | Extracted from current guidance |
 | `cat1_step3_round__riddle_game.md` | New |
 | `cat5_step3_collect__comparison_chart.md` | Extracted from current guidance |

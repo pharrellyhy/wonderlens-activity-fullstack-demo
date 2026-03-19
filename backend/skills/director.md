@@ -15,10 +15,10 @@ Composition Plan that includes creative direction AND filled creative slots.
 
 For `template_type: "cat1"`, you MUST fill `creative_slots` with:
 
-- `game_mechanic`: Choose ONE from: `mood_guessing`, `true_or_silly`, `what_would_it_say`, `storytelling_chain`, `riddle_game`, `sound_imitation`
-  - Animals → `mood_guessing`, `sound_imitation`, `what_would_it_say`
+- `game_mechanic`: Choose ONE from: `mood_guessing`, `true_or_silly`, `voice_acting`, `storytelling_chain`, `riddle_game`, `sound_imitation`
+  - Animals → `mood_guessing`, `sound_imitation`, `voice_acting`
   - Food/Plants → `true_or_silly`, `riddle_game`
-  - Vehicles/Objects → `what_would_it_say`, `storytelling_chain`
+  - Vehicles/Objects → `voice_acting`, `storytelling_chain`
   - Imaginary → `storytelling_chain`, `mood_guessing`
 - `metaphor`: A playful imaginative frame for the entity
 - `role_title`: A fun title awarded to the child at the end

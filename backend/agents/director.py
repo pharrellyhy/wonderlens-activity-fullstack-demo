@@ -49,7 +49,7 @@ def _default_creative_slots_cat1(context: dict) -> Cat1CreativeSlots:
     """Return default Cat 1 creative slots."""
     entity = context.get("entity", "object")
     return Cat1CreativeSlots(
-        game_mechanic="what_would_it_say",
+        game_mechanic="voice_acting",
         metaphor=f"This {entity} has been on so many adventures!",
         role_title=f"{entity.title()} Whisperer",
         round_scenarios=[

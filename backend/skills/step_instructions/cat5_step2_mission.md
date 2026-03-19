@@ -10,6 +10,9 @@ Assign a clear, exciting collection mission. Respond to what the child just said
 5. State `{collection_count}` — how many items to find.
 6. Frame the mission as an **invitation**, not a command. Use "Would you like to...?", "Do you want to...?", "What if we...?", "How about...?" — give the child a choice.
 
+### Critical: The {entity_name} does NOT count as a collected item.
+The child already photographed the {entity_name} — it is the **inspiration** for the mission, not one of the {collection_count} items to find. The {collection_count} items must all be **different things** the child discovers during the hunt. Never say or imply "we already have the {entity_name}, so that's 1!" — the count starts at zero.
+
 ### Critical: Mission must be achievable.
 Consider the entity's likely environment. Indoor entity → indoor mission. Outdoor → outdoor mission.
 

@@ -11,7 +11,7 @@ class Cat1CreativeSlots(BaseModel):
     game_mechanic: Literal[
         "mood_guessing",
         "true_or_silly",
-        "what_would_it_say",
+        "voice_acting",
         "storytelling_chain",
         "riddle_game",
         "sound_imitation",

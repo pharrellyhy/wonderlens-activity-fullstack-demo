@@ -119,7 +119,7 @@ In addition to the universal slots, Cat 1 requires these LLM-filled variables:
 
 | Slot Name | Type | LLM Instruction | Example (entity = pineapple) |
 |---|---|---|---|
-| `{game_mechanic}` | enum | Choose ONE from: `mood_guessing`, `true_or_silly`, `what_would_it_say`, `storytelling_chain`, `riddle_game`, `sound_imitation` | "true_or_silly" |
+| `{game_mechanic}` | enum | Choose ONE from: `mood_guessing`, `true_or_silly`, `voice_acting`, `storytelling_chain`, `riddle_game`, `sound_imitation` | "true_or_silly" |
 | `{metaphor}` | string | A playful imaginative frame for the entity | "This pineapple is a little warrior with a spiky helmet!" |
 | `{role_title}` | string | A fun title awarded to the child at the end | "Tropical Truth Detective" |
 | `{round_scenarios}` | list[string] | One scenario per dialogue round, escalating in complexity | ["Pineapples grow on trees", "Pineapples can swim", "Pineapple juice is made from the leaves"] |
@@ -152,8 +152,8 @@ The following defines the fixed structural skeleton. Each step's content is gene
 | **Purpose** | Explain the game rules clearly. Run one demonstration round so the child understands. |
 | **LLM must do** | 1. Name the game using a fun, child-friendly title (not the enum value). 2. Explain rules in ≤ 2 sentences (T0) or ≤ 3 sentences (T1/T2). 3. Run one demo round with the answer included, so the child sees how it works. 4. End with enthusiasm: "Now it's your turn!" |
 | **Screen widget** | `character_display`: Show Kido avatar with speech bubble. Optional: animated game icon. |
-| **Game mechanics reference** | `true_or_silly`: AI states facts about `{entity_name}`, child judges true/silly. `mood_guessing`: AI describes scenarios, child guesses `{entity_name}`'s feeling. `what_would_it_say`: AI sets a scene, child voices what `{entity_name}` would say. `storytelling_chain`: AI starts a story about `{entity_name}`, child adds the next part. `riddle_game`: AI gives clues about things related to `{entity_name}`, child guesses. `sound_imitation`: AI describes how `{entity_name}` might sound in scenarios, child performs. |
-| **Mechanic selection logic** | LLM should choose based on entity category: Animals → `mood_guessing`, `sound_imitation`, `what_would_it_say`. Food/Plants → `true_or_silly`, `riddle_game`. Vehicles/Objects → `what_would_it_say`, `storytelling_chain`. Imaginary → `storytelling_chain`, `mood_guessing`. |
+| **Game mechanics reference** | `true_or_silly`: AI states facts about `{entity_name}`, child judges true/silly. `mood_guessing`: AI describes scenarios, child guesses `{entity_name}`'s feeling. `voice_acting`: AI sets a scene, child voices what `{entity_name}` would say. `storytelling_chain`: AI starts a story about `{entity_name}`, child adds the next part. `riddle_game`: AI gives clues about things related to `{entity_name}`, child guesses. `sound_imitation`: AI describes how `{entity_name}` might sound in scenarios, child performs. |
+| **Mechanic selection logic** | LLM should choose based on entity category: Animals → `mood_guessing`, `sound_imitation`, `voice_acting`. Food/Plants → `true_or_silly`, `riddle_game`. Vehicles/Objects → `voice_acting`, `storytelling_chain`. Imaginary → `storytelling_chain`, `mood_guessing`. |
 | **Example (pineapple, T1, true_or_silly)** | AI: "I'm going to say things about our pineapple king, and you tell me — TRUE or SILLY? Here's a practice one: Pineapples are sweet inside. Is that... true or silly? ... That's TRUE! Great, you've got it. Ready for the real ones?" |
 
 ---
@@ -413,7 +413,7 @@ To demonstrate the templates in action, here are complete walkthroughs for entit
 
 | Slot | Value |
 |---|---|
-| `{game_mechanic}` | `what_would_it_say` |
+| `{game_mechanic}` | `voice_acting` |
 | `{metaphor}` | "This sneaker has been on SO many adventures — look how well-loved it is!" |
 | `{role_title}` | "Sneaker Whisperer" |
 | `{observation_detail}` | "the red color and those laces tied in a bow" |

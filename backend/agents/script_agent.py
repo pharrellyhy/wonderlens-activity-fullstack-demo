@@ -262,6 +262,10 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
         lines.append(f"- Items collected so far: **{collected}**")
         lines.append(f"- Items still needed: **{remaining}**")
         lines.append(f"- Total required: **{state.total_rounds}**")
+        lines.append(
+            f"- The original {state.entity_name} does NOT count — it was the inspiration, "
+            f"not a collected item. All {state.total_rounds} items must be different things."
+        )
         if remaining > 0:
             lines.append(
                 "\n The mission is NOT complete — DO NOT say 'all done', 'found them all', "

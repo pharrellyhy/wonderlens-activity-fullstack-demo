@@ -32,7 +32,7 @@ No behavior changes — pure additions.
 
 ```python
 class Cat1CreativeSlots(BaseModel):
-    game_mechanic: Literal["mood_guessing", "true_or_silly", "what_would_it_say",
+    game_mechanic: Literal["mood_guessing", "true_or_silly", "voice_acting",
                            "storytelling_chain", "riddle_game", "sound_imitation"]
     metaphor: str
     role_title: str

@@ -1,4 +1,4 @@
-### Style: What Would It Say
+### Style: Voice Acting
 
 **Presenting the scenario:**
 - Paint a vivid, sensory scene using `{round_scenario}`. Make the child SEE and FEEL the moment.

@@ -7,7 +7,7 @@
       "emotion_tag": "excited"
     },
     "transition": {
-      "goal": "Introduce the what_would_it_say game — explain that you will describe something happening to the dog and the child says what the dog would say or feel. Include ONE demo round with the answer shown (e.g. 'If the dog's favorite ball went missing, it might sigh and say Oh no, where is my ball?'). End with a genuine invitation.",
+      "goal": "Introduce the voice_acting game — explain that you will describe something happening to the dog and the child says what the dog would say or feel. Include ONE demo round with the answer shown (e.g. 'If the dog's favorite ball went missing, it might sigh and say Oh no, where is my ball?'). End with a genuine invitation.",
       "constraint": "T0 max 3 sentences, demo round WITH answer included, end with Would you like to try?",
       "emotion_tag": "playful"
     },

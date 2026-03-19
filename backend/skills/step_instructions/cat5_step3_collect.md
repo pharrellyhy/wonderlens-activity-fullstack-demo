@@ -7,6 +7,8 @@
 
 The child is on a collection round. They may have just arrived at this round (no photo selected yet) or submitted a photo selection.
 
+**IMPORTANT: The original {entity_name} does NOT count as a collected item.** The {entity_name} was the inspiration — the child must find {total_rounds} **different** things. Do not count or reference the {entity_name} as part of the collection progress.
+
 ### If starting a new round (no photo submitted yet):
 The child just entered this round. Use an **invitational question** to spark their curiosity about finding the next item. Be specific about what they're looking for based on `{collection_criterion}` and `{observation_angle}`.
 

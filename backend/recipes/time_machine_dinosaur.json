@@ -7,7 +7,7 @@
       "emotion_tag": "excited"
     },
     "transition": {
-      "goal": "Introduce the what_would_it_say game as a time machine adventure — explain you will describe a time period and the child says what the dinosaur does. Include ONE demo round with the answer shown (e.g. 'If the dinosaur landed in a candy shop, it might try to eat ALL the lollipops!'). End with genuine invitation.",
+      "goal": "Introduce the voice_acting game as a time machine adventure — explain you will describe a time period and the child says what the dinosaur does. Include ONE demo round with the answer shown (e.g. 'If the dinosaur landed in a candy shop, it might try to eat ALL the lollipops!'). End with genuine invitation.",
       "constraint": "T0 max 3 sentences, demo round WITH answer included, end with Would you like to travel through time?",
       "emotion_tag": "playful"
     },

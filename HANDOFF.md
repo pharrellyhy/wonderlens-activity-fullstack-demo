@@ -30,9 +30,9 @@ Last updated: 2026-03-18
 
 ## Style-Specific Step Instruction Fragments
 
-**Problem**: All entities within a category shared identical step instruction templates. Cat 5 entities both got the same "compare your finds" synthesis guidance, even though the design doc envisions creative storytelling for dandelion. Cat 1 entities with different game mechanics (what_would_it_say vs storytelling_chain) received the same generic demo and round instructions.
+**Problem**: All entities within a category shared identical step instruction templates. Cat 5 entities both got the same "compare your finds" synthesis guidance, even though the design doc envisions creative storytelling for dandelion. Cat 1 entities with different game mechanics (voice_acting vs storytelling_chain) received the same generic demo and round instructions.
 
-**Solution**: Implemented a fragment composition system that appends style-specific guidance to shared base templates. The loader in `_load_step_instructions()` looks up a fragment file using the entity's `game_mechanic` (Cat 1) or `synthesis_type` (Cat 5) and appends it after the base template. Fragment files use double-underscore naming: `cat1_step2_rules__what_would_it_say.md`. If no fragment exists, the base template is used alone (backward-compatible). Reassigned dandelion from `comparison_chart` to `naming_story` synthesis style.
+**Solution**: Implemented a fragment composition system that appends style-specific guidance to shared base templates. The loader in `_load_step_instructions()` looks up a fragment file using the entity's `game_mechanic` (Cat 1) or `synthesis_type` (Cat 5) and appends it after the base template. Fragment files use double-underscore naming: `cat1_step2_rules__voice_acting.md`. If no fragment exists, the base template is used alone (backward-compatible). Reassigned dandelion from `comparison_chart` to `naming_story` synthesis style.
 
 **Edits**:
 - `backend/agents/script_agent.py` (~line 135) — added fragment loading logic to `_load_step_instructions()`: determines style key from creative slots, builds fragment filename, appends if exists
@@ -41,8 +41,8 @@ Last updated: 2026-03-18
 - `backend/skills/step_instructions/cat5_step4_synthesis.md` — removed multi-type reference section (now in fragments)
 - `tests/test_entity_registry.py` — added `test_dandelion_synthesis_type_is_naming_story`, added `TestStyleFragments` class with 2 tests verifying fragment files exist for all registered entity styles
 - 10 new fragment files in `backend/skills/step_instructions/`:
-  - `cat1_step2_rules__what_would_it_say.md`, `cat1_step2_rules__storytelling_chain.md`, `cat1_step2_rules__riddle_game.md`
-  - `cat1_step3_round__what_would_it_say.md`, `cat1_step3_round__storytelling_chain.md`, `cat1_step3_round__riddle_game.md`
+  - `cat1_step2_rules__voice_acting.md`, `cat1_step2_rules__storytelling_chain.md`, `cat1_step2_rules__riddle_game.md`
+  - `cat1_step3_round__voice_acting.md`, `cat1_step3_round__storytelling_chain.md`, `cat1_step3_round__riddle_game.md`
   - `cat5_step3_collect__comparison_chart.md`, `cat5_step3_collect__naming_story.md`
   - `cat5_step4_synthesis__comparison_chart.md`, `cat5_step4_synthesis__naming_story.md`
 

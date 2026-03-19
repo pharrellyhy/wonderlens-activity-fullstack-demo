@@ -1,7 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled }) {
   const [text, setText] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!disabled && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [disabled]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -15,6 +22,7 @@ export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled
     <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-3">
       <div className="flex-1 flex items-center gap-2 bg-white border border-[var(--color-forest)]/20 rounded-full px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-[var(--color-forest)]/30 focus-within:border-[var(--color-forest)]/40 transition-shadow">
         <input
+          ref={inputRef}
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}

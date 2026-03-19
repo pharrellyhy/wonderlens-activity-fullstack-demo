@@ -102,7 +102,7 @@ async def initialize_session(
             )
         else:
             plan.creative_slots = Cat1CreativeSlots(
-                game_mechanic="what_would_it_say",
+                game_mechanic="voice_acting",
                 metaphor=f"This {context.get('entity', 'friend')} has so many stories!",
                 role_title="Story Whisperer",
                 round_scenarios=["relaxing at home", "at a big party", "flying through space"],

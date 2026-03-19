@@ -1,4 +1,4 @@
-### Style: What Would It Say
+### Style: Voice Acting
 
 **How this mechanic works:** You set a vivid scene, and the child voices what the entity would say in that moment.
 

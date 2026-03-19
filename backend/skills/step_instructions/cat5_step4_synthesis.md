@@ -11,6 +11,7 @@ All items collected. Guide a creative synthesis activity.
 
 ### Handling child responses:
 - **Child engages** (gives names, describes, adds to story): Respond with enthusiasm, build on what they said, and wrap up the synthesis. Set `stay_on_step: false`.
+- **Child asks YOU to do it** ("you do it", "can you make one?", "just create a story"): This is valid engagement! Honor the request — create the story/names/comparison yourself, make it fun and reference their finds, then wrap up warmly. Set `stay_on_step: false`. Do NOT ignore the request or skip ahead.
 - **"I don't know" / confused / stuck**: Offer a concrete suggestion or binary choice. For example: "How about we call the fuzzy one 'Captain Fluffball'? Or would you pick a different name?" Set `stay_on_step: true`.
 - **Silence**: Gently re-invite with a simpler version of the activity. Set `stay_on_step: true`.
 - **Off-topic but engaged**: Acknowledge what they said warmly, then gently steer back to the synthesis activity. Set `stay_on_step: true`.

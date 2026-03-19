@@ -1,6 +1,58 @@
 # Session Handoff
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
+
+---
+
+## Generate IB Concept Badge Images
+
+**Problem**: The BadgeAward widget rendered a generic CSS gradient circle with an SVG icon for all IB concepts. Every concept looked identical — children couldn't visually distinguish Perspective from Causation or any other concept.
+
+**Solution**: Created a Gemini image generation script following the existing `generate_cat5_icons_gemini.py` pattern, and updated the BadgeAward widget to render concept-specific badge images with a CSS fallback.
+
+**Edits**:
+- `scripts/generate_concept_badges_gemini.py` — **NEW**: generates 8 IB concept badge PNGs (256×256) using gemini-2.5-flash-image; reuses shared utilities from existing icon scripts; supports `--only`, `--overwrite`, `--mode` CLI flags
+- `frontend/src/widgets/BadgeAward.jsx` — replaced single CSS badge circle with per-concept `<img>` badges; added `ConceptBadge` component with `onError` fallback to CSS gradient; when no concepts provided, keeps original CSS rendering; multiple concepts display in a flex row with staggered `badge-pop` animation
+- `frontend/src/index.css` — added `@keyframes badge-pop` and `.animate-badge-pop` for staggered concept badge entrance animation
+- `frontend/public/badges/` — **NEW**: output directory for generated badge PNGs (run script to populate)
+
+**NOT Changed**:
+- Backend — zero changes; pipeline already passes `concepts: string[]` via widget_params
+- `frontend/src/icons/index.js` — BadgeIcon import stays for CSS fallback path
+- Existing icon generation scripts — read-only reference
+- Props/widget_params contract — unchanged
+
+**Verification**:
+- `cd scripts && python generate_concept_badges_gemini.py --overwrite` — generates 8 PNGs into `frontend/public/badges/`
+- `cd backend && uv run ruff check ../scripts/generate_concept_badges_gemini.py` — PASS
+- Start frontend dev server, run Cat1 session → badge images appear at STEP_4_CELEBRATE and STEP_5_CLOSING
+- Start Cat5 session → multiple concept badges display correctly at STEP_5_CELEBRATE and STEP_6_CLOSING
+- Rename a badge file → CSS gradient fallback renders correctly
+
+---
+
+## Review Follow-Up: Harden Prod Game Frontmatter Generator + Add Coverage
+
+**Problem**: Picking up the pending prod-game promotion work exposed three concrete gaps in the new generator path. There were no focused tests for the new script, `stop_sign_cat1_prod.md` extracted the wrong awarded role title (`True Safety Hero` instead of `Safety Solver`), `lion_cat5_prod.md` lost detail in its collection criterion (`big strong` instead of `big, strong, or tough`), and Cat5 docs without an explicit Step 2 catchphrase fell back to a TODO mission metaphor even when a clean role title was available. The script also duplicated its frontmatter-building logic between normal and `--dry-run` execution.
+
+**Solution**: Added focused regression coverage for the generator and the new Cat1 mechanics, then simplified the script around a shared `build_frontmatter()` path used by both write and dry-run modes. Tightened extraction precedence so celebration titles beat generic closing praise, improved collection-mission parsing to preserve descriptive criteria and extract collection counts from the prose itself, and defaulted Cat5 mission metaphors to `You are a {role_title}!` when the doc does not provide a better explicit phrase.
+
+**Edits**:
+- `scripts/generate_game_frontmatter.py` — simplified generation through shared `build_frontmatter()` plumbing; fixed role-title extraction precedence; improved collection-count / collection-criterion parsing; added Cat5 mission-metaphor fallback to the extracted role title
+- local `tests/test_generate_game_frontmatter.py` — **NEW**: batch parseability coverage for all 12 `*_prod.md` files, regression tests for stop-sign role title, lion collection criterion, piano mission-metaphor fallback, and schema validation for `prediction_game` / `helper_hotline`
+- `HANDOFF.md` — replaced the draft feature note with this reviewed follow-up entry
+
+**NOT Changed**:
+- `backend/schemas/creative_slots.py` — reviewed and left with the new `"prediction_game"` / `"helper_hotline"` literals as authored
+- `backend/skills/step_instructions/cat1_step2_rules__prediction_game.md`, `backend/skills/step_instructions/cat1_step3_round__prediction_game.md`, `backend/skills/step_instructions/cat1_step2_rules__helper_hotline.md`, `backend/skills/step_instructions/cat1_step3_round__helper_hotline.md` — reviewed and left unchanged in this pass
+- `backend/game_parser.py`, `backend/game_loader.py`, `backend/entity_registry.py`, and existing demo game MD files — unchanged
+- Frontend — zero changes
+
+**Verification**:
+- `uv run pytest tests/test_generate_game_frontmatter.py -q` — PASS (`5 passed`)
+- `uv run pytest tests/test_generate_game_frontmatter.py tests/test_entity_registry.py tests/test_game_parser.py -q` — PASS (`79 passed`)
+- `uv run ruff check scripts/generate_game_frontmatter.py tests/test_generate_game_frontmatter.py backend/schemas/creative_slots.py` — PASS
+- `uv run ruff format --check scripts/generate_game_frontmatter.py tests/test_generate_game_frontmatter.py backend/schemas/creative_slots.py` — PASS
 
 ---
 
@@ -226,52 +278,3 @@ Last updated: 2026-03-19
 - `cd backend && uv run ruff format --check entity_registry.py scenarios.py recipe_loader.py server.py` — PASS
 - `cd backend && uv run mypy entity_registry.py scenarios.py recipe_loader.py server.py` — no new errors (all pre-existing)
 
----
-
-## Review Step Transition Refactor: Deferred Round Advance Fix
-
-**Problem**: Reviewing the current uncommitted step-transition refactor exposed a real regression in the new unified `turn_handler`: round completion advanced `current_step` before the next step's prompt was generated. That let `/api/turn` and `/api/turn-speak` pair a previous-round line with the next step's screen frame, and it could drop the first real `STEP_4_SYNTHESIS` prompt entirely. The existing tests checked state changes, but they did not verify which step the Script Agent was actually generating for after a round completion.
-
-**Solution**: Kept the unified turn-handler design, but split round completion into two paths. When a round ends and the next step is another round or an auto-advance presentation step, the handler now keeps the current round active, returns the current-step acknowledgement, and marks a pending round advance for the next empty auto-turn. When a round ends and the next step needs fresh child interaction (notably `STEP_4_SYNTHESIS`), the handler now advances immediately and generates that new step's first prompt right away. Added focused regression coverage at both the unit and API layers, then simplified the handler slightly by extracting the repeated terminal-response builder.
-
-**Edits**:
-- `backend/turn_handler.py` — fixed round completion flow with deferred round advance, immediate synthesis entry, and a small terminal-response simplification
-- `backend/schemas/session_state.py` — added `round_advance_pending` session state to support the deferred round-to-round transition
-- local `tests/test_turn_handler.py` — strengthened round-transition coverage to assert which step actually generated the returned dialogue (this repo currently ignores `tests/`, so the change is local-only unless the ignore rule changes)
-- local `tests/test_api.py` — updated Cat 5 collection and Cat 1 celebration-frame integration coverage to reflect the intended two-turn auto-advance flow (also local-only under the current ignore rule)
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `backend/server.py` was reviewed in this pass and left unchanged; the endpoint logic still routes through `resolve_turn()`
-- `frontend/src/App.jsx`, `frontend/src/components/PhotoGallery.jsx`, and `frontend/src/widgets/CharacterDisplay.jsx` were reviewed against the current backend contract and left unchanged in this pass
-- Recipe JSON files, prompt markdown, and the asset-generation scripts currently in the worktree were not changed by this pass
-
-**Verification**:
-- `cd backend && uv run pytest ../tests/test_turn_handler.py -q` — PASS (`10 passed`)
-- `cd backend && uv run pytest ../tests/test_api.py -q` — PASS (`22 passed`)
-- `cd backend && uv run pytest ../tests/test_turn_handler.py ../tests/test_api.py ../tests/test_server_visual.py ../tests/test_turn_flow.py ../tests/test_pipeline_visual.py -q` — PASS (`44 passed`)
-- `cd backend && uv run ruff check turn_handler.py schemas/session_state.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
-- `cd backend && uv run ruff format --check turn_handler.py schemas/session_state.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
-
----
-
-## Gemini 2.5 Flash Image Smoke Test for Cat 5 Icons
-
-**Problem**: After the `gpt-image-1.5` proxy path failed to return image payloads, the next attempt was to generate Cat 5 item icons with `gemini-2.5-flash-image`, following the Gemini provider setup referenced in `backend/refs/vision/providers/gemini.py`.
-
-**Solution**: Added `scripts/generate_cat5_icons_gemini.py`, which reuses the Cat 5 prompts and supports three modes: `vertex`, `api-key`, and `auto`. Verified the Gemini response shape: `response.parts[0].inline_data.data` contains PNG bytes, while `part.as_image()` returns a Google SDK `Image` wrapper rather than a Pillow image. Updated the script to decode the inline PNG bytes directly and successfully generated `frontend/public/icons/spotted_mushroom.png` via the Vertex-style client.
-
-**Edits**:
-- `scripts/generate_cat5_icons_gemini.py` — new Gemini image generator for Cat 5 assets, with provider-style Vertex setup, API-key fallback mode, shared prompt reuse, and inline PNG decoding
-
-**NOT Changed**:
-- Existing OpenAI generator scripts
-- Backend/frontend runtime wiring
-- Secrets in `backend/.env`
-
-**Verification**:
-- Vertex-style smoke test using `gemini-2.5-flash-image` — PASS for one sample; saved `frontend/public/icons/spotted_mushroom.png`
-- Visual check of `spotted_mushroom.png` — PASS; output is child-friendly and reads clearly at icon size
-- Full batch attempt with `python scripts/generate_cat5_icons_gemini.py --overwrite --mode auto` — FAIL after the sample due `429 RESOURCE_EXHAUSTED`
-- API-key mode also returns quota exhaustion for `gemini-2.5-flash-preview-image`
-- Additional environment finding: `GOOGLE_APPLICATION_CREDENTIALS` path from `backend/.env` does not exist locally, but the successful sample still came back through the Vertex-style client before quota was exhausted

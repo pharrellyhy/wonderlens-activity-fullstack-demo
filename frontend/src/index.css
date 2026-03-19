@@ -145,6 +145,16 @@
   animation: celebration-large 0.7s var(--ease-out-expo);
 }
 
+@keyframes badge-pop {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.animate-badge-pop {
+  animation: badge-pop 0.5s var(--ease-out-expo) both;
+}
+
 .animate-slide-up-large {
   animation: slide-up-large 0.5s var(--ease-out-expo);
 }

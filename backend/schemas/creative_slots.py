@@ -15,6 +15,8 @@ class Cat1CreativeSlots(BaseModel):
         "storytelling_chain",
         "riddle_game",
         "sound_imitation",
+        "prediction_game",
+        "helper_hotline",
     ] = Field(description="Game mechanic chosen based on entity category")
     metaphor: str = Field(description="Playful imaginative frame for the entity")
     role_title: str = Field(description="Fun title awarded to the child at the end")

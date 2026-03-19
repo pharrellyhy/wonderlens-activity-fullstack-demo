@@ -4,6 +4,59 @@ Last updated: 2026-03-19
 
 ---
 
+## Review Follow-Up: Restore Hook-to-Step2 Transition + Align Local Tests
+
+**Problem**: Picking up the latest Cat5 synthesis fix exposed one real regression in the new generic interactive-step branch in `backend/turn_handler.py`: after the child replied to `STEP_1_HOOK`, the server advanced state to step 2 but still returned the hook response type/frame instead of the step-2 rules or mission prompt. The local review tests were also partially stale after the synthesis change, still asserting pre-fix behavior for synthesis completion and closing delivery.
+
+**Solution**: Restored the hook-specific transition behavior by special-casing an already-prompted `STEP_1_HOOK` to advance into step 2 before generating the next turn. Kept the newer synthesis behavior intact: synthesis completion still returns the synthesis reply first, then leaves auto-advance to fetch celebration. I also tightened the local tests so they now cover the hook regression directly and match the current synthesis/closing semantics.
+
+**Edits**:
+- `backend/turn_handler.py` — special-cased completed `STEP_1_HOOK` handling inside section 7d so the first post-start child reply returns the step-2 prompt; clarified the comment for hook vs. synthesis behavior
+- local `tests/test_turn_handler.py` — added a hook-to-mission regression test; updated the synthesis-follow-up assertions to expect the synthesis reply plus `auto_advance=True`
+- local `tests/test_api.py` — fixed the closing-delivery test fixture so it enters the already-prompted celebration branch it is meant to validate
+- `HANDOFF.md` — added this review/update entry
+
+**NOT Changed**:
+- `backend/skills/step_instructions/cat5_step4_synthesis*.md` prompt edits were reviewed and left unchanged in this pass
+- Frontend auto-advance/session orchestration code was reviewed against the current backend contract and left unchanged
+- `.gitignore` was not changed; the `tests/` tree remains local-only and ignored in this repo snapshot
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py -q` — PASS (`10 passed`)
+- `uv run pytest tests/test_api.py -q` — PASS (`24 passed`)
+- `uv run pytest tests/test_turn_handler.py tests/test_api.py -q` — PASS (`34 passed`)
+- `cd backend && uv run ruff check turn_handler.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
+- `cd backend && uv run ruff format --check turn_handler.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
+
+---
+
+## Fix Cat5 Synthesis Response Swallowed + Help Request Misclassified
+
+**Problem**: In Cat5 Step 4 (synthesis), when the child responds to the synthesis prompt (e.g. "can you help me"), the AI's synthesis response was never shown. The turn handler advanced to STEP_5_CELEBRATE, generated a new response, and returned only that — the synthesis reply was swallowed. Additionally, "can you help me" was misclassified as "do it for me" instead of "stuck/confused", skipping synthesis entirely.
+
+**Solution**: Two-part fix:
+1. **Prompt fix**: Added "can you help me", "help", "I need help" to the stuck/confused bucket in synthesis instructions with explicit `stay_on_step: true`. Added disambiguation note distinguishing "help me" (stuck) from "do it for me" (create content) in both `naming_story` and `comparison_chart` fragments.
+2. **Architecture fix**: Rewrote section 7d of `turn_handler.py`. Interactive step completion now returns the current step's response (not the next step's) and sets `auto_advance` for the frontend to fetch the next step. Auto-advance steps use `_already_prompted_on_step` to distinguish: if already generated (Cat1 celebrate from round advance), advance through as before; if not yet generated (Cat5 celebrate after synthesis), generate then advance.
+
+**Edits**:
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — added help request patterns to stuck/confused bucket with `stay_on_step: true`
+- `backend/skills/step_instructions/cat5_step4_synthesis__naming_story.md` — added "help me" vs "do it for me" disambiguation note
+- `backend/skills/step_instructions/cat5_step4_synthesis__comparison_chart.md` — same disambiguation note
+- `backend/turn_handler.py` (section 7d, ~lines 518-610) — rewrote interactive step completion to return step's own response; rewrote auto-advance path with `_already_prompted_on_step` guard
+
+**NOT Changed**:
+- `backend/state_machine.py` — step transitions unchanged
+- `backend/agents/script_agent.py` — prompt assembly unchanged
+- Frontend auto-advance mechanism (`useSessionOrchestration.js`) — unchanged, uses `data.turn.auto_advance`
+- Cat1 flows — behavior preserved via `_already_prompted_on_step` guard
+
+**Verification**:
+- `cd backend && uv run ruff check turn_handler.py` — PASS
+- `cd backend && uv run ruff format --check turn_handler.py` — PASS
+- `cd backend && uv run mypy turn_handler.py --ignore-missing-imports` — no new errors
+
+---
+
 ## Review Game MD Loader Follow-Up: Fail-Fast Startup + Test Fixture Cleanup
 
 **Problem**: Reviewing the new game-MD single-source refactor exposed two real gaps. First, `backend/game_loader.py` only logged parse failures and kept going, so a broken frontmatter file could silently drop a demo game from the registry. Second, `validate_registry()` still reported success when the registry was empty. The local API/schema tests also still had stale fixture/import cleanup issues from the same refactor, including a `what_would_it_say` mechanic value that no longer matches the current `voice_acting` schema.
@@ -222,61 +275,3 @@ Last updated: 2026-03-19
 - Full batch attempt with `python scripts/generate_cat5_icons_gemini.py --overwrite --mode auto` — FAIL after the sample due `429 RESOURCE_EXHAUSTED`
 - API-key mode also returns quota exhaustion for `gemini-2.5-flash-preview-image`
 - Additional environment finding: `GOOGLE_APPLICATION_CREDENTIALS` path from `backend/.env` does not exist locally, but the successful sample still came back through the Vertex-style client before quota was exhausted
-
----
-
-## Step Transition Refactor + QA Bug Fixes
-
-**Problem**: Step transition logic was duplicated between `/api/turn` and `/api/turn-speak` with 6+ bugs: double responses on invitation acceptance, gallery appearing before collect prompt, STEP_4_SYNTHESIS being skipped, LLM hallucinating collections, consecutive AI messages without user interaction, and inconsistent auto-advance between endpoints. Also fixed: Cat1 round display always showing "Round 1", footer showing "0/3" before rounds start.
-
-**Solution**: Extracted all step transition logic into a single `resolve_turn()` function in `backend/turn_handler.py`. Both endpoints now call this function — `/api/turn` wraps the result in JSON, `/api/turn-speak` adds TTS streaming. Key design decisions: (1) Invitation acceptance uses deferred advance — stays on STEP_2 with `auto_advance=True`, advances on the next turn so gallery appears with the collect prompt. (2) Round acknowledgments only auto-advance into other rounds or auto-advance steps, never into interactive steps like STEP_4_SYNTHESIS. (3) Interactive steps generate their prompt on first visit, advance on second visit. (4) Conversation history increased from 6 to 8 entries.
-
-**Edits**:
-- `backend/turn_handler.py` — **NEW**: `resolve_turn()`, `TurnInput`, `TurnResult` dataclasses, all step transition helpers ported from server.py (invitation, round, synthesis, auto-advance, photo validation, retry logic)
-- `backend/server.py` — `/api/turn` and `/api/turn-speak` now call `resolve_turn()`; removed duplicated helpers (`_resolve_invitation_turn`, `_is_invitation_step`, `_is_round_step`, `_generate_turn_with_retry`, etc.)
-- `backend/state_machine.py` — `"round_number"` → `"roundNumber"` in widget_params (Bug 1 fix)
-- `frontend/src/App.jsx` — footer shows `-` before rounds start for cat1; cat5 shows `-` until first photo collected
-- `frontend/src/widgets/CharacterDisplay.jsx` — hides round badge when `roundNumber` is 0
-- `backend/skills/step_instructions/cat5_step3_collect.md` — explicit `stay_on_step` guidance for correct/wrong/stuck; last round must not ask questions
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — no double celebration
-- `backend/skills/step_instructions/cat5_step2_mission.md` — re-invitation must not negotiate down item count
-- `backend/skills/step_instructions/cat1_step2_rules.md` — same fix for cat1
-- `tests/test_turn_handler.py` — **NEW**: 10 unit tests for invitation, round, synthesis, silence flows
-- `tests/test_api.py` — updated tests for deferred acceptance (two-turn flow)
-- `tests/test_server_visual.py` — updated visual frame tests for deferred acceptance
-
-**NOT Changed**:
-- Frontend hooks (useSessionOrchestration, useConversation) — auto-advance mechanism unchanged
-- State machine step constants and transitions — unchanged
-- Script Agent LLM generation — unchanged
-- TTS, STT, DB layer — unchanged
-
-**Verification**:
-- `cd backend && uv run pytest ../tests/ -k "not e2e" -q` — PASS (144 passed)
-- `cd backend && uv run ruff check server.py turn_handler.py` — PASS
-- `cd backend && uv run ruff format --check server.py turn_handler.py` — PASS
-
----
-
-## Fix Cat1 Round Display + Pre-Round Counter
-
-**Problem**: Two display bugs: (1) Cat1 device panel always showed "Round 1" regardless of actual round because `state_machine.py` sent `round_number` (snake_case) in `widget_params` but `CharacterDisplay.jsx` destructured `roundNumber` (camelCase), defaulting to 1. (2) Footer showed "0/3" before rounds started because `current_round` was 0 pre-round.
-
-**Solution**: (1) Renamed `round_number` → `roundNumber` in all `widget_params` in `state_machine.py` (3 occurrences) and all 5 recipe JSON files (15 occurrences). (2) Updated `App.jsx` footer to show `-/3` instead of `0/3` for cat1 when `current_step` hasn't reached `STEP_3_ROUND_*` yet.
-
-**Edits**:
-- `backend/state_machine.py` — `"round_number"` → `"roundNumber"` in all `widget_params` dicts (lines 182, 193, 225)
-- `backend/recipes/*.json` (5 files) — `"round_number"` → `"roundNumber"` in all `character_display` widget_params
-- `frontend/src/App.jsx` — footer round counter for cat1 now checks `current_step?.startsWith('STEP_3_ROUND_')` before showing numeric round; shows `-` otherwise
-
-**NOT Changed**:
-- `server.py` `round_number` fields in `ConversationTurn` model — those are internal Python fields, not widget_params
-- `CharacterDisplay.jsx` — already used correct `roundNumber` camelCase prop
-- Cat5 footer logic — already handled correctly with `-` display
-
-**Verification**:
-- `cd backend && uv run ruff check state_machine.py` — PASS
-- Start Cat1 activity → device panel should show correct round numbers (1, 2, 3)
-- Before rounds start → footer should show `-/3` not `0/3`
-
----

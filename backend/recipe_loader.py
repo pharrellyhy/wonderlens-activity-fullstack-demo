@@ -1,9 +1,7 @@
 """Instruction-based recipe loading for demo entities.
 
-Demo entities (dog, cat, dinosaur, ladybug, dandelion) use instruction-based
-recipes where each step has goals and constraints instead of exact dialogue.
-The Script Agent LLM generates contextual responses guided by these instructions.
-Custom photo uploads continue using the live agent pipeline.
+Demo entities are loaded from game MD files via game_loader. JSON fallback
+is retained for non-demo entities or legacy recipes (e.g. polka_dot_patrol_hard).
 """
 
 import json
@@ -13,12 +11,14 @@ from typing import Literal
 
 try:
     from .entity_registry import entity_name_for_filename, get_creative_slots, is_demo_entity
+    from .game_loader import get_demo_recipe
     from .logger import setup_logger
     from .scenarios import SCENARIO_CATEGORIES
     from .schemas.recipe import InstructionRecipe
     from .schemas.session_state import SessionStateModel
 except ImportError:
     from entity_registry import entity_name_for_filename, get_creative_slots, is_demo_entity
+    from game_loader import get_demo_recipe
     from logger import setup_logger
     from scenarios import SCENARIO_CATEGORIES
     from schemas.recipe import InstructionRecipe
@@ -31,7 +31,10 @@ _RECIPES_DIR = Path(__file__).parent / "recipes"
 
 @lru_cache(maxsize=8)
 def load_instruction_recipe(activity_type: str) -> InstructionRecipe:
-    """Load and cache an instruction-based recipe JSON file."""
+    """Load an instruction recipe — game MD first, JSON fallback."""
+    recipe = get_demo_recipe(activity_type)
+    if recipe is not None:
+        return recipe
     path = _RECIPES_DIR / f"{activity_type}.json"
     if not path.exists():
         raise FileNotFoundError(f"Recipe not found: {path}")

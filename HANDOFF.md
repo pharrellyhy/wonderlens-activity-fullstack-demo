@@ -1,6 +1,71 @@
 # Session Handoff
 
-Last updated: 2026-03-18
+Last updated: 2026-03-19
+
+---
+
+## Review Game MD Loader Follow-Up: Fail-Fast Startup + Test Fixture Cleanup
+
+**Problem**: Reviewing the new game-MD single-source refactor exposed two real gaps. First, `backend/game_loader.py` only logged parse failures and kept going, so a broken frontmatter file could silently drop a demo game from the registry. Second, `validate_registry()` still reported success when the registry was empty. The local API/schema tests also still had stale fixture/import cleanup issues from the same refactor, including a `what_would_it_say` mechanic value that no longer matches the current `voice_acting` schema.
+
+**Solution**: Tightened the loader/validation path so startup fails loudly instead of accepting partial or empty demo configuration. `_load_demo_games()` now clears stale state before each scan, accumulates parse failures, and raises a `RuntimeError` listing the broken files. `validate_registry()` now rejects an empty registry. I also tightened the local test coverage around those failure paths and updated the stale API fixture/import cleanup so the reviewed test bundle reflects the current schema and loader behavior.
+
+**Edits**:
+- `backend/game_loader.py` — clear cached loader state before rescanning; collect parse failures; raise `RuntimeError` when any game MD file with frontmatter fails to parse
+- `backend/entity_registry.py` — make `validate_registry()` fail when `ENTITY_REGISTRY` is empty
+- local `tests/test_game_parser.py` — added regression coverage proving `_load_demo_games()` raises on a broken game MD file
+- local `tests/test_entity_registry.py` — added regression coverage proving `validate_registry()` rejects an empty registry
+- local `tests/test_api.py` — updated stale Cat1 fixture mechanic from `what_would_it_say` to `voice_acting`
+- local `tests/test_schemas.py` — moved the new `game_loader` import to the module import block so the updated schema test passes lint/format cleanly
+- `HANDOFF.md` — added this review/update entry
+
+**NOT Changed**:
+- `backend/recipe_loader.py`, `backend/server.py`, and the new `backend/games/*.md` content were reviewed in this pass and left unchanged
+- `backend/skills/step_instructions/cat5_step4_synthesis*.md` prompt edits were reviewed and left unchanged
+- Deleted recipe/scenario asset files and the removed `images/entity_icons.png` artifact already present in the worktree were not touched in this pass
+
+**Verification**:
+- `cd backend && uv run ruff check game_loader.py entity_registry.py recipe_loader.py server.py ../tests/test_game_parser.py ../tests/test_entity_registry.py ../tests/test_schemas.py ../tests/test_api.py ../tests/conftest.py` — PASS
+- `cd backend && uv run ruff format --check game_loader.py entity_registry.py recipe_loader.py server.py ../tests/test_game_parser.py ../tests/test_entity_registry.py ../tests/test_schemas.py ../tests/test_api.py ../tests/conftest.py` — PASS
+- `cd backend && uv run pytest ../tests/test_game_parser.py ../tests/test_entity_registry.py ../tests/test_schemas.py ../tests/test_api.py -q` — PASS (`115 passed`)
+
+---
+
+## Game MD Files as Single Source of Truth for Demo Entities
+
+**Problem**: Demo entity data was spread across 3 manually-synced sources: `entity_registry.py` (hardcoded config with 140+ lines of Pydantic model instantiation), `recipes/*.json` (step instructions + screen frames), and `scenarios/*.yaml` (interaction scripts). Adding or modifying a game required updating all three, with no cross-validation.
+
+**Solution**: Consolidated all demo entity data into one markdown file per game with YAML frontmatter in `backend/games/`. Created `game_parser.py` to parse frontmatter into existing Pydantic models (`EntityConfig`, `InstructionRecipe`), and `game_loader.py` to scan the games directory at import time and populate the entity registry. The registry module (`entity_registry.py`) now has an empty list that gets populated via `_populate_registry()` called by the game loader. Recipe loading checks game_loader first, falling back to JSON for non-demo entities (e.g. `polka_dot_patrol_hard.json`).
+
+**Edits**:
+- `backend/games/{mood_changer_dog,dream_whisperer_cat,time_machine_dinosaur,polka_dot_patrol,fluffy_expedition_dandelion}.md` — **NEW**: 5 game MD files with full YAML frontmatter (entity config, creative slots, step instructions, screen frames, metadata, keywords, collection catalogs)
+- `backend/game_parser.py` — **NEW**: `parse_game_file()` extracts YAML frontmatter and builds `EntityConfig` + `InstructionRecipe`
+- `backend/game_loader.py` — **NEW**: scans `games/` at import time, calls `_populate_registry()` to fill entity registry
+- `backend/entity_registry.py` — removed 140-line hardcoded `ENTITY_REGISTRY` list; added `_populate_registry()` and `_rebuild_lookups()`; changed `validate_registry()` to check for game MD files instead of recipe JSON + scenario YAML
+- `backend/recipe_loader.py` — `load_instruction_recipe()` checks `game_loader.get_demo_recipe()` first, JSON fallback for non-demo entities
+- `backend/server.py` — added `game_loader` import to trigger registry population at startup
+- `tests/conftest.py` — added `game_loader` import; updated `instruction_recipe` fixture to use `get_demo_recipe()` instead of deleted JSON file
+- `tests/test_game_parser.py` — **NEW**: 41 tests covering all 5 entities, creative slots, collection catalogs, recipe structure, metadata values
+- `tests/test_entity_registry.py` — no structural changes needed (all assertions pass with MD-sourced data)
+- `tests/test_schemas.py` — replaced `test_demo_recipe_files_validate` (used deleted JSON path) with `test_demo_game_recipes_validate`
+
+**Deleted**:
+- `backend/recipes/{mood_changer_dog,dream_whisperer_cat,time_machine_dinosaur,polka_dot_patrol,fluffy_expedition_dandelion}.json` — replaced by game MD files
+- `backend/scenarios/{mood_changer_dog,dream_whisperer_cat,time_machine_dinosaur,polka_dot_patrol,fluffy_expedition_dandelion}.yaml` — replaced by game MD files
+- Kept: `polka_dot_patrol_hard.json`, `mood_changer_dog_silent_exit.yaml`, `polka_dot_patrol_hard.yaml`, `dino_time_traveler.yaml`
+
+**NOT Changed**:
+- All Pydantic schemas in `backend/schemas/` — unchanged, reused by parser
+- Agent modules (`director.py`, `script_agent.py`, `visual_agent.py`, `recipe_assembler.py`) — unchanged
+- Step instruction fragments in `backend/skills/step_instructions/` — unchanged
+- Frontend — zero changes
+- Existing 12 `*_prod.md` design docs in `backend/games/` — no frontmatter, silently skipped by loader
+
+**Verification**:
+- `uv run pytest tests/test_game_parser.py tests/test_entity_registry.py -v` — PASS (72 passed)
+- `uv run pytest tests/ -k "not e2e" -q` — 195 passed, 27 failed (pre-existing failures from `what_would_it_say` game_mechanic in test fixtures)
+- `cd backend && uv run ruff check .` — PASS
+- `cd backend && uv run ruff format --check game_parser.py game_loader.py entity_registry.py recipe_loader.py` — PASS
 
 ---
 
@@ -213,52 +278,5 @@ Last updated: 2026-03-18
 - `cd backend && uv run ruff check state_machine.py` — PASS
 - Start Cat1 activity → device panel should show correct round numbers (1, 2, 3)
 - Before rounds start → footer should show `-/3` not `0/3`
-
----
-
-## Attempt gpt-image-1.5 Asset Generation via backend/.env
-
-**Problem**: The user requested that the Cat 5 item icons be regenerated with `gpt-image-1.5` using `OPENAI_API_KEY` and `OPENAI_BASE_URL` from `backend/.env` instead of the local Pillow renderer.
-
-**Solution**: Added an OpenAI-backed generator script at `scripts/generate_cat5_icons_openai.py` that reads `backend/.env`, builds per-item prompts from the Cat 5 asset list, and saves outputs into `frontend/public/icons/`. Smoke-tested it against a single file before attempting the full 24-image batch.
-
-**Edits**:
-- `scripts/generate_cat5_icons_openai.py` — new generator for `gpt-image-1.5`, including `.env` parsing that tolerates trailing inline comments and an optional `--base-url` override for testing alternate OpenAI-compatible endpoints without editing secrets
-
-**NOT Changed**:
-- Existing generated PNG assets in `frontend/public/icons/`
-- `backend/.env` itself
-- Frontend/backend runtime wiring
-
-**Verification**:
-- Confirmed `backend/.env` contains both `OPENAI_API_KEY` and `OPENAI_BASE_URL`
-- `python scripts/generate_cat5_icons_openai.py --only spotted_mushroom.png --overwrite` — FAIL: configured proxy returns no image bytes for `/images/generations`
-- Proxy model listing via OpenAI client reports `gpt-image-1.5` as available
-- Same key against official `https://api.openai.com/v1` — FAIL (`401 invalid_api_key`), indicating the key is proxy-scoped rather than a direct OpenAI key
-- Responses API image-generation path against the configured proxy — FAIL (`unsupported operation`)
-
----
-
-## Generate Cat 5 Illustrated Item Icons
-
-**Problem**: The Cat 5 collection games referenced 24 per-item icon files in `frontend/public/icons/`, but those PNGs did not exist yet. The runtime wiring was already in place, so the remaining gap was the actual illustrated assets for both the polka-dot and fluffy item sets.
-
-**Solution**: Added a reproducible local generator at `scripts/generate_cat5_icons.py` that renders all 24 icons as warm storybook-style PNGs sized to match the existing entity icon set. Ran the generator to create the missing files under `frontend/public/icons/` and manually spot-checked the rendered output across both games.
-
-**Edits**:
-- `scripts/generate_cat5_icons.py` — new Pillow-based asset generator for all 24 Cat 5 item icons
-- `frontend/public/icons/*.png` — added 24 generated item icons:
-  `spotted_mushroom`, `dotted_pebble`, `speckled_leaf`, `circle_flower`, `straight_stick`, `plain_bark`, `long_grass`, `smooth_stone`, `pine_needle`, `plain_leaf`, `forked_twig`, `acorn_cap`, `fuzzy_moss`, `fluffy_seed`, `soft_petal`, `woolly_caterpillar`, `hard_rock`, `spiky_pinecone`, `rough_bark`, `sharp_thorn`, `dry_leaf`, `smooth_pebble`, `stiff_branch`, `brittle_shell`
-
-**NOT Changed**:
-- Backend/frontend runtime code — already referenced these filenames and was left unchanged in this pass
-- Existing entity icons such as `ladybug.png` and `dandelion.png`
-- Recipe/scenario files
-
-**Verification**:
-- `python scripts/generate_cat5_icons.py` — PASS (`Generated 24 icons ...`)
-- `find frontend/public/icons ... | wc -l` — PASS (`24`)
-- `file frontend/public/icons/{sample}.png` — PASS (`PNG image data, 256 x 256, 8-bit/color RGBA`) on sampled outputs
-- Manual visual review via generated contact sheets for both game sets — PASS
 
 ---

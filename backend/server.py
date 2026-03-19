@@ -24,6 +24,7 @@ try:
         is_demo_entity,
         validate_registry,
     )
+    from .game_loader import get_demo_recipe  # noqa: F401 — triggers game loading + registry population
     from .logger import setup_logger
     from .recipe_loader import load_instruction_recipe, recipe_to_session_state
     from .scenarios import load_scenario, match_scenario
@@ -53,6 +54,7 @@ except ImportError:
         is_demo_entity,
         validate_registry,
     )
+    from game_loader import get_demo_recipe  # noqa: F401
     from logger import setup_logger
     from recipe_loader import load_instruction_recipe, recipe_to_session_state
     from scenarios import load_scenario, match_scenario

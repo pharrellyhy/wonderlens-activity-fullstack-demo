@@ -5,7 +5,7 @@ const GAME_THEMES = {
     border: 'border-blue-300/40',
     accent: 'text-blue-800',
     accentBg: 'bg-blue-800/10',
-    iconBg: 'bg-white/70 ring-blue-200/60',
+    iconBg: 'bg-white ring-blue-200/60',
     decorations: ['🐾', '🦴'],
   },
   cat: {
@@ -14,7 +14,7 @@ const GAME_THEMES = {
     border: 'border-violet-300/40',
     accent: 'text-violet-800',
     accentBg: 'bg-violet-800/10',
-    iconBg: 'bg-white/70 ring-violet-200/60',
+    iconBg: 'bg-white ring-violet-200/60',
     decorations: ['🌙', '✨'],
   },
   dinosaur: {
@@ -23,7 +23,7 @@ const GAME_THEMES = {
     border: 'border-amber-300/40',
     accent: 'text-amber-800',
     accentBg: 'bg-amber-800/10',
-    iconBg: 'bg-white/70 ring-amber-200/60',
+    iconBg: 'bg-white ring-amber-200/60',
     decorations: ['🌋', '🦴'],
   },
   ladybug: {
@@ -32,7 +32,7 @@ const GAME_THEMES = {
     border: 'border-red-300/40',
     accent: 'text-red-800',
     accentBg: 'bg-red-800/10',
-    iconBg: 'bg-white/70 ring-red-200/60',
+    iconBg: 'bg-white ring-red-200/60',
     decorations: ['🍄', '🌺'],
   },
   dandelion: {
@@ -41,7 +41,7 @@ const GAME_THEMES = {
     border: 'border-yellow-300/40',
     accent: 'text-yellow-800',
     accentBg: 'bg-yellow-800/10',
-    iconBg: 'bg-white/70 ring-yellow-200/60',
+    iconBg: 'bg-white ring-yellow-200/60',
     decorations: ['🌾', '💨'],
   },
 };

@@ -166,7 +166,7 @@ Complete rewrite — Gemini Flash, per-turn generation:
 ### 3d. `backend/skills/script_turn.md` (NEW)
 
 New modular system prompt for per-turn generation. Structure per template doc section 6:
-1. Role & Persona (Kido)
+1. Role & Persona (Zigzag)
 2. Tier Rules (injected)
 3. Current step instructions (injected based on `current_step`)
 4. Creative slots (injected from Director)

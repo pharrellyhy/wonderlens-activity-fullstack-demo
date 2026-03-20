@@ -151,7 +151,7 @@ The following defines the fixed structural skeleton. Each step's content is gene
 |---|---|
 | **Purpose** | Explain the game rules clearly. Run one demonstration round so the child understands. |
 | **LLM must do** | 1. Name the game using a fun, child-friendly title (not the enum value). 2. Explain rules in ≤ 2 sentences (T0) or ≤ 3 sentences (T1/T2). 3. Run one demo round with the answer included, so the child sees how it works. 4. End with enthusiasm: "Now it's your turn!" |
-| **Screen widget** | `character_display`: Show Kido avatar with speech bubble. Optional: animated game icon. |
+| **Screen widget** | `character_display`: Show Zigzag avatar with speech bubble. Optional: animated game icon. |
 | **Game mechanics reference** | `true_or_silly`: AI states facts about `{entity_name}`, child judges true/silly. `mood_guessing`: AI describes scenarios, child guesses `{entity_name}`'s feeling. `voice_acting`: AI sets a scene, child voices what `{entity_name}` would say. `storytelling_chain`: AI starts a story about `{entity_name}`, child adds the next part. `riddle_game`: AI gives clues about things related to `{entity_name}`, child guesses. `sound_imitation`: AI describes how `{entity_name}` might sound in scenarios, child performs. |
 | **Mechanic selection logic** | LLM should choose based on entity category: Animals → `mood_guessing`, `sound_imitation`, `voice_acting`. Food/Plants → `true_or_silly`, `riddle_game`. Vehicles/Objects → `voice_acting`, `storytelling_chain`. Imaginary → `storytelling_chain`, `mood_guessing`. |
 | **Example (pineapple, T1, true_or_silly)** | AI: "I'm going to say things about our pineapple king, and you tell me — TRUE or SILLY? Here's a practice one: Pineapples are sweet inside. Is that... true or silly? ... That's TRUE! Great, you've got it. Ready for the real ones?" |
@@ -303,7 +303,7 @@ The demo backend injects the template into the Gemini system prompt. Here is the
 
 ```
 ## SECTION 1: Role & Persona
-You are Kido, WonderLens's AI companion for children. [tier-specific personality rules]
+You are Zigzag, WonderLens's AI companion for children. [tier-specific personality rules]
 
 ## SECTION 2: Tier Rules
 [Inject tier_rules table as constraints]

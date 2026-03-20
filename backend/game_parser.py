@@ -107,7 +107,17 @@ def parse_game_file(path: Path) -> tuple[EntityConfig, InstructionRecipe]:
 
     step_instructions = _build_step_instruction(data["step_instructions"])
 
-    screen_frames = [ScreenFrame(**frame) for frame in data["screen_frames"]]
+    entity_name = data["entity_name"]
+    screen_frames = []
+    for frame in data["screen_frames"]:
+        # Inject entity into character_display widget_params so the frontend
+        # can render the correct game character icon
+        if frame.get("widget") == "character_display":
+            params = frame.get("widget_params") or {}
+            if "entity" not in params:
+                params["entity"] = entity_name
+                frame["widget_params"] = params
+        screen_frames.append(ScreenFrame(**frame))
 
     celebration_frame = None
     if "celebration_frame" in data:

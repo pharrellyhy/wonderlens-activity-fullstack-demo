@@ -28,4 +28,4 @@ If the child previously declined (check conversation history), you MUST:
 7. BAD re-invite: "What if we just do one round?" / "You just say yes or no" / "Would you like to look at the dinosaur instead?"
 
 ### Screen Widget: `character_display`
-Show Kido avatar with speech bubble.
+Show Zigzag avatar with speech bubble.

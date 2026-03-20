@@ -183,7 +183,7 @@ def get_screen_frame(
         if step == "STEP_2_RULES":
             return ScreenFrame(
                 widget="character_display",
-                widget_params={"description": "Kido explains the game", "entity": entity, "roundNumber": 0},
+                widget_params={"description": "Zigzag explains the game", "entity": entity, "roundNumber": 0},
                 animation="appear",
                 trigger="on_enter",
             )

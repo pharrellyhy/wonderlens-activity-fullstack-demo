@@ -325,7 +325,7 @@ def _build_conversation_context(state: SessionStateModel) -> str:
 
     lines = []
     for turn in history:
-        prefix = "Kido" if turn.role == "ai" else "Child"
+        prefix = "Zigzag" if turn.role == "ai" else "Child"
         step_label = get_step_name(turn.step)
         lines.append(f"[{step_label}] {prefix}: {turn.text}")
     return "\n".join(lines)

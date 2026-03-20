@@ -5,6 +5,7 @@ across the two turn endpoints, ensuring consistent behavior for invitation
 acceptance, round advancement, auto-advance signaling, and history management.
 """
 
+import re
 from dataclasses import dataclass
 
 try:
@@ -215,6 +216,27 @@ def _append_ai_turn(state: SessionStateModel, dialogue: str) -> None:
 # ---------------------------------------------------------------------------
 # Photo validation helpers (Cat 5 collection)
 # ---------------------------------------------------------------------------
+
+
+# Patterns that indicate the LLM is prematurely declaring the collection complete.
+# Used when remaining_count > 0 to catch hallucinated completion language.
+_COMPLETION_PATTERNS = re.compile(
+    r"(?i)\b(?:"
+    r"final\s+(?:treasure|find|discovery|one|item|piece)"
+    r"|(?:last|final)\s+(?:spotted|dotted|polka|circle)"
+    r"|(?:all|every)\s+(?:found|collected|done|complete)"
+    r"|mission\s+(?:complete|accomplished|done)"
+    r"|collection\s+(?:is\s+)?(?:complete|done|finished)"
+    r"|(?:found|got|collected)\s+them\s+all"
+    r"|finish(?:ed|es)?\s+(?:our|the)\s+(?:mission|collection|patrol)"
+    r"|perfect\s+final"
+    r")\b"
+)
+
+
+def _has_completion_language(dialogue: str) -> bool:
+    """Check if dialogue contains language implying the collection is complete."""
+    return bool(_COMPLETION_PATTERNS.search(dialogue))
 
 
 def _is_correct_collection_photo(state: SessionStateModel, photo_id: str) -> bool:
@@ -468,6 +490,29 @@ async def resolve_turn(
         turn_response = await _generate_with_retry(script_agent, state)
         auto_advance = False
 
+        # Guardrail: detect premature completion language during collection when items remain.
+        # The LLM sometimes says "final treasure" or "all done" even when remaining_count > 0.
+        if (
+            state.current_step.startswith("STEP_3_COLLECT_")
+            and len(state.collected_photos) < state.total_rounds
+            and _has_completion_language(turn_response.dialogue)
+        ):
+            logger.warning(
+                "Detected premature completion language in collection response "
+                f"(collected={len(state.collected_photos)}/{state.total_rounds}), regenerating"
+            )
+            # Append a corrective hint to conversation history, regenerate, then remove the hint
+            corrective_hint = (
+                f"[system: The collection is NOT complete — {len(state.collected_photos)} of "
+                f"{state.total_rounds} collected, {state.total_rounds - len(state.collected_photos)} still "
+                f"needed. Do NOT use words like 'final', 'last', 'complete', 'all done', or 'mission complete'. "
+                f"Celebrate this find, then ask about finding the NEXT one.]"
+            )
+            _append_child_turn(state, corrective_hint, include_round_number=False)
+            turn_response = await _generate_with_retry(script_agent, state)
+            # Remove the corrective hint from history so it doesn't leak
+            state.conversation_history = [t for t in state.conversation_history if t.text != corrective_hint]
+
         # Override stay_on_step when Cat5 collection is objectively complete
         if (
             turn_response.stay_on_step
@@ -547,6 +592,22 @@ async def resolve_turn(
             )
 
         turn_response = await _generate_with_retry(script_agent, state)
+
+        # Guardrail: override stay_on_step when the response still invites child input.
+        # The LLM sometimes sets stay_on_step=false even when the dialogue ends with a
+        # question — which would auto-advance past the child's chance to respond.
+        if not turn_response.stay_on_step and state.current_step == "STEP_4_SYNTHESIS":
+            dialogue_stripped = turn_response.dialogue.rstrip()
+            synthesis_child_turns = sum(
+                1 for t in state.conversation_history if t.step == "STEP_4_SYNTHESIS" and t.role == "child"
+            )
+            if dialogue_stripped.endswith("?"):
+                logger.info("Overriding stay_on_step: synthesis response ends with question")
+                turn_response.stay_on_step = True
+            elif synthesis_child_turns < 2:
+                logger.info("Overriding stay_on_step: synthesis needs at least 2 child turns")
+                turn_response.stay_on_step = True
+
         if turn_response.stay_on_step:
             # Child needs help (stuck, confused) — stay and respond
             _append_ai_turn(state, turn_response.dialogue)

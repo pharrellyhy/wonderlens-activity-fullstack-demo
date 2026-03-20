@@ -9,7 +9,6 @@ const CATEGORY_ICONS = {
 };
 
 export default function PhotoSelector({ onPhotoSelect, isLoading }) {
-  const [dragOver, setDragOver] = useState(false);
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
 
@@ -34,19 +33,6 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
       isActive = false;
     };
   }, []);
-
-  const handleFileUpload = (file) => {
-    if (file && file.type.startsWith('image/')) {
-      onPhotoSelect(file);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    handleFileUpload(file);
-  };
 
   const handlePhotoClick = async (photo) => {
     if (isLoading) return;
@@ -74,17 +60,6 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
         const file = new File([blob], `${photo.id}.png`, { type: 'image/png' });
         onPhotoSelect(file);
       }, 'image/png');
-    }
-  };
-
-  const handleDropZoneKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (ev) => handleFileUpload(ev.target.files[0]);
-      input.click();
     }
   };
 
@@ -159,28 +134,13 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
             );
           })}
 
-          {/* Upload zone */}
+          {/* Upload zone — disabled for now */}
           <div
-            role="button"
-            tabIndex={0}
-            aria-label="Upload a photo by dropping or clicking"
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onKeyDown={handleDropZoneKeyDown}
-            className={`w-full max-w-md border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
-              dragOver ? 'border-[var(--color-forest)] bg-[var(--color-forest)]/5 scale-[1.01]' : 'border-[var(--color-forest)]/30 hover:border-[var(--color-forest)]/50 hover:bg-[var(--color-forest)]/5'
-            }`}
-            onClick={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = 'image/*';
-              input.onchange = (e) => handleFileUpload(e.target.files[0]);
-              input.click();
-            }}
+            aria-label="Custom photo upload coming soon"
+            className="w-full max-w-md border-2 border-dashed rounded-2xl p-6 text-center border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
           >
-            <p className="text-gray-500 text-sm">
-              Drop a photo here or <span className="text-[var(--color-forest)] font-medium">click to upload</span>
+            <p className="text-gray-400 text-sm">
+              Custom photo upload coming soon
             </p>
           </div>
         </>

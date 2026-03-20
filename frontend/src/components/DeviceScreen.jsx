@@ -67,6 +67,13 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
   const WidgetComponent = WIDGET_MAP[screenFrame.widget];
   const params = screenFrame.widget_params || {};
 
+  // character_display has its own gentle-float; suppress all overlay animations
+  // except scene_transition (crossfade between rounds)
+  let overlayAnimation = screenFrame.animation;
+  if (screenFrame.widget === 'character_display' && overlayAnimation !== 'scene_transition') {
+    overlayAnimation = 'appear';
+  }
+
   return (
     <div
       key={frameKey}
@@ -80,7 +87,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
       )}
 
       <div className="flex-1 flex items-center justify-center min-h-0">
-        <AnimationOverlay animation={screenFrame.animation}>
+        <AnimationOverlay animation={overlayAnimation}>
           {WidgetComponent ? (
             <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
           ) : (

@@ -4,6 +4,61 @@ Last updated: 2026-03-20
 
 ---
 
+## Fix: LLM Conversation Flow Guardrails (Premature Completion + Synthesis Skip)
+
+**Problem**: Two related LLM reliability issues in Cat5 conversation flow:
+1. During collection rounds (`STEP_3_COLLECT`), the Script Agent says things like "perfect final treasure" when items still remain (e.g., 2/3 collected), contradicting the actual progress numbers injected into the prompt
+2. During synthesis (`STEP_4_SYNTHESIS`), the Script Agent sets `stay_on_step: false` on responses that end with questions or invitations, causing the system to auto-advance to celebration before the child can respond (e.g., user says "inspire me", AI suggests names ending with "?", system immediately jumps to celebration)
+
+**Solution**: Three-layer fix combining backend guardrails with prompt improvements:
+1. **Collection completion language guardrail**: Regex-based detection of premature completion patterns ("final treasure", "mission complete", "all done", etc.) in collection responses when `remaining_count > 0`. On detection, injects a corrective hint into conversation history, regenerates, then removes the hint. Single retry to avoid loops.
+2. **Synthesis `stay_on_step` guardrail**: Overrides `stay_on_step` to `true` when (a) the synthesis dialogue ends with `?`, or (b) fewer than 2 child turns on synthesis — ensuring minimum engagement.
+3. **Prompt fixes**: Added explicit "inspire me" handling in `cat5_step4_synthesis.md` as `stay_on_step: true`. Added FORBIDDEN WORDS list in `cat5_step3_collect.md` when `remaining_count > 0`.
+
+**Edits**:
+- `backend/turn_handler.py` — added `import re` at top; added `_COMPLETION_PATTERNS` regex and `_has_completion_language()` helper in photo validation section; added collection completion language guardrail in section 7c (after line 468 generate); added synthesis `stay_on_step` override in section 7d (after line 549 generate)
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — added "Inspire me" / "give me ideas" / "show me" as explicit handling case with `stay_on_step: true`
+- `backend/skills/step_instructions/cat5_step3_collect.md` — added FORBIDDEN WORDS clause under the `remaining_count > 0` rule
+
+**NOT Changed**:
+- `backend/state_machine.py` — step transitions unchanged
+- `backend/agents/script_agent.py` — prompt assembly unchanged
+- Frontend auto-advance logic (`useSessionOrchestration.js`) — correctly follows backend signals
+- Cat1 flows — not affected by these Cat5-specific guardrails
+
+**Verification**:
+- `cd backend && uv run ruff check turn_handler.py` — PASS
+- `cd backend && uv run ruff format --check turn_handler.py` — PASS
+
+---
+
+## Review Follow-Up: CharacterDisplay Redesign + PhotoSelector Cleanup
+
+**Problem**: The latest CharacterDisplay redesign moved the widget to per-entity themed scene cards, but it still needed a review pass before handoff. The main risks were whether the runtime `entity` values and icon assets actually matched the new theme map, whether the animation override only affected `character_display`, and whether the related `PhotoSelector.jsx` edits had left dead code behind. That review found one concrete issue: the upload zone had been intentionally disabled in the UI, but the component still carried its old drag-and-drop state and handlers, which now failed frontend lint.
+
+**Solution**: Kept the redesigned scene-window approach, confirmed the backend/frontend contract still passes simple entity names (`dog`, `cat`, `dinosaur`, `ladybug`, `dandelion`) and that matching icon assets exist in `frontend/public/icons/`, and preserved the one-shot animation remap in `DeviceScreen`. Simplified `PhotoSelector.jsx` by removing the unused upload state/handlers so the disabled upload UI matches the code path that is actually live.
+
+**Edits**:
+- `frontend/src/index.css` — added `@keyframes gentle-float` and `.animate-gentle-float` for the subtle character float motion
+- `frontend/src/widgets/gameThemes.js` — **NEW**: per-game theme config mapping entity name to gradient, accent styling, character PNG, and decorative elements
+- `frontend/src/widgets/CharacterDisplay.jsx` — replaced round-based SVG icon rotation with the themed scene-card layout using `getThemeForEntity()`, character PNGs, corner decorations, and a round badge
+- `frontend/src/components/DeviceScreen.jsx` — remaps `sparkle_highlight`/`gentle_pulse` to `appear` only for the `character_display` widget before rendering `AnimationOverlay`
+- `frontend/src/components/PhotoSelector.jsx` — removed the now-unused drag/drop upload state and handlers left behind after the upload area was converted to a disabled placeholder
+- `docs/plans/character-display-redesign.md` — **NEW**: design plan for the widget redesign
+
+**NOT Changed**:
+- Backend — zero changes; the existing `entity` prop flow was reviewed and left intact
+- Other widgets (`BadgeAward`, `PhotoGrid`, `ProgressTracker`, `PhotoDisplay`) — unchanged
+- `frontend/src/widgets/AnimationOverlay.jsx` — unchanged; only the caller-side animation value changes for `character_display`
+- No dedicated frontend test files exist yet for this widget/theme flow, so no new automated tests were added in this pass
+
+**Verification**:
+- `cd frontend && npx eslint src/components/DeviceScreen.jsx src/components/PhotoSelector.jsx src/widgets/CharacterDisplay.jsx src/widgets/gameThemes.js` — PASS
+- `cd frontend && npm run build` — PASS
+- Manual contract review — confirmed backend screen-frame payloads pass simple entity names and the corresponding PNG assets exist under `frontend/public/icons/`
+
+---
+
 ## Review Follow-Up: Harden Game Summary Detail View + Fallback Data
 
 **Problem**: Picking up the new game-detail-view work exposed two concrete frontend gaps and one test gap. First, the fallback summary data embedded in `PhotoSelector.jsx` had already drifted from the backend truth for several demos (`cat`, `dinosaur`, and `dandelion` showed stale tier/concept/mechanic/preview data whenever `/api/entities` failed). Second, the new `GameDetailView.jsx` collectible preview fallback used direct DOM mutation inside `onError`, which is brittle in React. Third, the new `/api/entities` summary payload had no focused regression coverage proving the summary shape or the fallback data stayed aligned.
@@ -257,26 +312,4 @@ Last updated: 2026-03-20
 - `cd backend && uv run ruff check . && uv run ruff format --check agents/script_agent.py` — PASS
 - `cd backend && uv run pytest ../tests/test_entity_registry.py -v` — PASS (29 passed)
 - `cd backend && uv run pytest ../tests/ -k "not e2e" -q` — PASS (178 passed)
-
----
-
-## Review Entity Registry Follow-Up: PhotoSelector Cleanup
-
-**Problem**: The latest entity-registry pass introduced runtime-backed entity loading in `PhotoSelector`, but the component still carried a `loadingEntities` state that was never read. That left the freshly modified frontend file failing the repo lint rules even though the backend registry/API work itself held up under focused review.
-
-**Solution**: Reviewed the registry refactor and its immediate integrations (`entity_registry.py`, `scenarios.py`, `recipe_loader.py`, `server.py`, local registry/API tests) and left that backend surface unchanged. Simplified `frontend/src/components/PhotoSelector.jsx` by removing the unused `loadingEntities` state and the redundant `.finally(...)` branch, preserving the existing `/api/entities` fetch with fallback categories.
-
-**Edits**:
-- `frontend/src/components/PhotoSelector.jsx` — removed unused `loadingEntities` state from the new `/api/entities` loading path
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `backend/entity_registry.py`, `backend/scenarios.py`, `backend/recipe_loader.py`, `backend/server.py`, and `backend/turn_handler.py` were reviewed in this pass and left unchanged
-- local `tests/test_entity_registry.py` and local `tests/test_api.py` were reviewed and executed without modification
-- Asset-generation scripts and generated icon files currently in the worktree were not changed in this pass
-
-**Verification**:
-- `cd backend && uv run pytest ../tests/test_entity_registry.py ../tests/test_api.py -q` — PASS (`50 passed`)
-- `cd backend && uv run ruff check entity_registry.py scenarios.py recipe_loader.py server.py turn_handler.py` — PASS
-- `cd frontend && npm run lint -- src/components/PhotoSelector.jsx` — PASS
 

@@ -99,6 +99,11 @@
   50% { opacity: 1; transform: scale(1.03); }
 }
 
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-4px); }
@@ -161,6 +166,10 @@
 
 .animate-sfx-pulse {
   animation: sfx-pulse 2s ease-in-out infinite;
+}
+
+.animate-gentle-float {
+  animation: gentle-float 3.5s ease-in-out infinite;
 }
 
 .animate-gentle-glow {

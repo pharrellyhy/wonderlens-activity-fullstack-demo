@@ -9,5 +9,5 @@
 
 **Key guidance:**
 - The demo should show that ANY answer is fine — there's no wrong voice for the entity.
-- Use expressive, silly language in your demo answer to lower the bar for the child.
+- Use expressive, funny language in your demo answer to lower the bar for the child.
 - The child's job is to imagine and speak AS the entity, not describe what it would do.

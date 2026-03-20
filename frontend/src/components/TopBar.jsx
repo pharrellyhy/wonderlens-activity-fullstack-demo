@@ -2,7 +2,7 @@ import { CameraIcon, LeafIcon } from '../icons';
 
 export default function TopBar({ tier, onTierChange, activityName, onNewSession, sessionActive }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 mx-3 mt-3 bg-gradient-to-r from-[var(--color-forest)] to-[var(--color-forest-light)] rounded-2xl shadow-md">
+    <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 mt-3 mx-3 max-w-3xl sm:mx-auto w-full bg-gradient-to-r from-[var(--color-forest)] to-[var(--color-forest-light)] rounded-2xl shadow-md">
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shadow-sm">
           <CameraIcon className="w-4 h-4 text-white" />

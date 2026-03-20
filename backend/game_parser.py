@@ -57,6 +57,10 @@ def _build_entity_config(data: dict) -> EntityConfig:
         feature_keywords=data.get("feature_keywords", []),
         creative_slots=creative_slots,
         collection_catalog=collection_catalog,
+        tier=data["tier"],
+        ib_theme=data["ib_theme"],
+        ib_key_concept=data["ib_key_concept"],
+        concepts_earned=data.get("concepts_earned", []),
     )
 
 

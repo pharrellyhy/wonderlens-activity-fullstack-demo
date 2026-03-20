@@ -58,7 +58,7 @@ BADGES: tuple[ConceptBadge, ...] = (
     ConceptBadge(
         "Function",
         "function.png",
-        "Key fitting into a colorful lock",
+        "Close-up of colorful interlocking gears turning together against a rich sky background",
     ),
     ConceptBadge(
         "Responsibility",
@@ -73,9 +73,9 @@ def build_prompt(badge: ConceptBadge) -> str:
         f'Create a square illustrated badge icon for a children\'s learning concept called "{badge.concept}". '
         f"Main subject: {badge.description} "
         "Use a warm children's-book illustration style with gentle outlines, soft painterly shading, and natural earth-toned colors. "
-        "The image should feel like a badge or emblem — the subject should be centered, large, and framed within a soft circular or shield-shaped border with a warm golden-tan edge. "
+        "The image should feel like a badge or emblem — the subject should be centered and large, framed within a soft rounded-square border with a warm golden-tan edge. "
+        "CRITICAL: The background color and border must fill the ENTIRE square canvas corner-to-corner. There must be ZERO white space, ZERO transparent pixels, ZERO empty margins anywhere — every single pixel of the square must be painted. "
         "Show exactly one clear visual metaphor, no text, no letters, no words. "
-        "The background must extend to ALL edges of the image — no black borders, no white borders, no empty margins. "
         "Keep the silhouette very clear and easy to recognize at small size for ages 2-8. "
         "Do not add extra objects, characters, labels, text, borders, frames, or watermarks."
     )

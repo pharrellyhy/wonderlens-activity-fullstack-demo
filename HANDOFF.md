@@ -4,6 +4,37 @@ Last updated: 2026-03-20
 
 ---
 
+## Review Follow-Up: Harden Game Summary Detail View + Fallback Data
+
+**Problem**: Picking up the new game-detail-view work exposed two concrete frontend gaps and one test gap. First, the fallback summary data embedded in `PhotoSelector.jsx` had already drifted from the backend truth for several demos (`cat`, `dinosaur`, and `dandelion` showed stale tier/concept/mechanic/preview data whenever `/api/entities` failed). Second, the new `GameDetailView.jsx` collectible preview fallback used direct DOM mutation inside `onError`, which is brittle in React. Third, the new `/api/entities` summary payload had no focused regression coverage proving the summary shape or the fallback data stayed aligned.
+
+**Solution**: Kept the backend summary API shape, but added targeted regression coverage around it and simplified the frontend implementation. Moved the fallback category data into a dedicated module so it can be verified independently, synced it to the current backend demo summaries, replaced the DOM-mutation image fallback with a normal React state path, and added a small unmount guard around the entity fetch in `PhotoSelector`.
+
+**Edits**:
+- `backend/entity_registry.py` — reviewed and kept the new summary payload path (`tier`/IB metadata on `EntityConfig`, `_build_entity_summary()`, and `summary` in `/api/entities`) unchanged after adding test coverage around it
+- `backend/game_parser.py` — reviewed and kept the new metadata plumbing unchanged in this pass
+- `frontend/src/components/photoSelectorFallbacks.js` — **NEW**: extracted fallback category/summary data into a dedicated module; synced all 5 demo summaries to the current backend data
+- `frontend/src/components/PhotoSelector.jsx` — imports the new fallback module; keeps the detail-view flow but removes the huge inline fallback object and guards against setting fetched categories after unmount
+- `frontend/src/components/GameDetailView.jsx` — simplified duplicated label-formatting helpers and replaced the collectible preview `onError` DOM mutation with a small React fallback component
+- local `tests/test_api.py` — extended `TestEntitiesEndpoint` with summary-payload assertions
+- local `tests/test_photo_selector_fallbacks.py` — **NEW**: Node-backed regression check that imports the frontend fallback module and verifies the fallback summaries match the current demo truth
+- `HANDOFF.md` — replaced the draft feature entry with this reviewed follow-up
+
+**NOT Changed**:
+- `backend/server.py` — `/api/entities` endpoint shape unchanged; it just serves the richer summary data
+- `frontend/src/App.jsx` and the session start flow — unchanged
+- Agent pipeline, schemas, step instructions, and other frontend components — unchanged
+- Generated badge/icon asset files already modified in the worktree were not changed in this pass
+
+**Verification**:
+- `uv run pytest tests/test_api.py::TestEntitiesEndpoint tests/test_photo_selector_fallbacks.py tests/test_entity_registry.py -q` — PASS (`36 passed`)
+- `cd backend && uv run ruff check entity_registry.py game_parser.py ../tests/test_api.py ../tests/test_photo_selector_fallbacks.py ../tests/test_entity_registry.py` — PASS
+- `cd backend && uv run ruff format --check entity_registry.py game_parser.py ../tests/test_api.py ../tests/test_photo_selector_fallbacks.py ../tests/test_entity_registry.py` — PASS
+- `cd frontend && npx eslint src/components/PhotoSelector.jsx src/components/GameDetailView.jsx src/components/photoSelectorFallbacks.js` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
 ## Generate IB Concept Badge Images
 
 **Problem**: The BadgeAward widget rendered a generic CSS gradient circle with an SVG icon for all IB concepts. Every concept looked identical — children couldn't visually distinguish Perspective from Causation or any other concept.
@@ -248,33 +279,4 @@ Last updated: 2026-03-20
 - `cd backend && uv run pytest ../tests/test_entity_registry.py ../tests/test_api.py -q` — PASS (`50 passed`)
 - `cd backend && uv run ruff check entity_registry.py scenarios.py recipe_loader.py server.py turn_handler.py` — PASS
 - `cd frontend && npm run lint -- src/components/PhotoSelector.jsx` — PASS
-
----
-
-## Entity Registry — Consolidate Scattered Entity Config
-
-**Problem**: Adding a new entity required editing 5-6 files with hardcoded dicts that had to stay in sync (`scenarios.py` keyword maps, `recipe_loader.py` filename/slot dicts, `server.py` collection catalogs, `PhotoSelector.jsx` hardcoded categories). No validation caught missing pieces.
-
-**Solution**: Created `backend/entity_registry.py` as the single source of truth for all entity configuration. All 5 entities are defined once with Pydantic models (`EntityConfig`, `CollectionCatalog`, `CollectionItem`). Other modules import lookup helpers instead of maintaining their own dicts. Added `GET /api/entities` endpoint for the frontend. Added `validate_registry()` that runs at server startup to catch missing recipe/scenario files. Frontend fetches entities from the API with hardcoded fallback.
-
-**Edits**:
-- `backend/entity_registry.py` — **NEW**: registry module with all entity config, Pydantic models, derived lookup helpers, `generate_round_items()` (moved from server.py), `all_entities_for_api()`, `validate_registry()`
-- `backend/scenarios.py` — removed `_ENTITY_SCENARIO_MAP` and `SCENARIO_CATEGORIES` dicts; imports from `entity_registry`; re-exports `SCENARIO_CATEGORIES` for backward compatibility; `match_scenario()` uses registry keyword/feature maps
-- `backend/recipe_loader.py` — removed `_DEMO_FILENAMES`, `_FILENAME_ENTITIES`, `_CAT1_SLOTS`, `_CAT5_SLOTS`, `is_demo_entity()`; imports `is_demo_entity`, `entity_name_for_filename`, `get_creative_slots` from registry
-- `backend/server.py` — removed `COLLECTION_CATALOGS` dict and `generate_round_items()` function; imports from `entity_registry`; added `GET /api/entities` endpoint; calls `validate_registry()` in `lifespan()` startup; removed unused `random` import
-- `frontend/src/components/PhotoSelector.jsx` — fetches entities from `/api/entities` on mount with `useEffect`; hardcoded categories kept as fallback; category icons resolved via lookup map
-- `tests/test_entity_registry.py` — **NEW**: 22 tests covering registry data, lookups, `generate_round_items()`, `all_entities_for_api()`, `validate_registry()`
-- `tests/test_api.py` — added `TestEntitiesEndpoint` with 2 tests for the new `/api/entities` endpoint
-
-**NOT Changed**:
-- `backend/agents/director.py` and `backend/agents/pipeline.py` — import `SCENARIO_CATEGORIES` from `scenarios.py` which re-exports it; no changes needed
-- Recipe JSON files, scenario YAML files, prompt/skill markdown
-- Frontend hooks, App.jsx, other components
-- State machine, DB layer, STT, TTS, Script Agent
-
-**Verification**:
-- `cd backend && uv run pytest ../tests/ -k "not e2e" -q` — PASS (175 passed)
-- `cd backend && uv run ruff check entity_registry.py scenarios.py recipe_loader.py server.py` — PASS
-- `cd backend && uv run ruff format --check entity_registry.py scenarios.py recipe_loader.py server.py` — PASS
-- `cd backend && uv run mypy entity_registry.py scenarios.py recipe_loader.py server.py` — no new errors (all pre-existing)
 

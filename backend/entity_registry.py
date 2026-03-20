@@ -10,9 +10,9 @@ from pathlib import Path
 from pydantic import BaseModel
 
 try:
-    from .schemas.creative_slots import CreativeSlots
+    from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots, CreativeSlots
 except ImportError:
-    from schemas.creative_slots import CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots, CreativeSlots
 
 try:
     from .logger import setup_logger
@@ -55,6 +55,10 @@ class EntityConfig(BaseModel):
     feature_keywords: list[str]
     creative_slots: CreativeSlots
     collection_catalog: CollectionCatalog | None = None
+    tier: str = ""
+    ib_theme: str = ""
+    ib_key_concept: str = ""
+    concepts_earned: list[str] = []
 
 
 # --- Registry data (populated by game_loader at import time) ---
@@ -172,6 +176,66 @@ def generate_round_items(activity_type: str, total_rounds: int) -> list[list[dic
     return rounds
 
 
+_TIER_META = {
+    "T0": {"label": "Sensory Explorer", "ages": "2–4"},
+    "T1": {"label": "Function Discoverer", "ages": "4–6"},
+    "T2": {"label": "System Thinker", "ages": "6–8"},
+}
+
+
+def _build_entity_summary(entity: EntityConfig) -> dict:
+    """Build a summary payload for the game detail view."""
+    slots = entity.creative_slots
+    tier_info = _TIER_META.get(entity.tier, {"label": entity.tier, "ages": ""})
+
+    summary: dict = {
+        "category": entity.category,
+        "tier": entity.tier,
+        "ages": tier_info["ages"],
+        "tierLabel": tier_info["label"],
+        "ib_theme": entity.ib_theme,
+        "ib_key_concept": entity.ib_key_concept,
+        "concepts_earned": entity.concepts_earned,
+        "role_title": slots.role_title,
+    }
+
+    if isinstance(slots, Cat1CreativeSlots):
+        summary.update(
+            {
+                "metaphor": slots.metaphor,
+                "game_mechanic": slots.game_mechanic,
+                "round_count": len(slots.round_scenarios),
+                "round_scenarios": slots.round_scenarios,
+                "escalation_axis": slots.escalation_axis,
+                "collection_criterion": None,
+                "collection_count": None,
+                "synthesis_type": None,
+                "observation_angle": None,
+                "collectible_previews": None,
+            }
+        )
+    elif isinstance(slots, Cat5CreativeSlots):
+        previews = []
+        if entity.collection_catalog:
+            previews = [{"label": item.label, "image": item.image} for item in entity.collection_catalog.correct]
+        summary.update(
+            {
+                "metaphor": slots.mission_metaphor,
+                "game_mechanic": None,
+                "round_count": slots.collection_count,
+                "round_scenarios": None,
+                "escalation_axis": None,
+                "collection_criterion": slots.collection_criterion,
+                "collection_count": slots.collection_count,
+                "synthesis_type": slots.synthesis_type,
+                "observation_angle": slots.observation_angle,
+                "collectible_previews": previews,
+            }
+        )
+
+    return summary
+
+
 def all_entities_for_api() -> list[dict]:
     """Return entity data structured for the frontend /api/entities endpoint."""
     categories: dict[str, dict] = {}
@@ -197,6 +261,7 @@ def all_entities_for_api() -> list[dict]:
                 "id": entity.entity_name,
                 "label": entity.display_label,
                 "src": entity.icon_src,
+                "summary": _build_entity_summary(entity),
             }
         )
     # Return in stable order: cat1 first, then cat5

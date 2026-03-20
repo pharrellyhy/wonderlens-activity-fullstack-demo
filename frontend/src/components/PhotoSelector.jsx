@@ -1,27 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CameraIcon, BinocularsIcon, MagnifyingGlassIcon, LeafIcon } from '../icons';
-
-const FALLBACK_CATEGORIES = [
-  {
-    id: 'cat1',
-    title: 'In-Device Verbal',
-    subtitle: 'Imagine stories with your photo friend!',
-    photos: [
-      { id: 'dog', label: 'Stuffed Dog', src: '/icons/dog.png' },
-      { id: 'cat', label: 'Cat', src: '/icons/cat.png' },
-      { id: 'dinosaur', label: 'Dinosaur', src: '/icons/dinosaur.png' },
-    ],
-  },
-  {
-    id: 'cat5',
-    title: 'Out-of-Device Collection',
-    subtitle: 'Go on a real-world scavenger hunt!',
-    photos: [
-      { id: 'ladybug', label: 'Ladybug', src: '/icons/ladybug.png' },
-      { id: 'dandelion', label: 'Dandelion', src: '/icons/dandelion.png' },
-    ],
-  },
-];
+import GameDetailView from './GameDetailView';
+import { FALLBACK_CATEGORIES } from './photoSelectorFallbacks';
 
 const CATEGORY_ICONS = {
   cat1: BinocularsIcon,
@@ -31,21 +11,28 @@ const CATEGORY_ICONS = {
 export default function PhotoSelector({ onPhotoSelect, isLoading }) {
   const [dragOver, setDragOver] = useState(false);
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   useEffect(() => {
+    let isActive = true;
+
     fetch('/api/entities')
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch entities');
         return res.json();
       })
       .then((data) => {
-        if (data.categories && data.categories.length > 0) {
+        if (isActive && data.categories && data.categories.length > 0) {
           setCategories(data.categories);
         }
       })
       .catch(() => {
         // Keep fallback categories on error
       });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const handleFileUpload = (file) => {
@@ -101,6 +88,17 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
     }
   };
 
+  if (selectedPhoto) {
+    return (
+      <GameDetailView
+        photo={selectedPhoto}
+        onBack={() => setSelectedPhoto(null)}
+        onStart={() => handlePhotoClick(selectedPhoto)}
+        isLoading={isLoading}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center h-full p-6 overflow-y-auto">
       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-forest-dark)] flex items-center justify-center mb-4 shadow-lg">
@@ -134,7 +132,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
                   {cat.photos.map((photo) => (
                     <button
                       key={photo.id}
-                      onClick={() => handlePhotoClick(photo)}
+                      onClick={() => setSelectedPhoto(photo)}
                       className="group relative w-full aspect-square rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]"
                     >
                       <img

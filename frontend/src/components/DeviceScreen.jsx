@@ -89,7 +89,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
       <div className="flex-1 flex items-center justify-center min-h-0 px-2 pb-1 max-[380px]:px-1.5 max-[380px]:pb-0.5">
         <AnimationOverlay animation={overlayAnimation}>
           {WidgetComponent ? (
-            <div className="w-full max-w-md max-h-full flex items-center justify-center">
+            <div className="w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center">
               <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
             </div>
           ) : (

@@ -3,11 +3,11 @@ import { PhotoFrameIcon } from '../icons';
 export default function PhotoDisplay({ photoUrl, description, animation, entity }) {
   return (
     <div className="relative flex flex-col items-center justify-center gap-2 max-[380px]:gap-1.5 w-full h-full min-h-0">
-      <div className={`relative h-[min(100%,12rem)] aspect-square w-auto max-w-full rounded-2xl max-[380px]:rounded-xl overflow-hidden ${
+      <div className={`relative h-[min(100%,8.75rem)] aspect-square w-auto max-w-[11rem] rounded-2xl max-[380px]:rounded-xl overflow-hidden bg-white ${
         animation === 'sparkle_highlight' ? 'animate-fade-in' : ''
       }`}>
         {photoUrl ? (
-          <img src={photoUrl} alt={entity || 'Photo'} loading="lazy" className="w-full h-full object-cover" />
+          <img src={photoUrl} alt={entity || 'Photo'} loading="lazy" className="w-full h-full object-contain" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-[var(--color-sky-light)]/20">
             <PhotoFrameIcon className="w-9 h-9 max-[380px]:w-8 max-[380px]:h-8 text-[var(--color-forest)]/40" />

@@ -29,7 +29,7 @@ export default function TextInput({ onSubmit, onMicToggle, isMicActive, disabled
           placeholder="Ask me anything ..."
           aria-label="Type your message"
           disabled={disabled}
-          className="flex-1 bg-transparent py-2 max-[380px]:py-1.5 text-sm max-[380px]:text-xs lg:text-base text-gray-700 placeholder-gray-400 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 bg-transparent py-2 max-[380px]:py-1.5 text-base lg:text-base text-gray-700 placeholder-gray-400 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
         />
         <button
           type="button"

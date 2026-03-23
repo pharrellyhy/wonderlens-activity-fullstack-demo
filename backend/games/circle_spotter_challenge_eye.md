@@ -2,7 +2,7 @@
 activity_type: circle_spotter_challenge_eye
 entity_name: eye
 category: category_5
-display_label: The Circle Spotter Challenge
+display_label: Eye
 tier: T2
 ib_theme: Sharing the Planet
 ib_key_concept: Connection

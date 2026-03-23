@@ -2,7 +2,7 @@
 activity_type: neighborhood_safety_patrol_firefighter
 entity_name: firefighter
 category: category_5
-display_label: The Neighborhood Safety Patrol
+display_label: Firefighter
 tier: T1
 ib_theme: How the World Works
 ib_key_concept: Function

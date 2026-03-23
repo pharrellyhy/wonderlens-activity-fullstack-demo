@@ -2,7 +2,7 @@
 activity_type: apple_what_happens_next_green_apple
 entity_name: green_apple
 category: category_1
-display_label: Apple What-Happens-Next
+display_label: Green Apple
 tier: T1
 ib_theme: Sharing the Planet
 ib_key_concept: Connection

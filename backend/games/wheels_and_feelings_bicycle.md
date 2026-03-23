@@ -2,7 +2,7 @@
 activity_type: wheels_and_feelings_bicycle
 entity_name: bicycle
 category: category_1
-display_label: Wheels and Feelings
+display_label: Bicycle
 tier: T1
 ib_theme: How the World Works
 ib_key_concept: Function

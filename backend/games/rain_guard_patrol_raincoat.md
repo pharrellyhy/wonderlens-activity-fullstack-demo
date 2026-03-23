@@ -2,7 +2,7 @@
 activity_type: rain_guard_patrol_raincoat
 entity_name: raincoat
 category: category_5
-display_label: The Rain Guard Patrol
+display_label: Raincoat
 tier: T0
 ib_theme: Sharing the Planet
 ib_key_concept: Connection

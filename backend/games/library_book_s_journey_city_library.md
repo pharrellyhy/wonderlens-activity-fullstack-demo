@@ -2,7 +2,7 @@
 activity_type: library_book_s_journey_city_library
 entity_name: city_library
 category: category_1
-display_label: The Library Book's Journey
+display_label: City Library
 tier: T2
 ib_theme: How the World Works
 ib_key_concept: Function

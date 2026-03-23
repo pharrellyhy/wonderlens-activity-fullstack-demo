@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import TopBar from './components/TopBar';
 import ConversationPanel from './components/ConversationPanel';
 import DeviceScreen from './components/DeviceScreen';
@@ -8,6 +8,35 @@ import RetryButton from './components/RetryButton';
 import ToyCameraFrame from './components/ToyCameraFrame';
 import useSessionOrchestration from './hooks/useSessionOrchestration';
 
+async function loadDeepLinkConversation(contextPath) {
+  if (!contextPath) {
+    return [];
+  }
+
+  try {
+    const res = await fetch(contextPath);
+    if (!res.ok) {
+      throw new Error(`Context fetch failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data
+      .filter((turn) => (
+        turn
+        && (turn.role === 'ai' || turn.role === 'child')
+        && typeof turn.text === 'string'
+      ))
+      .map((turn) => ({ role: turn.role, text: turn.text }));
+  } catch (error) {
+    console.warn('Deep link context load failed', error);
+    return [];
+  }
+}
+
 function App() {
   const [tier, setTier] = useState('T0');
 
@@ -16,8 +45,32 @@ function App() {
     latency, activityType, templateType, photoUrl, errorExit, lastWrongPhotoId,
     retryCount, isActive, isEnded, isInputDisabled,
     isSpeaking, isMicActive, sttMode, silenceTimer,
-    startSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
+    startSession, startDeepLinkSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
   } = useSessionOrchestration(tier);
+
+  const deepLinkHandled = useRef(false);
+
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const entity = params.get('entity');
+    if (!entity) return;
+
+    deepLinkHandled.current = true;
+    const deepLinkTier = params.get('tier') || 'T0';
+    const contextPath = params.get('context') || '';
+
+    void (async () => {
+      const conversationContext = await loadDeepLinkConversation(contextPath);
+      setTier(deepLinkTier);
+      try {
+        await startDeepLinkSession(entity, deepLinkTier, conversationContext);
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch {
+        // Let the existing error UI handle failed deep-link starts.
+      }
+    })();
+  }, [startDeepLinkSession, setTier]);
 
   const handleRetry = useCallback(() => resetSession(), [resetSession]);
   const showRetry = Boolean(error && !sessionId);

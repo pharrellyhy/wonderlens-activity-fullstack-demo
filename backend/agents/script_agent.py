@@ -198,6 +198,21 @@ def _load_step_instructions(state: SessionStateModel) -> str:
     for key, value in replacements.items():
         text = text.replace(key, value)
 
+    # Deep link override for shortened hook
+    if state.deep_linked and step == "STEP_1_HOOK":
+        text += (
+            f"\n\n### DEEP LINK OVERRIDE (takes priority over normal hook rules):\n"
+            f"This child was just talking with another AI about {state.entity_name}. "
+            f"They already know the entity.\n"
+            f"Your hook must be SHORTENED:\n"
+            f"1. One brief sentence acknowledging what they were just discussing "
+            f"(reference a specific detail from the upstream conversation).\n"
+            f"2. Immediately transition to the game invitation — frame it as "
+            f'"Would you like to...?" using invitational language.\n'
+            f"3. Do NOT do the full observation + wonder sequence. The child is already engaged.\n"
+            f"4. Maximum 2 sentences total regardless of tier."
+        )
+
     # Append activity-specific overlay from instruction recipe
     overlay = _build_instruction_overlay(state)
     if overlay:
@@ -357,6 +372,15 @@ def _build_system_prompt(state: SessionStateModel) -> str:
             f"Do NOT invent features not in this list."
         )
 
+    # Build upstream conversation context for deep-linked sessions
+    upstream_context = ""
+    if state.deep_linked and state.upstream_conversation:
+        upstream_lines = ["### Upstream Conversation Context:", "The child just had this conversation with another AI:"]
+        for turn in state.upstream_conversation:
+            prefix = "Child" if turn.role == "child" else "Upstream AI"
+            upstream_lines.append(f"  {prefix}: {turn.text}")
+        upstream_context = "\n".join(upstream_lines)
+
     replacements = {
         "{tier_constraints}": _load_tier_constraints(state.tier),
         "{step_instructions}": _load_step_instructions(state),
@@ -377,6 +401,9 @@ def _build_system_prompt(state: SessionStateModel) -> str:
 
     for key, value in replacements.items():
         template = template.replace(key, value)
+
+    if upstream_context:
+        template += f"\n\n{upstream_context}"
 
     return template
 

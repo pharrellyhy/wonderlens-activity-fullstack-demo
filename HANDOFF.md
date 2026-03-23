@@ -1,6 +1,39 @@
 # Session Handoff
 
-Last updated: 2026-03-20
+Last updated: 2026-03-23
+
+---
+
+## Review Follow-Up: Deep Link Direct Game Entry
+
+**Problem**: Reviewing the new deep-link entry flow exposed two concrete issues in the freshly modified code. First, the implementation had drifted from the plan: the frontend was forwarding `context=/handoff/conversation.json` straight to the backend, and the backend tried to read that value as a local filesystem path. That would miss the real handoff file in normal browser usage and also widened the API surface unnecessarily. Second, the new `startDeepLinkSession()` frontend wrapper swallowed errors, so `App.jsx` still cleared the deep-link URL after a failed start and made the failure look like a handled success. The new backend path also had no focused regression coverage yet.
+
+**Solution**: Kept the new deep-link feature, but aligned it to the intended browser-driven handoff flow. The frontend now fetches and validates the optional handoff JSON itself, then sends structured conversation turns to `POST /api/start-deep-link`. The backend accepts that structured payload directly, stores it on session state, and uses it in the Script Agent prompt without reading arbitrary paths from the request. The deep-link orchestration path now rethrows failures so the URL is only cleared after a real successful start. I also added focused local regression coverage for entity lookup and the new API endpoint.
+
+**Edits**:
+- `backend/schemas/session_state.py` — added structured `UpstreamConversationTurn` plus typed `upstream_conversation` storage on `SessionStateModel`
+- `backend/entity_registry.py` — kept the new `lookup_by_entity_name()` helper after review; it is now covered by regression tests
+- `backend/server.py` — changed `DeepLinkStartRequest` to accept `conversation_context` directly and removed backend-side file-path reading from the deep-link start flow
+- `backend/agents/script_agent.py` — switched upstream-context prompt assembly to the typed `UpstreamConversationTurn` objects while keeping the shortened hook override
+- `frontend/src/utils/api.js` — changed `startDeepLinkSession()` to send `conversation_context` instead of a path string
+- `frontend/src/hooks/useConversation.js` — updated `startDeepLink()` to accept the validated conversation array from the app shell
+- `frontend/src/hooks/useSessionOrchestration.js` — changed the deep-link start wrapper to rethrow on failure so failed starts do not look successful upstream
+- `frontend/src/App.jsx` — now fetches and sanitizes the optional `context` JSON file client-side, then clears the URL only after a successful deep-link start
+- local `tests/test_deep_link.py` — **NEW**: regression coverage for `lookup_by_entity_name()`, successful deep-link start with upstream conversation context, and unknown-entity 400 responses
+- `HANDOFF.md` — replaced the draft feature note with this reviewed follow-up
+
+**NOT Changed**:
+- Existing `/api/start` and its multipart photo-upload flow — unchanged
+- State machine, turn handler, visual agent, and step instruction files — unchanged; the deep-link behavior is layered on top
+- `backend/schemas/recipe.py` and `backend/tts.py` formatting-only deltas already in the worktree were reviewed and left unchanged in this pass
+- There is still no frontend test runner configured for this path, so the new automated coverage in this pass is backend/local only
+
+**Verification**:
+- `uv run pytest tests/test_deep_link.py -q` — PASS (`3 passed`)
+- `uv run ruff check backend/server.py backend/agents/script_agent.py backend/entity_registry.py backend/schemas/session_state.py tests/test_deep_link.py` — PASS
+- `uv run ruff format --check backend/server.py backend/agents/script_agent.py backend/entity_registry.py backend/schemas/session_state.py tests/test_deep_link.py` — PASS
+- `cd frontend && npx eslint src/App.jsx src/hooks/useConversation.js src/hooks/useSessionOrchestration.js src/utils/api.js` — PASS
+- `cd frontend && npm run build` — PASS
 
 ---
 
@@ -281,35 +314,4 @@ Last updated: 2026-03-20
 - `cd backend && uv run ruff format --check agents/script_agent.py ../tests/test_entity_registry.py` — PASS
 - `cd backend && uv run pytest ../tests/test_entity_registry.py -q` — PASS (`31 passed`)
 - `cd backend && uv run pytest ../tests/test_api.py -q` — PASS (`24 passed`)
-
----
-
-## Style-Specific Step Instruction Fragments
-
-**Problem**: All entities within a category shared identical step instruction templates. Cat 5 entities both got the same "compare your finds" synthesis guidance, even though the design doc envisions creative storytelling for dandelion. Cat 1 entities with different game mechanics (voice_acting vs storytelling_chain) received the same generic demo and round instructions.
-
-**Solution**: Implemented a fragment composition system that appends style-specific guidance to shared base templates. The loader in `_load_step_instructions()` looks up a fragment file using the entity's `game_mechanic` (Cat 1) or `synthesis_type` (Cat 5) and appends it after the base template. Fragment files use double-underscore naming: `cat1_step2_rules__voice_acting.md`. If no fragment exists, the base template is used alone (backward-compatible). Reassigned dandelion from `comparison_chart` to `naming_story` synthesis style.
-
-**Edits**:
-- `backend/agents/script_agent.py` (~line 135) — added fragment loading logic to `_load_step_instructions()`: determines style key from creative slots, builds fragment filename, appends if exists
-- `backend/entity_registry.py` — changed `fluffy_expedition_dandelion` `synthesis_type` from `"comparison_chart"` to `"naming_story"`, updated `naming_prompt`
-- `backend/skills/step_instructions/cat1_step2_rules.md` — removed "Game Mechanics Reference" section (now in fragments)
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — removed multi-type reference section (now in fragments)
-- `tests/test_entity_registry.py` — added `test_dandelion_synthesis_type_is_naming_story`, added `TestStyleFragments` class with 2 tests verifying fragment files exist for all registered entity styles
-- 10 new fragment files in `backend/skills/step_instructions/`:
-  - `cat1_step2_rules__voice_acting.md`, `cat1_step2_rules__storytelling_chain.md`, `cat1_step2_rules__riddle_game.md`
-  - `cat1_step3_round__voice_acting.md`, `cat1_step3_round__storytelling_chain.md`, `cat1_step3_round__riddle_game.md`
-  - `cat5_step3_collect__comparison_chart.md`, `cat5_step3_collect__naming_story.md`
-  - `cat5_step4_synthesis__comparison_chart.md`, `cat5_step4_synthesis__naming_story.md`
-
-**NOT Changed**:
-- `backend/schemas/creative_slots.py` — `"naming_story"` and `"riddle_game"` already in the Literal types
-- Steps 1 (Hook), 4/5 (Celebrate), 5/6 (Closing) — variables handle variation, no fragments needed
-- Frontend code — no changes needed
-- Other base template files (`cat5_step2_mission.md`, `cat1_step1_hook.md`, etc.) — unchanged
-
-**Verification**:
-- `cd backend && uv run ruff check . && uv run ruff format --check agents/script_agent.py` — PASS
-- `cd backend && uv run pytest ../tests/test_entity_registry.py -v` — PASS (29 passed)
-- `cd backend && uv run pytest ../tests/ -k "not e2e" -q` — PASS (178 passed)
 

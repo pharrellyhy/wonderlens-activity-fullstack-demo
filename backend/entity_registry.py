@@ -153,6 +153,18 @@ def get_feature_keyword_map() -> dict[str, str]:
     return _FEATURE_KEYWORD_MAP
 
 
+def lookup_by_entity_name(entity_name: str) -> EntityConfig | None:
+    """Look up an entity config by entity name (case-insensitive), with keyword fallback."""
+    name_lower = entity_name.lower().strip()
+    for entity in ENTITY_REGISTRY:
+        if entity.entity_name.lower() == name_lower:
+            return entity
+    activity_type = _KEYWORD_MAP.get(name_lower)
+    if activity_type:
+        return _BY_ACTIVITY_TYPE.get(activity_type)
+    return None
+
+
 def generate_round_items(activity_type: str, total_rounds: int) -> list[list[dict]]:
     """Generate per-round item sets: 1 correct + 2 distractors per round."""
     entity = _BY_ACTIVITY_TYPE.get(activity_type)

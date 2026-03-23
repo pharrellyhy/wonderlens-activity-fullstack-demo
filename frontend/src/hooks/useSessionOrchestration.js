@@ -27,6 +27,7 @@ export default function useSessionOrchestration(tier) {
     lastWrongPhotoId,
     pendingAudioRef,
     start,
+    startDeepLink,
     sendMessage,
     sendSilence,
     sendAutoAdvance,
@@ -124,6 +125,17 @@ export default function useSessionOrchestration(tier) {
     }
   }, [start, tier, unlockSfx]);
 
+  const startDeepLinkSession = useCallback(async (entity, deepLinkTier, conversationContext = []) => {
+    unlockSfx();
+    try {
+      setRetryCount(0);
+      return await startDeepLink(entity, deepLinkTier, conversationContext);
+    } catch (error) {
+      setRetryCount(prev => prev + 1);
+      throw error;
+    }
+  }, [startDeepLink, unlockSfx]);
+
   const handleSendMessage = useCallback((text) => {
     if (!text.trim() || !isActive || turnPending) return;
     silenceTimer.clear();
@@ -179,6 +191,7 @@ export default function useSessionOrchestration(tier) {
     sttMode: speech.mode,
     silenceTimer,
     startSession,
+    startDeepLinkSession,
     sendMessage: handleSendMessage,
     sendPhotoCollection: handlePhotoCollection,
     toggleMic,

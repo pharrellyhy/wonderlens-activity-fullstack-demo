@@ -42,9 +42,7 @@ class InstructionRecipe(BaseModel):
     def validate_instruction_contract(self) -> "InstructionRecipe":
         round_count = len(self.step_instructions.rounds)
         if self.metadata.round_count != round_count:
-            raise ValueError(
-                f"metadata.round_count must match the number of step rounds ({round_count})"
-            )
+            raise ValueError(f"metadata.round_count must match the number of step rounds ({round_count})")
         if self.collection_items and self.step_instructions.synthesis is None:
             raise ValueError("Collection recipes must define a synthesis step")
         return self

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { startSession, sendTurn, sendTurnSpeak } from '../utils/api';
+import { startSession, startDeepLinkSession, sendTurn, sendTurnSpeak } from '../utils/api';
 
 export default function useConversation() {
   const [messages, setMessages] = useState([]);
@@ -130,6 +130,64 @@ export default function useConversation() {
     }
   }, [clearPhotoUrl]);
 
+  const startDeepLink = useCallback(async (entity, tier, conversationContext = []) => {
+    setLoading(true);
+    setTurnPending(false);
+    setError(null);
+    setMessages([]);
+    setErrorExit(false);
+    setLastWrongPhotoId(null);
+    clearPhotoUrl();
+    pendingPhotoIdRef.current = null;
+    pendingAudioRef.current = null;
+
+    try {
+      const data = await startDeepLinkSession(entity, tier, conversationContext);
+
+      // Use the icon_src from entity config as the photo URL
+      if (data.photo_url) {
+        setPhotoUrl(data.photo_url);
+      }
+
+      setSessionId(data.session_id);
+      setVisionResult(data.vision_result);
+      setLatency(data.latency_ms || 0);
+      setActivityType(data.activity_type || '');
+      setTemplateType(data.template_type || '');
+
+      if (data.first_turn?.screen_frame) {
+        setScreenFrame(data.first_turn.screen_frame);
+      }
+
+      setSessionState(data.session_state || {
+        status: 'active',
+        current_step: 'STEP_1_HOOK',
+        current_round: 0,
+        total_rounds: 3,
+        consecutive_silence: 0,
+        turn_count: 1,
+        template_type: data.template_type || 'cat1',
+      });
+
+      if (data.first_turn?.dialogue) {
+        setMessages([{
+          role: 'ai',
+          text: data.first_turn.dialogue,
+          responseType: data.first_turn.response_type || 'hook',
+          toneMarker: data.first_turn.tone_marker,
+          sfx: data.first_turn.audio?.sfx,
+        }]);
+      }
+
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [clearPhotoUrl]);
+
   /**
    * Send a turn using the combined /api/turn-speak endpoint.
    * Returns { turnData, audioStream, sampleRate } so the caller can play audio.
@@ -226,6 +284,7 @@ export default function useConversation() {
     lastWrongPhotoId,
     pendingAudioRef,
     start,
+    startDeepLink,
     sendMessage,
     sendSilence,
     sendAutoAdvance,

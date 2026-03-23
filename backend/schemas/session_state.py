@@ -18,6 +18,13 @@ class ConversationTurn(BaseModel):
     round_number: int | None = Field(default=None, description="Round number if applicable")
 
 
+class UpstreamConversationTurn(BaseModel):
+    """A prior exchange from the upstream app before deep-link handoff."""
+
+    role: Literal["ai", "child"] = Field(description="Who produced this upstream turn")
+    text: str = Field(description="The upstream dialogue text")
+
+
 class SessionStateModel(BaseModel):
     """Full server-side session state for turn-by-turn generation."""
 
@@ -46,6 +53,10 @@ class SessionStateModel(BaseModel):
     invitation_decline_count: int = 0
     invitation_accepted: bool = False
     round_advance_pending: bool = False
+
+    # Deep link entry
+    deep_linked: bool = False
+    upstream_conversation: list[UpstreamConversationTurn] = Field(default_factory=list)
 
     # Vision/entity context
     entity_name: str = ""

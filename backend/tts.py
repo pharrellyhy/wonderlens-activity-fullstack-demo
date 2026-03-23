@@ -51,8 +51,9 @@ def _strip_unsupported_tags(text: str) -> str:
     """
     match = _LEADING_TAG_RE.match(text)
     if match and match.group(1).lower() not in _GEMINI_TTS_TAGS:
-        text = text[match.end():]
+        text = text[match.end() :]
     return text
+
 
 TIER_VOICES: dict[str, str] = {
     "T0": "Puck",

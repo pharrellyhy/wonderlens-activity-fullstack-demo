@@ -52,6 +52,46 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.app-shell {
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+@media (max-width: 420px) {
+  html {
+    font-size: clamp(13px, 3.8vw, 16px);
+  }
+}
+
+@media (max-height: 760px) {
+  .app-shell {
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .app-topbar {
+    margin-top: 0.5rem;
+  }
+
+  .app-main {
+    flex: 1 0 auto;
+    overflow: visible;
+    padding-top: 0.375rem;
+    padding-bottom: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .app-top-panel {
+    height: min(34dvh, 13rem);
+    min-height: 9.5rem;
+  }
+
+  .app-footer {
+    margin-bottom: 0.5rem;
+  }
+}
+
 /* Base animations */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }

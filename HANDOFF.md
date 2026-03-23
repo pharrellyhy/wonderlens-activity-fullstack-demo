@@ -4,6 +4,54 @@ Last updated: 2026-03-23
 
 ---
 
+## Fix: Small-Screen Responsive Sizing Pass
+
+**Problem**: The frontend layout was tuned for larger mobile/tablet widths, but many shell controls, widget cards, badges, progress circles, and icons kept their default sizes all the way down to very small screens. On narrow phones this made the camera viewport and surrounding UI feel oversized and cramped. A follow-up issue remained on short, wide viewports: the fixed-height shell could clip the top device area instead of adapting vertically.
+
+**Solution**: Added a compact-mobile sizing layer for screens under 420px and tightened the highest-pressure UI surfaces under 380px. The pass keeps desktop/tablet styling intact while shrinking spacing, copy, controls, widget chrome, and icon sizes inside the app shell, camera frame, conversation panel, photo selection flow, and device widgets. For short-height viewports, the shell now switches to a height-aware mode: it can scroll vertically, reduces shell spacing, and compresses the top panel instead of clipping it. I also removed one unused `PhotoGrid` prop surfaced by lint during verification.
+
+**Edits**:
+- `frontend/src/index.css` — added global compact-mobile root font scaling for sub-420px screens plus short-viewport shell rules for scrolling/compression under `760px` height
+- `frontend/src/App.jsx`, `frontend/src/components/TopBar.jsx`, `frontend/src/components/ToyCameraFrame.jsx`, `frontend/src/components/DeviceScreen.jsx`, `frontend/src/components/ConversationPanel.jsx`, `frontend/src/components/TextInput.jsx` — reduced shell spacing and control/icon sizing for extra-small screens; tagged the shell/top panel/footer for height-aware behavior
+- `frontend/src/components/PhotoSelector.jsx`, `frontend/src/components/GameDetailView.jsx`, `frontend/src/components/PhotoGallery.jsx` — tightened photo picker/detail/gallery layouts and labels on narrow viewports
+- `frontend/src/widgets/BadgeAward.jsx`, `frontend/src/widgets/ProgressTracker.jsx`, `frontend/src/widgets/CharacterDisplay.jsx`, `frontend/src/widgets/PhotoGrid.jsx`, `frontend/src/widgets/PhotoDisplay.jsx` — switched oversized widget/icon elements to compact breakpoint rules and `clamp()` sizing where needed
+- `HANDOFF.md` — added this entry
+
+**NOT Changed**:
+- Backend, API contracts, session orchestration logic, and activity behavior — unchanged
+- Existing unrelated worktree edits in `frontend/src/components/AiAvatar.jsx` and `frontend/src/components/SfxIndicator.jsx` were left untouched
+- No new frontend test runner or browser automation was added in this pass
+
+**Verification**:
+- `rg -n "max-\\[380px\\]:|clamp\\(" frontend/src/App.jsx frontend/src/components/TopBar.jsx frontend/src/components/DeviceScreen.jsx frontend/src/components/PhotoSelector.jsx frontend/src/components/PhotoGallery.jsx frontend/src/widgets/BadgeAward.jsx frontend/src/widgets/ProgressTracker.jsx frontend/src/widgets/CharacterDisplay.jsx` — PASS
+- `cd frontend && npm run lint` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Review Follow-Up: Mobile TTS Playback Unlock
+
+**Problem**: The recent TTS refactor switched playback from `AudioContext` scheduling to an `<audio>` element backed by WAV blobs, but `useTTS.unlock()` had been left as a no-op. On mobile browsers, that broke autoplay policy handling: the real `audio.play()` happened after async fetch/stream work instead of inside the original tap gesture, so TTS was blocked even though desktop browsers still worked.
+
+**Solution**: Restored a real gesture-time unlock path for TTS. `useTTS.unlock()` now primes the same audio element with a silent WAV during the user gesture, resets it immediately, and leaves it ready for later async playback. The hook keeps the WAV-blob playback approach, preserves cleanup on stop/end/error, and still falls back to browser speech when backend TTS is unavailable.
+
+**Edits**:
+- `frontend/src/hooks/useTTS.js` — added a silent WAV data URI plus a real `unlock()` implementation for the shared audio element; added explicit audio-element/url cleanup helpers; kept `playsInline` and restored consistent stop behavior for fallback speech
+- `HANDOFF.md` — added this mobile TTS follow-up entry
+
+**NOT Changed**:
+- `frontend/src/hooks/useSessionOrchestration.js` — existing `unlockTTS()` call sites were already correct and did not need changes in this follow-up
+- `frontend/src/App.jsx` — no behavior changes in this pass
+- Backend TTS endpoints and streaming contract — unchanged
+- There is still no automated mobile-browser playback test in this repo, so final confirmation remains manual on-device
+
+**Verification**:
+- Manual verification on mobile browser — PASS (user confirmed TTS now plays)
+- `cd frontend && npx eslint src/hooks/useTTS.js src/hooks/useSessionOrchestration.js src/App.jsx` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
 ## Review Follow-Up: Deep Link Direct Game Entry
 
 **Problem**: Reviewing the new deep-link entry flow exposed two concrete issues in the freshly modified code. First, the implementation had drifted from the plan: the frontend was forwarding `context=/handoff/conversation.json` straight to the backend, and the backend tried to read that value as a local filesystem path. That would miss the real handoff file in normal browser usage and also widened the API surface unnecessarily. Second, the new `startDeepLinkSession()` frontend wrapper swallowed errors, so `App.jsx` still cleared the deep-link URL after a failed start and made the failure look like a handled success. The new backend path also had no focused regression coverage yet.
@@ -227,91 +275,3 @@ Last updated: 2026-03-23
 - `cd backend && uv run mypy turn_handler.py --ignore-missing-imports` — no new errors
 
 ---
-
-## Review Game MD Loader Follow-Up: Fail-Fast Startup + Test Fixture Cleanup
-
-**Problem**: Reviewing the new game-MD single-source refactor exposed two real gaps. First, `backend/game_loader.py` only logged parse failures and kept going, so a broken frontmatter file could silently drop a demo game from the registry. Second, `validate_registry()` still reported success when the registry was empty. The local API/schema tests also still had stale fixture/import cleanup issues from the same refactor, including a `what_would_it_say` mechanic value that no longer matches the current `voice_acting` schema.
-
-**Solution**: Tightened the loader/validation path so startup fails loudly instead of accepting partial or empty demo configuration. `_load_demo_games()` now clears stale state before each scan, accumulates parse failures, and raises a `RuntimeError` listing the broken files. `validate_registry()` now rejects an empty registry. I also tightened the local test coverage around those failure paths and updated the stale API fixture/import cleanup so the reviewed test bundle reflects the current schema and loader behavior.
-
-**Edits**:
-- `backend/game_loader.py` — clear cached loader state before rescanning; collect parse failures; raise `RuntimeError` when any game MD file with frontmatter fails to parse
-- `backend/entity_registry.py` — make `validate_registry()` fail when `ENTITY_REGISTRY` is empty
-- local `tests/test_game_parser.py` — added regression coverage proving `_load_demo_games()` raises on a broken game MD file
-- local `tests/test_entity_registry.py` — added regression coverage proving `validate_registry()` rejects an empty registry
-- local `tests/test_api.py` — updated stale Cat1 fixture mechanic from `what_would_it_say` to `voice_acting`
-- local `tests/test_schemas.py` — moved the new `game_loader` import to the module import block so the updated schema test passes lint/format cleanly
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `backend/recipe_loader.py`, `backend/server.py`, and the new `backend/games/*.md` content were reviewed in this pass and left unchanged
-- `backend/skills/step_instructions/cat5_step4_synthesis*.md` prompt edits were reviewed and left unchanged
-- Deleted recipe/scenario asset files and the removed `images/entity_icons.png` artifact already present in the worktree were not touched in this pass
-
-**Verification**:
-- `cd backend && uv run ruff check game_loader.py entity_registry.py recipe_loader.py server.py ../tests/test_game_parser.py ../tests/test_entity_registry.py ../tests/test_schemas.py ../tests/test_api.py ../tests/conftest.py` — PASS
-- `cd backend && uv run ruff format --check game_loader.py entity_registry.py recipe_loader.py server.py ../tests/test_game_parser.py ../tests/test_entity_registry.py ../tests/test_schemas.py ../tests/test_api.py ../tests/conftest.py` — PASS
-- `cd backend && uv run pytest ../tests/test_game_parser.py ../tests/test_entity_registry.py ../tests/test_schemas.py ../tests/test_api.py -q` — PASS (`115 passed`)
-
----
-
-## Game MD Files as Single Source of Truth for Demo Entities
-
-**Problem**: Demo entity data was spread across 3 manually-synced sources: `entity_registry.py` (hardcoded config with 140+ lines of Pydantic model instantiation), `recipes/*.json` (step instructions + screen frames), and `scenarios/*.yaml` (interaction scripts). Adding or modifying a game required updating all three, with no cross-validation.
-
-**Solution**: Consolidated all demo entity data into one markdown file per game with YAML frontmatter in `backend/games/`. Created `game_parser.py` to parse frontmatter into existing Pydantic models (`EntityConfig`, `InstructionRecipe`), and `game_loader.py` to scan the games directory at import time and populate the entity registry. The registry module (`entity_registry.py`) now has an empty list that gets populated via `_populate_registry()` called by the game loader. Recipe loading checks game_loader first, falling back to JSON for non-demo entities (e.g. `polka_dot_patrol_hard.json`).
-
-**Edits**:
-- `backend/games/{mood_changer_dog,dream_whisperer_cat,time_machine_dinosaur,polka_dot_patrol,fluffy_expedition_dandelion}.md` — **NEW**: 5 game MD files with full YAML frontmatter (entity config, creative slots, step instructions, screen frames, metadata, keywords, collection catalogs)
-- `backend/game_parser.py` — **NEW**: `parse_game_file()` extracts YAML frontmatter and builds `EntityConfig` + `InstructionRecipe`
-- `backend/game_loader.py` — **NEW**: scans `games/` at import time, calls `_populate_registry()` to fill entity registry
-- `backend/entity_registry.py` — removed 140-line hardcoded `ENTITY_REGISTRY` list; added `_populate_registry()` and `_rebuild_lookups()`; changed `validate_registry()` to check for game MD files instead of recipe JSON + scenario YAML
-- `backend/recipe_loader.py` — `load_instruction_recipe()` checks `game_loader.get_demo_recipe()` first, JSON fallback for non-demo entities
-- `backend/server.py` — added `game_loader` import to trigger registry population at startup
-- `tests/conftest.py` — added `game_loader` import; updated `instruction_recipe` fixture to use `get_demo_recipe()` instead of deleted JSON file
-- `tests/test_game_parser.py` — **NEW**: 41 tests covering all 5 entities, creative slots, collection catalogs, recipe structure, metadata values
-- `tests/test_entity_registry.py` — no structural changes needed (all assertions pass with MD-sourced data)
-- `tests/test_schemas.py` — replaced `test_demo_recipe_files_validate` (used deleted JSON path) with `test_demo_game_recipes_validate`
-
-**Deleted**:
-- `backend/recipes/{mood_changer_dog,dream_whisperer_cat,time_machine_dinosaur,polka_dot_patrol,fluffy_expedition_dandelion}.json` — replaced by game MD files
-- `backend/scenarios/{mood_changer_dog,dream_whisperer_cat,time_machine_dinosaur,polka_dot_patrol,fluffy_expedition_dandelion}.yaml` — replaced by game MD files
-- Kept: `polka_dot_patrol_hard.json`, `mood_changer_dog_silent_exit.yaml`, `polka_dot_patrol_hard.yaml`, `dino_time_traveler.yaml`
-
-**NOT Changed**:
-- All Pydantic schemas in `backend/schemas/` — unchanged, reused by parser
-- Agent modules (`director.py`, `script_agent.py`, `visual_agent.py`, `recipe_assembler.py`) — unchanged
-- Step instruction fragments in `backend/skills/step_instructions/` — unchanged
-- Frontend — zero changes
-- Existing 12 `*_prod.md` design docs in `backend/games/` — no frontmatter, silently skipped by loader
-
-**Verification**:
-- `uv run pytest tests/test_game_parser.py tests/test_entity_registry.py -v` — PASS (72 passed)
-- `uv run pytest tests/ -k "not e2e" -q` — 195 passed, 27 failed (pre-existing failures from `what_would_it_say` game_mechanic in test fixtures)
-- `cd backend && uv run ruff check .` — PASS
-- `cd backend && uv run ruff format --check game_parser.py game_loader.py entity_registry.py recipe_loader.py` — PASS
-
----
-
-## Review Style Fragment Follow-Up: Prompt Interpolation Coverage
-
-**Problem**: The latest style-fragment refactor changed prompt assembly in `backend/agents/script_agent.py`, but the new tests only verified that fragment files existed. Reviewing the actual loader path exposed a real prompt bug: several Cat 1 fragments referenced `{entity_name}`, and `_load_step_instructions()` never replaced that token. That left raw template placeholders in live prompts.
-
-**Solution**: Fixed prompt interpolation by adding `{entity_name}` to the loader replacements, then simplified the fragment-selection branch so the fragmentable step prefixes live in one module constant instead of a per-call local dict with an unused value map. Tightened the local test coverage to exercise `_load_step_instructions()` directly for Cat 1 and Cat 5 fragment paths and replaced one manual `try/except` assertion with `pytest.raises`.
-
-**Edits**:
-- `backend/agents/script_agent.py` — added `{entity_name}` replacement in `_load_step_instructions()` and simplified fragment-prefix handling with `_FRAGMENTABLE_STEP_PREFIXES`
-- local `tests/test_entity_registry.py` — added direct loader assertions for Cat 1/Cat 5 fragment assembly and interpolation; simplified unknown-entity assertion with `pytest.raises`
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `backend/entity_registry.py` and the new fragment markdown files were reviewed in this pass and left unchanged
-- `backend/skills/step_instructions/cat1_step2_rules.md` and `backend/skills/step_instructions/cat5_step4_synthesis.md` were left as-is after review
-- `docs/weekly-report-2026-03-13.md` deletion already present in the worktree was not touched
-
-**Verification**:
-- `cd backend && uv run ruff check agents/script_agent.py ../tests/test_entity_registry.py` — PASS
-- `cd backend && uv run ruff format --check agents/script_agent.py ../tests/test_entity_registry.py` — PASS
-- `cd backend && uv run pytest ../tests/test_entity_registry.py -q` — PASS (`31 passed`)
-- `cd backend && uv run pytest ../tests/test_api.py -q` — PASS (`24 passed`)
-

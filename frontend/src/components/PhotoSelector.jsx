@@ -92,47 +92,47 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full p-6 overflow-y-auto">
-      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-forest-dark)] flex items-center justify-center mb-4 shadow-lg">
-        <CameraIcon className="w-7 h-7 text-white" />
+    <div className="flex flex-col items-center justify-center h-full p-6 max-[380px]:p-4 overflow-y-auto">
+      <div className="w-10 h-10 sm:w-14 sm:h-14 max-[380px]:w-9 max-[380px]:h-9 rounded-2xl max-[380px]:rounded-xl bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-forest-dark)] flex items-center justify-center mb-4 max-[380px]:mb-3 shadow-lg">
+        <CameraIcon className="w-5 h-5 sm:w-7 sm:h-7 max-[380px]:w-4 max-[380px]:h-4 text-white" />
       </div>
-      <h2 className="text-2xl font-bold font-display text-[var(--color-forest-dark)] mb-1 tracking-tight">Pick a Photo to Explore!</h2>
-      <p className="text-gray-500 text-sm mb-8">Select a demo photo or upload your own</p>
+      <h2 className="text-xl sm:text-2xl max-[380px]:text-lg font-bold font-display text-[var(--color-forest-dark)] mb-1 tracking-tight text-center">Pick a Photo to Explore!</h2>
+      <p className="text-gray-500 text-sm max-[380px]:text-xs mb-8 max-[380px]:mb-5 text-center">Select a demo photo or upload your own</p>
 
       {isLoading ? (
         <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 border-[3px] border-gray-200 border-t-[var(--color-forest)] rounded-full animate-spin" />
-          <p className="text-[var(--color-forest)] font-medium text-sm">Starting your adventure...</p>
+          <div className="w-10 h-10 sm:w-14 sm:h-14 max-[380px]:w-9 max-[380px]:h-9 border-[3px] border-gray-200 border-t-[var(--color-forest)] rounded-full animate-spin" />
+          <p className="text-[var(--color-forest)] font-medium text-sm max-[380px]:text-xs">Starting your adventure...</p>
         </div>
       ) : (
         <>
           {categories.map((cat, catIdx) => {
             const Icon = CATEGORY_ICONS[cat.id] || BinocularsIcon;
             return (
-              <div key={cat.id} className="w-full max-w-lg mb-6">
+              <div key={cat.id} className="w-full max-w-lg mb-6 max-[380px]:mb-4">
                 {/* Category header */}
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className="w-5 h-5 text-[var(--color-forest)]" />
+                <div className="flex items-center gap-2 mb-2 max-[380px]:mb-1.5">
+                  <Icon className="w-5 h-5 max-[380px]:w-4 max-[380px]:h-4 text-[var(--color-forest)]" />
                   <div>
-                    <h3 className="text-sm font-bold text-[var(--color-forest-dark)]">{cat.title}</h3>
-                    <p className="text-xs text-gray-500">{cat.subtitle}</p>
+                    <h3 className="text-sm max-[380px]:text-xs font-bold text-[var(--color-forest-dark)]">{cat.title}</h3>
+                    <p className="text-xs max-[380px]:text-[11px] text-gray-500">{cat.subtitle}</p>
                   </div>
                 </div>
 
                 {/* Photo cards */}
-                <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-3 gap-3 max-[380px]:gap-2 mb-4 max-[380px]:mb-3">
                   {cat.photos.map((photo) => (
                     <button
                       key={photo.id}
                       onClick={() => setSelectedPhoto(photo)}
-                      className="group relative w-full aspect-square rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]"
+                      className="group relative w-full aspect-square rounded-2xl max-[380px]:rounded-xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]"
                     >
                       <img
                         src={photo.src}
                         alt={photo.label}
                         className="w-full h-full object-cover"
                       />
-                      <span className="absolute bottom-0 inset-x-0 text-xs text-center text-[var(--color-forest-dark)] bg-white/90 py-1 truncate font-medium">
+                      <span className="absolute bottom-0 inset-x-0 text-xs max-[380px]:text-[10px] text-center text-[var(--color-forest-dark)] bg-white/90 py-1 max-[380px]:py-0.5 truncate font-medium">
                         {photo.label}
                       </span>
                     </button>
@@ -141,9 +141,9 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
 
                 {/* Vine divider between categories */}
                 {catIdx < categories.length - 1 && (
-                  <div className="flex items-center gap-2 my-4">
+                  <div className="flex items-center gap-2 my-4 max-[380px]:my-3">
                     <div className="flex-1 h-px bg-[var(--color-forest)]/20" />
-                    <LeafIcon className="w-4 h-4 text-[var(--color-forest)]/30" />
+                    <LeafIcon className="w-4 h-4 max-[380px]:w-3.5 max-[380px]:h-3.5 text-[var(--color-forest)]/30" />
                     <div className="flex-1 h-px bg-[var(--color-forest)]/20" />
                   </div>
                 )}
@@ -154,9 +154,9 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
           {/* Upload zone — disabled for now */}
           <div
             aria-label="Custom photo upload coming soon"
-            className="w-full max-w-md border-2 border-dashed rounded-2xl p-6 text-center border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
+            className="w-full max-w-md border-2 border-dashed rounded-2xl max-[380px]:rounded-xl p-6 max-[380px]:p-4 text-center border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
           >
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-400 text-sm max-[380px]:text-xs">
               Custom photo upload coming soon
             </p>
           </div>

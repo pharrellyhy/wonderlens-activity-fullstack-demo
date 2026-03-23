@@ -2,7 +2,7 @@ import { CompassIcon } from '../icons';
 
 const SIZES = {
   sm: { outer: 'w-7 h-7', icon: 'w-3.5 h-3.5', shadow: 'shadow-sm' },
-  md: { outer: 'w-14 h-14', icon: 'w-7 h-7', shadow: 'shadow-lg' },
+  md: { outer: 'w-10 h-10 sm:w-14 sm:h-14', icon: 'w-5 h-5 sm:w-7 sm:h-7', shadow: 'shadow-lg' },
 };
 
 export default function AiAvatar({ size = 'sm', className = '' }) {

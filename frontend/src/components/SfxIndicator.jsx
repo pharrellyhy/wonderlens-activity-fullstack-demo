@@ -19,8 +19,8 @@ export default function SfxIndicator({ sfxCue, sfxLabel }) {
   const label = sfxLabel || SFX_LABELS[sfxCue] || sfxCue;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-teal)] text-white rounded-full text-xs font-medium animate-slide-up-large animate-sfx-pulse shadow-md">
-      <SpeakerIcon className="w-4 h-4 flex-shrink-0" />
+    <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[var(--color-teal)] text-white rounded-full text-[10px] sm:text-xs font-medium animate-slide-up-large animate-sfx-pulse shadow-md">
+      <SpeakerIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
       <span>{label}</span>
     </div>
   );

@@ -34,11 +34,11 @@ export default function ConversationPanel({
     <>
       {/* STT fallback banner */}
       {showSttBanner && (
-        <div className="flex items-center justify-between px-4 py-2 bg-amber-50/80 border-b border-amber-200/50 text-amber-600 text-xs">
+        <div className="flex items-center justify-between px-4 max-[380px]:px-3 py-2 max-[380px]:py-1.5 bg-amber-50/80 border-b border-amber-200/50 text-amber-600 text-xs max-[380px]:text-[11px]">
           <span>Server speech-to-text unavailable — using browser fallback</span>
           <button
             onClick={() => setSttBannerDismissed(true)}
-            className="ml-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-400 hover:text-amber-600 font-bold"
+            className="ml-2 min-w-[44px] min-h-[44px] max-[380px]:min-w-[36px] max-[380px]:min-h-[36px] flex items-center justify-center text-amber-400 hover:text-amber-600 font-bold"
             aria-label="Dismiss notification"
           >
             x
@@ -49,15 +49,15 @@ export default function ConversationPanel({
       {/* Chat Bubble List */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-5 py-4 space-y-4"
+        className="flex-1 overflow-y-auto px-5 max-[380px]:px-3 py-4 max-[380px]:py-3 space-y-4 max-[380px]:space-y-3"
         role="log"
         aria-live="polite"
       >
         {messages.length === 0 && !isWaiting ? (
           <div className="flex flex-col items-center justify-center h-full">
             <AiAvatar size="md" className="mb-4" />
-            <p className="text-sm font-semibold text-gray-500">No conversation yet</p>
-            <p className="text-xs text-gray-500 mt-1">Select a photo to get started</p>
+            <p className="text-sm max-[380px]:text-xs font-semibold text-gray-500">No conversation yet</p>
+            <p className="text-xs max-[380px]:text-[11px] text-gray-500 mt-1">Select a photo to get started</p>
           </div>
         ) : (
           <>
@@ -75,8 +75,8 @@ export default function ConversationPanel({
 
             {/* Error exit warning */}
             {errorExit && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50/80 rounded-xl text-xs text-amber-600">
-                <span className="w-4 h-4 flex items-center justify-center rounded-full bg-amber-200 text-amber-700 text-[10px] font-bold flex-shrink-0">!</span>
+              <div className="flex items-center gap-2 px-3 max-[380px]:px-2.5 py-2 max-[380px]:py-1.5 bg-amber-50/80 rounded-xl text-xs max-[380px]:text-[11px] text-amber-600">
+                <span className="w-4 h-4 max-[380px]:w-3.5 max-[380px]:h-3.5 flex items-center justify-center rounded-full bg-amber-200 text-amber-700 text-[10px] font-bold flex-shrink-0">!</span>
                 <span>Session ended due to a connection issue</span>
               </div>
             )}
@@ -85,10 +85,10 @@ export default function ConversationPanel({
             {isWaiting && (
               <div className="flex justify-start animate-fade-in">
                 <AiAvatar size="sm" className="mr-2 mt-1" />
-                <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5 border border-[var(--color-forest)]/10">
-                  <span className="w-2 h-2 rounded-full bg-[var(--color-forest)] typing-dot" />
-                  <span className="w-2 h-2 rounded-full bg-[var(--color-forest)] typing-dot" />
-                  <span className="w-2 h-2 rounded-full bg-[var(--color-forest)] typing-dot" />
+                <div className="bg-white rounded-2xl rounded-bl-sm px-4 max-[380px]:px-3 py-3 max-[380px]:py-2.5 shadow-sm flex items-center gap-1.5 border border-[var(--color-forest)]/10">
+                  <span className="w-2 h-2 max-[380px]:w-1.5 max-[380px]:h-1.5 rounded-full bg-[var(--color-forest)] typing-dot" />
+                  <span className="w-2 h-2 max-[380px]:w-1.5 max-[380px]:h-1.5 rounded-full bg-[var(--color-forest)] typing-dot" />
+                  <span className="w-2 h-2 max-[380px]:w-1.5 max-[380px]:h-1.5 rounded-full bg-[var(--color-forest)] typing-dot" />
                 </div>
               </div>
             )}
@@ -98,9 +98,9 @@ export default function ConversationPanel({
 
       {/* Silence Timer Bar */}
       {showTimer && (
-        <div className="px-5 py-1.5">
-          <div className="flex items-center gap-2 text-xs text-amber-500 mb-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+        <div className="px-5 max-[380px]:px-3 py-1.5 max-[380px]:py-1">
+          <div className="flex items-center gap-2 max-[380px]:gap-1.5 text-xs max-[380px]:text-[11px] text-amber-500 mb-1">
+            <span className="inline-block w-2 h-2 max-[380px]:w-1.5 max-[380px]:h-1.5 rounded-full bg-amber-400 animate-pulse" />
             <span>
               Waiting... {Math.round(silenceTimer.elapsed / 1000)}s / {Math.round(silenceTimer.timeout / 1000)}s
             </span>
@@ -117,7 +117,7 @@ export default function ConversationPanel({
       {/* Text Input or collection hint */}
       {collectMode ? (
         <div className="px-4 py-3 text-center">
-          <p className="text-xs text-[var(--color-teal)] font-medium">
+          <p className="text-xs max-[380px]:text-[11px] text-[var(--color-teal)] font-medium">
             Tap a photo in the camera above to collect it!
           </p>
         </div>

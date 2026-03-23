@@ -117,7 +117,7 @@ function App() {
     && isActive;
 
   return (
-    <div className="flex flex-col h-screen bg-nature text-gray-800 font-sans">
+    <div className="app-shell flex flex-col bg-nature text-gray-800 font-sans">
       <TopBar
         tier={tier}
         onTierChange={setTier}
@@ -127,9 +127,9 @@ function App() {
       />
 
       <h1 className="sr-only">WonderLens Activity Demo</h1>
-      <main className="flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-w-3xl mx-auto w-full">
+      <main className="app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-3xl mx-auto w-full">
         {/* TOP ~42% — Device Screen in Toy Camera */}
-        <section className="h-[42%] flex-shrink-0" aria-label="Device screen">
+        <section className="app-top-panel h-[42%] max-[380px]:h-[40%] flex-shrink-0" aria-label="Device screen">
           <ToyCameraFrame>
             {showPhotoGallery ? (
               <PhotoGallery
@@ -179,7 +179,7 @@ function App() {
       {/* Error exit indicator */}
       {errorExit && (
         <div className="px-3 max-w-3xl mx-auto w-full mb-2">
-          <div className="surface-card rounded-2xl p-3 text-center border border-amber-200/50">
+          <div className="surface-card rounded-2xl p-3 max-[380px]:p-2.5 text-center border border-amber-200/50">
             <p className="text-xs text-amber-600">
               Session ended due to a connection issue. Your progress was saved!
             </p>
@@ -189,13 +189,13 @@ function App() {
 
       {isEnded && (
         <div className="px-3 max-w-3xl mx-auto w-full mb-2">
-          <div className="surface-card rounded-2xl p-4 text-center">
-            <p className="text-sm text-gray-500 mb-2">
+          <div className="surface-card rounded-2xl p-4 max-[380px]:p-3 text-center">
+            <p className="text-sm max-[380px]:text-xs text-gray-500 mb-2">
               {getEndedStatusLabel(sessionState?.status)}
             </p>
             <button
               onClick={resetSession}
-              className="px-5 py-2 bg-[var(--color-forest)] text-white rounded-full hover:bg-[var(--color-forest-dark)] text-sm font-semibold transition-all hover:shadow-md"
+              className="px-5 py-2 max-[380px]:px-4 max-[380px]:py-1.5 bg-[var(--color-forest)] text-white rounded-full hover:bg-[var(--color-forest-dark)] text-sm max-[380px]:text-xs font-semibold transition-all hover:shadow-md"
             >
               New Session
             </button>
@@ -204,10 +204,10 @@ function App() {
       )}
 
       <footer
-        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mx-3 mb-3 px-5 py-2.5 surface-card rounded-2xl text-gray-500 text-xs"
+        className="app-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mx-3 mb-3 px-5 py-2.5 max-[380px]:mx-2 max-[380px]:mb-2 max-[380px]:px-3 max-[380px]:py-2 surface-card rounded-2xl text-gray-500 text-xs max-[380px]:text-[11px]"
         aria-label="Session status"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-[380px]:gap-2">
           <span>Round: {
             templateType === 'cat5'
               ? (sessionState?.current_step?.startsWith('STEP_3_COLLECT_') && (sessionState?.collected_photos?.length ?? 0) > 0
@@ -228,7 +228,7 @@ function App() {
             </>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-[380px]:gap-1.5">
           <span
             aria-hidden="true"
             className={`inline-block w-2 h-2 rounded-full ${getFooterIndicatorClass({

@@ -92,7 +92,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full p-6 max-[380px]:p-4 overflow-y-auto">
+    <div className="flex flex-col items-center justify-start min-h-full p-6 max-[380px]:p-4 overflow-y-auto">
       <div className="w-10 h-10 sm:w-14 sm:h-14 max-[380px]:w-9 max-[380px]:h-9 rounded-2xl max-[380px]:rounded-xl bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-forest-dark)] flex items-center justify-center mb-4 max-[380px]:mb-3 shadow-lg">
         <CameraIcon className="w-5 h-5 sm:w-7 sm:h-7 max-[380px]:w-4 max-[380px]:h-4 text-white" />
       </div>

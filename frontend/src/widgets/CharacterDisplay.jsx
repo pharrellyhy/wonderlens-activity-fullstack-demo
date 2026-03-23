@@ -4,15 +4,15 @@ export default function CharacterDisplay({ description, animation, roundNumber =
   const theme = getThemeForEntity(entity);
 
   return (
-    <div className={`relative flex flex-col items-center gap-3 sm:gap-4 max-[380px]:gap-2.5 p-4 sm:p-6 max-[380px]:p-3 w-full max-w-lg transition-all duration-500 ${animation === 'scene_transition' ? 'animate-fade-in' : ''}`}>
+    <div className={`relative flex flex-col items-center gap-2.5 max-[380px]:gap-2 p-3 max-[380px]:p-2.5 w-full max-w-md transition-all duration-500 ${animation === 'scene_transition' ? 'animate-fade-in' : ''}`}>
       {/* Character icon */}
-      <div className={`w-[clamp(3rem,14vw,3.5rem)] h-[clamp(3rem,14vw,3.5rem)] sm:w-20 sm:h-20 rounded-full ${theme.iconBg} ring-2 flex items-center justify-center shadow-sm animate-gentle-float`}>
-        <img src={theme.characterPng} alt={entity || 'character'} className="w-[clamp(2.1rem,9vw,2.5rem)] h-[clamp(2.1rem,9vw,2.5rem)] sm:w-14 sm:h-14 object-contain" />
+      <div className={`w-[clamp(2.8rem,12vw,3.25rem)] h-[clamp(2.8rem,12vw,3.25rem)] rounded-full ${theme.iconBg} ring-2 flex items-center justify-center shadow-sm animate-gentle-float`}>
+        <img src={theme.characterPng} alt={entity || 'character'} className="w-[clamp(1.9rem,8vw,2.2rem)] h-[clamp(1.9rem,8vw,2.2rem)] object-contain" />
       </div>
 
       {/* Description card */}
-      <div className="bg-white/80 rounded-xl max-[380px]:rounded-lg p-3 sm:p-4 max-[380px]:p-2.5 w-full text-center shadow-sm">
-        <p className="text-gray-700 font-medium text-sm sm:text-base max-[380px]:text-xs">{description || `Scene ${roundNumber}`}</p>
+      <div className="bg-white/80 rounded-xl max-[380px]:rounded-lg p-2.5 max-[380px]:p-2 w-full text-center shadow-sm">
+        <p className="text-gray-700 font-medium text-xs">{description || `Scene ${roundNumber}`}</p>
       </div>
 
       {/* Round pill badge */}

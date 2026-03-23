@@ -54,8 +54,8 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 max-[380px]:w-10 max-[380px]:h-10 rounded-2xl max-[380px]:rounded-xl surface-accent flex items-center justify-center mx-auto mb-3 max-[380px]:mb-2 shadow-sm">
-            <CameraIcon className="w-6 h-6 sm:w-8 sm:h-8 max-[380px]:w-5 max-[380px]:h-5 text-[var(--color-forest)]" />
+          <div className="w-11 h-11 max-[380px]:w-10 max-[380px]:h-10 rounded-2xl max-[380px]:rounded-xl surface-accent flex items-center justify-center mx-auto mb-2.5 max-[380px]:mb-2 shadow-sm">
+            <CameraIcon className="w-5 h-5 max-[380px]:w-4.5 max-[380px]:h-4.5 text-[var(--color-forest)]" />
           </div>
           <p className="text-sm max-[380px]:text-xs text-gray-500 font-medium">Device screen will appear here</p>
         </div>
@@ -81,15 +81,17 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
     >
       {/* Widget label header */}
       {screenFrame.widget_label && (
-        <div className="px-3 pt-2 pb-1 max-[380px]:px-2 max-[380px]:pt-1.5">
-          <p className="text-xs max-[380px]:text-[11px] font-medium text-[var(--color-forest)] text-center">{screenFrame.widget_label}</p>
+        <div className="px-2.5 pt-1.5 pb-1 max-[380px]:px-2 max-[380px]:pt-1">
+          <p className="text-[11px] max-[380px]:text-[10px] font-medium text-[var(--color-forest)] text-center">{screenFrame.widget_label}</p>
         </div>
       )}
 
-      <div className="flex-1 flex items-center justify-center min-h-0">
+      <div className="flex-1 flex items-center justify-center min-h-0 px-2 pb-1 max-[380px]:px-1.5 max-[380px]:pb-0.5">
         <AnimationOverlay animation={overlayAnimation}>
           {WidgetComponent ? (
-            <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
+            <div className="w-full max-w-md max-h-full flex items-center justify-center">
+              <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
+            </div>
           ) : (
             <div className="text-center p-8 surface-card rounded-2xl">
               <p className="text-gray-500 text-sm">Widget: {screenFrame.widget}</p>
@@ -99,9 +101,9 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
       </div>
 
       {/* Animation label + SFX indicator */}
-      <div className="flex items-center justify-between px-3 py-1.5 max-[380px]:px-2 max-[380px]:py-1 gap-2 max-[380px]:gap-1">
+      <div className="flex items-center justify-between px-2.5 py-1 max-[380px]:px-2 max-[380px]:py-0.5 gap-1.5 max-[380px]:gap-1">
         {screenFrame.animation_label && (
-          <p className="text-[10px] max-[380px]:text-[9px] text-gray-400 italic truncate">{screenFrame.animation_label}</p>
+          <p className="text-[9px] max-[380px]:text-[8px] text-gray-400 italic truncate">{screenFrame.animation_label}</p>
         )}
         <SfxIndicator key={`sfx-${frameKey}`} sfxCue={screenFrame.sfx_cue} sfxLabel={screenFrame.sfx_label} />
       </div>

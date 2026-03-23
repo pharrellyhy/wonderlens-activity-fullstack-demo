@@ -14,7 +14,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
   const collected = collectedPhotos.length;
 
   return (
-    <div className="flex flex-col items-center justify-center gap-5 max-[380px]:gap-3 h-full p-4 max-[380px]:p-3">
+    <div className="flex flex-col items-center justify-center gap-3.5 max-[380px]:gap-3 h-full p-3 max-[380px]:p-2.5">
       <div className="text-center">
         {criterion && (
           <p className="text-base max-[380px]:text-sm font-semibold text-[var(--color-forest-dark)]">
@@ -26,7 +26,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 max-[380px]:gap-2.5 w-full max-w-lg">
+      <div className="grid grid-cols-3 gap-3 max-[380px]:gap-2 w-full max-w-md">
         {items.map((photo) => {
           const isCollected = collectedPhotos.includes(photo.id);
           const isWrong = wrongPhotoId === photo.id;
@@ -57,7 +57,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = ''; }}
                 />
               ) : null}
-              <LeafIcon className={`w-10 h-10 sm:w-14 sm:h-14 max-[380px]:w-8 max-[380px]:h-8 ${photo.image ? 'hidden' : ''} ${
+              <LeafIcon className={`w-8 h-8 max-[380px]:w-7 max-[380px]:h-7 ${photo.image ? 'hidden' : ''} ${
                 isCollected ? 'text-[var(--color-forest)]' :
                 isWrong ? 'text-red-300' :
                 'text-[var(--color-forest)]/40'
@@ -76,11 +76,11 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
       </div>
 
       {/* Progress circles */}
-      <div className="flex gap-3 max-[380px]:gap-2 justify-center">
+      <div className="flex gap-2 max-[380px]:gap-1.5 justify-center">
         {Array.from({ length: totalToCollect }).map((_, i) => (
           <div
             key={i}
-            className={`w-8 h-8 sm:w-11 sm:h-11 max-[380px]:w-7 max-[380px]:h-7 rounded-full border-2 flex items-center justify-center text-xs sm:text-sm max-[380px]:text-[11px] font-bold transition-all duration-300 ${
+            className={`w-7 h-7 max-[380px]:w-6.5 max-[380px]:h-6.5 rounded-full border-2 flex items-center justify-center text-[11px] font-bold transition-all duration-300 ${
               i < collected
                 ? 'bg-[var(--color-forest)] border-[var(--color-forest)] text-white shadow-sm'
                 : i === collected

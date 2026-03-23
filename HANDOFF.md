@@ -8,13 +8,13 @@ Last updated: 2026-03-23
 
 **Problem**: The frontend layout was tuned for larger mobile/tablet widths, but many shell controls, widget cards, badges, progress circles, and icons kept their default sizes all the way down to very small screens. On narrow phones this made the camera viewport and surrounding UI feel oversized and cramped. A follow-up issue remained on short, wide viewports: the fixed-height shell could clip the top device area instead of adapting vertically.
 
-**Solution**: Added a compact-mobile sizing layer for screens under 420px and tightened the highest-pressure UI surfaces under 380px. The pass keeps desktop/tablet styling intact while shrinking spacing, copy, controls, widget chrome, and icon sizes inside the app shell, camera frame, conversation panel, photo selection flow, and device widgets. For short-height viewports, the shell now switches to a height-aware mode: it can scroll vertically, reduces shell spacing, and compresses the top panel instead of clipping it. I also removed one unused `PhotoGrid` prop surfaced by lint during verification.
+**Solution**: Added a compact-mobile sizing layer for screens under 420px and tightened the highest-pressure UI surfaces under 380px. The pass keeps desktop/tablet styling intact while shrinking spacing, copy, controls, widget chrome, and icon sizes inside the app shell, camera frame, conversation panel, photo selection flow, and device widgets. After follow-up reports that the device panel content still felt oversized, I narrowed the fix to the in-panel layer: `DeviceScreen` now uses a tighter widget wrapper, and the device-only widgets no longer upscale at `sm` width breakpoints. That keeps the camera content sized to the panel instead of to the overall viewport width. After screenshot review (`images/cutoff-1.png`, `images/cutoff-2.png`), I also fixed two concrete overflow cases: the lower-panel photo selector now anchors to the top instead of vertically centering oversized content, and the in-device photo display now sizes by available height rather than by `max-w-md`. I also removed one unused `PhotoGrid` prop surfaced by lint during verification.
 
 **Edits**:
 - `frontend/src/index.css` — added global compact-mobile root font scaling for sub-420px screens plus short-viewport shell rules for scrolling/compression under `760px` height
-- `frontend/src/App.jsx`, `frontend/src/components/TopBar.jsx`, `frontend/src/components/ToyCameraFrame.jsx`, `frontend/src/components/DeviceScreen.jsx`, `frontend/src/components/ConversationPanel.jsx`, `frontend/src/components/TextInput.jsx` — reduced shell spacing and control/icon sizing for extra-small screens; tagged the shell/top panel/footer for height-aware behavior
-- `frontend/src/components/PhotoSelector.jsx`, `frontend/src/components/GameDetailView.jsx`, `frontend/src/components/PhotoGallery.jsx` — tightened photo picker/detail/gallery layouts and labels on narrow viewports
-- `frontend/src/widgets/BadgeAward.jsx`, `frontend/src/widgets/ProgressTracker.jsx`, `frontend/src/widgets/CharacterDisplay.jsx`, `frontend/src/widgets/PhotoGrid.jsx`, `frontend/src/widgets/PhotoDisplay.jsx` — switched oversized widget/icon elements to compact breakpoint rules and `clamp()` sizing where needed
+- `frontend/src/App.jsx`, `frontend/src/components/TopBar.jsx`, `frontend/src/components/ToyCameraFrame.jsx`, `frontend/src/components/DeviceScreen.jsx`, `frontend/src/components/ConversationPanel.jsx`, `frontend/src/components/TextInput.jsx` — reduced shell spacing and control/icon sizing for extra-small screens; `DeviceScreen` now applies a tighter wrapper around in-panel widgets
+- `frontend/src/components/PhotoSelector.jsx`, `frontend/src/components/GameDetailView.jsx`, `frontend/src/components/PhotoGallery.jsx` — tightened photo picker/detail/gallery layouts and labels on narrow viewports; `PhotoSelector` now top-aligns scrollable content instead of centering it
+- `frontend/src/widgets/BadgeAward.jsx`, `frontend/src/widgets/ProgressTracker.jsx`, `frontend/src/widgets/CharacterDisplay.jsx`, `frontend/src/widgets/PhotoGrid.jsx`, `frontend/src/widgets/PhotoDisplay.jsx` — switched oversized widget/icon elements to compact breakpoint rules and `clamp()` sizing; removed `sm`-based device-panel enlargement
 - `HANDOFF.md` — added this entry
 
 **NOT Changed**:
@@ -24,6 +24,8 @@ Last updated: 2026-03-23
 
 **Verification**:
 - `rg -n "max-\\[380px\\]:|clamp\\(" frontend/src/App.jsx frontend/src/components/TopBar.jsx frontend/src/components/DeviceScreen.jsx frontend/src/components/PhotoSelector.jsx frontend/src/components/PhotoGallery.jsx frontend/src/widgets/BadgeAward.jsx frontend/src/widgets/ProgressTracker.jsx frontend/src/widgets/CharacterDisplay.jsx` — PASS
+- `rg -n "sm:w-|sm:h-|sm:text-|sm:p-|sm:gap-" frontend/src/components/DeviceScreen.jsx frontend/src/components/PhotoGallery.jsx frontend/src/widgets/BadgeAward.jsx frontend/src/widgets/ProgressTracker.jsx frontend/src/widgets/CharacterDisplay.jsx frontend/src/widgets/PhotoGrid.jsx frontend/src/widgets/PhotoDisplay.jsx` — PASS
+- `rg -n "justify-center h-full p-6|max-w-md aspect-square" frontend/src/components/PhotoSelector.jsx frontend/src/widgets/PhotoDisplay.jsx` — PASS
 - `cd frontend && npm run lint` — PASS
 - `cd frontend && npm run build` — PASS
 

@@ -1,22 +1,76 @@
 import { useState, useCallback, useRef } from 'react';
-import { synthesizeSpeechStream } from '../utils/api';
+import BASE from '../utils/basePath';
+
+const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+
+/**
+ * Build a WAV file (Blob) from raw PCM 16-bit LE mono samples.
+ */
+function pcmToWavBlob(pcmData, sampleRate) {
+  const wavHeader = 44;
+  const buffer = new ArrayBuffer(wavHeader + pcmData.byteLength);
+  const view = new DataView(buffer);
+
+  // RIFF header
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + pcmData.byteLength, true);
+  writeString(view, 8, 'WAVE');
+
+  // fmt sub-chunk
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);           // sub-chunk size
+  view.setUint16(20, 1, true);            // PCM format
+  view.setUint16(22, 1, true);            // mono
+  view.setUint32(24, sampleRate, true);    // sample rate
+  view.setUint32(28, sampleRate * 2, true); // byte rate
+  view.setUint16(32, 2, true);            // block align
+  view.setUint16(34, 16, true);           // bits per sample
+
+  // data sub-chunk
+  writeString(view, 36, 'data');
+  view.setUint32(40, pcmData.byteLength, true);
+
+  // Copy PCM data
+  new Uint8Array(buffer, wavHeader).set(new Uint8Array(pcmData));
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+function writeString(view, offset, str) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
 
 export default function useTTS(onSpeakingDone) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const abortRef = useRef(null);
-  const ctxRef = useRef(null);
-  const scheduledEndRef = useRef(0);
-  const lastSourceRef = useRef(null);
+  const audioElRef = useRef(null);
+  const audioUrlRef = useRef(null);
+  const unlockedRef = useRef(false);
 
-  const getAudioContext = useCallback((sampleRate) => {
-    if (ctxRef.current && ctxRef.current.sampleRate === sampleRate) {
-      return ctxRef.current;
+  const getAudioElement = useCallback(() => {
+    if (!audioElRef.current) {
+      const audio = new Audio();
+      audio.preload = 'auto';
+      audio.playsInline = true;
+      audioElRef.current = audio;
     }
-    if (ctxRef.current) {
-      ctxRef.current.close();
+    return audioElRef.current;
+  }, []);
+
+  const clearAudioElement = useCallback(() => {
+    if (audioElRef.current) {
+      audioElRef.current.onended = null;
+      audioElRef.current.onerror = null;
+      audioElRef.current.pause();
+      audioElRef.current.removeAttribute('src');
+      audioElRef.current.load();
     }
-    ctxRef.current = new AudioContext({ sampleRate });
-    return ctxRef.current;
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
   }, []);
 
   const stop = useCallback(() => {
@@ -24,18 +78,12 @@ export default function useTTS(onSpeakingDone) {
       abortRef.current.abort();
       abortRef.current = null;
     }
-    if (lastSourceRef.current) {
-      lastSourceRef.current.onended = null;
-      lastSourceRef.current.stop();
-      lastSourceRef.current = null;
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
     }
-    if (ctxRef.current) {
-      ctxRef.current.close();
-      ctxRef.current = null;
-    }
-    scheduledEndRef.current = 0;
+    clearAudioElement();
     setIsSpeaking(false);
-  }, []);
+  }, [clearAudioElement]);
 
   const fallbackSpeak = useCallback((text) => {
     if (!window.speechSynthesis) {
@@ -59,112 +107,128 @@ export default function useTTS(onSpeakingDone) {
   }, [onSpeakingDone]);
 
   /**
-   * Schedule a PCM chunk for seamless playback at the correct time offset.
-   * Returns the AudioBufferSourceNode for the chunk.
+   * Play a WAV blob via an <audio> element — the most reliable cross-platform
+   * approach, especially on mobile browsers that restrict AudioContext.
    */
-  const scheduleChunk = useCallback((ctx, float32Data) => {
-    const buffer = ctx.createBuffer(1, float32Data.length, ctx.sampleRate);
-    buffer.getChannelData(0).set(float32Data);
+  const playWavBlob = useCallback((wavBlob) => {
+    const url = URL.createObjectURL(wavBlob);
+    const audio = getAudioElement();
 
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(ctx.destination);
+    clearAudioElement();
+    audioUrlRef.current = url;
+    audio.muted = false;
+    audio.volume = 1;
+    audio.src = url;
 
-    // Schedule at the end of the previous chunk (or now for the first)
-    const startAt = Math.max(ctx.currentTime, scheduledEndRef.current);
-    source.start(startAt);
-    scheduledEndRef.current = startAt + buffer.duration;
+    audio.onended = () => {
+      clearAudioElement();
+      setIsSpeaking(false);
+      onSpeakingDone?.();
+    };
+    audio.onerror = () => {
+      console.warn('Audio element playback failed');
+      clearAudioElement();
+      setIsSpeaking(false);
+      onSpeakingDone?.();
+    };
 
-    return source;
-  }, []);
+    audio.play().catch((err) => {
+      console.warn('Audio play() rejected:', err);
+      clearAudioElement();
+      setIsSpeaking(false);
+      onSpeakingDone?.();
+    });
+  }, [clearAudioElement, getAudioElement, onSpeakingDone]);
 
   /**
-   * Convert raw PCM 16-bit LE bytes to Float32 samples.
+   * Fetch PCM from a ReadableStream, convert to WAV, and play via <audio>.
    */
-  const pcmToFloat32 = useCallback((pcmBytes) => {
-    const pcm16 = new Int16Array(
-      pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength >> 1,
-    );
-    const float32 = new Float32Array(pcm16.length);
-    for (let i = 0; i < pcm16.length; i++) {
-      float32[i] = pcm16[i] / 32768;
-    }
-    return float32;
-  }, []);
-
-  /**
-   * Play audio progressively from a ReadableStream of PCM chunks.
-   * Each chunk is scheduled seamlessly after the previous one — no gaps, no noise.
-   * Audio starts playing as soon as the first chunk arrives (low TTFA).
-   */
-  const playStream = useCallback(async (audioStream, sampleRate, signal) => {
+  const playFromStream = useCallback(async (audioStream, sampleRate, signal) => {
     if (!audioStream) {
       setIsSpeaking(false);
       onSpeakingDone?.();
       return;
     }
 
-    const ctx = getAudioContext(sampleRate);
-    scheduledEndRef.current = 0;
-    const reader = audioStream.getReader();
-    let lastSource = null;
-    let leftover = null; // carry odd trailing byte across chunks
-
     try {
+      // Collect all PCM chunks into a single buffer
+      const reader = audioStream.getReader();
+      const chunks = [];
+      let totalLength = 0;
+
       while (true) {
         if (signal?.aborted) return;
         const { done, value } = await reader.read();
-        if (done) {
-          // Flush any remaining leftover (single byte — discard, can't form a sample)
-          break;
+        if (done) break;
+        if (value && value.byteLength > 0) {
+          chunks.push(value);
+          totalLength += value.byteLength;
         }
-        if (!value || value.byteLength === 0) continue;
-
-        // Prepend leftover byte from previous chunk to maintain 2-byte PCM alignment
-        let chunk = value;
-        if (leftover) {
-          const merged = new Uint8Array(leftover.byteLength + chunk.byteLength);
-          merged.set(leftover);
-          merged.set(chunk, leftover.byteLength);
-          chunk = merged;
-          leftover = null;
-        }
-
-        // If odd number of bytes, save the last byte for next iteration
-        if (chunk.byteLength % 2 !== 0) {
-          leftover = chunk.slice(-1);
-          chunk = chunk.slice(0, -1);
-        }
-
-        if (chunk.byteLength < 2) continue;
-
-        const float32 = pcmToFloat32(chunk);
-        lastSource = scheduleChunk(ctx, float32);
-        lastSourceRef.current = lastSource;
       }
 
-      // Set onended callback on the very last scheduled source
-      if (lastSource) {
-        lastSource.onended = () => {
-          lastSourceRef.current = null;
-          setIsSpeaking(false);
-          onSpeakingDone?.();
-        };
-      } else {
+      if (signal?.aborted) return;
+      if (totalLength === 0) {
         setIsSpeaking(false);
         onSpeakingDone?.();
+        return;
       }
+
+      // Merge chunks
+      const pcmData = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        pcmData.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+
+      // Ensure even byte count (PCM 16-bit)
+      const evenLength = pcmData.byteLength & ~1;
+      const wavBlob = pcmToWavBlob(pcmData.slice(0, evenLength).buffer, sampleRate);
+      playWavBlob(wavBlob);
     } catch (err) {
       if (err.name === 'AbortError') return;
-      console.warn('Progressive playback failed:', err);
+      console.warn('Stream-to-WAV playback failed:', err);
       setIsSpeaking(false);
       onSpeakingDone?.();
     }
-  }, [getAudioContext, onSpeakingDone, pcmToFloat32, scheduleChunk]);
+  }, [onSpeakingDone, playWavBlob]);
 
   /**
-   * Speak text using /api/tts with progressive playback.
-   * Used for the first turn (from /api/start) and as fallback.
+   * Fetch PCM as a single ArrayBuffer (no streaming), convert to WAV, and play.
+   * More reliable on mobile browsers that don't support ReadableStream well.
+   */
+  const fetchAndPlayWav = useCallback(async (text, tier, signal) => {
+    try {
+      const res = await fetch(`${BASE}/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, tier }),
+        signal,
+      });
+      if (signal?.aborted) return;
+      if (res.status === 204 || !res.ok) {
+        fallbackSpeak(text);
+        return;
+      }
+      const sampleRate = parseInt(res.headers.get('X-Sample-Rate') || '24000', 10);
+      const pcmBuffer = await res.arrayBuffer();
+      if (signal?.aborted) return;
+      if (pcmBuffer.byteLength < 2) {
+        fallbackSpeak(text);
+        return;
+      }
+      const evenLength = pcmBuffer.byteLength & ~1;
+      const wavBlob = pcmToWavBlob(pcmBuffer.slice(0, evenLength), sampleRate);
+      playWavBlob(wavBlob);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.warn('TTS fetch failed, using browser speech:', err);
+      fallbackSpeak(text);
+    }
+  }, [fallbackSpeak, playWavBlob]);
+
+  /**
+   * Speak text using /api/tts — fetches full PCM, converts to WAV, plays via <audio>.
    */
   const speak = useCallback(async (text, tier) => {
     if (!text) return;
@@ -175,23 +239,12 @@ export default function useTTS(onSpeakingDone) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    try {
-      const result = await synthesizeSpeechStream(text, tier);
-      if (!result || !result.stream) {
-        fallbackSpeak(text);
-        return;
-      }
-
-      await playStream(result.stream, result.sampleRate, controller.signal);
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      fallbackSpeak(text);
-    }
-  }, [stop, fallbackSpeak, playStream]);
+    await fetchAndPlayWav(text, tier, controller.signal);
+  }, [stop, fetchAndPlayWav]);
 
   /**
-   * Play audio from an already-available stream (from /api/turn-speak).
-   * Skips the separate /api/tts call entirely.
+   * Play audio from an already-available ReadableStream (from /api/turn-speak).
+   * Collects the stream into a WAV blob and plays via <audio>.
    */
   const speakFromStream = useCallback(async (audioStream, sampleRate) => {
     stop();
@@ -200,14 +253,38 @@ export default function useTTS(onSpeakingDone) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    try {
-      await playStream(audioStream, sampleRate, controller.signal);
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      setIsSpeaking(false);
-      onSpeakingDone?.();
-    }
-  }, [stop, playStream, onSpeakingDone]);
+    await playFromStream(audioStream, sampleRate, controller.signal);
+  }, [stop, playFromStream]);
 
-  return { isSpeaking, speak, speakFromStream, stop };
+  const unlock = useCallback(() => {
+    if (unlockedRef.current) {
+      return;
+    }
+
+    try {
+      const audio = getAudioElement();
+      audio.muted = true;
+      audio.volume = 0;
+      audio.src = SILENT_WAV_DATA_URI;
+
+      const playPromise = audio.play();
+      if (playPromise?.then) {
+        playPromise
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.removeAttribute('src');
+            audio.load();
+            audio.muted = false;
+            audio.volume = 1;
+            unlockedRef.current = true;
+          })
+          .catch(() => { });
+      }
+    } catch {
+      // Best effort only — fallback speech still exists if this fails.
+    }
+  }, [getAudioElement]);
+
+  return { isSpeaking, speak, speakFromStream, stop, unlock };
 }

@@ -53,7 +53,7 @@ export default function useSessionOrchestration(tier) {
     }
   }, [sessionState?.status, sendAutoAdvance]);
 
-  const { isSpeaking, speak, speakFromStream, stop: stopTTS } = useTTS(handleSpeakingDone);
+  const { isSpeaking, speak, speakFromStream, stop: stopTTS, unlock: unlockTTS } = useTTS(handleSpeakingDone);
 
   const handleSilence = useCallback(() => {
     if (sessionState?.status === 'active') {
@@ -117,16 +117,18 @@ export default function useSessionOrchestration(tier) {
     // Unlock audio playback synchronously in the user gesture context,
     // before the async API call, to satisfy browser autoplay policy.
     unlockSfx();
+    unlockTTS();
     try {
       setRetryCount(0);
       await start(photo, tier);
     } catch {
       setRetryCount(prev => prev + 1);
     }
-  }, [start, tier, unlockSfx]);
+  }, [start, tier, unlockSfx, unlockTTS]);
 
   const startDeepLinkSession = useCallback(async (entity, deepLinkTier, conversationContext = []) => {
     unlockSfx();
+    unlockTTS();
     try {
       setRetryCount(0);
       return await startDeepLink(entity, deepLinkTier, conversationContext);
@@ -134,7 +136,7 @@ export default function useSessionOrchestration(tier) {
       setRetryCount(prev => prev + 1);
       throw error;
     }
-  }, [startDeepLink, unlockSfx]);
+  }, [startDeepLink, unlockSfx, unlockTTS]);
 
   const handleSendMessage = useCallback((text) => {
     if (!text.trim() || !isActive || turnPending) return;

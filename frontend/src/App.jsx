@@ -37,6 +37,42 @@ async function loadDeepLinkConversation(contextPath) {
   }
 }
 
+function getEndedStatusLabel(status) {
+  if (status === 'completed') {
+    return 'Activity complete!';
+  }
+  if (status === 'error') {
+    return 'Session ended early';
+  }
+  return 'Session ended';
+}
+
+function getFooterIndicatorClass({ isActive, isEnded, error, loading }) {
+  if (isActive) {
+    return 'bg-[var(--color-forest)]';
+  }
+  if (isEnded) {
+    return 'bg-[var(--color-sunflower)]';
+  }
+  if (error) {
+    return 'bg-red-400';
+  }
+  if (loading) {
+    return 'bg-[var(--color-teal)] animate-pulse';
+  }
+  return 'bg-gray-300';
+}
+
+function getFooterStatusLabel({ loading, turnPending, status }) {
+  if (loading) {
+    return 'generating...';
+  }
+  if (turnPending) {
+    return 'thinking...';
+  }
+  return status || 'idle';
+}
+
 function App() {
   const [tier, setTier] = useState('T0');
 
@@ -142,26 +178,28 @@ function App() {
 
       {/* Error exit indicator */}
       {errorExit && (
-        <div className="mx-3 mb-2 surface-card rounded-2xl p-3 text-center border border-amber-200/50">
-          <p className="text-xs text-amber-600">
-            Session ended due to a connection issue. Your progress was saved!
-          </p>
+        <div className="px-3 max-w-3xl mx-auto w-full mb-2">
+          <div className="surface-card rounded-2xl p-3 text-center border border-amber-200/50">
+            <p className="text-xs text-amber-600">
+              Session ended due to a connection issue. Your progress was saved!
+            </p>
+          </div>
         </div>
       )}
 
       {isEnded && (
-        <div className="mx-3 mb-2 surface-card rounded-2xl p-4 text-center">
-          <p className="text-sm text-gray-500 mb-2">
-            {sessionState?.status === 'completed' ? 'Activity complete!' :
-             sessionState?.status === 'error' ? 'Session ended early' :
-             'Session ended'}
-          </p>
-          <button
-            onClick={resetSession}
-            className="px-5 py-2 bg-[var(--color-forest)] text-white rounded-full hover:bg-[var(--color-forest-dark)] text-sm font-semibold transition-all hover:shadow-md"
-          >
-            New Session
-          </button>
+        <div className="px-3 max-w-3xl mx-auto w-full mb-2">
+          <div className="surface-card rounded-2xl p-4 text-center">
+            <p className="text-sm text-gray-500 mb-2">
+              {getEndedStatusLabel(sessionState?.status)}
+            </p>
+            <button
+              onClick={resetSession}
+              className="px-5 py-2 bg-[var(--color-forest)] text-white rounded-full hover:bg-[var(--color-forest-dark)] text-sm font-semibold transition-all hover:shadow-md"
+            >
+              New Session
+            </button>
+          </div>
         </div>
       )}
 
@@ -193,18 +231,15 @@ function App() {
         <div className="flex items-center gap-2">
           <span
             aria-hidden="true"
-            className={`inline-block w-2 h-2 rounded-full ${
-              isActive ? 'bg-[var(--color-forest)]' :
-              isEnded ? 'bg-[var(--color-sunflower)]' :
-              error ? 'bg-red-400' :
-              loading ? 'bg-[var(--color-teal)] animate-pulse' :
-              'bg-gray-300'
-            }`}
+            className={`inline-block w-2 h-2 rounded-full ${getFooterIndicatorClass({
+              isActive,
+              isEnded,
+              error,
+              loading,
+            })}`}
           />
           <span className="capitalize text-gray-500">
-            {loading ? 'generating...' :
-             turnPending ? 'thinking...' :
-             sessionState?.status || 'idle'}
+            {getFooterStatusLabel({ loading, turnPending, status: sessionState?.status })}
           </span>
           {isSpeaking && <span className="ml-2 text-[var(--color-teal)]">Speaking...</span>}
         </div>

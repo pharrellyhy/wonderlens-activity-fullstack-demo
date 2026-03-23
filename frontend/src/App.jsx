@@ -129,7 +129,7 @@ function App() {
       <h1 className="sr-only">WonderLens Activity Demo</h1>
       <main className="app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-3xl mx-auto w-full">
         {/* TOP ~42% — Device Screen in Toy Camera */}
-        <section className="app-top-panel h-[42%] max-[380px]:h-[40%] flex-shrink-0" aria-label="Device screen">
+        <section className="app-top-panel h-[42%] max-[380px]:h-[40%] flex-shrink min-h-0" aria-label="Device screen">
           <ToyCameraFrame>
             {showPhotoGallery ? (
               <PhotoGallery

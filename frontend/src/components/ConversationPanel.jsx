@@ -49,7 +49,7 @@ export default function ConversationPanel({
       {/* Chat Bubble List */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-5 max-[380px]:px-3 py-4 max-[380px]:py-3 space-y-4 max-[380px]:space-y-3"
+        className="flex-1 overflow-y-auto px-4 sm:px-5 lg:px-6 max-[380px]:px-3 py-3 sm:py-4 max-[380px]:py-3 space-y-3 sm:space-y-4 max-[380px]:space-y-3"
         role="log"
         aria-live="polite"
       >

@@ -47,14 +47,14 @@ export default function ChatBubble({ message, isLatestAi }) {
         <AiAvatar size="sm" className="mr-2 mt-1" />
       )}
       <div
-        className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+        className={`max-w-[75%] rounded-2xl px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 text-sm lg:text-base leading-relaxed ${
           isAi
             ? 'bg-white text-gray-700 shadow-sm rounded-bl-sm border border-[var(--color-forest)]/10'
             : 'bg-[var(--color-forest)] text-white rounded-br-sm shadow-sm'
         }`}
       >
         {message.tone && isAi && (
-          <span className="inline-block text-xs uppercase tracking-wide font-semibold text-[var(--color-forest)] mb-1 bg-[var(--color-forest)]/10 rounded-full px-2 py-0.5">
+          <span className="inline-block text-xs lg:text-sm uppercase tracking-wide font-semibold text-[var(--color-forest)] mb-1 bg-[var(--color-forest)]/10 rounded-full px-2 py-0.5">
             {message.tone}
           </span>
         )}

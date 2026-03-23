@@ -79,7 +79,7 @@
   }
 
   .app-top-panel {
-    height: min(36dvh, 14rem);
+    max-height: 14rem;
   }
 
   .app-footer {
@@ -103,7 +103,7 @@
   }
 
   .app-top-panel {
-    height: min(30dvh, 10rem);
+    max-height: 10rem;
   }
 
   .app-footer {

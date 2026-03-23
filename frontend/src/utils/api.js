@@ -2,11 +2,13 @@
  * API client for WonderLens Activity Demo backend.
  */
 
+import BASE from './basePath';
+
 export async function startSession(photo, tier) {
   const formData = new FormData();
   formData.append('photo', photo);
   formData.append('tier', tier);
-  const res = await fetch('/api/start', { method: 'POST', body: formData });
+  const res = await fetch(`${BASE}/api/start`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Start failed: ${res.status}`);
   return res.json();
 }
@@ -14,7 +16,7 @@ export async function startSession(photo, tier) {
 export async function sendTurn(sessionId, text, isSilent, photoId = null) {
   const body = { session_id: sessionId, text, is_silent: isSilent };
   if (photoId) body.photo_id = photoId;
-  const res = await fetch('/api/turn', {
+  const res = await fetch(`${BASE}/api/turn`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -37,7 +39,7 @@ export async function sendTurnSpeak(sessionId, text, isSilent, photoId = null) {
   const body = { session_id: sessionId, text, is_silent: isSilent };
   if (photoId) body.photo_id = photoId;
 
-  const res = await fetch('/api/turn-speak', {
+  const res = await fetch(`${BASE}/api/turn-speak`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -104,16 +106,30 @@ export async function sendTurnSpeak(sessionId, text, isSilent, photoId = null) {
   return { turnData, audioStream, sampleRate };
 }
 
+export async function startDeepLinkSession(entity, tier, conversationContext = []) {
+  const body = { entity, tier };
+  if (conversationContext.length > 0) {
+    body.conversation_context = conversationContext;
+  }
+  const res = await fetch(`${BASE}/api/start-deep-link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Deep link start failed: ${res.status}`);
+  return res.json();
+}
+
 export async function transcribeAudio(audioBlob) {
   const formData = new FormData();
   formData.append('audio', audioBlob, 'recording.webm');
-  const res = await fetch('/api/stt', { method: 'POST', body: formData });
+  const res = await fetch(`${BASE}/api/stt`, { method: 'POST', body: formData });
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function synthesizeSpeechStream(text, tier) {
-  const res = await fetch('/api/tts', {
+  const res = await fetch(`${BASE}/api/tts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, tier }),

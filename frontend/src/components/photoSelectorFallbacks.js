@@ -1,3 +1,5 @@
+import { asset } from '../utils/basePath';
+
 export const FALLBACK_CATEGORIES = [
   {
     id: 'cat1',
@@ -7,7 +9,7 @@ export const FALLBACK_CATEGORIES = [
       {
         id: 'dog',
         label: 'Stuffed Dog',
-        src: '/icons/dog.png',
+        src: asset('/icons/dog.png'),
         summary: {
           category: 'category_1',
           tier: 'T0',
@@ -27,7 +29,7 @@ export const FALLBACK_CATEGORIES = [
       {
         id: 'cat',
         label: 'Cat',
-        src: '/icons/cat.png',
+        src: asset('/icons/cat.png'),
         summary: {
           category: 'category_1',
           tier: 'T0',
@@ -47,7 +49,7 @@ export const FALLBACK_CATEGORIES = [
       {
         id: 'dinosaur',
         label: 'Dinosaur',
-        src: '/icons/dinosaur.png',
+        src: asset('/icons/dinosaur.png'),
         summary: {
           category: 'category_1',
           tier: 'T0',
@@ -74,7 +76,7 @@ export const FALLBACK_CATEGORIES = [
       {
         id: 'ladybug',
         label: 'Ladybug',
-        src: '/icons/ladybug.png',
+        src: asset('/icons/ladybug.png'),
         summary: {
           category: 'category_5',
           tier: 'T1',
@@ -91,17 +93,17 @@ export const FALLBACK_CATEGORIES = [
           synthesis_type: 'comparison_chart',
           observation_angle: 'pattern',
           collectible_previews: [
-            { label: 'Spotted mushroom', image: '/icons/spotted_mushroom.png' },
-            { label: 'Dotted pebble', image: '/icons/dotted_pebble.png' },
-            { label: 'Speckled leaf', image: '/icons/speckled_leaf.png' },
-            { label: 'Flower with circles', image: '/icons/circle_flower.png' },
+            { label: 'Spotted mushroom', image: asset('/icons/spotted_mushroom.png') },
+            { label: 'Dotted pebble', image: asset('/icons/dotted_pebble.png') },
+            { label: 'Speckled leaf', image: asset('/icons/speckled_leaf.png') },
+            { label: 'Flower with circles', image: asset('/icons/circle_flower.png') },
           ],
         },
       },
       {
         id: 'dandelion',
         label: 'Dandelion',
-        src: '/icons/dandelion.png',
+        src: asset('/icons/dandelion.png'),
         summary: {
           category: 'category_5',
           tier: 'T0',
@@ -118,10 +120,10 @@ export const FALLBACK_CATEGORIES = [
           synthesis_type: 'naming_story',
           observation_angle: 'texture',
           collectible_previews: [
-            { label: 'Fuzzy moss', image: '/icons/fuzzy_moss.png' },
-            { label: 'Fluffy seed head', image: '/icons/fluffy_seed.png' },
-            { label: 'Soft petal', image: '/icons/soft_petal.png' },
-            { label: 'Woolly caterpillar', image: '/icons/woolly_caterpillar.png' },
+            { label: 'Fuzzy moss', image: asset('/icons/fuzzy_moss.png') },
+            { label: 'Fluffy seed head', image: asset('/icons/fluffy_seed.png') },
+            { label: 'Soft petal', image: asset('/icons/soft_petal.png') },
+            { label: 'Woolly caterpillar', image: asset('/icons/woolly_caterpillar.png') },
           ],
         },
       },

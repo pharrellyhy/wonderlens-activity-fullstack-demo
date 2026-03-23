@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import BASE from '../utils/basePath';
 
 const VARIATIONS = 3;
 
@@ -57,7 +58,7 @@ export default function useSfxPlayer() {
 
     // Pick a random variation (v1, v2, or v3)
     const variant = Math.floor(Math.random() * VARIATIONS) + 1;
-    const file = `/sfx/${sfxCue}_v${variant}.wav`;
+    const file = `${BASE}/sfx/${sfxCue}_v${variant}.wav`;
 
     // Use cached Audio object or create new one
     if (!cacheRef.current[file]) {

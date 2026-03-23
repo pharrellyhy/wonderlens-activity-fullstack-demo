@@ -1,6 +1,8 @@
+import BASE from '../utils/basePath';
+
 const GAME_THEMES = {
   dog: {
-    characterPng: '/icons/dog.png',
+    characterPng: `${BASE}/icons/dog.png`,
     gradient: 'from-blue-100 to-blue-300',
     border: 'border-blue-300/40',
     accent: 'text-blue-800',
@@ -9,7 +11,7 @@ const GAME_THEMES = {
     decorations: ['🐾', '🦴'],
   },
   cat: {
-    characterPng: '/icons/cat.png',
+    characterPng: `${BASE}/icons/cat.png`,
     gradient: 'from-violet-100 to-violet-300',
     border: 'border-violet-300/40',
     accent: 'text-violet-800',
@@ -18,7 +20,7 @@ const GAME_THEMES = {
     decorations: ['🌙', '✨'],
   },
   dinosaur: {
-    characterPng: '/icons/dinosaur.png',
+    characterPng: `${BASE}/icons/dinosaur.png`,
     gradient: 'from-amber-50 to-amber-300',
     border: 'border-amber-300/40',
     accent: 'text-amber-800',
@@ -27,7 +29,7 @@ const GAME_THEMES = {
     decorations: ['🌋', '🦴'],
   },
   ladybug: {
-    characterPng: '/icons/ladybug.png',
+    characterPng: `${BASE}/icons/ladybug.png`,
     gradient: 'from-red-100 to-red-300',
     border: 'border-red-300/40',
     accent: 'text-red-800',
@@ -36,7 +38,7 @@ const GAME_THEMES = {
     decorations: ['🍄', '🌺'],
   },
   dandelion: {
-    characterPng: '/icons/dandelion.png',
+    characterPng: `${BASE}/icons/dandelion.png`,
     gradient: 'from-yellow-50 to-yellow-300',
     border: 'border-yellow-300/40',
     accent: 'text-yellow-800',

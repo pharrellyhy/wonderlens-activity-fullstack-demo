@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CameraIcon, BinocularsIcon, MagnifyingGlassIcon, LeafIcon } from '../icons';
 import GameDetailView from './GameDetailView';
 import { FALLBACK_CATEGORIES } from './photoSelectorFallbacks';
+import BASE from '../utils/basePath';
 
 const CATEGORY_ICONS = {
   cat1: BinocularsIcon,
@@ -15,7 +16,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
   useEffect(() => {
     let isActive = true;
 
-    fetch('/api/entities')
+    fetch(`${BASE}/api/entities`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch entities');
         return res.json();

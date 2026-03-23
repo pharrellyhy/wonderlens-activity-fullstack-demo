@@ -1,4 +1,5 @@
 import { PhotoFrameIcon } from '../icons';
+import BASE from '../utils/basePath';
 
 export default function PhotoGrid({ photos = [], animation, sessionState }) {
   const collectedIds = sessionState?.collected_photos || [];
@@ -7,7 +8,7 @@ export default function PhotoGrid({ photos = [], animation, sessionState }) {
   // Build slots from collected photo IDs — each gets its icon image
   const slots = Array.from({ length: totalToCollect }, (_, i) => {
     const id = collectedIds[i];
-    return id ? `/icons/${id}.png` : null;
+    return id ? `${BASE}/icons/${id}.png` : null;
   });
 
   return (

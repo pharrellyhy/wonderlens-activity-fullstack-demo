@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BadgeIcon, StarIcon } from '../icons';
+import BASE from '../utils/basePath';
 
 function CssBadgeFallback() {
   return (
@@ -13,7 +14,7 @@ function CssBadgeFallback() {
 
 function ConceptBadge({ concept, delay }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const src = `/badges/${concept.toLowerCase()}.png`;
+  const src = `${BASE}/badges/${concept.toLowerCase()}.png`;
 
   return (
     <div

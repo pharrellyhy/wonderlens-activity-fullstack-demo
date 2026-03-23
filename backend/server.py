@@ -2,16 +2,23 @@
 
 import asyncio
 import json
+import mimetypes
 import re
 import struct
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
-from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+
+# Ensure JS/CSS MIME types are correct (some systems default .js to application/json)
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+from pydantic import BaseModel, Field
 
 try:
     from .agents.pipeline import initialize_session
@@ -19,9 +26,11 @@ try:
     from .config import get_settings
     from .db import init_db, log_session, log_turn, update_session_status
     from .entity_registry import (
+        ENTITY_REGISTRY,
         all_entities_for_api,
         generate_round_items,
         is_demo_entity,
+        lookup_by_entity_name,
         validate_registry,
     )
     from .game_loader import get_demo_recipe  # noqa: F401 — triggers game loading + registry population
@@ -30,7 +39,7 @@ try:
     from .scenarios import load_scenario, match_scenario
     from .schemas import ScreenFrame
     from .schemas.creative_slots import Cat5CreativeSlots
-    from .schemas.session_state import ConversationTurn, SessionStateModel
+    from .schemas.session_state import ConversationTurn, SessionStateModel, UpstreamConversationTurn
     from .schemas.turn_response import TurnResponse
     from .state_machine import get_screen_frame
     from .stt import transcribe_audio
@@ -49,9 +58,11 @@ except ImportError:
     from config import get_settings
     from db import init_db, log_session, log_turn, update_session_status
     from entity_registry import (
+        ENTITY_REGISTRY,
         all_entities_for_api,
         generate_round_items,
         is_demo_entity,
+        lookup_by_entity_name,
         validate_registry,
     )
     from game_loader import get_demo_recipe  # noqa: F401
@@ -60,7 +71,7 @@ except ImportError:
     from scenarios import load_scenario, match_scenario
     from schemas import ScreenFrame
     from schemas.creative_slots import Cat5CreativeSlots
-    from schemas.session_state import ConversationTurn, SessionStateModel
+    from schemas.session_state import ConversationTurn, SessionStateModel, UpstreamConversationTurn
     from schemas.turn_response import TurnResponse
     from state_machine import get_screen_frame
     from stt import transcribe_audio
@@ -129,6 +140,12 @@ class TTSRequest(BaseModel):
     tier: str = "T0"
 
 
+class DeepLinkStartRequest(BaseModel):
+    entity: str
+    tier: str = "T0"
+    conversation_context: list[UpstreamConversationTurn] = Field(default_factory=list)
+
+
 # --- Endpoints ---
 
 
@@ -141,6 +158,88 @@ async def health() -> dict:
 async def list_entities() -> JSONResponse:
     """Return all demo entities grouped by category for the frontend."""
     return JSONResponse({"categories": all_entities_for_api()})
+
+
+@app.post("/api/start-deep-link")
+async def start_deep_link(req: DeepLinkStartRequest) -> JSONResponse:
+    start_time = time.perf_counter()
+    settings = get_settings()
+    session_id = str(uuid.uuid4())
+
+    try:
+        entity_config = lookup_by_entity_name(req.entity)
+        if not entity_config:
+            available = [e.entity_name for e in ENTITY_REGISTRY]
+            return JSONResponse(
+                {"error": "Unknown entity", "available_entities": available},
+                status_code=400,
+            )
+
+        activity_type = entity_config.activity_type
+        recipe = load_instruction_recipe(activity_type)
+        state = recipe_to_session_state(recipe, session_id, req.tier, entity_config.demo_filename)
+
+        state.deep_linked = True
+        state.upstream_conversation = list(req.conversation_context)
+
+        if state.template_type == "cat5":
+            state.round_items = generate_round_items(state.activity_type, state.total_rounds)
+
+        await log_session(settings.db_path, session_id, req.tier, activity_type)
+
+        script_agent = ScriptAgent()
+        first_turn = await _generate_with_retry(script_agent, state)
+
+        state.conversation_history.append(
+            ConversationTurn(role="ai", text=first_turn.dialogue, step=state.current_step, round_number=None)
+        )
+        state.turn_count = 1
+
+        _sessions[session_id] = state
+
+        hook_frame = get_screen_frame(
+            "STEP_1_HOOK",
+            state.template_type,
+            state.creative_slots,
+            {"entity_name": state.entity_name, "ib_key_concepts": state.ib_key_concepts},
+            visual_frames=state.visual_frames or None,
+        )
+        first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
+
+        vision_result = {
+            "entity": state.entity_name,
+            "category": "",
+            "scene": "",
+            "features": [],
+        }
+
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.info(
+            f"Deep link session started: {session_id}, entity={req.entity}, "
+            f"activity={activity_type}, tier={req.tier}, latency={latency_ms}ms"
+        )
+
+        return JSONResponse(
+            {
+                "session_id": session_id,
+                "vision_result": vision_result,
+                "first_turn": first_turn_data,
+                "activity_type": activity_type,
+                "template_type": state.template_type,
+                "session_state": _session_state_dict(state),
+                "photo_url": entity_config.icon_src,
+                "status": "ok",
+                "latency_ms": latency_ms,
+            }
+        )
+
+    except Exception as e:
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.error(f"Deep link start failed ({latency_ms}ms): {e}")
+        return JSONResponse(
+            {"error": str(e), "status": "error", "latency_ms": latency_ms},
+            status_code=500,
+        )
 
 
 @app.post("/api/start")
@@ -536,3 +635,28 @@ def _session_state_dict(state: SessionStateModel) -> dict:
             ]
 
     return result
+
+
+# --- Serve frontend static files in production ---
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+logger.info(f"Frontend dist path: {_FRONTEND_DIST} (exists={_FRONTEND_DIST.is_dir()})")
+
+
+@app.get("/api/debug-static")
+async def debug_static() -> JSONResponse:
+    """Debug endpoint to verify static file serving."""
+    if not _FRONTEND_DIST.is_dir():
+        return JSONResponse({"error": "dist dir not found", "path": str(_FRONTEND_DIST)})
+    assets = list((_FRONTEND_DIST / "assets").iterdir()) if (_FRONTEND_DIST / "assets").is_dir() else []
+    return JSONResponse(
+        {
+            "dist_path": str(_FRONTEND_DIST),
+            "index_html": (_FRONTEND_DIST / "index.html").exists(),
+            "assets": [f.name for f in assets],
+            "top_level": [f.name for f in _FRONTEND_DIST.iterdir()],
+        }
+    )
+
+
+if _FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckmarkIcon, LeafIcon } from '../icons';
+import BASE from '../utils/basePath';
 
 export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], totalToCollect = 3, wrongPhotoId, items = [], criterion = '' }) {
   const [selecting, setSelecting] = useState(false);
@@ -49,7 +50,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
             >
               {photo.image ? (
                 <img
-                  src={photo.image}
+                  src={photo.image.startsWith(BASE) ? photo.image : `${BASE}${photo.image}`}
                   alt={photo.label}
                   className="absolute inset-0 w-full h-full object-cover rounded-2xl"
                   draggable={false}

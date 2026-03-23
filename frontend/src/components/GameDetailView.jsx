@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LeafIcon } from '../icons';
+import { asset } from '../utils/basePath';
 
 function formatSummaryLabel(str) {
   if (!str) return '';
@@ -24,7 +25,7 @@ function CollectiblePreview({ item }) {
           <span className="text-lg" aria-hidden="true">🔍</span>
         ) : (
           <img
-            src={item.image}
+            src={asset(item.image)}
             alt={item.label}
             className="w-10 h-10 object-contain"
             onError={() => setShowFallbackIcon(true)}

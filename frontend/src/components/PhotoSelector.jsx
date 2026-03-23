@@ -23,6 +23,22 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
       })
       .then((data) => {
         if (isActive && data.categories && data.categories.length > 0) {
+          // Prefix asset paths from backend with BASE so they route through the proxy
+          for (const cat of data.categories) {
+            for (const photo of cat.photos || []) {
+              if (photo.src && !photo.src.startsWith(BASE)) {
+                photo.src = `${BASE}${photo.src}`;
+              }
+              const previews = photo.summary?.collectible_previews;
+              if (previews) {
+                for (const item of previews) {
+                  if (item.image && !item.image.startsWith(BASE)) {
+                    item.image = `${BASE}${item.image}`;
+                  }
+                }
+              }
+            }
+          }
           setCategories(data.categories);
         }
       })

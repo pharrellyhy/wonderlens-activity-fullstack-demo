@@ -108,15 +108,37 @@ export default function useTTS(onSpeakingDone) {
     scheduledEndRef.current = 0;
     const reader = audioStream.getReader();
     let lastSource = null;
+    let leftover = null; // carry odd trailing byte across chunks
 
     try {
       while (true) {
         if (signal?.aborted) return;
         const { done, value } = await reader.read();
-        if (done) break;
-        if (!value || value.byteLength < 2) continue;
+        if (done) {
+          // Flush any remaining leftover (single byte — discard, can't form a sample)
+          break;
+        }
+        if (!value || value.byteLength === 0) continue;
 
-        const float32 = pcmToFloat32(value);
+        // Prepend leftover byte from previous chunk to maintain 2-byte PCM alignment
+        let chunk = value;
+        if (leftover) {
+          const merged = new Uint8Array(leftover.byteLength + chunk.byteLength);
+          merged.set(leftover);
+          merged.set(chunk, leftover.byteLength);
+          chunk = merged;
+          leftover = null;
+        }
+
+        // If odd number of bytes, save the last byte for next iteration
+        if (chunk.byteLength % 2 !== 0) {
+          leftover = chunk.slice(-1);
+          chunk = chunk.slice(0, -1);
+        }
+
+        if (chunk.byteLength < 2) continue;
+
+        const float32 = pcmToFloat32(chunk);
         lastSource = scheduleChunk(ctx, float32);
         lastSourceRef.current = lastSource;
       }

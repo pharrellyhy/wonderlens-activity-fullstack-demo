@@ -4,6 +4,33 @@ Last updated: 2026-03-23
 
 ---
 
+## Review Follow-Up: Harden Batch Game Setup CLI Tools + Add Coverage
+
+**Problem**: Picking up the new batch game setup tooling exposed three concrete gaps in the fresh scripts. `scripts/convert_game.py` validated written files, but `--dry-run` skipped `game_parser` validation entirely even though the handoff and plan described it as a safe validation path. Both scripts also failed when the user supplied a nested custom output path whose parent directories did not already exist. In `scripts/generate_icon.py`, the game-frontmatter scan was duplicated across two functions and used broad `except Exception` handling that made the file-walking path harder to reason about.
+
+**Solution**: Kept the new CLI surface intact and tightened the implementation around the failure paths. `convert_game.py` now imports `parse_game_file` at module load, validates dry-run output through a temporary `.md` file before printing it, and creates parent directories for custom output destinations. `generate_icon.py` now creates the actual output directory for custom icon paths, shares non-prod game frontmatter loading through a single helper, and narrows the auto-client fallback to configuration errors instead of swallowing arbitrary exceptions. I also added focused local regression tests for both scripts so these path-handling and dry-run guarantees are exercised without calling Gemini.
+
+**Edits**:
+- `scripts/convert_game.py` — kept the new converter flow, added dry-run parser validation via a temporary file, created parent directories before writing custom outputs, moved `parse_game_file` to module scope, and narrowed auto-mode client fallback handling
+- `scripts/generate_icon.py` — created parent directories for custom output paths, extracted shared non-prod frontmatter loading for both metadata enrichment and missing-icon discovery, and replaced broad exception fallback in auto mode with `RuntimeError`-only handling
+- local `tests/test_convert_game.py` — **NEW**: regression coverage for nested custom output paths and `--dry-run` validation behavior
+- local `tests/test_generate_icon.py` — **NEW**: regression coverage for nested custom output paths and non-prod missing-icon discovery
+- `HANDOFF.md` — replaced the draft batch-tool entry with this reviewed follow-up
+
+**NOT Changed**:
+- `docs/plans/batch-game-setup.md` — implementation plan preserved as written
+- Backend `game_parser`, `entity_registry`, `game_loader`, and existing game markdown assets — unchanged in this follow-up
+- Frontend runtime code and icon assets — unchanged
+- Existing Gemini/OpenAI helper scripts (`generate_cat5_icons_*`, `regenerate_character_icons.py`) — read-only reuse only
+
+**Verification**:
+- `uv run pytest tests/test_convert_game.py tests/test_generate_icon.py -q` — PASS (`4 passed`)
+- `uv run ruff check scripts/convert_game.py scripts/generate_icon.py tests/test_convert_game.py tests/test_generate_icon.py` — PASS
+- `uv run ruff format --check scripts/convert_game.py scripts/generate_icon.py tests/test_convert_game.py tests/test_generate_icon.py` — PASS
+- Networked CLI runs still require Gemini credentials; they were not exercised in this review pass
+
+---
+
 ## Fix: Small-Screen Responsive Sizing Pass
 
 **Problem**: The frontend layout was tuned for larger mobile/tablet widths, but many shell controls, widget cards, badges, progress circles, and icons kept their default sizes all the way down to very small screens. On narrow phones this made the camera viewport and surrounding UI feel oversized and cramped. A follow-up issue remained on short, wide viewports: the fixed-height shell could clip the top device area instead of adapting vertically.
@@ -249,32 +276,5 @@ Last updated: 2026-03-23
 - `uv run pytest tests/test_turn_handler.py tests/test_api.py -q` — PASS (`34 passed`)
 - `cd backend && uv run ruff check turn_handler.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
 - `cd backend && uv run ruff format --check turn_handler.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
-
----
-
-## Fix Cat5 Synthesis Response Swallowed + Help Request Misclassified
-
-**Problem**: In Cat5 Step 4 (synthesis), when the child responds to the synthesis prompt (e.g. "can you help me"), the AI's synthesis response was never shown. The turn handler advanced to STEP_5_CELEBRATE, generated a new response, and returned only that — the synthesis reply was swallowed. Additionally, "can you help me" was misclassified as "do it for me" instead of "stuck/confused", skipping synthesis entirely.
-
-**Solution**: Two-part fix:
-1. **Prompt fix**: Added "can you help me", "help", "I need help" to the stuck/confused bucket in synthesis instructions with explicit `stay_on_step: true`. Added disambiguation note distinguishing "help me" (stuck) from "do it for me" (create content) in both `naming_story` and `comparison_chart` fragments.
-2. **Architecture fix**: Rewrote section 7d of `turn_handler.py`. Interactive step completion now returns the current step's response (not the next step's) and sets `auto_advance` for the frontend to fetch the next step. Auto-advance steps use `_already_prompted_on_step` to distinguish: if already generated (Cat1 celebrate from round advance), advance through as before; if not yet generated (Cat5 celebrate after synthesis), generate then advance.
-
-**Edits**:
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — added help request patterns to stuck/confused bucket with `stay_on_step: true`
-- `backend/skills/step_instructions/cat5_step4_synthesis__naming_story.md` — added "help me" vs "do it for me" disambiguation note
-- `backend/skills/step_instructions/cat5_step4_synthesis__comparison_chart.md` — same disambiguation note
-- `backend/turn_handler.py` (section 7d, ~lines 518-610) — rewrote interactive step completion to return step's own response; rewrote auto-advance path with `_already_prompted_on_step` guard
-
-**NOT Changed**:
-- `backend/state_machine.py` — step transitions unchanged
-- `backend/agents/script_agent.py` — prompt assembly unchanged
-- Frontend auto-advance mechanism (`useSessionOrchestration.js`) — unchanged, uses `data.turn.auto_advance`
-- Cat1 flows — behavior preserved via `_already_prompted_on_step` guard
-
-**Verification**:
-- `cd backend && uv run ruff check turn_handler.py` — PASS
-- `cd backend && uv run ruff format --check turn_handler.py` — PASS
-- `cd backend && uv run mypy turn_handler.py --ignore-missing-imports` — no new errors
 
 ---

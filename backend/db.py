@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     scenario TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
     recipe_status TEXT DEFAULT 'ok',
+    source TEXT NOT NULL DEFAULT 'direct',
     created_at TIMESTAMP DEFAULT (datetime('now', 'localtime')),
     ended_at TIMESTAMP,
     end_reason TEXT,
@@ -76,12 +77,13 @@ async def log_session(
     scenario: str,
     status: str = "active",
     recipe_status: str = "ok",
+    source: str = "direct",
 ) -> None:
     """Insert a new session record."""
     async with aiosqlite.connect(db_path) as db:
         await db.execute(
-            "INSERT INTO sessions (session_id, tier, scenario, status, recipe_status) VALUES (?, ?, ?, ?, ?)",
-            (session_id, tier, scenario, status, recipe_status),
+            "INSERT INTO sessions (session_id, tier, scenario, status, recipe_status, source) VALUES (?, ?, ?, ?, ?, ?)",
+            (session_id, tier, scenario, status, recipe_status, source),
         )
         await db.commit()
 

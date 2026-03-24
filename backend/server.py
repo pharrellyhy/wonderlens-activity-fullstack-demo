@@ -185,7 +185,7 @@ async def start_deep_link(req: DeepLinkStartRequest) -> JSONResponse:
         if state.template_type == "cat5":
             state.round_items = generate_round_items(state.activity_type, state.total_rounds)
 
-        await log_session(settings.db_path, session_id, req.tier, activity_type)
+        await log_session(settings.db_path, session_id, req.tier, activity_type, source="deep_link")
 
         script_agent = ScriptAgent()
         first_turn = await _generate_with_retry(script_agent, state)

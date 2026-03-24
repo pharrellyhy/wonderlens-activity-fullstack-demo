@@ -12,11 +12,12 @@ const ANIMATION_CLASSES = {
   card_slide_in: 'animate-slide-in',
 };
 
-export default function AnimationOverlay({ animation, children }) {
+export default function AnimationOverlay({ animation, className = '', children }) {
   const animClass = animation ? ANIMATION_CLASSES[animation] || '' : '';
+  const classes = [className, 'transition-all duration-500', animClass].filter(Boolean).join(' ');
 
   return (
-    <div className={`transition-all duration-500 ${animClass}`}>
+    <div className={classes}>
       {children}
     </div>
   );

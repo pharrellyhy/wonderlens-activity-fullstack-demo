@@ -14,7 +14,7 @@ export default function PhotoGallery({ onPhotoSelect, collectedPhotos = [], tota
   const collected = collectedPhotos.length;
 
   return (
-    <div className="flex flex-col items-center justify-start gap-2 max-[380px]:gap-1.5 h-full pt-0.5 pb-1.5 px-2 max-[380px]:pt-0.5 max-[380px]:pb-1 max-[380px]:px-1.5">
+    <div className="device-gallery-layout flex flex-col items-center justify-center gap-2 max-[380px]:gap-1.5 h-full py-2 px-2 max-[380px]:py-1.5 max-[380px]:px-1.5">
       <div className="text-center">
         {criterion && (
           <p className="text-sm max-[380px]:text-xs font-semibold text-[var(--color-forest-dark)] leading-tight">

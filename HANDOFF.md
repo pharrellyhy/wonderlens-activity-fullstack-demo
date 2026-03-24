@@ -4,6 +4,54 @@ Last updated: 2026-03-23
 
 ---
 
+## Fix Follow-Up: Re-Center Tall Collection Gallery View
+
+**Problem**: The previous tall-device-panel follow-up fixed `DeviceScreen`, but the whitespace shown in `images/issue-3.png` was actually coming from the collection flow rendered by `PhotoGallery`. That component had been hard-switched to `justify-start` during the earlier small-screen compression pass, so on taller viewports the gallery cluster stayed pinned near the top of the camera viewport and left excessive blank space below.
+
+**Solution**: Restored centered layout for the collection gallery by default and kept the old top-alignment behavior only for short viewports where clipping risk is real. `PhotoGallery` now uses a dedicated `device-gallery-layout` class with default `justify-center`, and the existing `@media (max-height: 760px)` block flips that class back to `justify-content: flex-start`. That preserves the short-screen safety fix while re-centering the gallery on taller screens.
+
+**Edits**:
+- `frontend/src/components/PhotoGallery.jsx` — switched the root gallery container back to centered layout by default, using a dedicated layout class and balanced vertical padding
+- `frontend/src/index.css` — added the short-viewport override for `.device-gallery-layout` inside the existing `max-height: 760px` rules
+- local `tests/test_device_screen_layout.py` — extended the source-level regression checks to cover default gallery centering plus the short-height override
+- `HANDOFF.md` — added this follow-up entry
+
+**NOT Changed**:
+- `frontend/src/components/DeviceScreen.jsx` and `frontend/src/widgets/AnimationOverlay.jsx` — left as-is from the previous tall-panel fix
+- `frontend/src/components/ToyCameraFrame.jsx` and individual gallery card styling — unchanged
+- Backend, APIs, and session logic — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_device_screen_layout.py -q` — PASS (`3 passed`)
+- `cd frontend && npx eslint src/components/PhotoGallery.jsx src/components/DeviceScreen.jsx src/widgets/AnimationOverlay.jsx` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Fix: Re-Center Tall Device Panel Widgets
+
+**Problem**: On taller viewports, the device panel widget area in the toy camera could pin the active widget cluster too close to the top of the white viewport, leaving a large blank region underneath. The screenshot in `images/issue-1.png` showed the collection progress card no longer visually centered when there was enough vertical space available.
+
+**Solution**: Kept the existing device-panel structure but tightened the centering contract around the animated widget wrapper. `DeviceScreen` now uses a full-height grid-centered content slot for the main widget area, and `AnimationOverlay` now accepts an optional `className` so the animation wrapper can participate in layout instead of only applying transitions. That keeps the animated widget container centered vertically on tall screens while preserving the existing animation mapping and compact behavior on smaller devices.
+
+**Edits**:
+- `frontend/src/components/DeviceScreen.jsx` — changed the main widget region from a flex-centered box to a full-height `grid place-items-center` container and passed a full-size centering class into `AnimationOverlay`
+- `frontend/src/widgets/AnimationOverlay.jsx` — added optional `className` support so layout classes can be composed with the animation classes
+- local `tests/test_device_screen_layout.py` — **NEW**: source-level regression checks for the tall-viewport centering contract
+- `HANDOFF.md` — added this entry
+
+**NOT Changed**:
+- `frontend/src/components/ToyCameraFrame.jsx` and individual device widgets — unchanged in this fix
+- Conversation panel layout and tall-screen shell sizing outside the device widget slot — unchanged
+- Backend and API/session orchestration logic — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_device_screen_layout.py -q` — PASS (`2 passed`)
+- `cd frontend && npx eslint src/components/DeviceScreen.jsx src/widgets/AnimationOverlay.jsx` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
 ## Review Follow-Up: Harden Batch Game Setup CLI Tools + Add Coverage
 
 **Problem**: Picking up the new batch game setup tooling exposed three concrete gaps in the fresh scripts. `scripts/convert_game.py` validated written files, but `--dry-run` skipped `game_parser` validation entirely even though the handoff and plan described it as a safe validation path. Both scripts also failed when the user supplied a nested custom output path whose parent directories did not already exist. In `scripts/generate_icon.py`, the game-frontmatter scan was duplicated across two functions and used broad `except Exception` handling that made the file-walking path harder to reason about.

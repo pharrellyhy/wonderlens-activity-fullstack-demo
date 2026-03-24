@@ -2,9 +2,9 @@ export default function ToyCameraFrame({ children }) {
   return (
     <div className="relative w-full h-full flex flex-col">
       {/* Camera body */}
-      <div className="relative flex-1 bg-gradient-to-b from-[var(--color-forest)] to-[var(--color-forest-dark)] rounded-3xl max-[380px]:rounded-[1.25rem] p-1.5 max-[380px]:p-1 shadow-lg overflow-hidden">
+      <div className="relative flex-1 flex flex-col bg-gradient-to-b from-[var(--color-forest)] to-[var(--color-forest-dark)] rounded-3xl max-[380px]:rounded-[1.25rem] p-1.5 max-[380px]:p-1 shadow-lg overflow-hidden">
         {/* Top bar with decorative elements */}
-        <div className="flex items-center justify-between px-3 py-1 max-[380px]:px-2 max-[380px]:py-0.5">
+        <div className="flex-shrink-0 flex items-center justify-between px-3 py-1 max-[380px]:px-2 max-[380px]:py-0.5">
           {/* Viewfinder circle */}
           <div className="w-4 h-4 sm:w-5 sm:h-5 max-[380px]:w-3.5 max-[380px]:h-3.5 rounded-full bg-[var(--color-brown)] border-2 border-[var(--color-brown)]/50 shadow-inner flex items-center justify-center">
             <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 max-[380px]:w-1 max-[380px]:h-1 rounded-full bg-white/30" />
@@ -22,7 +22,7 @@ export default function ToyCameraFrame({ children }) {
         </div>
 
         {/* Viewport — where content renders */}
-        <div className="flex-1 bg-white rounded-2xl max-[380px]:rounded-[1rem] overflow-hidden mx-0.5 mb-0.5" style={{ minHeight: 0, height: 'calc(100% - 36px)' }}>
+        <div className="flex-1 min-h-0 bg-white rounded-2xl max-[380px]:rounded-[1rem] overflow-hidden overflow-y-auto mx-0.5 mb-0.5">
           {children}
         </div>
       </div>

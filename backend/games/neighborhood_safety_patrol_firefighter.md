@@ -28,6 +28,8 @@ creative_slots:
   synthesis_type: comparison_chart
   stuck_hint: Look near the street for signs, painted lines, metal posts, or anything bright and colorful.
   naming_prompt: What is this helper's safety job? Does it warn, protect, or guide?
+  detail_question_template: "What safety job does this one do — does it warn, protect, or guide?"
+  sorting_criterion: "safety function (warning helpers vs protecting helpers vs guiding helpers)"
 collection_catalog:
   correct:
   - id: stop_sign

@@ -114,6 +114,7 @@ function App() {
 
   const showPhotoGallery = templateType === 'cat5'
     && sessionState?.current_step?.startsWith('STEP_3_COLLECT_')
+    && sessionState?.collection_phase !== 'detail'
     && isActive;
 
   return (

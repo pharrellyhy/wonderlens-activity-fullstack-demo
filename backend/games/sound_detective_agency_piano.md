@@ -19,6 +19,8 @@ creative_slots:
   synthesis_type: sorting_game
   stuck_hint: Try looking down at sticks and rocks for tap-tap sounds, or at metal fences for clang sounds.
   naming_prompt: What kind of sound does this make when you tap or shake it?
+  detail_question_template: "What kind of sound does this one make — is it high or low, loud or soft?"
+  sorting_criterion: "pitch (highest sounds to lowest sounds)"
 collection_catalog:
   correct:
   - id: metal_fence

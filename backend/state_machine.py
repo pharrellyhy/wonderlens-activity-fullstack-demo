@@ -235,6 +235,23 @@ def get_screen_frame(
         if step.startswith("STEP_3_COLLECT_"):
             _, rnd = _parse_round_step(step)
             total = creative_slots.collection_count if isinstance(creative_slots, Cat5CreativeSlots) else 3
+
+            # Phase B (detail): show the just-collected photo instead of progress tracker
+            collection_phase = context.get("collection_phase", "photo")
+            if collection_phase == "detail":
+                collected_photos = context.get("collected_photos", [])
+                last_photo = collected_photos[-1] if collected_photos else ""
+                return ScreenFrame(
+                    widget="photo_display",
+                    widget_params={
+                        "description": f"Just collected: {last_photo}",
+                        "entity": entity,
+                        "photo_id": last_photo,
+                    },
+                    animation="sparkle_highlight",
+                    trigger=f"on_round_{rnd}",
+                )
+
             return ScreenFrame(
                 widget="progress_tracker",
                 widget_params={

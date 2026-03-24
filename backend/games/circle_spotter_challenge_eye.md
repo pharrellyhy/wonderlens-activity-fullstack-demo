@@ -20,6 +20,8 @@ creative_slots:
   stuck_hint: Try looking down at puddles for ripples, at wheels on bikes or cars, at flower beds for round centers, or at
     knots in wooden fences.
   naming_prompt: How is this pattern similar to your eye, and what is its purpose?
+  detail_question_template: "How is the circle on this one different from the circles you found before?"
+  sorting_criterion: "circle size (biggest rings to tiniest dots)"
 collection_catalog:
   correct:
   - id: flower_center

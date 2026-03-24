@@ -4,6 +4,8 @@ from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
+CollectionPhase = Literal["photo", "detail"]
+
 from .creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from .recipe import InstructionRecipe
 from .visual_composition import ScreenFrame
@@ -38,6 +40,9 @@ class SessionStateModel(BaseModel):
     creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots]
     conversation_history: list[ConversationTurn] = Field(default_factory=list)
     collected_photos: list[str] = Field(default_factory=list, description="Cat 5 collected photo IDs")
+    collection_phase: CollectionPhase = Field(default="photo", description="Cat 5 2-phase loop: photo or detail")
+    collected_details: list[str] = Field(default_factory=list, description="Cat 5 detail responses per find")
+    collected_names: list[str] = Field(default_factory=list, description="Cat 5 character names per find")
     round_items: list[list[dict]] = Field(default_factory=list, description="Per-round item sets for Cat 5")
     consecutive_wrong: int = 0
     consecutive_silence: int = 0

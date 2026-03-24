@@ -40,6 +40,8 @@ class Cat5CreativeSlots(BaseModel):
     )
     stuck_hint: str = Field(description="Hint for where to look if the child is stuck")
     naming_prompt: str = Field(description="Prompt for child to name/characterize each collected item")
+    detail_question_template: str = Field(default="", description="Detail-harvesting question template for each find")
+    sorting_criterion: str = Field(default="", description="For comparison_chart: criterion to sort by in synthesis")
 
 
 CreativeSlots = Union[Cat1CreativeSlots, Cat5CreativeSlots]

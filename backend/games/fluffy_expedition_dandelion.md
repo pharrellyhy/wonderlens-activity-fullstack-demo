@@ -20,6 +20,8 @@ creative_slots:
   synthesis_type: naming_story
   stuck_hint: "Try touching things around you — look for anything soft or fuzzy"
   naming_prompt: "What would you name this fluffy friend?"
+  detail_question_template: "What does this fluffy thing remind you of?"
+  sorting_criterion: ""
 
 collection_catalog:
   correct:

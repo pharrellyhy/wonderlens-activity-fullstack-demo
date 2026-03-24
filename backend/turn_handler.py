@@ -12,6 +12,7 @@ try:
     from .agents.script_agent import ScriptAgent, ScriptAgentError
     from .logger import setup_logger
     from .schemas import ScreenFrame
+    from .schemas.creative_slots import Cat5CreativeSlots
     from .schemas.session_state import ConversationTurn, SessionStateModel
     from .schemas.turn_response import TurnResponse
     from .state_machine import (
@@ -25,6 +26,7 @@ except ImportError:
     from agents.script_agent import ScriptAgent, ScriptAgentError
     from logger import setup_logger
     from schemas import ScreenFrame
+    from schemas.creative_slots import Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel
     from schemas.turn_response import TurnResponse
     from state_machine import (
@@ -128,6 +130,8 @@ def _state_context(state: SessionStateModel) -> dict:
         "entity": state.entity_name,
         "ib_key_concepts": state.ib_key_concepts,
         "key_concepts": state.ib_key_concepts,
+        "collection_phase": state.collection_phase,
+        "collected_photos": state.collected_photos,
     }
 
 
@@ -266,6 +270,42 @@ def _record_correct_collection_pick(state: SessionStateModel, photo_id: str) -> 
     _append_child_turn(state, f"[collected correct item: {_get_item_label(state, photo_id)}]")
 
 
+_GENERATED_NAME_PATTERNS = (
+    re.compile(r'["“]([^"”]{1,40})["”]'),
+    re.compile(
+        r"(?:how about|call (?:it|this(?: one)?)|let's call (?:it|this(?: one)?))\s+"
+        r"([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2})",
+        re.IGNORECASE,
+    ),
+    re.compile(r"^([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2})[!,.]"),
+)
+
+
+def _record_collection_detail(state: SessionStateModel, child_text: str) -> None:
+    """Persist a non-empty detail response for Cat 5 collection rounds."""
+    detail = child_text.strip()
+    if detail and detail != "...":
+        state.collected_details.append(detail)
+
+
+def _maybe_record_generated_name(state: SessionStateModel, dialogue: str) -> None:
+    """Store a generated naming-story character name when one is easy to extract."""
+    if not isinstance(state.creative_slots, Cat5CreativeSlots):
+        return
+    if state.creative_slots.synthesis_type != "naming_story":
+        return
+    if len(state.collected_names) >= len(state.collected_photos):
+        return
+
+    for pattern in _GENERATED_NAME_PATTERNS:
+        match = pattern.search(dialogue)
+        if match:
+            name = match.group(1).strip(" .,!?:;")
+            if name:
+                state.collected_names.append(name)
+                return
+
+
 # ---------------------------------------------------------------------------
 # LLM generation with retry
 # ---------------------------------------------------------------------------
@@ -370,6 +410,8 @@ async def resolve_turn(
     if turn_input.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
         if _is_correct_collection_photo(state, turn_input.photo_id):
             _record_correct_collection_pick(state, turn_input.photo_id)
+            # Phase A -> Phase B: correct photo triggers detail-harvesting question
+            state.collection_phase = "detail"
         else:
             collection_wrong = True
             state.consecutive_wrong += 1
@@ -461,10 +503,54 @@ async def resolve_turn(
             error_exit=state.status == "error",
         )
 
+    # 7b½. Cat5 Phase B: child responds to detail-harvesting question
+    if (
+        state.current_step.startswith("STEP_3_COLLECT_")
+        and state.collection_phase == "detail"
+        and not turn_input.photo_id
+        and has_child_input
+    ):
+        # Record the child's detail response
+        child_text = turn_input.text if turn_input.text else "..."
+        _record_collection_detail(state, child_text)
+
+        # Generate AI response (processes detail, names character or acknowledges)
+        turn_response = await _generate_with_retry(script_agent, state)
+        _append_ai_turn(state, turn_response.dialogue)
+        state.turn_count += 1
+        _maybe_record_generated_name(state, turn_response.dialogue)
+
+        remaining_count = max(0, state.total_rounds - len(state.collected_photos))
+        response_type = _get_response_type(state.current_step)
+        if remaining_count == 0:
+            # Keep the collected-photo view for this response, then auto-advance into synthesis.
+            state.round_advance_pending = True
+            return TurnResult(
+                turn_response=turn_response,
+                screen_frame=_get_screen_frame(state),
+                auto_advance=True,
+                response_type=response_type,
+                error_exit=state.status == "error",
+            )
+
+        # Detail phase complete — move to the next collection round in photo-pick mode.
+        state.collection_phase = "photo"
+        _advance_state(state)
+
+        return TurnResult(
+            turn_response=turn_response,
+            screen_frame=_get_screen_frame(state),
+            auto_advance=False,
+            response_type=response_type,
+            error_exit=state.status == "error",
+        )
+
     # 7c. Round steps (STEP_3_ROUND_* / STEP_3_COLLECT_*)
     if _is_round_step(state.current_step):
         if state.round_advance_pending and not has_child_input:
             state.round_advance_pending = False
+            if state.current_step.startswith("STEP_3_COLLECT_"):
+                state.collection_phase = "photo"
             _advance_state(state)
 
             if is_terminal(state.current_step):
@@ -513,10 +599,23 @@ async def resolve_turn(
             # Remove the corrective hint from history so it doesn't leak
             state.conversation_history = [t for t in state.conversation_history if t.text != corrective_hint]
 
+        # Guardrail: force stay_on_step when entering Phase B (detail question)
+        # The AI just celebrated the correct photo and should ask the detail question;
+        # do NOT advance to the next round yet.
+        if (
+            state.current_step.startswith("STEP_3_COLLECT_")
+            and state.collection_phase == "detail"
+            and not turn_response.stay_on_step
+        ):
+            logger.info("Forcing stay_on_step: Phase B detail question pending")
+            turn_response.stay_on_step = True
+
         # Override stay_on_step when Cat5 collection is objectively complete
+        # AND we are in photo phase (Phase B handler already advanced if needed)
         if (
             turn_response.stay_on_step
             and state.current_step.startswith("STEP_3_COLLECT_")
+            and state.collection_phase == "photo"
             and len(state.collected_photos) >= state.total_rounds
         ):
             logger.info("Overriding stay_on_step: collection complete, forcing advancement")

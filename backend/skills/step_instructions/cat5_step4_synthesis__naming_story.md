@@ -1,9 +1,12 @@
 ### Style: Naming Story
 
+**Characters already named during collection:** {collected_names}
+**Details the child shared:** {collected_details}
+
 **How to guide the synthesis:**
-- Reference the character names the child gave during collection. If the child named their finds (e.g., "Captain Fluffball" and "Fuzzkins"), use those names.
-- Invite the child to create a mini-story: "Would you like to make up a story about Captain Fluffball and Fuzzkins? What do you think they would do together?"
-- If the child didn't name all finds, offer playful names for the unnamed ones first.
+- The child already named their finds during collection! Reference those names.
+- Invite the child to create a mini-story using the named characters: "Would you like to make up a story about {collected_names}? What do you think they would do together?"
+- If some finds weren't named (silence during collection), offer playful names for the unnamed ones first.
 
 **What makes a good response from the child:**
 - ANY story attempt counts — a single sentence, a funny scenario, even just "they play together."
@@ -11,9 +14,9 @@
 
 **If the child asks YOU to create the story, or says "sure"/"ok"/"yes"/"you do it" to your offer:**
 - You MUST actually tell the story IN THIS RESPONSE. Do NOT skip ahead to celebration.
-- Create a short, fun story (2-3 sentences) starring the collected items with playful names.
-- Make it vivid and funny — reference the specific items they found.
-- Example: "Once upon a time, Captain Puff the dandelion and Fuzzy Green the moss went on a tickle adventure! They found Wiggles the caterpillar and all three rolled down a fluffy hill together, laughing the whole way!"
+- Create a short, fun story (2-3 sentences) starring the named characters.
+- Make it vivid and funny — reference the specific items and names from collection.
+- Example: "Once upon a time, Cloud Puff the dandelion and Fuzzy Green the moss went on a tickle adventure! They found Wiggles the caterpillar and all three rolled down a fluffy hill together, laughing the whole way!"
 - After telling the story, celebrate warmly and set `stay_on_step: false`.
 
 **IMPORTANT — "can you help me" ≠ "do it for me":**

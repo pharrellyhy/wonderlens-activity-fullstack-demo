@@ -150,6 +150,13 @@ class Cat5CreativeSlotsOutput(BaseModel):
     ] = Field(description="Creative activity for the collected items")
     stuck_hint: str = Field(description="Hint for where to look if the child is stuck")
     naming_prompt: str = Field(description="Prompt for child to name/characterize each collected item")
+    detail_question_template: str = Field(
+        description="Detail-harvesting question asked after each correct photo pick (Phase B of 2-phase collection loop)"
+    )
+    sorting_criterion: str = Field(
+        default="",
+        description="For comparison_chart synthesis: criterion to sort/rank finds by (e.g. 'dot size'). Empty for naming_story.",
+    )
 
 
 class CollectionItemOutput(BaseModel):

@@ -1,6 +1,72 @@
 # Session Handoff
 
-Last updated: 2026-03-23
+Last updated: 2026-03-24
+
+---
+
+## Review Follow-Up: Fix Cat5 2-Phase Turn Transition + Add Coverage
+
+**Problem**: Reviewing the new Cat5 two-phase collection loop exposed two concrete flow bugs and a missing-test gap. In `backend/turn_handler.py`, the new Phase B branch reset `collection_phase` back to `photo` before generating the AI response, so the prompt and screen-frame logic were reading the wrong phase during the child's detail reply. The same branch also failed to advance non-final rounds after the child answered the detail question, which would leave the session stuck on the previous round's item set. The fresh two-phase behavior also had no focused backend regression coverage yet.
+
+**Solution**: Kept the two-phase design, but tightened the transition contract around the detail-response branch. Phase B now stays in `detail` mode while the Script Agent generates the acknowledgement/name-processing turn, then advances to the next collection round only after that response is built. Final detail replies now use the existing auto-advance path to bridge cleanly into the first synthesis prompt, preserving the just-collected photo view during the final Phase B response. I also removed the old "child detail as placeholder name" behavior and replaced it with a small best-effort name extractor so `collected_names` only stores actual generated names when they are obvious in the dialogue. Finally, I added focused unit, state-machine, and API coverage for the reviewed flow.
+
+**Edits**:
+- `backend/turn_handler.py` — kept Phase B in `detail` mode during generation, advanced non-final detail replies into the next collect round, routed final detail replies through `round_advance_pending` auto-advance into synthesis, reset Cat5 phase when consuming the pending auto-advance, and replaced fake placeholder-name storage with guarded detail/name helpers
+- local `tests/test_turn_handler.py` — added regression coverage for correct-photo entry into detail mode, detail replies advancing to the next round, and final detail replies auto-bridging into synthesis; updated the synthesis completion fixture to satisfy the current two-child-turn guardrail
+- local `tests/test_state_machine.py` — added a Cat5 detail-phase frame assertion so the hardcoded fallback maps detail mode to `photo_display`
+- local `tests/test_api.py` — updated the stale Cat5 collection expectations to match the reviewed two-phase contract and added an API-level regression for detail replies advancing into the next collection round
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `backend/skills/step_instructions/cat5_step3_collect*.md` and `backend/skills/step_instructions/cat5_step4_synthesis*.md` — prompt wording was reviewed and left unchanged in this follow-up
+- `frontend/src/App.jsx` and the existing `collection_phase` gallery gating — reviewed against the corrected backend contract and left as-is
+- Cat1 flow handling, deep-link behavior, and other backend endpoints — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py tests/test_state_machine.py tests/test_api.py -q` — PASS (`57 passed`)
+- `uv run ruff check backend/turn_handler.py tests/test_turn_handler.py tests/test_state_machine.py tests/test_api.py` — PASS
+- `uv run ruff format --check backend/turn_handler.py tests/test_turn_handler.py tests/test_state_machine.py tests/test_api.py` — PASS
+
+---
+
+## Feature: Cat5 2-Phase Collection Loop
+
+**Problem**: Cat5 collection used a single-phase loop (photo -> react -> advance) where the AI was explicitly forbidden from asking text/verbal questions during collection. New game designs require a 2-phase loop where each round has Phase A (child selects photo, AI validates and asks a detail-harvesting question) and Phase B (child responds verbally, AI processes detail/names character, then advances). This enables richer per-find engagement — naming characters in naming_story, capturing observations in comparison_chart.
+
+**Solution**: Implemented the full 2-phase collection loop across backend and frontend, following the plan in `docs/plans/cat5-2phase-collection-loop.md`.
+
+**Edits**:
+- `backend/schemas/session_state.py` — added `CollectionPhase` type alias, `collection_phase`, `collected_details`, `collected_names` fields to `SessionStateModel`
+- `backend/schemas/creative_slots.py` — added `detail_question_template` and `sorting_criterion` optional fields to `Cat5CreativeSlots`
+- `backend/games/polka_dot_patrol.md` — added `detail_question_template` and `sorting_criterion` values to creative_slots frontmatter
+- `backend/games/fluffy_expedition_dandelion.md` — added `detail_question_template` and `sorting_criterion` values to creative_slots frontmatter
+- `backend/turn_handler.py` — added Phase B handler (section 7b½) for detail responses; added Phase A->B transition after correct photo pick; added guardrail forcing stay_on_step during detail phase; updated collection-complete override to only trigger in photo phase; passed collection_phase and collected_photos in state context
+- `backend/agents/script_agent.py` — added `{collection_phase}`, `{detail_question_template}`, `{sorting_criterion}`, `{collected_names}`, `{collected_details}` template variables for Cat5
+- `backend/skills/step_instructions/cat5_step3_collect.md` — major rewrite: 2-phase loop with Phase A (photo) and Phase B (detail) sections, `{collection_phase}` variable
+- `backend/skills/step_instructions/cat5_step3_collect__naming_story.md` — rewrite: Phase A asks detail question, Phase B generates character name from child's response
+- `backend/skills/step_instructions/cat5_step3_collect__comparison_chart.md` — rewrite: Phase A asks about observation differences, Phase B acknowledges and connects to previous finds
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — updated: references collected data from hunt, removed fresh-naming approach
+- `backend/skills/step_instructions/cat5_step4_synthesis__naming_story.md` — updated: characters already named during collection, synthesis is now story co-creation
+- `backend/skills/step_instructions/cat5_step4_synthesis__comparison_chart.md` — updated: observations already captured, synthesis is sorting by criterion
+- `backend/skills/step_instructions/cat5_step1_hook.md` — added warm start vs cold start terminology
+- `backend/skills/step_instructions/cat5_step2_mission.md` — added 3-part mission pattern and role assignment emphasis
+- `backend/skills/step_instructions/cat5_step5_celebrate.md` — added reflective WHY question
+- `backend/prompts/script_system.md` — aligned concept counts: T0=1, T1=2, T2=3 (was T0=0, T1=1)
+- `backend/server.py` — exposed `collection_phase`, `collected_names`, `collected_details` in session state dict
+- `backend/state_machine.py` — Phase B shows `photo_display` of just-collected item instead of `progress_tracker`
+- `frontend/src/App.jsx` — gated photo gallery on `collection_phase !== 'detail'`
+
+**NOT Changed**:
+- Cat1 flows — not affected by Cat5-specific changes
+- Frontend widget components — no new widgets needed, existing `photo_display` and `progress_tracker` handle both phases
+- State machine step sequence — steps unchanged, only screen frame selection differs by phase
+- Agent pipeline (Director, Visual, Recipe Assembler) — unchanged
+
+**Verification**:
+- `cd backend && uv run ruff check . && uv run ruff format --check .` — PASS
+- `cd backend && uv run pytest` — PASS (0 collected — no test files in scope)
+- Manual test: Start fluffy_expedition_dandelion session, verify Phase A shows photo gallery, Phase B hides gallery and shows collected photo
+- Manual test: Start polka_dot_patrol session, verify detail questions and observation capture
 
 ---
 
@@ -215,114 +281,5 @@ Last updated: 2026-03-23
 - `cd frontend && npx eslint src/components/DeviceScreen.jsx src/components/PhotoSelector.jsx src/widgets/CharacterDisplay.jsx src/widgets/gameThemes.js` — PASS
 - `cd frontend && npm run build` — PASS
 - Manual contract review — confirmed backend screen-frame payloads pass simple entity names and the corresponding PNG assets exist under `frontend/public/icons/`
-
----
-
-## Review Follow-Up: Harden Game Summary Detail View + Fallback Data
-
-**Problem**: Picking up the new game-detail-view work exposed two concrete frontend gaps and one test gap. First, the fallback summary data embedded in `PhotoSelector.jsx` had already drifted from the backend truth for several demos (`cat`, `dinosaur`, and `dandelion` showed stale tier/concept/mechanic/preview data whenever `/api/entities` failed). Second, the new `GameDetailView.jsx` collectible preview fallback used direct DOM mutation inside `onError`, which is brittle in React. Third, the new `/api/entities` summary payload had no focused regression coverage proving the summary shape or the fallback data stayed aligned.
-
-**Solution**: Kept the backend summary API shape, but added targeted regression coverage around it and simplified the frontend implementation. Moved the fallback category data into a dedicated module so it can be verified independently, synced it to the current backend demo summaries, replaced the DOM-mutation image fallback with a normal React state path, and added a small unmount guard around the entity fetch in `PhotoSelector`.
-
-**Edits**:
-- `backend/entity_registry.py` — reviewed and kept the new summary payload path (`tier`/IB metadata on `EntityConfig`, `_build_entity_summary()`, and `summary` in `/api/entities`) unchanged after adding test coverage around it
-- `backend/game_parser.py` — reviewed and kept the new metadata plumbing unchanged in this pass
-- `frontend/src/components/photoSelectorFallbacks.js` — **NEW**: extracted fallback category/summary data into a dedicated module; synced all 5 demo summaries to the current backend data
-- `frontend/src/components/PhotoSelector.jsx` — imports the new fallback module; keeps the detail-view flow but removes the huge inline fallback object and guards against setting fetched categories after unmount
-- `frontend/src/components/GameDetailView.jsx` — simplified duplicated label-formatting helpers and replaced the collectible preview `onError` DOM mutation with a small React fallback component
-- local `tests/test_api.py` — extended `TestEntitiesEndpoint` with summary-payload assertions
-- local `tests/test_photo_selector_fallbacks.py` — **NEW**: Node-backed regression check that imports the frontend fallback module and verifies the fallback summaries match the current demo truth
-- `HANDOFF.md` — replaced the draft feature entry with this reviewed follow-up
-
-**NOT Changed**:
-- `backend/server.py` — `/api/entities` endpoint shape unchanged; it just serves the richer summary data
-- `frontend/src/App.jsx` and the session start flow — unchanged
-- Agent pipeline, schemas, step instructions, and other frontend components — unchanged
-- Generated badge/icon asset files already modified in the worktree were not changed in this pass
-
-**Verification**:
-- `uv run pytest tests/test_api.py::TestEntitiesEndpoint tests/test_photo_selector_fallbacks.py tests/test_entity_registry.py -q` — PASS (`36 passed`)
-- `cd backend && uv run ruff check entity_registry.py game_parser.py ../tests/test_api.py ../tests/test_photo_selector_fallbacks.py ../tests/test_entity_registry.py` — PASS
-- `cd backend && uv run ruff format --check entity_registry.py game_parser.py ../tests/test_api.py ../tests/test_photo_selector_fallbacks.py ../tests/test_entity_registry.py` — PASS
-- `cd frontend && npx eslint src/components/PhotoSelector.jsx src/components/GameDetailView.jsx src/components/photoSelectorFallbacks.js` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Generate IB Concept Badge Images
-
-**Problem**: The BadgeAward widget rendered a generic CSS gradient circle with an SVG icon for all IB concepts. Every concept looked identical — children couldn't visually distinguish Perspective from Causation or any other concept.
-
-**Solution**: Created a Gemini image generation script following the existing `generate_cat5_icons_gemini.py` pattern, and updated the BadgeAward widget to render concept-specific badge images with a CSS fallback.
-
-**Edits**:
-- `scripts/generate_concept_badges_gemini.py` — **NEW**: generates 8 IB concept badge PNGs (256×256) using gemini-2.5-flash-image; reuses shared utilities from existing icon scripts; supports `--only`, `--overwrite`, `--mode` CLI flags
-- `frontend/src/widgets/BadgeAward.jsx` — replaced single CSS badge circle with per-concept `<img>` badges; added `ConceptBadge` component with `onError` fallback to CSS gradient; when no concepts provided, keeps original CSS rendering; multiple concepts display in a flex row with staggered `badge-pop` animation
-- `frontend/src/index.css` — added `@keyframes badge-pop` and `.animate-badge-pop` for staggered concept badge entrance animation
-- `frontend/public/badges/` — **NEW**: output directory for generated badge PNGs (run script to populate)
-
-**NOT Changed**:
-- Backend — zero changes; pipeline already passes `concepts: string[]` via widget_params
-- `frontend/src/icons/index.js` — BadgeIcon import stays for CSS fallback path
-- Existing icon generation scripts — read-only reference
-- Props/widget_params contract — unchanged
-
-**Verification**:
-- `cd scripts && python generate_concept_badges_gemini.py --overwrite` — generates 8 PNGs into `frontend/public/badges/`
-- `cd backend && uv run ruff check ../scripts/generate_concept_badges_gemini.py` — PASS
-- Start frontend dev server, run Cat1 session → badge images appear at STEP_4_CELEBRATE and STEP_5_CLOSING
-- Start Cat5 session → multiple concept badges display correctly at STEP_5_CELEBRATE and STEP_6_CLOSING
-- Rename a badge file → CSS gradient fallback renders correctly
-
----
-
-## Review Follow-Up: Harden Prod Game Frontmatter Generator + Add Coverage
-
-**Problem**: Picking up the pending prod-game promotion work exposed three concrete gaps in the new generator path. There were no focused tests for the new script, `stop_sign_cat1_prod.md` extracted the wrong awarded role title (`True Safety Hero` instead of `Safety Solver`), `lion_cat5_prod.md` lost detail in its collection criterion (`big strong` instead of `big, strong, or tough`), and Cat5 docs without an explicit Step 2 catchphrase fell back to a TODO mission metaphor even when a clean role title was available. The script also duplicated its frontmatter-building logic between normal and `--dry-run` execution.
-
-**Solution**: Added focused regression coverage for the generator and the new Cat1 mechanics, then simplified the script around a shared `build_frontmatter()` path used by both write and dry-run modes. Tightened extraction precedence so celebration titles beat generic closing praise, improved collection-mission parsing to preserve descriptive criteria and extract collection counts from the prose itself, and defaulted Cat5 mission metaphors to `You are a {role_title}!` when the doc does not provide a better explicit phrase.
-
-**Edits**:
-- `scripts/generate_game_frontmatter.py` — simplified generation through shared `build_frontmatter()` plumbing; fixed role-title extraction precedence; improved collection-count / collection-criterion parsing; added Cat5 mission-metaphor fallback to the extracted role title
-- local `tests/test_generate_game_frontmatter.py` — **NEW**: batch parseability coverage for all 12 `*_prod.md` files, regression tests for stop-sign role title, lion collection criterion, piano mission-metaphor fallback, and schema validation for `prediction_game` / `helper_hotline`
-- `HANDOFF.md` — replaced the draft feature note with this reviewed follow-up entry
-
-**NOT Changed**:
-- `backend/schemas/creative_slots.py` — reviewed and left with the new `"prediction_game"` / `"helper_hotline"` literals as authored
-- `backend/skills/step_instructions/cat1_step2_rules__prediction_game.md`, `backend/skills/step_instructions/cat1_step3_round__prediction_game.md`, `backend/skills/step_instructions/cat1_step2_rules__helper_hotline.md`, `backend/skills/step_instructions/cat1_step3_round__helper_hotline.md` — reviewed and left unchanged in this pass
-- `backend/game_parser.py`, `backend/game_loader.py`, `backend/entity_registry.py`, and existing demo game MD files — unchanged
-- Frontend — zero changes
-
-**Verification**:
-- `uv run pytest tests/test_generate_game_frontmatter.py -q` — PASS (`5 passed`)
-- `uv run pytest tests/test_generate_game_frontmatter.py tests/test_entity_registry.py tests/test_game_parser.py -q` — PASS (`79 passed`)
-- `uv run ruff check scripts/generate_game_frontmatter.py tests/test_generate_game_frontmatter.py backend/schemas/creative_slots.py` — PASS
-- `uv run ruff format --check scripts/generate_game_frontmatter.py tests/test_generate_game_frontmatter.py backend/schemas/creative_slots.py` — PASS
-
----
-
-## Review Follow-Up: Restore Hook-to-Step2 Transition + Align Local Tests
-
-**Problem**: Picking up the latest Cat5 synthesis fix exposed one real regression in the new generic interactive-step branch in `backend/turn_handler.py`: after the child replied to `STEP_1_HOOK`, the server advanced state to step 2 but still returned the hook response type/frame instead of the step-2 rules or mission prompt. The local review tests were also partially stale after the synthesis change, still asserting pre-fix behavior for synthesis completion and closing delivery.
-
-**Solution**: Restored the hook-specific transition behavior by special-casing an already-prompted `STEP_1_HOOK` to advance into step 2 before generating the next turn. Kept the newer synthesis behavior intact: synthesis completion still returns the synthesis reply first, then leaves auto-advance to fetch celebration. I also tightened the local tests so they now cover the hook regression directly and match the current synthesis/closing semantics.
-
-**Edits**:
-- `backend/turn_handler.py` — special-cased completed `STEP_1_HOOK` handling inside section 7d so the first post-start child reply returns the step-2 prompt; clarified the comment for hook vs. synthesis behavior
-- local `tests/test_turn_handler.py` — added a hook-to-mission regression test; updated the synthesis-follow-up assertions to expect the synthesis reply plus `auto_advance=True`
-- local `tests/test_api.py` — fixed the closing-delivery test fixture so it enters the already-prompted celebration branch it is meant to validate
-- `HANDOFF.md` — added this review/update entry
-
-**NOT Changed**:
-- `backend/skills/step_instructions/cat5_step4_synthesis*.md` prompt edits were reviewed and left unchanged in this pass
-- Frontend auto-advance/session orchestration code was reviewed against the current backend contract and left unchanged
-- `.gitignore` was not changed; the `tests/` tree remains local-only and ignored in this repo snapshot
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py -q` — PASS (`10 passed`)
-- `uv run pytest tests/test_api.py -q` — PASS (`24 passed`)
-- `uv run pytest tests/test_turn_handler.py tests/test_api.py -q` — PASS (`34 passed`)
-- `cd backend && uv run ruff check turn_handler.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
-- `cd backend && uv run ruff format --check turn_handler.py ../tests/test_turn_handler.py ../tests/test_api.py` — PASS
 
 ---

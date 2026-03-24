@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """CLI tool to scaffold YAML frontmatter from a *_prod.md game design doc.
 
 Usage:
@@ -400,6 +399,8 @@ creative_slots:
   synthesis_type: {synthesis_type}
   stuck_hint: ""  # TODO: write stuck hint
   naming_prompt: ""  # TODO: write naming prompt
+  detail_question_template: ""  # TODO: write detail-harvesting question for each find
+  sorting_criterion: ""  # TODO: for comparison_chart: criterion to sort by in synthesis
 
 collection_catalog:
   correct:

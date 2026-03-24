@@ -19,6 +19,8 @@ creative_slots:
   synthesis_type: naming_story
   stuck_hint: Look at flowers or leaves, colors love to hide there!
   naming_prompt: What should we name this color friend?
+  detail_question_template: "What does this colorful thing remind you of?"
+  sorting_criterion: ""
 collection_catalog:
   correct:
   - id: red_flower

@@ -179,6 +179,8 @@ def _load_step_instructions(state: SessionStateModel) -> str:
     elif isinstance(slots, Cat5CreativeSlots):
         collected_count = len(state.collected_photos)
         remaining_count = max(0, state.total_rounds - collected_count)
+        collected_names_str = ", ".join(state.collected_names) if state.collected_names else "(none yet)"
+        collected_details_str = "; ".join(state.collected_details) if state.collected_details else "(none yet)"
         replacements.update(
             {
                 "{observation_angle}": slots.observation_angle,
@@ -192,6 +194,11 @@ def _load_step_instructions(state: SessionStateModel) -> str:
                 "{stuck_hint}": slots.stuck_hint,
                 "{naming_prompt}": slots.naming_prompt,
                 "{observation_detail}": f"the {slots.observation_angle} of this {state.entity_name}",
+                "{collection_phase}": state.collection_phase,
+                "{detail_question_template}": slots.detail_question_template,
+                "{sorting_criterion}": slots.sorting_criterion,
+                "{collected_names}": collected_names_str,
+                "{collected_details}": collected_details_str,
             }
         )
 

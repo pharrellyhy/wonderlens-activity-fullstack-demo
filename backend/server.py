@@ -625,6 +625,9 @@ def _session_state_dict(state: SessionStateModel) -> dict:
     # Expose Cat 5 collection context
     if state.template_type == "cat5" and isinstance(state.creative_slots, Cat5CreativeSlots):
         result["collection_criterion"] = state.creative_slots.collection_criterion
+        result["collection_phase"] = state.collection_phase
+        result["collected_names"] = state.collected_names
+        result["collected_details"] = state.collected_details
 
     if state.round_items and state.current_step.startswith("STEP_3_COLLECT_"):
         round_idx = _step_round_number(state.current_step) - 1

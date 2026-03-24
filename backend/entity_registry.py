@@ -250,10 +250,15 @@ def _build_entity_summary(entity: EntityConfig) -> dict:
     return summary
 
 
+_DEMO_ENTITIES = {"dog", "cat", "dinosaur", "dandelion", "ladybug"}
+
+
 def all_entities_for_api() -> list[dict]:
     """Return entity data structured for the frontend /api/entities endpoint."""
     categories: dict[str, dict] = {}
     for entity in ENTITY_REGISTRY:
+        if entity.entity_name not in _DEMO_ENTITIES:
+            continue
         cat_id = "cat1" if entity.category == "category_1" else "cat5"
         if cat_id not in categories:
             if cat_id == "cat1":

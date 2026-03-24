@@ -19,6 +19,8 @@ creative_slots:
   synthesis_type: naming_story
   stuck_hint: Look up for a roof or tree, or look for big leaves.
   naming_prompt: What should we call this friend?
+  detail_question_template: "What does this rain helper remind you of?"
+  sorting_criterion: ""
 collection_catalog:
   correct:
   - id: big_leaf

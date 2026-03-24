@@ -19,6 +19,8 @@ creative_slots:
   synthesis_type: comparison_chart
   stuck_hint: Try looking at the water surface for sparkles, wet leaves on the ground, or puddles nearby.
   naming_prompt: Does this have fins, scales, or a shiny surface like the goldfish?
+  detail_question_template: "How does the shimmer on this one look different from the others you found?"
+  sorting_criterion: "shininess (most sparkly to least sparkly)"
 collection_catalog:
   correct:
   - id: shiny_wet_rock

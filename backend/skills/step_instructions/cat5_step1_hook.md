@@ -18,6 +18,10 @@ You are generating a turn for the opening of a Category 5 collection activity.
 - Use EMOTIONAL RESONANCE, never knowledge testing.
 - The hook must make the child curious about variety/diversity, not just the single entity.
 
+### Warm Start vs Cold Start:
+- **Warm start** (deep-linked session): The child was just talking with another AI about {entity_name}. They already know the entity. Shorten the hook — one brief reference to what they discussed, then straight to the invitation.
+- **Cold start** (photo upload): The child just photographed {entity_name} for the first time. Use the full observation + wonder sequence.
+
 ### Difference from Cat 1:
 Cat 1 hook leads to a GAME. Cat 5 hook leads to a MISSION. Make the child curious about exploring.
 

@@ -19,6 +19,8 @@ creative_slots:
   synthesis_type: comparison_chart
   stuck_hint: Look down for a big rock or up for a thick tree. Strong things like to hide!
   naming_prompt: Is this one the biggest or the toughest?
+  detail_question_template: "What makes this one look brave or strong to you?"
+  sorting_criterion: "strength (biggest and toughest to smallest and gentlest)"
 collection_catalog:
   correct:
   - id: big_rock

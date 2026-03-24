@@ -20,6 +20,8 @@ creative_slots:
   synthesis_type: comparison_chart
   stuck_hint: "Try looking at flowers up close, or at the ground near your feet"
   naming_prompt: "What kind of dots or spots do you see on this?"
+  detail_question_template: "How are the dots on this one different from the ones you found before?"
+  sorting_criterion: "dot size (big splotches vs tiny speckles vs perfect circles)"
 
 collection_catalog:
   correct:

@@ -94,6 +94,8 @@ def _rebuild_lookups() -> None:
         _BY_ACTIVITY_TYPE[entity.activity_type] = entity
         _BY_DEMO_FILENAME[entity.demo_filename.lower()] = entity
         SCENARIO_CATEGORIES[entity.activity_type] = entity.category
+        # Always register entity_name as a keyword for direct matching
+        _KEYWORD_MAP[entity.entity_name] = entity.activity_type
         for kw in entity.keywords:
             _KEYWORD_MAP[kw] = entity.activity_type
         for fkw in entity.feature_keywords:

@@ -56,6 +56,10 @@ def match_scenario(entity: str, features: list[str] | None = None, filename: str
     # Filename-based fallback (e.g., "ladybug.jpg" → "ladybug")
     if filename:
         name_lower = Path(filename).stem.lower()
+        # Try exact stem match first to avoid substring collisions
+        if name_lower in keyword_map:
+            logger.info(f"Matched scenario from filename '{filename}': {keyword_map[name_lower]}")
+            return keyword_map[name_lower]
         for keyword, scenario in keyword_map.items():
             if keyword in name_lower:
                 logger.info(f"Matched scenario from filename '{filename}': {scenario}")

@@ -22,7 +22,7 @@ export default function ToyCameraFrame({ children }) {
         </div>
 
         {/* Viewport — where content renders */}
-        <div className="flex-1 min-h-0 bg-white rounded-2xl max-[380px]:rounded-[1rem] overflow-hidden overflow-y-auto mx-0.5 mb-0.5">
+        <div className="flex-1 min-h-0 flex flex-col justify-center bg-white rounded-2xl max-[380px]:rounded-[1rem] overflow-hidden overflow-y-auto mx-0.5 mb-0.5">
           {children}
         </div>
       </div>

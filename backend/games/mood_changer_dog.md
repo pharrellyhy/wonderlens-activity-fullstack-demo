@@ -10,7 +10,7 @@ concepts_earned: [Perspective]
 keywords: [dog, puppy, stuffed dog, toy dog]
 feature_keywords: [plush, stuffed, toy]
 photo_features: [floppy ears, soft fur, cute face, fluffy body]
-plain_description: "Your child will pretend to be a stuffed dog and use their voice to act out what the dog would say or feel in 3 different situations."
+plain_description: "Pretend to be a stuffed dog and use your voice to act out what the dog would say or feel in 3 different situations."
 steps_summary:
   - "Learn the voice acting game with a quick demo round"
   - "Act out what the dog says when warm sunshine lands on its belly, when it trips and goes bump, and when its favorite treat arrives"

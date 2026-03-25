@@ -10,8 +10,9 @@ concepts_earned: [Form, Connection]
 keywords: [piano, keys, music, sound, instrument]
 feature_keywords: [black, white, row, teeth, strings]
 photo_features: [black and white keys, wooden body, pedals, music stand]
-plain_description: "Your child will go outside to find 3 things that make interesting sounds, describe each sound, and then sort them from highest to lowest pitch."
+plain_description: "Go outside to find 3 things that make interesting sounds, describe each sound, and then sort them from highest to lowest pitch."
 steps_summary:
+  - "Watch a quick example of tapping something and describing its sound"
   - "Look at the piano and talk about the sounds it makes"
   - "Find 3 things outside that make sounds when tapped or shaken"
   - "Describe each sound and sort them by pitch"

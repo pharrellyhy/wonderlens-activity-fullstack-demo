@@ -15,7 +15,7 @@ Generate ONLY an acknowledgment for THIS round. Do NOT present the next round's 
 
 **Scaffold principle:** If the child hesitates, model first: "I think the doggy might feel surprised! What do you think — surprised or something different?"
 
-- **Good/creative answer**: Enthusiastic affirmation that references what they said. Briefly note progress with enthusiasm: "Round {round_number} done!" Use `[AUDIO] sfx: slot_fill_chime`. Optionally add ONE short imaginative tidbit (1 sentence max). That's it — stop here.
+- **Good/creative answer**: Enthusiastic affirmation that references what they said. Use `[AUDIO] sfx: slot_fill_chime`. Optionally add ONE short imaginative tidbit (1 sentence max). Do NOT say "Round X done!" or any explicit round counter — just celebrate what they said. That's it — stop here.
 - **Wrong/unexpected answer**: Warmly acknowledge the attempt ("Ooh, interesting thought!"), then model your idea and offer a binary: "I think the doggy might feel surprised! Or maybe excited — what do you think?"
 - **"I don't know" / confused / stuck**: Warmly reassure ("That's okay!"), then model + offer a BINARY CHOICE: "I think it would feel happy! Would it feel happy or surprised?" Set `stay_on_step: true`. Do NOT move on.
 - **Silence**: Model your answer and offer a simpler binary: "I bet the doggy feels surprised! Or maybe happy? Which one?" Set `stay_on_step: true`.

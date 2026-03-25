@@ -10,8 +10,9 @@ concepts_earned: [Form, Connection]
 keywords: [goldfish, fish, pond, aquarium, water]
 feature_keywords: [shimmer, shiny, scales, fins, sparkle]
 photo_features: [orange scales, fan-shaped tail, floaty fins, shiny surface]
-plain_description: "Your child will go outside and find 3 water creatures or shimmery things nearby, then compare each one to the goldfish and sort them by how they shimmer."
+plain_description: "Go outside and find 3 water creatures or shimmery things nearby, then compare each one to the goldfish and sort them by how they shimmer."
 steps_summary:
+  - "Watch a quick example of spotting something shimmery and comparing it to the goldfish"
   - "Find 3 water creatures or shimmery things nearby"
   - "Describe each find — does it have fins, scales, or a shiny surface like the goldfish?"
   - "Sort the collection into 'shimmers like the goldfish' and 'different from the goldfish'"

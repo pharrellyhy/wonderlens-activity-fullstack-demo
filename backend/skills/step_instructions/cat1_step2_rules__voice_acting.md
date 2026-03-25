@@ -3,9 +3,9 @@
 
 **How this mechanic works:** You set a vivid scene, and the child voices what the entity would say in that moment.
 
-**Demo round structure:**
+**Demo round (NON-NEGOTIABLE — your response MUST include this demo):**
 1. Paint a short, sensory scene: "Imagine your {entity_name} just found the biggest puddle ever..."
-2. Model the answer yourself: "I think it would say... 'SPLASH TIME! This is the best day EVER!'"
+2. Model the answer yourself with a **2-4 word phrase**: "I think it would say... 'SPLASH TIME!'" Do NOT model long sentences — keep it short enough for a child to repeat.
 3. Make it playful and exaggerated so the child sees it's about imagination, not "right answers."
 
 **Key guidance:**

@@ -534,6 +534,10 @@ async def resolve_turn(
                 error_exit=state.status == "error",
             )
 
+        # Phase B always completes in one exchange — ignore stay_on_step from the AI.
+        # The AI may ask an invitational question ("Would you like to find one more?")
+        # but that's the transition to the next photo-pick round, not a detail follow-up.
+
         # Detail phase complete — move to the next collection round in photo-pick mode.
         state.collection_phase = "photo"
         _advance_state(state)

@@ -3,6 +3,74 @@ import ChatBubble from './ChatBubble';
 import TextInput from './TextInput';
 import AiAvatar from './AiAvatar';
 
+function GameProgressBar({ sessionState, templateType }) {
+  if (!sessionState || sessionState.status !== 'active') return null;
+
+  const step = sessionState.current_step || '';
+  const total = sessionState.total_rounds;
+  if (!total) return null;
+
+  let current = 0;
+  let label = '';
+  let isInRound = false;
+
+  if (templateType === 'cat5') {
+    const collected = sessionState.collected_photos?.length ?? 0;
+    if (step.startsWith('STEP_3_COLLECT_')) {
+      current = collected;
+      label = `Finding ${current} of ${total}`;
+      isInRound = true;
+    } else if (step === 'STEP_4_SYNTHESIS' || step.startsWith('STEP_5_') || step.startsWith('STEP_6_')) {
+      current = total;
+      label = `All ${total} found!`;
+      isInRound = true;
+    }
+  } else {
+    const round = sessionState.current_round ?? 0;
+    if (step.startsWith('STEP_3_ROUND_')) {
+      current = Math.max(round - 1, 0);
+      label = `Round ${round} of ${total}`;
+      isInRound = true;
+    } else if (step.startsWith('STEP_4_') || step.startsWith('STEP_5_')) {
+      current = total;
+      label = `All ${total} rounds done!`;
+      isInRound = true;
+    }
+  }
+
+  if (!isInRound) return null;
+
+  const progress = Math.min(current / total, 1);
+
+  return (
+    <div className="px-4 max-[380px]:px-3 py-2 max-[380px]:py-1.5 bg-[var(--color-forest)]/5 border-b border-[var(--color-forest)]/10">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-semibold text-[var(--color-forest-dark)]">{label}</span>
+        <div className="flex gap-1">
+          {Array.from({ length: total }, (_, i) => (
+            <div
+              key={i}
+              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                i < current
+                  ? 'bg-[var(--color-forest)] scale-100'
+                  : i === current && current < total
+                    ? 'bg-[var(--color-teal)] animate-pulse'
+                    : 'bg-gray-200'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[var(--color-forest)] to-[var(--color-teal)] transition-all duration-500"
+          style={{ width: `${progress * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ConversationPanel({
   messages,
   onSendMessage,
@@ -15,6 +83,8 @@ export default function ConversationPanel({
   turnPending,
   errorExit,
   collectMode,
+  sessionState,
+  templateType,
 }) {
   const scrollRef = useRef(null);
   const [sttBannerDismissed, setSttBannerDismissed] = useState(false);
@@ -45,6 +115,9 @@ export default function ConversationPanel({
           </button>
         </div>
       )}
+
+      {/* Game progress bar */}
+      <GameProgressBar sessionState={sessionState} templateType={templateType} />
 
       {/* Chat Bubble List */}
       <div

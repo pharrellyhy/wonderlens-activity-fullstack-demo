@@ -1,10 +1,6 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 
-const SILENCE_TIMEOUTS = {
-  T0: 10000,
-  T1: 8000,
-  T2: 6000,
-};
+const SILENCE_TIMEOUT = 30000;
 
 export default function useSilenceTimer(tier, onSilence, enabled) {
   const timerRef = useRef(null);
@@ -13,7 +9,7 @@ export default function useSilenceTimer(tier, onSilence, enabled) {
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef(null);
 
-  const timeout = SILENCE_TIMEOUTS[tier] || 10000;
+  const timeout = SILENCE_TIMEOUT;
 
   const clear = useCallback(() => {
     if (timerRef.current) {

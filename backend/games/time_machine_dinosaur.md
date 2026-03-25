@@ -10,7 +10,7 @@ concepts_earned: [Change]
 keywords: [dinosaur, dino, toy dinosaur]
 feature_keywords: [plush, stuffed, toy]
 photo_features: [big teeth, powerful legs, scaly skin, long tail]
-plain_description: "Your child will use their voice to act out what a dinosaur does as it travels through 3 different time periods in a pretend time machine."
+plain_description: "Use your voice to act out what a dinosaur does as it travels through 3 different time periods in a pretend time machine."
 steps_summary:
   - "Learn the voice acting game with a quick demo round"
   - "Act out what the dinosaur does in a prehistoric jungle, near a rumbling volcano, and by a peaceful lake at sunset"

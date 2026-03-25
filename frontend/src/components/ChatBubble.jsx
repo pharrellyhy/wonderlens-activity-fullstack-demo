@@ -41,6 +41,14 @@ export default function ChatBubble({ message, isLatestAi }) {
   const isAi = message.role === 'ai';
   const { displayed, done } = useTypewriter(message.text, isAi && isLatestAi);
 
+  if (message.isSilent) {
+    return (
+      <div className="flex justify-center opacity-0 animate-bubble-in">
+        <span className="text-xs text-gray-400 italic py-1">No response — re-engaging...</span>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex ${isAi ? 'justify-start' : 'justify-end'} opacity-0 animate-bubble-in`}>
       {isAi && (

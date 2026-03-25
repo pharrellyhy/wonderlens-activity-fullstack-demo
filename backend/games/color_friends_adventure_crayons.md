@@ -10,8 +10,9 @@ concepts_earned: [Connection, Perspective]
 keywords: [crayons, colors, drawing, art]
 feature_keywords: [color, bright, smooth, waxy]
 photo_features: [bright colors, waxy texture, paper wrapper, pointed tip]
-plain_description: "Your child will pick a favorite crayon color, then go outside and find 2 things that match that color, name each one, and tell a short story about the color friends."
+plain_description: "Pick a favorite crayon color, then go outside and find 2 things that match that color, name each one, and tell a short story about the color friends."
 steps_summary:
+  - "See a quick example of matching a color and naming a color friend"
   - "Pick a favorite crayon color and find 2 things outside that match it"
   - "Give each color match a character name"
   - "Tell a tiny story about the color friends playing together"

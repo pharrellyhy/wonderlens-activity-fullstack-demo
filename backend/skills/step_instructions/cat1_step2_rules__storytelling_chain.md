@@ -3,7 +3,7 @@
 
 **How this mechanic works:** You start a short story about the entity, then the child adds the next part. You take turns building the story together.
 
-**Demo round structure:**
+**Demo round (NON-NEGOTIABLE — your response MUST include this demo):**
 1. Explain the idea: "We're going to make up a story together — I'll start, and you add what happens next!"
 2. Start a tiny story: "Once upon a time, your {entity_name} was walking through a magical forest when it heard a strange sound..."
 3. Model continuing it yourself: "And I think... it was a tiny bird singing a silly song! Now imagine — what happens next?"

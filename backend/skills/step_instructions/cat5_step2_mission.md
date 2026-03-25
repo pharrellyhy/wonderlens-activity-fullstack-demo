@@ -3,20 +3,22 @@
 
 Assign a clear, exciting collection mission. Respond to what the child just said before launching into the mission.
 
-### 3-Part Mission Pattern:
-The mission has three parts the child should understand:
-1. **Find** — "Find {collection_count} things with {collection_criterion}"
-2. **Name/Compare** — "For each one, you'll get to name it / tell me what you notice about it"
-3. **Synthesis** — "Then we'll make a story / sort them together!"
+### TOTAL LENGTH by tier (NON-NEGOTIABLE):
+- **T0:** Your ENTIRE mission briefing must be **3-4 short sentences max.** Acknowledge → mission + demo → invitation. That's it. No role title, no "3-part pattern" explanation, no elaborate setup.
+- **T1:** 5-6 sentences max. Can include the role title and a brief demo.
+- **T2:** Up to 8 sentences. Can include the full pattern.
 
-### You MUST:
-1. Acknowledge the child's last response before transitioning to the mission.
-2. Build on what the child said — use their words or idea as a springboard for the mission. Example: if they said "it looks like a snake!", respond with "A snake! That's such a cool idea. If this 'little snake rock' needed a story, it might need some rock friends to play the other characters..."
-3. Introduce `{mission_metaphor}` naturally — make it feel like an adventure growing out of the conversation, not a sudden topic switch. Assign the child a **metaphorical role** tied to the mission.
-4. State `{collection_criterion}` as a clear, simple mission.
-5. State `{collection_count}` — how many items to find.
-6. Frame the mission as an **invitation**, not a command. Use "Would you like to...?", "Do you want to...?", "What if we...?", "How about...?" — give the child a choice.
-7. **Demonstrate one example round** before the invitation (see Embedded Example Demonstration section below).
+**T0 example (entire response):** "Mars! Fun! Let's find 3 soft things. See this dandelion? So fluffy! Would you like to find more?"
+
+### Mission elements (scale to tier):
+1. **Acknowledge** the child's last response (1 short sentence).
+2. **State the mission** — find `{collection_count}` things with `{collection_criterion}`. **Do NOT list specific item examples** (no "like a fuzzy sock or a teddy bear").
+3. **Demo** using the {entity_name} (see below) — keep to 1-2 sentences.
+4. **Invitation** — end with a question. "Would you like to find more?"
+
+For T1/T2 you may also:
+5. Introduce `{mission_metaphor}` and assign the **role title**.
+6. Mention what they'll do with the finds (name them / compare them).
 
 ### Critical: The {entity_name} does NOT count as a collected item.
 The child already photographed the {entity_name} — it is the **inspiration** for the mission, not one of the {collection_count} items to find. The {collection_count} items must all be **different things** the child discovers during the hunt. Never say or imply "we already have the {entity_name}, so that's 1!" — the count starts at zero.
@@ -24,14 +26,13 @@ The child already photographed the {entity_name} — it is the **inspiration** f
 ### Critical: Mission must be achievable.
 Consider the entity's likely environment. Indoor entity → indoor mission. Outdoor → outdoor mission.
 
-### 4. Embedded Example Demonstration (NON-NEGOTIABLE):
-After explaining the 3-part mission and BEFORE the invitation question, demonstrate one round in 2-3 sentences:
-- Pick a visible or imaginary item that matches `{collection_criterion}`.
-- Walk through the full loop: spot it, react, do the detail activity.
-- **For naming_story:** "Let me show you — see that cloud up there? It looks so fluffy! I'd call it Cloud Puff!"
-- **For comparison_chart:** "Let me try first — see the {entity_name}'s {observation_angle}? They're big and round! When you find your first thing, we'll compare."
-- Keep the demo to 2-3 sentences. The demo item does NOT count toward `{collection_count}`.
-- End the demo naturally, then move into the invitation.
+### Embedded Example Demo (NON-NEGOTIABLE):
+Use the **{entity_name}** the child already photographed as your demo item. 1-2 sentences max.
+- **T0 naming_story:** "See this dandelion? So fluffy! I'd call it Puff!"
+- **T0 comparison_chart:** "See these spots? Big and round!"
+- **T1/T2:** Can be slightly more detailed but still 1-2 sentences.
+- Do NOT invent imaginary items. Do NOT explain "that's how it works."
+- The {entity_name} does NOT count toward `{collection_count}`.
 
 ### Critical: End with an invitational question, NOT a directive.
 The mission briefing MUST end by **asking** the child if they want to go explore — NOT by telling them to go. The child should feel excited and choose to participate, not be ordered around.

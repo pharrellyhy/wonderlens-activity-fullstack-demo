@@ -4,6 +4,141 @@ Last updated: 2026-03-25
 
 ---
 
+## Review Follow-Up: Restore Tier-Specific Silence Timeouts
+
+**Problem**: While reviewing the code modified alongside `docs/plans/education-team-feedback-round2.md`, I found one concrete frontend regression in `frontend/src/hooks/useSilenceTimer.js`: the silence timeout table had been flattened to `20s` for every tier. That diverged from the WonderLens spec and tier rules, which require tier-specific silence handling (`T0=10s`, `T1=8s`, `T2=6s`). Leaving the flattened values in place would make higher tiers noticeably less responsive and violate the project’s age-tier behavior contract.
+
+**Solution**: Restored the documented tier-specific timeout values and added a focused regression test so future review passes catch this contract break immediately.
+
+**Edits**:
+- `frontend/src/hooks/useSilenceTimer.js` — restored `T0: 10000`, `T1: 8000`, `T2: 6000`, and the `10000` default fallback instead of the temporary `20000` values
+- local `tests/test_education_feedback_contracts.py` — added `test_silence_timer_stays_tier_specific()` to lock the frontend timeout table to the documented tier rules
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `frontend/src/hooks/useSessionOrchestration.js` muted-TTS timer-start workaround — reviewed and left intact
+- `frontend/src/components/ConversationPanel.jsx`, `frontend/src/components/GameDetailView.jsx`, and `frontend/src/components/ChatBubble.jsx` — reviewed for the newly added progress/detail messaging behavior and left unchanged in this pass
+- Prompt/game-content files from the round-2 plan — reviewed separately and left unchanged in this follow-up
+
+**Verification**:
+- `uv run pytest tests/test_education_feedback_contracts.py::test_silence_timer_stays_tier_specific -q` — PASS (`1 passed`)
+- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`82 passed`)
+- `uv run ruff check tests/test_education_feedback_contracts.py` — PASS
+- `uv run ruff format --check tests/test_education_feedback_contracts.py` — PASS
+- `cd frontend && npx eslint src/App.jsx src/components/ChatBubble.jsx src/components/ConversationPanel.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js src/hooks/useSilenceTimer.js` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Education Team Feedback Round 2: Short Phrases, Guided Questions, Synthesis Transition
+
+**Problem**: Second round of education team feedback (`docs/game_demo_feedback_2.txt`) identified three remaining issues: (1) when the AI models a phrase for the child to echo, it's too long to remember (e.g., "SPLASH TIME! This is the best day ever!"), (2) Cat1 voice_acting and storytelling_chain round questions are too open ("If your dinosaur could talk, what would it say?"), and (3) Cat5 synthesis jumps in too abruptly without any transition. Design plan in `docs/plans/education-team-feedback-round2.md`.
+
+**Solution**: Prompt-level fixes only — no code changes.
+
+**Edits**:
+
+*A) Short repeat phrases:*
+- `backend/prompts/script_system.md` — added "Short model phrases" rule to Language Simplicity section: 2-4 words max when modeling a phrase a child might echo
+- `backend/skills/step_instructions/cat1_step2_rules.md` — added 2-4 word constraint to demo round instruction
+- `backend/skills/step_instructions/cat1_step2_rules__voice_acting.md` — changed demo example from "SPLASH TIME! This is the best day EVER!" to just "SPLASH TIME!" with explicit short-phrase requirement
+
+*B) Cat1 open questions:*
+- `backend/skills/step_instructions/cat1_step3_round__voice_acting.md` — replaced open "what would it say?" pattern with model-first + binary choice: "I think it would say 'WOW!' Would it say 'WOW!' or something different?"
+- `backend/skills/step_instructions/cat1_step3_round__storytelling_chain.md` — replaced open "what happens next?" with 2 concrete choices: "Does the cat find a fish or a ball of yarn?"
+
+*C) Synthesis softer transition:*
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — relaxed "NO celebration, NO recap" to allow ONE short transition sentence (max 8 words) before the creative prompt, e.g., "Now that all your fluffy friends are here..."
+- `backend/skills/step_instructions/cat5_step4_synthesis__naming_story.md` — same: allow one brief transition sentence before the 4-beat story
+
+**NOT Changed**:
+- Backend code (`state_machine.py`, `turn_handler.py`, `entity_registry.py`) — no logic changes
+- Frontend code — no changes
+- Other Cat1 mechanic variants (prediction_game, riddle_game, helper_hotline) — unchanged in this pass
+- Cat5 comparison_chart and sorting_game synthesis variants — unchanged
+
+**Verification**:
+- Start Cat1 voice_acting (dog): verify demo phrase is short (2-4 words), round questions offer model + binary choice
+- Start Cat1 storytelling_chain (cat): verify story continuation offers 2 choices, not open "what happens next?"
+- Start Cat5 naming_story (dandelion): verify synthesis has a brief transition before launching into the story
+
+---
+
+## Fix Follow-Up: Clarify When Demo Steps Happen In Game Detail View
+
+**Problem**: The education feedback pass made `steps_summary` always visible in `frontend/src/components/GameDetailView.jsx`, which exposed a wording mismatch in the pre-start UI. For games whose first step says things like "Learn the voice acting game with a quick demo round" or "See a quick example of finding something fluffy and giving it a name," the screen showed that promise but did not explain that the demo/example happens only after pressing Start. That made the "How It Works" section read like the demo should already be visible on the detail screen.
+
+**Solution**: Kept the always-visible `steps_summary` list, but added a small inline clarification when the first step mentions a demo or example. The detail view now tells the user "This happens right after you press Start." so the pre-start summary matches the actual flow without changing the game content itself.
+
+**Edits**:
+- `frontend/src/components/GameDetailView.jsx` — detects when the first `steps_summary` item mentions a demo/example and shows a short note under the step list clarifying that it happens after Start
+- local `tests/test_education_feedback_contracts.py` — added regression coverage for the new GameDetailView clarification
+- `HANDOFF.md` — added this follow-up entry
+
+**NOT Changed**:
+- Game frontmatter `steps_summary` text — unchanged; the fix is UI clarification rather than content rewrite
+- Backend entity summary plumbing (`entity_registry.py`, `game_parser.py`) — unchanged
+- Conversation/session flow and prompt behavior after session start — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`81 passed`)
+- `uv run ruff check tests/test_education_feedback_contracts.py` — PASS
+- `uv run ruff format --check tests/test_education_feedback_contracts.py` — PASS
+- `cd frontend && npx eslint src/components/GameDetailView.jsx` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Fix Follow-Up: TTS Toggle No Longer Perturbs Silence Timer
+
+**Problem**: The previous TTS toggle follow-up made unmuting replay the current AI line by rewinding `lastSpokenIndexRef` inside `frontend/src/hooks/useSessionOrchestration.js`. That made the mute button feel more responsive, but it also introduced a concrete UX regression: if the current turn was already muted and the silence timer had started, turning TTS back on replayed the same AI line and cleared the timer for that turn. The result was that the silence timer appeared to start and stop based on the mute button, which is confusing during child input time.
+
+**Solution**: Simplified the toggle contract so it no longer changes the current turn state. Muting still stops active playback immediately, but unmuting now applies only to subsequent AI lines instead of replaying the current one. That keeps the silence timer tied to turn flow rather than to the footer toggle state.
+
+**Edits**:
+- `frontend/src/hooks/useSessionOrchestration.js` — removed the current-message replay rewind from `toggleTts()`; mute still calls `stopTTS()` immediately
+- local `tests/test_education_feedback_contracts.py` — replaced the previous unmute-replay assertion with a regression that ensures the hook does not rewind the current AI message on unmute
+- `HANDOFF.md` — added this follow-up entry
+
+**NOT Changed**:
+- `frontend/src/App.jsx` mute button rendering and labels — unchanged
+- `frontend/src/hooks/useTTS.js` playback transport and unlock logic — unchanged
+- Silence-timer durations and backend turn orchestration — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`80 passed`)
+- `uv run ruff check tests/test_education_feedback_contracts.py` — PASS
+- `uv run ruff format --check tests/test_education_feedback_contracts.py` — PASS
+- `cd frontend && npx eslint src/App.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Fix Follow-Up: TTS Mute Toggle Replays Current AI Line
+
+**Problem**: After the education feedback pass added a TTS mute toggle, the footer button could appear to stop working in both directions during an active session. The root cause was in `frontend/src/hooks/useSessionOrchestration.js`: the auto-speak effect always advanced `lastSpokenIndexRef` to the latest AI message even when TTS was muted, so toggling TTS back on would rerun the effect but immediately return because that same message was already marked as "spoken." Muting already stopped in-progress speech, but unmuting could not replay the current AI line, which made the toggle feel broken once a line had already appeared on screen.
+
+**Solution**: Kept the toggle UI and muted-TTS timeout cleanup, but fixed the replay contract when turning TTS back on. `toggleTts()` now rewinds `lastSpokenIndexRef` to the previous message index when the current last message is from the AI, which lets the existing auto-speak effect treat the current line as speakable again on unmute. Muting still stops active playback immediately.
+
+**Edits**:
+- `frontend/src/hooks/useSessionOrchestration.js` — when toggling TTS from muted to enabled, rewinds `lastSpokenIndexRef` so the current AI line can replay; retains immediate `stopTTS()` behavior when muting
+- local `tests/test_education_feedback_contracts.py` — added regression coverage proving the unmute path rewinds the current AI message for replay
+- `HANDOFF.md` — added this follow-up entry
+
+**NOT Changed**:
+- `frontend/src/App.jsx` footer button wiring and labels — reviewed and left unchanged
+- `frontend/src/hooks/useTTS.js` — playback implementation unchanged in this follow-up
+- Backend/session API behavior — unchanged; this fix is local to frontend orchestration state
+
+**Verification**:
+- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`80 passed`)
+- `uv run ruff check tests/test_education_feedback_contracts.py` — PASS
+- `uv run ruff format --check tests/test_education_feedback_contracts.py tests/test_entity_registry.py` — PASS
+- `cd frontend && npx eslint src/App.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
 ## Review Follow-Up: Harden Education Feedback Pass + Add Coverage
 
 **Problem**: Reviewing the new education-team feedback implementation exposed one concrete frontend bug and several missing-coverage/runtime gaps in the freshly modified surface. In `frontend/src/hooks/useSessionOrchestration.js`, the new muted-TTS path used `setTimeout(handleSpeakingDone, 0)` without storing or clearing the timeout, so a stale callback could still fire after reset, rerender, or a rapid session restart and incorrectly trigger silence timing or auto-advance from an old active-session closure. The expanded 18-game catalog also introduced a real prompt/runtime gap: Cat5 now includes `sorting_game` (`sound_detective_agency_piano`), but there were no `cat5_step3_collect__sorting_game.md` or `cat5_step4_synthesis__sorting_game.md` fragments for the Script Agent to load. The nearby registry tests were also stale: they still assumed a 5-entity demo-only registry, unique keyword ownership across all games, and older naming-story fragment copy.
@@ -157,146 +292,5 @@ Last updated: 2026-03-25
 - `uv run pytest tests/test_state_machine.py tests/test_api.py -q` — PASS (`49 passed`)
 - `uv run ruff check backend/state_machine.py tests/test_state_machine.py` — PASS
 - `uv run ruff format --check backend/state_machine.py tests/test_state_machine.py` — PASS
-
----
-
-## Review Follow-Up: Fix Cat5 2-Phase Turn Transition + Add Coverage
-
-**Problem**: Reviewing the new Cat5 two-phase collection loop exposed two concrete flow bugs and a missing-test gap. In `backend/turn_handler.py`, the new Phase B branch reset `collection_phase` back to `photo` before generating the AI response, so the prompt and screen-frame logic were reading the wrong phase during the child's detail reply. The same branch also failed to advance non-final rounds after the child answered the detail question, which would leave the session stuck on the previous round's item set. The fresh two-phase behavior also had no focused backend regression coverage yet.
-
-**Solution**: Kept the two-phase design, but tightened the transition contract around the detail-response branch. Phase B now stays in `detail` mode while the Script Agent generates the acknowledgement/name-processing turn, then advances to the next collection round only after that response is built. Final detail replies now use the existing auto-advance path to bridge cleanly into the first synthesis prompt, preserving the just-collected photo view during the final Phase B response. I also removed the old "child detail as placeholder name" behavior and replaced it with a small best-effort name extractor so `collected_names` only stores actual generated names when they are obvious in the dialogue. Finally, I added focused unit, state-machine, and API coverage for the reviewed flow.
-
-**Edits**:
-- `backend/turn_handler.py` — kept Phase B in `detail` mode during generation, advanced non-final detail replies into the next collect round, routed final detail replies through `round_advance_pending` auto-advance into synthesis, reset Cat5 phase when consuming the pending auto-advance, and replaced fake placeholder-name storage with guarded detail/name helpers
-- local `tests/test_turn_handler.py` — added regression coverage for correct-photo entry into detail mode, detail replies advancing to the next round, and final detail replies auto-bridging into synthesis; updated the synthesis completion fixture to satisfy the current two-child-turn guardrail
-- local `tests/test_state_machine.py` — added a Cat5 detail-phase frame assertion so the hardcoded fallback maps detail mode to `photo_display`
-- local `tests/test_api.py` — updated the stale Cat5 collection expectations to match the reviewed two-phase contract and added an API-level regression for detail replies advancing into the next collection round
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/skills/step_instructions/cat5_step3_collect*.md` and `backend/skills/step_instructions/cat5_step4_synthesis*.md` — prompt wording was reviewed and left unchanged in this follow-up
-- `frontend/src/App.jsx` and the existing `collection_phase` gallery gating — reviewed against the corrected backend contract and left as-is
-- Cat1 flow handling, deep-link behavior, and other backend endpoints — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py tests/test_state_machine.py tests/test_api.py -q` — PASS (`57 passed`)
-- `uv run ruff check backend/turn_handler.py tests/test_turn_handler.py tests/test_state_machine.py tests/test_api.py` — PASS
-- `uv run ruff format --check backend/turn_handler.py tests/test_turn_handler.py tests/test_state_machine.py tests/test_api.py` — PASS
-
----
-
-## Feature: Cat5 2-Phase Collection Loop
-
-**Problem**: Cat5 collection used a single-phase loop (photo -> react -> advance) where the AI was explicitly forbidden from asking text/verbal questions during collection. New game designs require a 2-phase loop where each round has Phase A (child selects photo, AI validates and asks a detail-harvesting question) and Phase B (child responds verbally, AI processes detail/names character, then advances). This enables richer per-find engagement — naming characters in naming_story, capturing observations in comparison_chart.
-
-**Solution**: Implemented the full 2-phase collection loop across backend and frontend, following the plan in `docs/plans/cat5-2phase-collection-loop.md`.
-
-**Edits**:
-- `backend/schemas/session_state.py` — added `CollectionPhase` type alias, `collection_phase`, `collected_details`, `collected_names` fields to `SessionStateModel`
-- `backend/schemas/creative_slots.py` — added `detail_question_template` and `sorting_criterion` optional fields to `Cat5CreativeSlots`
-- `backend/games/polka_dot_patrol.md` — added `detail_question_template` and `sorting_criterion` values to creative_slots frontmatter
-- `backend/games/fluffy_expedition_dandelion.md` — added `detail_question_template` and `sorting_criterion` values to creative_slots frontmatter
-- `backend/turn_handler.py` — added Phase B handler (section 7b½) for detail responses; added Phase A->B transition after correct photo pick; added guardrail forcing stay_on_step during detail phase; updated collection-complete override to only trigger in photo phase; passed collection_phase and collected_photos in state context
-- `backend/agents/script_agent.py` — added `{collection_phase}`, `{detail_question_template}`, `{sorting_criterion}`, `{collected_names}`, `{collected_details}` template variables for Cat5
-- `backend/skills/step_instructions/cat5_step3_collect.md` — major rewrite: 2-phase loop with Phase A (photo) and Phase B (detail) sections, `{collection_phase}` variable
-- `backend/skills/step_instructions/cat5_step3_collect__naming_story.md` — rewrite: Phase A asks detail question, Phase B generates character name from child's response
-- `backend/skills/step_instructions/cat5_step3_collect__comparison_chart.md` — rewrite: Phase A asks about observation differences, Phase B acknowledges and connects to previous finds
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — updated: references collected data from hunt, removed fresh-naming approach
-- `backend/skills/step_instructions/cat5_step4_synthesis__naming_story.md` — updated: characters already named during collection, synthesis is now story co-creation
-- `backend/skills/step_instructions/cat5_step4_synthesis__comparison_chart.md` — updated: observations already captured, synthesis is sorting by criterion
-- `backend/skills/step_instructions/cat5_step1_hook.md` — added warm start vs cold start terminology
-- `backend/skills/step_instructions/cat5_step2_mission.md` — added 3-part mission pattern and role assignment emphasis
-- `backend/skills/step_instructions/cat5_step5_celebrate.md` — added reflective WHY question
-- `backend/prompts/script_system.md` — aligned concept counts: T0=1, T1=2, T2=3 (was T0=0, T1=1)
-- `backend/server.py` — exposed `collection_phase`, `collected_names`, `collected_details` in session state dict
-- `backend/state_machine.py` — Phase B shows `photo_display` of just-collected item instead of `progress_tracker`
-- `frontend/src/App.jsx` — gated photo gallery on `collection_phase !== 'detail'`
-
-**NOT Changed**:
-- Cat1 flows — not affected by Cat5-specific changes
-- Frontend widget components — no new widgets needed, existing `photo_display` and `progress_tracker` handle both phases
-- State machine step sequence — steps unchanged, only screen frame selection differs by phase
-- Agent pipeline (Director, Visual, Recipe Assembler) — unchanged
-
-**Verification**:
-- `cd backend && uv run ruff check . && uv run ruff format --check .` — PASS
-- `cd backend && uv run pytest` — PASS (0 collected — no test files in scope)
-- Manual test: Start fluffy_expedition_dandelion session, verify Phase A shows photo gallery, Phase B hides gallery and shows collected photo
-- Manual test: Start polka_dot_patrol session, verify detail questions and observation capture
-
----
-
-## Fix Follow-Up: Re-Center Tall Collection Gallery View
-
-**Problem**: The previous tall-device-panel follow-up fixed `DeviceScreen`, but the whitespace shown in `images/issue-3.png` was actually coming from the collection flow rendered by `PhotoGallery`. That component had been hard-switched to `justify-start` during the earlier small-screen compression pass, so on taller viewports the gallery cluster stayed pinned near the top of the camera viewport and left excessive blank space below.
-
-**Solution**: Restored centered layout for the collection gallery by default and kept the old top-alignment behavior only for short viewports where clipping risk is real. `PhotoGallery` now uses a dedicated `device-gallery-layout` class with default `justify-center`, and the existing `@media (max-height: 760px)` block flips that class back to `justify-content: flex-start`. That preserves the short-screen safety fix while re-centering the gallery on taller screens.
-
-**Edits**:
-- `frontend/src/components/PhotoGallery.jsx` — switched the root gallery container back to centered layout by default, using a dedicated layout class and balanced vertical padding
-- `frontend/src/index.css` — added the short-viewport override for `.device-gallery-layout` inside the existing `max-height: 760px` rules
-- local `tests/test_device_screen_layout.py` — extended the source-level regression checks to cover default gallery centering plus the short-height override
-- `HANDOFF.md` — added this follow-up entry
-
-**NOT Changed**:
-- `frontend/src/components/DeviceScreen.jsx` and `frontend/src/widgets/AnimationOverlay.jsx` — left as-is from the previous tall-panel fix
-- `frontend/src/components/ToyCameraFrame.jsx` and individual gallery card styling — unchanged
-- Backend, APIs, and session logic — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_device_screen_layout.py -q` — PASS (`3 passed`)
-- `cd frontend && npx eslint src/components/PhotoGallery.jsx src/components/DeviceScreen.jsx src/widgets/AnimationOverlay.jsx` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Fix: Re-Center Tall Device Panel Widgets
-
-**Problem**: On taller viewports, the device panel widget area in the toy camera could pin the active widget cluster too close to the top of the white viewport, leaving a large blank region underneath. The screenshot in `images/issue-1.png` showed the collection progress card no longer visually centered when there was enough vertical space available.
-
-**Solution**: Kept the existing device-panel structure but tightened the centering contract around the animated widget wrapper. `DeviceScreen` now uses a full-height grid-centered content slot for the main widget area, and `AnimationOverlay` now accepts an optional `className` so the animation wrapper can participate in layout instead of only applying transitions. That keeps the animated widget container centered vertically on tall screens while preserving the existing animation mapping and compact behavior on smaller devices.
-
-**Edits**:
-- `frontend/src/components/DeviceScreen.jsx` — changed the main widget region from a flex-centered box to a full-height `grid place-items-center` container and passed a full-size centering class into `AnimationOverlay`
-- `frontend/src/widgets/AnimationOverlay.jsx` — added optional `className` support so layout classes can be composed with the animation classes
-- local `tests/test_device_screen_layout.py` — **NEW**: source-level regression checks for the tall-viewport centering contract
-- `HANDOFF.md` — added this entry
-
-**NOT Changed**:
-- `frontend/src/components/ToyCameraFrame.jsx` and individual device widgets — unchanged in this fix
-- Conversation panel layout and tall-screen shell sizing outside the device widget slot — unchanged
-- Backend and API/session orchestration logic — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_device_screen_layout.py -q` — PASS (`2 passed`)
-- `cd frontend && npx eslint src/components/DeviceScreen.jsx src/widgets/AnimationOverlay.jsx` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Review Follow-Up: Harden Batch Game Setup CLI Tools + Add Coverage
-
-**Problem**: Picking up the new batch game setup tooling exposed three concrete gaps in the fresh scripts. `scripts/convert_game.py` validated written files, but `--dry-run` skipped `game_parser` validation entirely even though the handoff and plan described it as a safe validation path. Both scripts also failed when the user supplied a nested custom output path whose parent directories did not already exist. In `scripts/generate_icon.py`, the game-frontmatter scan was duplicated across two functions and used broad `except Exception` handling that made the file-walking path harder to reason about.
-
-**Solution**: Kept the new CLI surface intact and tightened the implementation around the failure paths. `convert_game.py` now imports `parse_game_file` at module load, validates dry-run output through a temporary `.md` file before printing it, and creates parent directories for custom output destinations. `generate_icon.py` now creates the actual output directory for custom icon paths, shares non-prod game frontmatter loading through a single helper, and narrows the auto-client fallback to configuration errors instead of swallowing arbitrary exceptions. I also added focused local regression tests for both scripts so these path-handling and dry-run guarantees are exercised without calling Gemini.
-
-**Edits**:
-- `scripts/convert_game.py` — kept the new converter flow, added dry-run parser validation via a temporary file, created parent directories before writing custom outputs, moved `parse_game_file` to module scope, and narrowed auto-mode client fallback handling
-- `scripts/generate_icon.py` — created parent directories for custom output paths, extracted shared non-prod frontmatter loading for both metadata enrichment and missing-icon discovery, and replaced broad exception fallback in auto mode with `RuntimeError`-only handling
-- local `tests/test_convert_game.py` — **NEW**: regression coverage for nested custom output paths and `--dry-run` validation behavior
-- local `tests/test_generate_icon.py` — **NEW**: regression coverage for nested custom output paths and non-prod missing-icon discovery
-- `HANDOFF.md` — replaced the draft batch-tool entry with this reviewed follow-up
-
-**NOT Changed**:
-- `docs/plans/batch-game-setup.md` — implementation plan preserved as written
-- Backend `game_parser`, `entity_registry`, `game_loader`, and existing game markdown assets — unchanged in this follow-up
-- Frontend runtime code and icon assets — unchanged
-- Existing Gemini/OpenAI helper scripts (`generate_cat5_icons_*`, `regenerate_character_icons.py`) — read-only reuse only
-
-**Verification**:
-- `uv run pytest tests/test_convert_game.py tests/test_generate_icon.py -q` — PASS (`4 passed`)
-- `uv run ruff check scripts/convert_game.py scripts/generate_icon.py tests/test_convert_game.py tests/test_generate_icon.py` — PASS
-- `uv run ruff format --check scripts/convert_game.py scripts/generate_icon.py tests/test_convert_game.py tests/test_generate_icon.py` — PASS
-- Networked CLI runs still require Gemini credentials; they were not exercised in this review pass
 
 ---

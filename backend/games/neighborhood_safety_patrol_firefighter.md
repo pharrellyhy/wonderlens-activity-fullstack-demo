@@ -19,8 +19,9 @@ keywords:
 - guide
 feature_keywords: [reflective, stripes, helmet, bright, sturdy]
 photo_features: [bright reflective stripes, sturdy helmet, protective gear]
-plain_description: "Your child will walk the neighborhood and find 3 things that help keep people safe, then sort each one by whether it warns, protects, or guides."
+plain_description: "Walk the neighborhood and find 3 things that help keep people safe, then sort each one by whether it warns, protects, or guides."
 steps_summary:
+  - "Watch a quick example of spotting a safety helper and describing its job"
   - "Find 3 things in the neighborhood that help keep people safe"
   - "Describe each find's safety job"
   - "Sort the collection by function — warning helpers vs protecting helpers vs guiding helpers"

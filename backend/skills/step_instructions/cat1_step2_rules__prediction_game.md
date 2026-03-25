@@ -3,7 +3,7 @@
 
 **How this mechanic works:** You describe a cause-and-effect scenario involving the entity, and the child predicts what happens next.
 
-**Demo round structure:**
+**Demo round (NON-NEGOTIABLE — your response MUST include this demo):**
 1. Explain the idea: "I'm going to tell you something that happens, and you guess what happens next!"
 2. Give a quick demo with a simple cause and obvious effect: "What if I drop a ball? It goes... BOUNCE! See? You guess what happens!"
 3. Make the demo prediction very easy so the child feels confident.

@@ -10,7 +10,7 @@ concepts_earned: [Function, Connection]
 keywords: [library, book, journey, reading, shelf, checkout, return]
 feature_keywords: [pages, cover, spine, barcode, due date]
 photo_features: [book cover, pages, spine, library barcode, library sticker]
-plain_description: "Your child will narrate the story of a library book's journey from being chosen on a shelf, to being checked out, read at home, and returned for the next reader."
+plain_description: "Narrate the story of a library book's journey from being chosen on a shelf, to being checked out, read at home, and returned for the next reader."
 steps_summary:
   - "Learn the storytelling game with a quick demo of the book arriving at the library"
   - "Narrate what happens when a reader picks the book off the shelf, how the library tracks it at checkout, what reading at home is like, and why returning it matters"

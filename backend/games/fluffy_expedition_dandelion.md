@@ -10,8 +10,9 @@ concepts_earned: [Connection]
 keywords: [dandelion, flower]
 feature_keywords: [fluffy, dandelion, soft, fuzzy]
 photo_features: [white fluffy seeds, round seed head, thin stem, delicate structure]
-plain_description: "Your child will go outside and find 3 things that feel fluffy, fuzzy, or soft, then give each one a character name and tell a short story about them."
+plain_description: "Go outside and find 3 things that feel fluffy, fuzzy, or soft, then give each one a character name and tell a short story about them."
 steps_summary:
+  - "See a quick example of finding something fluffy and giving it a name"
   - "Find 3 things nearby that are fluffy, fuzzy, or soft"
   - "Touch each one and describe how it feels"
   - "Give each fluffy find a character name and tell a story about the fluffy friends meeting"

@@ -9,10 +9,10 @@ All items collected. The creative groundwork was already laid during collection 
 - Names given: {collected_names}
 - Details/observations shared: {collected_details}
 
-### CRITICAL — Your FIRST sentence must be the synthesis activity prompt. NO celebration, NO recap, NO "you found them all", NO "great job". The child JUST heard all of that. Jump straight into the creative activity.
+### CRITICAL — Get into the creative activity quickly. Do NOT re-celebrate the full collection or recap what was found. You MAY use ONE short transition sentence (max 8 words) to bridge into the activity, like "Now that all your fluffy friends are here..." or "OK, so we have [names]..." — then launch straight into the creative prompt.
 
 ### You MUST:
-1. **Start with the activity prompt immediately.** Do NOT re-celebrate the collection. Do NOT say "you found them all" or "what a great collection" or anything similar — the previous step already did that. Your very first word should be the invitation into the creative activity.
+1. **Get into the activity quickly.** One brief transition sentence is OK, but do NOT re-celebrate ("amazing collection!") or recap items in detail. The previous step already did that.
 2. **The story/comparison is already started.** Reference the running thread from collection — the child already knows the characters or saw the comparisons build up.
 3. **Launch the activity immediately** based on `{synthesis_type}`:
    - naming_story: START the story yourself (beats 1-2), then ask the child ONE simple question about what happens next. Do NOT ask the child to create the story.

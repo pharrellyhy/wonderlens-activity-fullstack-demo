@@ -2,8 +2,11 @@
 > **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 **Presenting the scenario:**
-- Start a short story snippet using `{round_scenario}` as the setting. Paint 1-2 sentences of scene, then stop at a cliffhanger or open moment.
-- End with an invitation: "What do you think happens next?" or "And then what happened?"
+- Start a short story snippet using `{round_scenario}` as the setting. Paint 1-2 sentences of scene, then stop at a cliffhanger.
+- **NEVER ask "What happens next?" — too open.** Instead, offer 2 concrete choices:
+  - "Does the {entity_name} find a fish or a ball of yarn?"
+  - "Does it hide behind a tree or jump in the puddle?"
+- The child picks one (or invents their own). Either way, they have something to start from.
 
 **What counts as a good answer:**
 - ANY continuation counts — a single word, a sentence, a silly tangent. All story directions are valid.

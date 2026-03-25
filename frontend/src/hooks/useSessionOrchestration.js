@@ -8,6 +8,7 @@ import useTTS from './useTTS';
 export default function useSessionOrchestration(tier) {
   const [retryCount, setRetryCount] = useState(0);
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('ttsEnabled') === 'true');
+  const [silenceTimerOn, setSilenceTimerOn] = useState(() => localStorage.getItem('silenceTimerOn') === 'true');
   const silenceTimerRef = useRef({ start() {}, clear() {} });
   const lastSpokenIndexRef = useRef(-1);
   const autoAdvancePendingRef = useRef(false);
@@ -70,11 +71,21 @@ export default function useSessionOrchestration(tier) {
     }
   }, [sendSilence, sessionState?.status]);
 
+  const silenceTimerEnabled = silenceTimerOn && isActive && !isSpeaking && !turnPending;
   const silenceTimer = useSilenceTimer(
     tier,
     handleSilence,
-    isActive && !isSpeaking && !turnPending,
+    silenceTimerEnabled,
   );
+
+  // When TTS is muted and the silence timer becomes enabled but isn't running,
+  // start it automatically (covers the gap where handleSpeakingDone fired
+  // before the enabled flag flipped).
+  useEffect(() => {
+    if (silenceTimerEnabled && !ttsEnabled && !silenceTimer.isRunning && !autoAdvancePendingRef.current) {
+      silenceTimer.start();
+    }
+  }, [silenceTimerEnabled, ttsEnabled, silenceTimer]);
 
   useEffect(() => {
     silenceTimerRef.current = silenceTimer;
@@ -94,7 +105,29 @@ export default function useSessionOrchestration(tier) {
     localStorage.setItem('ttsEnabled', ttsEnabled);
   }, [ttsEnabled]);
 
-  const toggleTts = useCallback(() => setTtsEnabled(prev => !prev), []);
+  // Persist silence timer preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('silenceTimerOn', silenceTimerOn);
+  }, [silenceTimerOn]);
+
+  const toggleSilenceTimer = useCallback(() => {
+    setSilenceTimerOn(prev => {
+      const next = !prev;
+      if (!next) silenceTimer.clear();
+      return next;
+    });
+  }, [silenceTimer]);
+
+  const toggleTts = useCallback(() => {
+    setTtsEnabled(prev => {
+      const next = !prev;
+      if (!next) {
+        // Switching to muted — stop any in-progress TTS
+        stopTTS();
+      }
+      return next;
+    });
+  }, [stopTTS]);
 
   // Auto-speak AI messages and handle auto-advance
   useEffect(() => {
@@ -231,6 +264,8 @@ export default function useSessionOrchestration(tier) {
     isSpeaking,
     ttsEnabled,
     toggleTts,
+    silenceTimerOn,
+    toggleSilenceTimer,
     isMicActive: speech.isListening,
     sttMode: speech.mode,
     silenceTimer,

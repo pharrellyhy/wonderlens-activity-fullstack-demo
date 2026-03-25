@@ -80,7 +80,7 @@ function App() {
     messages, sessionId, sessionState, screenFrame, loading, turnPending, error,
     latency, activityType, templateType, photoUrl, errorExit, lastWrongPhotoId,
     retryCount, isActive, isEnded, isInputDisabled,
-    isSpeaking, ttsEnabled, toggleTts, isMicActive, sttMode, silenceTimer,
+    isSpeaking, ttsEnabled, toggleTts, silenceTimerOn, toggleSilenceTimer, isMicActive, sttMode, silenceTimer,
     startSession, startDeepLinkSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
   } = useSessionOrchestration(tier);
 
@@ -172,6 +172,8 @@ function App() {
               turnPending={turnPending}
               errorExit={errorExit}
               collectMode={showPhotoGallery}
+              sessionState={sessionState}
+              templateType={templateType}
             />
           )}
         </section>
@@ -205,7 +207,7 @@ function App() {
       )}
 
       <footer
-        className="app-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mx-3 mb-3 px-5 py-2.5 max-[380px]:mx-2 max-[380px]:mb-2 max-[380px]:px-3 max-[380px]:py-2 surface-card rounded-2xl text-gray-500 text-xs max-[380px]:text-[11px]"
+        className="app-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-2.5 mx-auto mb-3 w-full max-w-3xl max-[380px]:mb-2 max-[380px]:px-3 max-[380px]:py-2 surface-card rounded-2xl text-gray-500 text-xs max-[380px]:text-[11px]"
         aria-label="Session status"
       >
         <div className="flex items-center gap-3 max-[380px]:gap-2">
@@ -243,14 +245,24 @@ function App() {
             {getFooterStatusLabel({ loading, turnPending, status: sessionState?.status })}
           </span>
           {isSpeaking && <span className="ml-2 text-[var(--color-teal)]">Speaking...</span>}
-          <button
-            onClick={toggleTts}
-            className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer border border-gray-200 hover:border-gray-300"
-            aria-label={ttsEnabled ? 'Mute TTS' : 'Unmute TTS'}
-            title={ttsEnabled ? 'TTS on — click to mute' : 'TTS off — click to unmute'}
-          >
-            {ttsEnabled ? '\u{1F50A} TTS' : '\u{1F507} TTS'}
-          </button>
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              onClick={toggleSilenceTimer}
+              className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer border ${silenceTimerOn ? 'border-[var(--color-forest)]/30 bg-[var(--color-forest)]/10 text-[var(--color-forest-dark)]' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
+              aria-label={silenceTimerOn ? 'Disable silence timer' : 'Enable silence timer'}
+              title={silenceTimerOn ? 'Silence timer on (30s) — click to disable' : 'Silence timer off — click to enable'}
+            >
+              {silenceTimerOn ? '\u{23F1} Timer' : '\u{23F1} Timer'}
+            </button>
+            <button
+              onClick={toggleTts}
+              className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer border ${ttsEnabled ? 'border-[var(--color-forest)]/30 bg-[var(--color-forest)]/10 text-[var(--color-forest-dark)]' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
+              aria-label={ttsEnabled ? 'Mute TTS' : 'Unmute TTS'}
+              title={ttsEnabled ? 'TTS on — click to mute' : 'TTS off — click to unmute'}
+            >
+              {ttsEnabled ? '\u{1F50A} TTS' : '\u{1F507} TTS'}
+            </button>
+          </div>
         </div>
       </footer>
     </div>

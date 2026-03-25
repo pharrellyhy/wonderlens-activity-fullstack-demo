@@ -10,7 +10,7 @@ concepts_earned: [Perspective, Function]
 keywords: [playground, swing, slide, monkey bars, park, equipment]
 feature_keywords: [colorful, outdoor, fun, play]
 photo_features: [swings, slides, monkey bars, soft ground]
-plain_description: "Your child will use their voice to speak for playground equipment and act out what the swing, slide, and monkey bars would say or feel in different situations."
+plain_description: "Use your voice to speak for playground equipment and act out what the swing, slide, and monkey bars would say or feel in different situations."
 steps_summary:
   - "Learn the voice acting game with a quick demo round"
   - "Act out what the swing says on a sunny morning, what the slide feels on a hot day, and what the monkey bars feel in the rain"

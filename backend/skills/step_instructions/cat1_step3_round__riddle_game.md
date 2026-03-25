@@ -1,4 +1,5 @@
 ### Style: Riddle Game
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 **Presenting the scenario:**
 - Use `{round_scenario}` as the theme for the riddle. Give 2-3 concrete, sensory clues about something related to the scene.

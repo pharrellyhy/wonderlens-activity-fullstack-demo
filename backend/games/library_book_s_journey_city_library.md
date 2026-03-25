@@ -10,6 +10,13 @@ concepts_earned: [Function, Connection]
 keywords: [library, book, journey, reading, shelf, checkout, return]
 feature_keywords: [pages, cover, spine, barcode, due date]
 photo_features: [book cover, pages, spine, library barcode, library sticker]
+plain_description: "Your child will narrate the story of a library book's journey from being chosen on a shelf, to being checked out, read at home, and returned for the next reader."
+steps_summary:
+  - "Learn the storytelling game with a quick demo of the book arriving at the library"
+  - "Narrate what happens when a reader picks the book off the shelf, how the library tracks it at checkout, what reading at home is like, and why returning it matters"
+  - "Talk about how every part of the library has a job and how readers, librarians, and shelves are all connected"
+  - "Earn the Book Journey Narrator badge!"
+
 creative_slots:
   game_mechanic: storytelling_chain
   metaphor: The library book is a quiet adventurer that has been everywhere in the library system.

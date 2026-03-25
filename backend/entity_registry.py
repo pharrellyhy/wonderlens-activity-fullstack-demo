@@ -59,6 +59,8 @@ class EntityConfig(BaseModel):
     ib_theme: str = ""
     ib_key_concept: str = ""
     concepts_earned: list[str] = []
+    plain_description: str = ""
+    steps_summary: list[str] = []
 
 
 # --- Registry data (populated by game_loader at import time) ---
@@ -211,6 +213,8 @@ def _build_entity_summary(entity: EntityConfig) -> dict:
         "ib_key_concept": entity.ib_key_concept,
         "concepts_earned": entity.concepts_earned,
         "role_title": slots.role_title,
+        "plain_description": entity.plain_description,
+        "steps_summary": entity.steps_summary,
     }
 
     if isinstance(slots, Cat1CreativeSlots):

@@ -1,4 +1,5 @@
 ### Style: Storytelling Chain
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 **Presenting the scenario:**
 - Start a short story snippet using `{round_scenario}` as the setting. Paint 1-2 sentences of scene, then stop at a cliffhanger or open moment.

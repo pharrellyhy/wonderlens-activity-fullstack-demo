@@ -80,7 +80,7 @@ function App() {
     messages, sessionId, sessionState, screenFrame, loading, turnPending, error,
     latency, activityType, templateType, photoUrl, errorExit, lastWrongPhotoId,
     retryCount, isActive, isEnded, isInputDisabled,
-    isSpeaking, isMicActive, sttMode, silenceTimer,
+    isSpeaking, ttsEnabled, toggleTts, isMicActive, sttMode, silenceTimer,
     startSession, startDeepLinkSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
   } = useSessionOrchestration(tier);
 
@@ -243,6 +243,14 @@ function App() {
             {getFooterStatusLabel({ loading, turnPending, status: sessionState?.status })}
           </span>
           {isSpeaking && <span className="ml-2 text-[var(--color-teal)]">Speaking...</span>}
+          <button
+            onClick={toggleTts}
+            className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer border border-gray-200 hover:border-gray-300"
+            aria-label={ttsEnabled ? 'Mute TTS' : 'Unmute TTS'}
+            title={ttsEnabled ? 'TTS on — click to mute' : 'TTS off — click to unmute'}
+          >
+            {ttsEnabled ? '\u{1F50A} TTS' : '\u{1F507} TTS'}
+          </button>
         </div>
       </footer>
     </div>

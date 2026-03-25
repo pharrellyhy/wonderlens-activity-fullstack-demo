@@ -4,6 +4,91 @@ Last updated: 2026-03-25
 
 ---
 
+## Review Follow-Up: Harden Education Feedback Pass + Add Coverage
+
+**Problem**: Reviewing the new education-team feedback implementation exposed one concrete frontend bug and several missing-coverage/runtime gaps in the freshly modified surface. In `frontend/src/hooks/useSessionOrchestration.js`, the new muted-TTS path used `setTimeout(handleSpeakingDone, 0)` without storing or clearing the timeout, so a stale callback could still fire after reset, rerender, or a rapid session restart and incorrectly trigger silence timing or auto-advance from an old active-session closure. The expanded 18-game catalog also introduced a real prompt/runtime gap: Cat5 now includes `sorting_game` (`sound_detective_agency_piano`), but there were no `cat5_step3_collect__sorting_game.md` or `cat5_step4_synthesis__sorting_game.md` fragments for the Script Agent to load. The nearby registry tests were also stale: they still assumed a 5-entity demo-only registry, unique keyword ownership across all games, and older naming-story fragment copy.
+
+**Solution**: Kept the education feedback implementation, but tightened the reviewed runtime edges and brought coverage up to date. The muted-TTS path now owns a timeout ref with explicit cleanup on rerender, reset, and new session starts before scheduling a completion callback. I added the missing Cat5 `sorting_game` collect/synthesis fragments so the new piano activity has the same style-specific prompt path as the other Cat5 activities. I also added focused review coverage for the new plain-language summary metadata and updated the stale registry/fragment assertions to match the current 18-game catalog and revised naming-story prompt contract.
+
+**Edits**:
+- `frontend/src/hooks/useSessionOrchestration.js` — added `mutedCompletionTimeoutRef` plus `clearMutedCompletionTimeout()`; clears pending muted-TTS callbacks on rerender, reset, and session start before scheduling a new completion callback
+- `backend/skills/step_instructions/cat5_step3_collect__sorting_game.md` — **NEW**: Cat5 per-find collection guidance for `sorting_game`
+- `backend/skills/step_instructions/cat5_step4_synthesis__sorting_game.md` — **NEW**: Cat5 synthesis guidance for `sorting_game`
+- local `tests/test_education_feedback_contracts.py` — **NEW**: regression coverage for muted-TTS timeout cleanup plus `plain_description`/`steps_summary` propagation into loaded entities and API summaries
+- local `tests/test_entity_registry.py` — updated stale registry assumptions to the current 18-game catalog and current naming-story fragment content
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `frontend/src/App.jsx` and `frontend/src/components/GameDetailView.jsx` — reviewed against the feedback plan and left unchanged in this follow-up
+- `backend/entity_registry.py`, `backend/game_parser.py`, and the 18 game frontmatter files — no further implementation changes were needed after adding focused coverage for the new summary fields
+- Prompt-wide language simplification and scaffold wording across the other step-instruction files — reviewed and left as-is in this pass
+
+**Verification**:
+- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`79 passed`)
+- `uv run ruff check backend/entity_registry.py backend/game_parser.py tests/test_entity_registry.py tests/test_education_feedback_contracts.py` — PASS
+- `uv run ruff format --check backend/entity_registry.py backend/game_parser.py tests/test_entity_registry.py tests/test_education_feedback_contracts.py` — PASS
+- `cd frontend && npx eslint src/App.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Education Team Feedback: Full UX Pass (6 Items)
+
+**Problem**: The education team reviewed the demo and flagged 6 issues: (1) activity flow is unclear and lacks mini-rewards at milestones, (2) GameDetailView is too abstract/metaphorical for testers, (3) AI language is too decorated for kids, (4) TTS auto-play is disruptive, (5) questions are too open-ended, (6) activities lack "game feel." Full feedback in `docs/game_demo_feedback.txt` (Chinese). Design plan in `docs/plans/education-team-feedback.md`.
+
+**Solution**: Prompt-first approach — most changes are in step instruction markdown files, with 2 small frontend changes and backend data additions.
+
+**Edits**:
+
+*Phase 1 — Language Foundation (Change 3):*
+- `backend/prompts/script_system.md` — added `## Language Simplicity Rules` section with tier-specific sentence length limits (T0 ~6 words, T1 ~10, T2 ~15), one-metaphor-max rule, everyday vocabulary guidelines
+- All 26 files in `backend/skills/step_instructions/` — added one-line language reminder after first heading
+
+*Phase 2 — Scaffold + Model Pattern (Change 5):*
+- `backend/skills/step_instructions/cat5_step3_collect.md` — added "model first, then invite" scaffold principle for all tiers; T0 modeling guidance for Phase A; updated silence handler to model + offer 2-3 choices
+- `cat5_step3_collect__naming_story.md` — updated unexpected/silence paths to model a name + offer binary choice
+- `cat5_step3_collect__comparison_chart.md` — updated unexpected/silence paths to model observation + offer binary
+- `cat5_step4_synthesis.md` — added scaffold principle; updated stuck/silence handlers to offer concrete choices
+- `cat5_step4_synthesis__naming_story.md` — added scaffolded question requirement (binary, not open-ended)
+- `cat5_step4_synthesis__comparison_chart.md` — added T0 binary-only rule for ranking
+- `cat1_step3_round.md` — added model-first for hesitation, model + binary for wrong/silence/stuck paths
+
+*Phase 3 — Example Step + Game Feel (Changes 6, 1, 7):*
+- `cat5_step2_mission.md` — added "Embedded Example Demonstration" section (demo one round before invitation, 2-3 sentences); added mission acceptance SFX (`mission_accepted`); added item 7 to "You MUST" list
+- `cat5_step3_collect.md` — added mission/quest framing note; added progress count celebration on correct photo; added `sfx: slot_fill_chime` per find and `sfx: mission_complete_fanfare` on final; replaced "avoid mechanical counters" with "pair numbers with enthusiasm"
+- `cat5_step3_collect__naming_story.md` — added SFX cues to progressive character introductions
+- `cat5_step3_collect__comparison_chart.md` — added SFX cues to progressive comparison building
+- `cat5_step5_celebrate.md` — added "Mission accomplished!" framing and `sfx: celebration_fanfare`
+- `cat1_step3_round.md` — added challenge framing, progress note with `sfx: slot_fill_chime` on good answers
+- `cat1_step4_celebrate.md` — added "You beat all rounds!" framing and `sfx: celebration_fanfare`
+
+*Phase 4 — GameDetailView Redesign (Change 2):*
+- `backend/entity_registry.py` — added `plain_description: str` and `steps_summary: list[str]` fields to `EntityConfig`; added both to `_build_entity_summary()` dict
+- `backend/game_parser.py` — added pass-through of `plain_description` and `steps_summary` from game MD frontmatter
+- All 18 files in `backend/games/` — added `plain_description` and `steps_summary` to YAML frontmatter
+- `frontend/src/components/GameDetailView.jsx` — replaced metaphor quote with plain-language summary; added expandable "See detailed steps" toggle showing ordered step list; kept role_title badge and IB tags
+
+*Phase 5 — TTS Default Muted (Change 4):*
+- `frontend/src/hooks/useSessionOrchestration.js` — added `ttsEnabled` state (default false) with localStorage persistence; wrapped auto-speak effect in `ttsEnabled` condition; when muted, fires `handleSpeakingDone()` via setTimeout so silence timer and auto-advance still work; exports `ttsEnabled` and `toggleTts`
+- `frontend/src/App.jsx` — destructured `ttsEnabled` and `toggleTts`; added mute/unmute toggle button in footer
+
+**NOT Changed**:
+- `backend/state_machine.py` and `backend/turn_handler.py` — no state machine or turn logic changes
+- Agent pipeline (Director, Script, Visual, Recipe Assembler) — unchanged
+- Frontend widget components (BadgeAward, ProgressTracker, PhotoGallery) — unchanged
+- Tests — no test files modified in this pass
+
+**Verification**:
+- `cd backend && uv run ruff check entity_registry.py game_parser.py` — PASS
+- `cd backend && uv run ruff format --check entity_registry.py game_parser.py` — PASS
+- Manual: Start T0/T1/T2 sessions, verify AI uses shorter plain sentences
+- Manual: Start Cat5, verify mission briefing includes example demo before invitation
+- Manual: Play through Cat5 collection, verify progress counts with SFX directives
+- Manual: Click a game photo, verify plain summary + expandable steps in GameDetailView
+- Manual: Start session, verify TTS muted by default, toggle works, silence timer still fires
+
+---
+
 ## Review Follow-Up: Let Cat5 Synthesis Finish After One Child Reply
 
 **Problem**: Reviewing the newer Cat5 synthesis prompt updates exposed one stale backend guardrail in `backend/turn_handler.py`. The synthesis handler still forced `stay_on_step` unless it had seen two child turns on `STEP_4_SYNTHESIS`, but the reviewed prompt contract now caps synthesis at one child contribution before the AI finishes the activity. In practice, that meant valid first replies like "tickle!" or "ok" would be held on synthesis for an unnecessary extra turn.
@@ -213,56 +298,5 @@ Last updated: 2026-03-25
 - `uv run ruff check scripts/convert_game.py scripts/generate_icon.py tests/test_convert_game.py tests/test_generate_icon.py` — PASS
 - `uv run ruff format --check scripts/convert_game.py scripts/generate_icon.py tests/test_convert_game.py tests/test_generate_icon.py` — PASS
 - Networked CLI runs still require Gemini credentials; they were not exercised in this review pass
-
----
-
-## Fix: Small-Screen Responsive Sizing Pass
-
-**Problem**: The frontend layout was tuned for larger mobile/tablet widths, but many shell controls, widget cards, badges, progress circles, and icons kept their default sizes all the way down to very small screens. On narrow phones this made the camera viewport and surrounding UI feel oversized and cramped. A follow-up issue remained on short, wide viewports: the fixed-height shell could clip the top device area instead of adapting vertically.
-
-**Solution**: Added a compact-mobile sizing layer for screens under 420px and tightened the highest-pressure UI surfaces under 380px. The pass keeps desktop/tablet styling intact while shrinking spacing, copy, controls, widget chrome, and icon sizes inside the app shell, camera frame, conversation panel, photo selection flow, and device widgets. After follow-up reports that the device panel content still felt oversized, I narrowed the fix to the in-panel layer: `DeviceScreen` now uses a tighter widget wrapper, and the device-only widgets no longer upscale at `sm` width breakpoints. That keeps the camera content sized to the panel instead of to the overall viewport width. After screenshot review (`images/cutoff-1.png`, `images/cutoff-2.png`, `images/IMG_5974.jpg`, `images/IMG_5976.PNG`), I also fixed four concrete issues: the lower-panel photo selector now anchors to the top instead of vertically centering oversized content, the in-device photo display now sizes by available height rather than by `max-w-md`, the in-camera collection gallery is now top-aligned and denser so its header no longer hides under the frame, and the collection progress-dot row has been reduced again so it stays inside the bottom of the camera viewport. In the latest pass, the device photo widget was switched from `object-cover` to `object-contain` and given a smaller height cap so images like the dandelion no longer look zoomed inside the camera frame. Separately, the text input now uses a 16px font size on mobile to prevent iOS Safari auto-zoom from pushing the send button off-screen. I also removed one unused `PhotoGrid` prop surfaced by lint during verification.
-
-**Edits**:
-- `frontend/src/index.css` — added global compact-mobile root font scaling for sub-420px screens plus short-viewport shell rules for scrolling/compression under `760px` height
-- `frontend/src/App.jsx`, `frontend/src/components/TopBar.jsx`, `frontend/src/components/ToyCameraFrame.jsx`, `frontend/src/components/DeviceScreen.jsx`, `frontend/src/components/ConversationPanel.jsx`, `frontend/src/components/TextInput.jsx` — reduced shell spacing and control/icon sizing for extra-small screens; `DeviceScreen` now applies a tighter wrapper around in-panel widgets with a smaller max width; `TextInput` now keeps the mobile input at 16px to avoid browser zoom
-- `frontend/src/components/PhotoSelector.jsx`, `frontend/src/components/GameDetailView.jsx`, `frontend/src/components/PhotoGallery.jsx` — tightened photo picker/detail/gallery layouts and labels on narrow viewports; `PhotoSelector` now top-aligns scrollable content instead of centering it; `PhotoGallery` now top-aligns and compresses in-camera collection layouts, including a smaller final progress-dot row
-- `frontend/src/widgets/BadgeAward.jsx`, `frontend/src/widgets/ProgressTracker.jsx`, `frontend/src/widgets/CharacterDisplay.jsx`, `frontend/src/widgets/PhotoGrid.jsx`, `frontend/src/widgets/PhotoDisplay.jsx` — switched oversized widget/icon elements to compact breakpoint rules and `clamp()` sizing; removed `sm`-based device-panel enlargement; `PhotoDisplay` now uses a smaller height cap and `object-contain`
-- `HANDOFF.md` — added this entry
-
-**NOT Changed**:
-- Backend, API contracts, session orchestration logic, and activity behavior — unchanged
-- Existing unrelated worktree edits in `frontend/src/components/AiAvatar.jsx` and `frontend/src/components/SfxIndicator.jsx` were left untouched
-- No new frontend test runner or browser automation was added in this pass
-
-**Verification**:
-- `rg -n "max-\\[380px\\]:|clamp\\(" frontend/src/App.jsx frontend/src/components/TopBar.jsx frontend/src/components/DeviceScreen.jsx frontend/src/components/PhotoSelector.jsx frontend/src/components/PhotoGallery.jsx frontend/src/widgets/BadgeAward.jsx frontend/src/widgets/ProgressTracker.jsx frontend/src/widgets/CharacterDisplay.jsx` — PASS
-- `rg -n "sm:w-|sm:h-|sm:text-|sm:p-|sm:gap-" frontend/src/components/DeviceScreen.jsx frontend/src/components/PhotoGallery.jsx frontend/src/widgets/BadgeAward.jsx frontend/src/widgets/ProgressTracker.jsx frontend/src/widgets/CharacterDisplay.jsx frontend/src/widgets/PhotoGrid.jsx frontend/src/widgets/PhotoDisplay.jsx` — PASS
-- `rg -n "justify-center h-full p-6|max-w-md aspect-square" frontend/src/components/PhotoSelector.jsx frontend/src/widgets/PhotoDisplay.jsx` — PASS
-- `rg -n "text-sm max-\\[380px\\]:text-xs" frontend/src/components/TextInput.jsx` — PASS (no matches; mobile input no longer uses sub-16px text)
-- `cd frontend && npm run lint` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Review Follow-Up: Mobile TTS Playback Unlock
-
-**Problem**: The recent TTS refactor switched playback from `AudioContext` scheduling to an `<audio>` element backed by WAV blobs, but `useTTS.unlock()` had been left as a no-op. On mobile browsers, that broke autoplay policy handling: the real `audio.play()` happened after async fetch/stream work instead of inside the original tap gesture, so TTS was blocked even though desktop browsers still worked.
-
-**Solution**: Restored a real gesture-time unlock path for TTS. `useTTS.unlock()` now primes the same audio element with a silent WAV during the user gesture, resets it immediately, and leaves it ready for later async playback. The hook keeps the WAV-blob playback approach, preserves cleanup on stop/end/error, and still falls back to browser speech when backend TTS is unavailable.
-
-**Edits**:
-- `frontend/src/hooks/useTTS.js` — added a silent WAV data URI plus a real `unlock()` implementation for the shared audio element; added explicit audio-element/url cleanup helpers; kept `playsInline` and restored consistent stop behavior for fallback speech
-- `HANDOFF.md` — added this mobile TTS follow-up entry
-
-**NOT Changed**:
-- `frontend/src/hooks/useSessionOrchestration.js` — existing `unlockTTS()` call sites were already correct and did not need changes in this follow-up
-- `frontend/src/App.jsx` — no behavior changes in this pass
-- Backend TTS endpoints and streaming contract — unchanged
-- There is still no automated mobile-browser playback test in this repo, so final confirmation remains manual on-device
-
-**Verification**:
-- Manual verification on mobile browser — PASS (user confirmed TTS now plays)
-- `cd frontend && npx eslint src/hooks/useTTS.js src/hooks/useSessionOrchestration.js src/App.jsx` — PASS
-- `cd frontend && npm run build` — PASS
 
 ---

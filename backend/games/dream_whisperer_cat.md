@@ -10,6 +10,12 @@ concepts_earned: [Reflection]
 keywords: [cat, kitten, stuffed cat]
 feature_keywords: [plush, stuffed, toy]
 photo_features: [soft paws, fluffy fur, closed eyes, peaceful expression]
+plain_description: "Your child will imagine what a sleeping cat is dreaming about and tell a story about what the cat sees in 3 magical dream scenes."
+steps_summary:
+  - "Learn the storytelling game with a quick demo round"
+  - "Describe what the cat sees while floating on a cloud, swimming in a milk ocean, and exploring a magical garden"
+  - "Talk about how imagining someone else's dreams is a way of thinking about thinking"
+  - "Earn the Dream Whisperer badge!"
 
 creative_slots:
   game_mechanic: storytelling_chain

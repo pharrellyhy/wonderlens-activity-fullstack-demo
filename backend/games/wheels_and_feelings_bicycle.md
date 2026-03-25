@@ -10,6 +10,13 @@ concepts_earned: [Function, Connection]
 keywords: [bicycle, bike, wheels, spokes, pedals, chain, ride]
 feature_keywords: [shiny, strong, round, fast]
 photo_features: [shiny wheels, thin spokes, strong frame, pedals]
+plain_description: "Your child will use their voice to speak as a bicycle and act out what the bike says or feels during 3 different adventures."
+steps_summary:
+  - "Learn the voice acting game with a quick demo round"
+  - "Act out what the bike says while zooming downhill, how it feels when the tire goes flat, and what it thinks when it discovers a new path"
+  - "Talk about how every part of the bike has a job and how the bike connects the rider to new places"
+  - "Earn the Bike Whisperer badge!"
+
 creative_slots:
   game_mechanic: voice_acting
   metaphor: The child becomes a 'Bike Whisperer' who can hear what the bicycle feels and says on different adventures.

@@ -10,6 +10,13 @@ concepts_earned: [Responsibility, Function]
 keywords: [stop sign, traffic sign, red sign, octagon, safety sign, street sign]
 feature_keywords: [red, white border, octagon, eight sides, shiny]
 photo_features: [bold red color, eight sides, white border, white letters]
+plain_description: "Your child will answer pretend phone calls from people who are confused at crossings and decide what they should do to stay safe."
+steps_summary:
+  - "Learn the helper hotline game with a quick demo round"
+  - "Help a rushing driver who wants to skip the stop sign, decide if a driver should wait for a kid crossing the street, and figure out what two cars should do when they arrive at the same time"
+  - "Talk about how the stop sign's job is to keep everyone safe and why following rules is our responsibility"
+  - "Earn the Safety Solver badge!"
+
 creative_slots:
   game_mechanic: helper_hotline
   metaphor: The stop sign is a superhero for the street, and you are the dispatcher helping people figure out what to do.

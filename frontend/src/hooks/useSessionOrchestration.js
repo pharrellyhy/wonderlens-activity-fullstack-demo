@@ -7,9 +7,11 @@ import useTTS from './useTTS';
 
 export default function useSessionOrchestration(tier) {
   const [retryCount, setRetryCount] = useState(0);
+  const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('ttsEnabled') === 'true');
   const silenceTimerRef = useRef({ start() {}, clear() {} });
   const lastSpokenIndexRef = useRef(-1);
   const autoAdvancePendingRef = useRef(false);
+  const mutedCompletionTimeoutRef = useRef(null);
 
   const {
     messages,
@@ -53,6 +55,13 @@ export default function useSessionOrchestration(tier) {
     }
   }, [sessionState?.status, sendAutoAdvance]);
 
+  const clearMutedCompletionTimeout = useCallback(() => {
+    if (mutedCompletionTimeoutRef.current !== null) {
+      clearTimeout(mutedCompletionTimeoutRef.current);
+      mutedCompletionTimeoutRef.current = null;
+    }
+  }, []);
+
   const { isSpeaking, speak, speakFromStream, stop: stopTTS, unlock: unlockTTS } = useTTS(handleSpeakingDone);
 
   const handleSilence = useCallback(() => {
@@ -80,9 +89,17 @@ export default function useSessionOrchestration(tier) {
     sendMessage(speech.transcript);
   }, [isActive, sendMessage, silenceTimer, speech.resultId, speech.transcript]);
 
+  // Persist TTS preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('ttsEnabled', ttsEnabled);
+  }, [ttsEnabled]);
+
+  const toggleTts = useCallback(() => setTtsEnabled(prev => !prev), []);
+
   // Auto-speak AI messages and handle auto-advance
   useEffect(() => {
     if (messages.length === 0) return;
+    clearMutedCompletionTimeout();
     const lastIndex = messages.length - 1;
     const lastMsg = messages[lastIndex];
     if (lastMsg.role !== 'ai') return;
@@ -95,16 +112,36 @@ export default function useSessionOrchestration(tier) {
       autoAdvancePendingRef.current = true;
     }
 
-    // Check if there's a pending audio stream from /api/turn-speak
-    const pendingAudio = pendingAudioRef.current;
-    if (pendingAudio) {
-      pendingAudioRef.current = null;
-      speakFromStream(pendingAudio.stream, pendingAudio.sampleRate);
+    if (ttsEnabled) {
+      // Check if there's a pending audio stream from /api/turn-speak
+      const pendingAudio = pendingAudioRef.current;
+      if (pendingAudio) {
+        pendingAudioRef.current = null;
+        speakFromStream(pendingAudio.stream, pendingAudio.sampleRate);
+      } else {
+        // Fallback: use /api/tts (e.g., for the first turn from /api/start)
+        speak(lastMsg.text, tier);
+      }
     } else {
-      // Fallback: use /api/tts (e.g., for the first turn from /api/start)
-      speak(lastMsg.text, tier);
+      // TTS muted — skip audio but still trigger done callback for silence timer / auto-advance
+      pendingAudioRef.current = null;
+      mutedCompletionTimeoutRef.current = window.setTimeout(() => {
+        mutedCompletionTimeoutRef.current = null;
+        handleSpeakingDone();
+      }, 0);
     }
-  }, [messages, silenceTimer, speak, speakFromStream, tier, pendingAudioRef]);
+    return clearMutedCompletionTimeout;
+  }, [
+    clearMutedCompletionTimeout,
+    handleSpeakingDone,
+    messages,
+    pendingAudioRef,
+    silenceTimer,
+    speak,
+    speakFromStream,
+    tier,
+    ttsEnabled,
+  ]);
 
   // Clear silence timer when input is disabled
   useEffect(() => {
@@ -116,6 +153,7 @@ export default function useSessionOrchestration(tier) {
   const startSession = useCallback(async (photo) => {
     // Unlock audio playback synchronously in the user gesture context,
     // before the async API call, to satisfy browser autoplay policy.
+    clearMutedCompletionTimeout();
     unlockSfx();
     unlockTTS();
     try {
@@ -124,9 +162,10 @@ export default function useSessionOrchestration(tier) {
     } catch {
       setRetryCount(prev => prev + 1);
     }
-  }, [start, tier, unlockSfx, unlockTTS]);
+  }, [clearMutedCompletionTimeout, start, tier, unlockSfx, unlockTTS]);
 
   const startDeepLinkSession = useCallback(async (entity, deepLinkTier, conversationContext = []) => {
+    clearMutedCompletionTimeout();
     unlockSfx();
     unlockTTS();
     try {
@@ -136,7 +175,7 @@ export default function useSessionOrchestration(tier) {
       setRetryCount(prev => prev + 1);
       throw error;
     }
-  }, [startDeepLink, unlockSfx, unlockTTS]);
+  }, [clearMutedCompletionTimeout, startDeepLink, unlockSfx, unlockTTS]);
 
   const handleSendMessage = useCallback((text) => {
     if (!text.trim() || !isActive || turnPending) return;
@@ -161,6 +200,7 @@ export default function useSessionOrchestration(tier) {
   }, [silenceTimer, speech, turnPending]);
 
   const resetSession = useCallback(() => {
+    clearMutedCompletionTimeout();
     stopTTS();
     silenceTimer.clear();
     speech.stop();
@@ -168,7 +208,7 @@ export default function useSessionOrchestration(tier) {
     setRetryCount(0);
     lastSpokenIndexRef.current = -1;
     autoAdvancePendingRef.current = false;
-  }, [reset, silenceTimer, speech, stopTTS]);
+  }, [clearMutedCompletionTimeout, reset, silenceTimer, speech, stopTTS]);
 
   return {
     messages,
@@ -189,6 +229,8 @@ export default function useSessionOrchestration(tier) {
     isEnded,
     isInputDisabled,
     isSpeaking,
+    ttsEnabled,
+    toggleTts,
     isMicActive: speech.isListening,
     sttMode: speech.mode,
     silenceTimer,

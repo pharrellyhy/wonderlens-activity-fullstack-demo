@@ -10,6 +10,12 @@ concepts_earned: [Form, Function]
 keywords: [lion, brave, strong, big, tough]
 feature_keywords: [paws, mane, roar, fur]
 photo_features: [yellow-brown fur, big body, strong paws]
+plain_description: "Your child will go outside and find 2 things that look big, strong, or tough, then compare which is the biggest and which is the toughest."
+steps_summary:
+  - "Find 2 things nearby that look big, strong, or tough"
+  - "Describe what makes each one look brave or strong"
+  - "Compare the finds — which is biggest and which is toughest"
+  - "Earn the Brave Things Scout badge!"
 creative_slots:
   observation_angle: form
   collection_criterion: Find things that look big, strong, or tough

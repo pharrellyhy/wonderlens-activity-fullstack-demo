@@ -40,6 +40,7 @@ function CollectiblePreview({ item }) {
 export default function GameDetailView({ photo, onBack, onStart, isLoading }) {
   const s = photo.summary || {};
   const isCat1 = s.category === 'category_1';
+  const [showSteps, setShowSteps] = useState(false);
 
   return (
     <div className="flex flex-col items-center h-full p-6 max-[380px]:p-4 overflow-y-auto">
@@ -76,15 +77,44 @@ export default function GameDetailView({ photo, onBack, onStart, isLoading }) {
       {/* About This Activity */}
       <div className="w-full max-w-lg rounded-2xl max-[380px]:rounded-xl bg-white/70 border border-[var(--color-forest)]/10 p-4 max-[380px]:p-3 mb-4 shadow-sm">
         <h3 className="text-sm font-bold text-[var(--color-forest-dark)] mb-2">About This Activity</h3>
-        {s.metaphor && (
+
+        {/* Plain-language summary */}
+        {s.plain_description ? (
+          <p className="text-sm max-[380px]:text-xs text-gray-600 mb-3">{s.plain_description}</p>
+        ) : s.metaphor ? (
           <p className="text-sm max-[380px]:text-xs text-gray-600 italic mb-3">&ldquo;{s.metaphor}&rdquo;</p>
-        )}
+        ) : null}
+
         {s.role_title && (
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs text-gray-500">Your child earns the title:</span>
             <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-[var(--color-forest)] to-[var(--color-forest-dark)] text-white">
               {s.role_title}
             </span>
+          </div>
+        )}
+
+        {/* Expandable detailed steps */}
+        {s.steps_summary && s.steps_summary.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowSteps(!showSteps)}
+              className="text-xs font-medium text-[var(--color-forest)] hover:text-[var(--color-forest-dark)] transition-colors cursor-pointer"
+            >
+              {showSteps ? '▾ Hide detailed steps' : '▸ See detailed steps'}
+            </button>
+            {showSteps && (
+              <ol className="mt-2 space-y-1.5">
+                {s.steps_summary.map((step, i) => (
+                  <li key={i} className="flex items-start gap-2.5 max-[380px]:gap-2">
+                    <span className="flex-shrink-0 w-5 h-5 max-[380px]:w-4.5 max-[380px]:h-4.5 rounded-full bg-[var(--color-forest)]/10 text-[var(--color-forest-dark)] text-[11px] max-[380px]:text-[10px] font-bold flex items-center justify-center mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm max-[380px]:text-xs text-gray-600">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         )}
 

@@ -1,4 +1,5 @@
 ### Style: Voice Acting
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 **Presenting the scenario:**
 - Paint a vivid, sensory scene using `{round_scenario}`. Make the child SEE and FEEL the moment.

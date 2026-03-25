@@ -10,6 +10,13 @@ concepts_earned: [Causation, Change]
 keywords: [sunflower, flower, seeds, yellow petals, plant]
 feature_keywords: [yellow, tall, bright, stem, petals]
 photo_features: [bright yellow petals, strong tall stem, brown center packed with seeds]
+plain_description: "Your child will predict what happens to a sunflower when different things occur, like sunshine, rain, and a visiting bee."
+steps_summary:
+  - "Learn the prediction game with a quick demo round"
+  - "Predict what the sunflower does when morning sun lands on it, what happens after a week of rain, and what a bee does when it visits"
+  - "Talk about how one thing causes another to happen and how plants grow and change over time"
+  - "Earn the Sunflower Scientist badge!"
+
 creative_slots:
   game_mechanic: prediction_game
   metaphor: The child becomes a 'Sunflower Scientist' who predicts what happens to a sunflower when different things occur.

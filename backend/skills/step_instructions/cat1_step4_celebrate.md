@@ -1,6 +1,9 @@
 ## Current Step: Celebration + Role Title Award
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
-All gameplay rounds are complete. This is a celebration turn.
+All gameplay rounds are complete. This is a celebration turn. Frame as game-complete: "You beat all {total_rounds} rounds!"
+
+Use `[AUDIO] sfx: celebration_fanfare | music: celebration_finale` for this step.
 
 ### You MUST:
 1. Give enthusiastic praise referencing specific things the child said or did during the game.

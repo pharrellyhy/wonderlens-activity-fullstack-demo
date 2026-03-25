@@ -1,4 +1,5 @@
 ### Style: Helper Hotline
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 **How this mechanic works:** The child receives pretend "calls" from characters who have a problem, and the child decides what the right thing to do is.
 

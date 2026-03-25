@@ -1,4 +1,5 @@
 ## Current Step: Transition Bridge (Observation Hook)
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 You are generating a turn for the opening of a Category 5 collection activity.
 

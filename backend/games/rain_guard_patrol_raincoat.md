@@ -10,6 +10,12 @@ concepts_earned: [Connection, Function]
 keywords: [raincoat, rain, guard, protect, cover, shelter]
 feature_keywords: [hood, long, smooth, slippery, swish]
 photo_features: [hood, long sleeves, waterproof material]
+plain_description: "Your child will go outside and find 2 things that cover, shelter, or protect from rain, then name each one and tell a story about the rain guard team protecting together."
+steps_summary:
+  - "Find 2 things nearby that cover, shelter, or protect from rain"
+  - "Give each rain protector a character name"
+  - "Tell a tiny story about the rain guard team working together"
+  - "Earn the Rain Guard badge!"
 creative_slots:
   observation_angle: function
   collection_criterion: Find things that cover, shelter, or protect from rain

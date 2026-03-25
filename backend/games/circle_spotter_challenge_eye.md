@@ -10,6 +10,12 @@ concepts_earned: [Connection, Perspective]
 keywords: [eye, circle, pattern, pupil, iris, ring]
 feature_keywords: [concentric, round, layer, dot]
 photo_features: [dark pupil, colored iris, white sclera, circular shape]
+plain_description: "Your child will go outside and find 3 things with circles, rings, or dot patterns, then sort them by why each one has its circular shape."
+steps_summary:
+  - "Find 3 things outside with circles, rings, dots, or concentric patterns"
+  - "Compare each find to the eye and describe how the circles are similar or different"
+  - "Sort the collection by purpose — protection, attraction, movement, or growth"
+  - "Earn the Circle Pattern Reporter badge!"
 creative_slots:
   observation_angle: pattern
   collection_criterion: 'Find things outside that have eye-like shapes: circles, rings, dots, or concentric patterns.'

@@ -61,6 +61,8 @@ def _build_entity_config(data: dict) -> EntityConfig:
         ib_theme=data["ib_theme"],
         ib_key_concept=data["ib_key_concept"],
         concepts_earned=data.get("concepts_earned", []),
+        plain_description=data.get("plain_description", ""),
+        steps_summary=data.get("steps_summary", []),
     )
 
 

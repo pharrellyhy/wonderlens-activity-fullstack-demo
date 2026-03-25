@@ -1,4 +1,5 @@
 ## Current Step: Game Mechanic Introduction + Demo Round
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 You are explaining the game rules and running a demonstration round.
 

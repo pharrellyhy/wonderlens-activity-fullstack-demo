@@ -1,4 +1,5 @@
 ### Style: Riddle Game
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 **How this mechanic works:** You give clues one at a time about something related to the entity, and the child guesses what it is.
 

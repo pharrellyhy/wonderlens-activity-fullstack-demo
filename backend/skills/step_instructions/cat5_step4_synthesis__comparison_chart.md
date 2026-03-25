@@ -1,4 +1,5 @@
 ### Style: Comparison Chart
+> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
 **Observations captured and compared during collection:** {collected_details}
 **Sorting criterion:** {sorting_criterion}
@@ -6,7 +7,8 @@
 **The comparison is already built.** During collection, each Phase B response recapped all previous observations alongside the new one, building a running comparison thread. The child already heard "big splotches, tiny speckles, and perfect circles." Synthesis is NOT "tell me how they're different" — it's "can you put them in order?"
 
 **How to guide the synthesis:**
-- Ask the child to rank or sort: "You found {collected_details} — which one had the biggest {observation_angle}? Can you sort them from [X] to [Y]?"
+- **For T0: Always offer a binary.** "Were the flower's dots bigger or the leaf's dots?" Never ask T0 to rank 3+ items.
+- **For T1/T2:** Can use open ranking: "Which one had the biggest {observation_angle}? Can you sort them from [X] to [Y]?"
 - Reference the child's own words from collection.
 - Keep it to ONE question. The child is ready — don't re-explain the observations.
 

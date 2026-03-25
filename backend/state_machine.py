@@ -139,6 +139,67 @@ def _match_visual_frame(step: str, visual_frames: list[ScreenFrame]) -> ScreenFr
     return None
 
 
+def _resolve_cat5_detail_photo_url(context: dict, round_number: int, photo_id: str) -> str:
+    """Resolve the collected photo URL for Cat5 detail mode from round items."""
+    round_items = context.get("round_items", [])
+    round_idx = round_number - 1
+    if 0 <= round_idx < len(round_items):
+        for item in round_items[round_idx]:
+            if item.get("id") == photo_id:
+                return item.get("image", "")
+    return ""
+
+
+def _build_cat5_detail_frame(context: dict, entity: str, round_number: int) -> ScreenFrame:
+    """Build the Cat5 Phase B frame showing the just-collected photo."""
+    collected_photos = context.get("collected_photos", [])
+    last_photo = collected_photos[-1] if collected_photos else ""
+    return ScreenFrame(
+        widget="photo_display",
+        widget_params={
+            "description": f"Just collected: {last_photo}",
+            "entity": entity,
+            "photo_id": last_photo,
+            "photoUrl": _resolve_cat5_detail_photo_url(context, round_number, last_photo),
+        },
+        animation="sparkle_highlight",
+        trigger=f"on_round_{round_number}",
+    )
+
+
+def _build_cat5_progress_widget_params(
+    context: dict, creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots]
+) -> dict:
+    """Build widget params for Cat5 collection progress."""
+    collected_count = len(context.get("collected_photos", []))
+    total = creative_slots.collection_count if isinstance(creative_slots, Cat5CreativeSlots) else 3
+    return {
+        "filled": collected_count,
+        "total": total,
+        "description": f"Collection progress: {collected_count} of {total}",
+    }
+
+
+def _with_round_context(
+    frame: ScreenFrame,
+    step: str,
+    context: dict,
+    creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots],
+) -> ScreenFrame:
+    """Return a copy of a matched frame enriched with round-specific widget params."""
+    if not (step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_")):
+        return frame
+
+    _, round_number = _parse_round_step(step)
+    frame_copy = frame.model_copy(deep=True)
+    frame_copy.widget_params["roundNumber"] = round_number
+
+    if step.startswith("STEP_3_COLLECT_") and frame_copy.widget == "progress_tracker":
+        frame_copy.widget_params.update(_build_cat5_progress_widget_params(context, creative_slots))
+
+    return frame_copy
+
+
 def get_screen_frame(
     step: str,
     template_type: Literal["cat1", "cat5"],
@@ -156,18 +217,20 @@ def get_screen_frame(
     if celebration_frame and step in {"STEP_4_CELEBRATE", "STEP_5_CELEBRATE"}:
         return celebration_frame
 
+    entity = context.get("entity_name", context.get("entity", "object"))
+    key_concepts = context.get("ib_key_concepts", context.get("key_concepts", []))
+
+    if template_type == "cat5" and step.startswith("STEP_3_COLLECT_"):
+        _, rnd = _parse_round_step(step)
+        collection_phase = context.get("collection_phase", "photo")
+        if collection_phase == "detail":
+            return _build_cat5_detail_frame(context, entity, rnd)
+
     # Try matching from Visual Agent frames
     if visual_frames:
         matched = _match_visual_frame(step, visual_frames)
         if matched:
-            # Ensure roundNumber is correct for round/collect steps
-            if step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
-                _, rnd = _parse_round_step(step)
-                matched.widget_params["roundNumber"] = rnd
-            return matched
-
-    entity = context.get("entity_name", context.get("entity", "object"))
-    key_concepts = context.get("ib_key_concepts", context.get("key_concepts", []))
+            return _with_round_context(matched, step, context, creative_slots)
 
     # Hook step: show the photo
     if step == "STEP_1_HOOK":
@@ -234,32 +297,14 @@ def get_screen_frame(
 
         if step.startswith("STEP_3_COLLECT_"):
             _, rnd = _parse_round_step(step)
-            total = creative_slots.collection_count if isinstance(creative_slots, Cat5CreativeSlots) else 3
-
-            # Phase B (detail): show the just-collected photo instead of progress tracker
-            collection_phase = context.get("collection_phase", "photo")
-            if collection_phase == "detail":
-                collected_photos = context.get("collected_photos", [])
-                last_photo = collected_photos[-1] if collected_photos else ""
-                return ScreenFrame(
-                    widget="photo_display",
-                    widget_params={
-                        "description": f"Just collected: {last_photo}",
-                        "entity": entity,
-                        "photo_id": last_photo,
-                    },
-                    animation="sparkle_highlight",
-                    trigger=f"on_round_{rnd}",
-                )
+            progress_params = _build_cat5_progress_widget_params(context, creative_slots)
 
             return ScreenFrame(
                 widget="progress_tracker",
-                widget_params={
-                    "filled": rnd,
-                    "total": total,
-                    "description": f"Collection progress: {rnd} of {total}",
-                },
-                animation="slot_fill_chime" if rnd < total else "celebration_burst",
+                widget_params=progress_params,
+                animation="slot_fill_chime"
+                if progress_params["filled"] < progress_params["total"]
+                else "celebration_burst",
                 trigger=f"on_round_{rnd}",
             )
 

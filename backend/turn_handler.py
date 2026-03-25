@@ -132,6 +132,7 @@ def _state_context(state: SessionStateModel) -> dict:
         "key_concepts": state.ib_key_concepts,
         "collection_phase": state.collection_phase,
         "collected_photos": state.collected_photos,
+        "round_items": state.round_items,
     }
 
 
@@ -703,8 +704,8 @@ async def resolve_turn(
             if dialogue_stripped.endswith("?"):
                 logger.info("Overriding stay_on_step: synthesis response ends with question")
                 turn_response.stay_on_step = True
-            elif synthesis_child_turns < 2:
-                logger.info("Overriding stay_on_step: synthesis needs at least 2 child turns")
+            elif synthesis_child_turns < 1:
+                logger.info("Overriding stay_on_step: synthesis needs at least 1 child turn")
                 turn_response.stay_on_step = True
 
         if turn_response.stay_on_step:

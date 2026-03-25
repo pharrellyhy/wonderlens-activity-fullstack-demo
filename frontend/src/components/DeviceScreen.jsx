@@ -35,6 +35,7 @@ function getFrameKey(screenFrame) {
     screenFrame.widget_params?.description,
     screenFrame.widget_params?.title,
     screenFrame.widget_params?.roundNumber,
+    screenFrame.widget_params?.photo_id,
   ].join('|');
 }
 
@@ -90,7 +91,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
         <AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">
           {WidgetComponent ? (
             <div className="w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center">
-              <WidgetComponent {...params} photoUrl={photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
+              <WidgetComponent {...params} photoUrl={params.photoUrl || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
             </div>
           ) : (
             <div className="text-center p-8 surface-card rounded-2xl">

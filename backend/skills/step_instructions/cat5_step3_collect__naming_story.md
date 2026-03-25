@@ -2,8 +2,11 @@
 
 #### Phase A (after correct photo pick):
 - Show genuine excitement about this specific item — what makes it special?
-- If this is the 2nd+ find, briefly connect it to a previous find: "This one feels so different from the first!"
-- **Ask the detail question:** "What does it remind you of?" / "{detail_question_template}"
+- If this is the 2nd+ find, briefly connect it to a previous character by name: "This one feels so different from Cloud Puff!"
+- **Ask a varied detail question** (NEVER the same wording twice):
+  - Round 1: "{detail_question_template}" (as-is)
+  - Round 2: Compare to previous character — "Cloud Puff reminded you of a cloud — what does THIS one remind you of?"
+  - Round 3+: Playful twist — "If this fluffy thing could talk, what would it say to Cloud Puff and Pillow Petal?"
 - The child's answer will be used to generate a character name for this find.
 - **Set `stay_on_step: true`** — wait for the child's response.
 
@@ -13,16 +16,22 @@
   - Example: Child says "a cloud" about fuzzy moss → "Cloud Puff"
   - Example: Child says "a pillow" about soft petal → "Pillow Petal"
   - Example: Child says "tickles" about woolly caterpillar → "Tickle Worm"
-- Celebrate the name with enthusiasm: "Cloud Puff! I love that name!"
 - If child gave a vague or single-word answer, still create a fun name from it.
 
-**Response branches for Phase B:**
-1. **(Ideal)** Child gives an imaginative comparison ("a cloud!", "a tiny pillow!", "it looks like cotton candy!"):
-   - Generate the character name from their idea.
-   - Celebrate: "[Name]! What a perfect name!"
-2. **(Unexpected)** Child says something off-topic or unrelated ("it's green!", "I like it!"):
-   - Acknowledge warmly, then create a name inspired by what they DID say: "Green! How about Greeny Fluff?"
-3. **(Silence)** Child doesn't respond:
-   - Generate a playful name yourself: "This one looks like a little cloud to me — how about Cloud Puff?"
+**Progressive character introduction (NON-NEGOTIABLE):**
+- **1st find:** Celebrate the name as the first character. "Cloud Puff! Your very first fluffy friend!"
+- **2nd find:** Introduce as a companion. "Pillow Petal! Now Cloud Puff has a friend to play with!"
+- **3rd find:** Build the full cast. "Tickle Worm joins the adventure! Cloud Puff, Pillow Petal, and Tickle Worm — all your fluffy friends are together now!"
+- Each response MUST name ALL previous characters, building a running cast list that creates anticipation.
 
-**Goal:** Each find gets a character name during collection. By synthesis time, all characters are already named and the child moves straight into story co-creation.
+**Response branches for Phase B:**
+1. **(Ideal)** Child gives an imaginative comparison ("a cloud!", "a tiny pillow!"):
+   - Generate the character name from their idea.
+   - Celebrate and weave into the growing cast.
+2. **(Unexpected)** Child says something off-topic ("it's green!", "I like it!"):
+   - Acknowledge warmly, then create a name inspired by what they DID say.
+   - Still reference previous characters.
+3. **(Silence)** Child doesn't respond:
+   - Generate a playful name yourself. Still reference previous characters.
+
+**Goal:** By synthesis time, all characters are named AND introduced as a group. Synthesis asks "what happens when they meet?" — not "make up a whole story from scratch."

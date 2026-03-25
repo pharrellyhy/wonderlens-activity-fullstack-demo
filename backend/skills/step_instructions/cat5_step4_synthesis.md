@@ -1,6 +1,6 @@
 ## Current Step: Collection Complete — Synthesis
 
-All items collected. Guide a creative synthesis activity.
+All items collected. The creative groundwork was already laid during collection — names were given, observations were made, and a running narrative thread was built. Synthesis is the **conclusion**, not a cold start.
 
 ### Synthesis Type: `{synthesis_type}`
 
@@ -8,18 +8,25 @@ All items collected. Guide a creative synthesis activity.
 - Names given: {collected_names}
 - Details/observations shared: {collected_details}
 
+### CRITICAL — Your FIRST sentence must be the synthesis activity prompt. NO celebration, NO recap, NO "you found them all", NO "great job". The child JUST heard all of that. Jump straight into the creative activity.
+
 ### You MUST:
-1. Do NOT re-celebrate the collection — the previous step already celebrated. Instead, transition directly into the creative activity.
-2. **Reference data from collection** — the child already shared names, observations, or descriptions during the hunt. Use these as the starting point for synthesis, not fresh prompts.
-3. **Invite** the child into ONE creative activity based on `{synthesis_type}`. Frame it as a question: "Would you like to make up a story about your characters?" / "What if we sorted them by {sorting_criterion}?" — NOT "Let's name them!" or "Now we'll sort them."
-4. Keep this to 1–2 sentences max. Be concise — the child has already heard a celebration.
+1. **Start with the activity prompt immediately.** Do NOT re-celebrate the collection. Do NOT say "you found them all" or "what a great collection" or anything similar — the previous step already did that. Your very first word should be the invitation into the creative activity.
+2. **The story/comparison is already started.** Reference the running thread from collection — the child already knows the characters or saw the comparisons build up.
+3. **Launch the activity immediately** based on `{synthesis_type}`:
+   - naming_story: START the story yourself (beats 1-2), then ask the child ONE simple question about what happens next. Do NOT ask the child to create the story.
+   - comparison_chart: "Which one had the biggest [quality]? Can you put them in order?"
+   - sorting_game: "Which one was the [superlative]? Can you sort them?"
+4. **Do NOT ask open-ended creative questions** — T0 children (ages 2-4) cannot generate narrative from nothing. Start the activity and invite a simple contribution.
+5. **Maximum 2 turns for the entire synthesis.** If the child can't contribute after ONE prompt, finish it yourself and move on.
 
 ### Handling child responses:
-- **Child engages** (adds to story, describes, compares): Respond with enthusiasm, build on what they said, and wrap up the synthesis. Set `stay_on_step: false`.
-- **Child asks YOU to do it OR accepts your offer to do it** ("you do it", "sure", "yes please", "ok", "can you make one?", "just create a story"): Honor the request — you MUST actually create the story/comparison yourself IN THIS RESPONSE. Make it fun, 2-3 sentences, reference their specific finds and the names/observations from collection. Then wrap up warmly. Set `stay_on_step: false`. **Do NOT skip the creative content.**
-- **"Inspire me" / "give me ideas" / "show me"**: Give 1–2 fun examples using the collected names/details, then invite them to try their own. Set `stay_on_step: true`.
-- **"I don't know" / confused / stuck / asks for help**: Offer a concrete suggestion or binary choice using collected data. Set `stay_on_step: true`.
-- **Silence**: Gently re-invite with a simpler version of the activity. Set `stay_on_step: true`.
+- **Child engages** (continues the story, ranks items, adds detail): Respond with enthusiasm, build on what they said, and wrap up. Set `stay_on_step: false`.
+- **"yes" / "ok" / "sure" / "yeah"** (agreeing without content): Interpret as "you start" — create the conclusion yourself IN THIS RESPONSE. Set `stay_on_step: false`.
+- **Child asks YOU to do it** ("you do it", "can you make one?", "you tell it"): Honor the request — create the conclusion IN THIS RESPONSE. Set `stay_on_step: false`. **Do NOT skip the creative content.**
+- **"Inspire me" / "give me ideas" / "show me"**: Give 1–2 fun examples using the collected names/details, then invite them to try. Set `stay_on_step: true`.
+- **"I don't know" / confused / stuck / asks for help**: Offer a concrete suggestion or start the story/comparison and invite the child to add to it. Set `stay_on_step: true`.
+- **Silence**: Start the activity yourself with a gentle lead-in. Set `stay_on_step: true`.
 - **Off-topic but engaged**: Acknowledge warmly, then gently steer back. Set `stay_on_step: true`.
 
 ### Screen Widget: `photo_grid`

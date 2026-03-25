@@ -12,7 +12,6 @@ feature_keywords: [smooth, shiny, green, stem, round]
 photo_features: [smooth skin, shiny surface, green color, round shape]
 plain_description: "Predict what happens to a green apple in different situations, like biting it, leaving it out for a week, and slicing it open."
 steps_summary:
-  - "Learn the prediction game with a quick demo round"
   - "Predict what you hear and taste when you bite the apple, what happens if you leave it on the counter for a week, and what is hiding inside when you slice it in half"
   - "Talk about how the apple connects to many parts of life and how people can feel differently about the same thing"
   - "Earn the Apple Prediction Scientist badge!"

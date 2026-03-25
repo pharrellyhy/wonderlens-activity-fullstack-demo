@@ -188,7 +188,7 @@ async def start_deep_link(req: DeepLinkStartRequest) -> JSONResponse:
         await log_session(settings.db_path, session_id, req.tier, activity_type, source="deep_link")
 
         script_agent = ScriptAgent()
-        first_turn = await _generate_with_retry(script_agent, state)
+        first_turn = await _generate_with_retry(script_agent, state, is_first_on_step=True)
 
         state.conversation_history.append(
             ConversationTurn(role="ai", text=first_turn.dialogue, step=state.current_step, round_number=None)
@@ -272,7 +272,7 @@ async def start_session(
 
             # Generate hook turn via Script Agent (uses instruction recipe)
             script_agent = ScriptAgent()
-            first_turn = await _generate_with_retry(script_agent, state)
+            first_turn = await _generate_with_retry(script_agent, state, is_first_on_step=True)
 
             # Record hook in conversation history; STEP_2 is generated on the first follow-up turn.
             state.conversation_history.append(

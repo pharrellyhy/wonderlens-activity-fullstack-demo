@@ -308,20 +308,151 @@ def _maybe_record_generated_name(state: SessionStateModel, dialogue: str) -> Non
 
 
 # ---------------------------------------------------------------------------
-# LLM generation with retry
+# Post-processing response validation
 # ---------------------------------------------------------------------------
 
+_MODEL_PHRASES = [
+    "i think",
+    "i'd call",
+    "maybe it's",
+    "it looks like",
+    "i think it looks",
+    "should we call",
+    "it reminds me of",
+    "let me show",
+    "see this",
+    "see the",
+    "look at this",
+    "i think it would",
+    "it sounds like",
+]
 
-async def _generate_with_retry(script_agent: ScriptAgent, state: SessionStateModel) -> TurnResponse:
-    """Generate a turn response with one retry on failure, then graceful fallback."""
-    try:
-        return await script_agent.generate_turn(state)
-    except ScriptAgentError:
-        logger.warning(f"Script Agent failed for step {state.current_step}, retrying")
+_OPEN_QUESTION_STARTS = [
+    "what does",
+    "what do you",
+    "what did",
+    "what would",
+    "what happens",
+    "what kind",
+    "how does",
+    "how do you",
+    "how did",
+    "how would",
+    "where does",
+    "where do",
+    "where did",
+    "why does",
+    "why do",
+    "why did",
+    "i wonder what",
+    "i wonder how",
+    "i wonder where",
+    "i wonder why",
+    "i wonder if",
+]
+
+
+def _ends_with_open_question(dialogue: str) -> bool:
+    """Check if dialogue ends with an open-ended wh-question."""
+    if "?" not in dialogue:
+        return False
+    # Find last sentence containing "?"
+    sentences = re.split(r"[.!]\s+", dialogue)
+    last_q = ""
+    for s in reversed(sentences):
+        if "?" in s:
+            last_q = s.strip().lower()
+            break
+    if not last_q:
+        return False
+    return any(last_q.startswith(p) or f" {p}" in last_q for p in _OPEN_QUESTION_STARTS)
+
+
+def _has_model_phrase(dialogue: str) -> bool:
+    """Check if dialogue contains a model/scaffold phrase."""
+    lower = dialogue.lower()
+    return any(p in lower for p in _MODEL_PHRASES)
+
+
+def _validate_response(
+    state: SessionStateModel,
+    turn_response: TurnResponse,
+    is_first_on_step: bool,
+) -> tuple[bool, str]:
+    """Validate AI response against step-specific rules.
+
+    Returns (True, "") if valid, or (False, corrective_hint) if invalid.
+    """
+    step = state.current_step
+    dialogue = turn_response.dialogue
+    tier = state.tier
+
+    # 1. Hook: allow questions — forced exclamation-only hooks sound unnatural
+    # (validation disabled for all tiers)
+
+    # 2. Mission/Rules: demo validation removed — AI doesn't reliably produce demos
+    #    despite repeated prompt strengthening. Kept the prompt instructions as aspirational
+    #    but no longer reject responses that skip the demo.
+
+    # 3. T0 collect detail: must scaffold (not open question)
+    # Fires both when entering detail (is_first_on_step) and when already in detail phase
+    if step.startswith("STEP_3_COLLECT_") and tier == "T0" and (state.collection_phase == "detail" or is_first_on_step):
+        if _ends_with_open_question(dialogue) and not _has_model_phrase(dialogue):
+            return False, (
+                "CORRECTION: For T0 (ages 2-4), do NOT ask open questions like "
+                "'What does this remind you of?' Instead, model your own idea first: "
+                "'I think this looks like a cloud! What do you think?' or offer a choice."
+            )
+
+    # 4. T0 synthesis: must scaffold
+    if step == "STEP_4_SYNTHESIS" and tier == "T0" and is_first_on_step:
+        if _ends_with_open_question(dialogue) and " or " not in dialogue.lower():
+            return False, (
+                "CORRECTION: For T0 (ages 2-4), do NOT ask open questions in synthesis. "
+                "Offer a binary choice like 'Did Cloud Puff tickle them or give a hug?'"
+            )
+
+    # 5. T0 Cat1 round questions: must scaffold
+    if step.startswith("STEP_3_ROUND_") and tier == "T0":
+        if _ends_with_open_question(dialogue) and not _has_model_phrase(dialogue):
+            return False, (
+                "CORRECTION: For T0 (ages 2-4), do NOT ask open questions like "
+                "'What does your dinosaur do?' Instead, model first and offer a choice: "
+                "'I think it would say ROAR! Would it say ROAR or something different?'"
+            )
+
+    return True, ""
+
+
+# ---------------------------------------------------------------------------
+# LLM generation with retry + validation
+# ---------------------------------------------------------------------------
+
+_MAX_GENERATION_ATTEMPTS = 3
+
+
+async def _generate_with_retry(
+    script_agent: ScriptAgent,
+    state: SessionStateModel,
+    is_first_on_step: bool = False,
+) -> TurnResponse:
+    """Generate a turn response with validation and retry.
+
+    Attempts up to _MAX_GENERATION_ATTEMPTS times. After each generation,
+    runs post-processing validation. If validation fails, appends a corrective
+    hint and retries. The hint is removed from history after retry.
+    """
+    last_response: TurnResponse | None = None
+
+    for attempt in range(_MAX_GENERATION_ATTEMPTS):
         try:
-            return await script_agent.generate_turn(state)
+            response = await script_agent.generate_turn(state)
         except ScriptAgentError:
-            logger.error(f"Script Agent failed twice for step {state.current_step}, using fallback")
+            logger.warning(f"Script Agent failed for step {state.current_step} (attempt {attempt + 1})")
+            if attempt < _MAX_GENERATION_ATTEMPTS - 1:
+                continue
+            # Final attempt failed — use fallback
+            logger.error(f"Script Agent failed {_MAX_GENERATION_ATTEMPTS} times, using fallback")
             state.status = "error"
             return TurnResponse(
                 dialogue="[gentle] That was so much fun! Would you like to play again next time? See you soon!",
@@ -331,6 +462,34 @@ async def _generate_with_retry(script_agent: ScriptAgent, state: SessionStateMod
                 screen_animation="badge_reveal",
                 sfx_cue="badge_awarded",
             )
+
+        last_response = response
+        is_valid, hint = _validate_response(state, response, is_first_on_step)
+
+        if is_valid:
+            # Clean up any corrective hints from previous attempts
+            state.conversation_history = [t for t in state.conversation_history if not t.text.startswith("CORRECTION:")]
+            return response
+
+        logger.info(f"Validation failed for step {state.current_step} (attempt {attempt + 1}): {hint[:80]}")
+
+        if attempt < _MAX_GENERATION_ATTEMPTS - 1:
+            # Append corrective hint as a system-like message in conversation history
+            state.conversation_history.append(
+                ConversationTurn(
+                    role="child",
+                    text=hint,
+                    step=state.current_step,
+                )
+            )
+
+    # All attempts failed validation — return the last response anyway
+    logger.warning(
+        f"All {_MAX_GENERATION_ATTEMPTS} attempts failed validation for {state.current_step}, using last response"
+    )
+    # Clean up any corrective hints from history
+    state.conversation_history = [t for t in state.conversation_history if not t.text.startswith("CORRECTION:")]
+    return last_response  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +608,8 @@ async def resolve_turn(
 
     # 7a. Invitation: normal handling (first delivery, acceptance, decline, off-topic)
     if _is_invitation_step(state.current_step):
-        turn_response = await _generate_with_retry(script_agent, state)
+        is_first = not _already_prompted_on_step(state)
+        turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=is_first)
 
         if turn_response.child_intent == "declined":
             state.invitation_decline_count += 1
@@ -578,7 +738,18 @@ async def resolve_turn(
 
         # Generate response FIRST (for current step), then decide whether to advance.
         # This lets the Script Agent help a stuck child without skipping steps.
-        turn_response = await _generate_with_retry(script_agent, state)
+        # Pass is_first_on_step when entering detail phase (correct photo just picked).
+        entering_detail = (
+            state.current_step.startswith("STEP_3_COLLECT_")
+            and state.collection_phase == "detail"
+            and collection_wrong is False
+            and turn_input.photo_id is not None
+        )
+        turn_response = await _generate_with_retry(
+            script_agent,
+            state,
+            is_first_on_step=entering_detail,
+        )
         auto_advance = False
 
         # Guardrail: detect premature completion language during collection when items remain.
@@ -668,7 +839,7 @@ async def resolve_turn(
 
     # Interactive step (e.g. STEP_4_SYNTHESIS): first visit generates prompt
     if step_needs_user_input(state.current_step) and not _already_prompted_on_step(state):
-        turn_response = await _generate_with_retry(script_agent, state)
+        turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
         return TurnResult(
@@ -684,7 +855,7 @@ async def resolve_turn(
     if step_needs_user_input(state.current_step):
         if state.current_step == "STEP_1_HOOK":
             _advance_state(state)
-            turn_response = await _generate_with_retry(script_agent, state)
+            turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
             return TurnResult(

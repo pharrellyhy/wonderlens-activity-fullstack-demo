@@ -12,7 +12,6 @@ feature_keywords: [spot, dot, polka]
 photo_features: [red shell, black polka dots, tiny legs, small antennae]
 plain_description: "Go outside and find 3 things that have dots, spots, or circles on them, then compare how the dots look different on each one."
 steps_summary:
-  - "Watch a quick example of spotting and describing a dotted thing"
   - "Find 3 things nearby with dots, spots, or circles"
   - "Describe and name each spotted find"
   - "Compare the dots across all finds — big splotches vs tiny speckles vs perfect circles"

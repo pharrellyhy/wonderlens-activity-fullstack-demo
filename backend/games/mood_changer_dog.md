@@ -12,7 +12,6 @@ feature_keywords: [plush, stuffed, toy]
 photo_features: [floppy ears, soft fur, cute face, fluffy body]
 plain_description: "Pretend to be a stuffed dog and use your voice to act out what the dog would say or feel in 3 different situations."
 steps_summary:
-  - "Learn the voice acting game with a quick demo round"
   - "Act out what the dog says when warm sunshine lands on its belly, when it trips and goes bump, and when its favorite treat arrives"
   - "Talk about how the same dog feels different things depending on what happens"
   - "Earn the Emotion Translator badge!"

@@ -41,8 +41,6 @@ export default function GameDetailView({ photo, onBack, onStart, isLoading }) {
   const s = photo.summary || {};
   const isCat1 = s.category === 'category_1';
   const [showSteps, setShowSteps] = useState(false);
-  const firstStep = s.steps_summary?.[0] || '';
-  const hasStartDemo = /\b(demo|example)\b/i.test(firstStep);
 
   return (
     <div className="flex flex-col items-center h-full p-6 max-[380px]:p-4 overflow-y-auto">
@@ -136,11 +134,6 @@ export default function GameDetailView({ photo, onBack, onStart, isLoading }) {
                 </li>
               ))}
             </ol>
-            {hasStartDemo && (
-              <p className="mb-3 text-xs max-[380px]:text-[11px] text-gray-500">
-                This happens right after you press Start.
-              </p>
-            )}
           </>
         )}
 

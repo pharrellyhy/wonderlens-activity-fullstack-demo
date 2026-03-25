@@ -12,7 +12,6 @@ feature_keywords: [concentric, round, layer, dot]
 photo_features: [dark pupil, colored iris, white sclera, circular shape]
 plain_description: "Go outside and find 3 things with circles, rings, or dot patterns, then sort them by why each one has its circular shape."
 steps_summary:
-  - "Watch a quick example of spotting a circular pattern and comparing it to the eye"
   - "Find 3 things outside with circles, rings, dots, or concentric patterns"
   - "Compare each find to the eye and describe how the circles are similar or different"
   - "Sort the collection by purpose — protection, attraction, movement, or growth"

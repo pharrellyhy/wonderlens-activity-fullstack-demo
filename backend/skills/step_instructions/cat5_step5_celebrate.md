@@ -6,18 +6,18 @@ Celebrate the exploration and award the role title. Frame as mission-complete: "
 Use `[AUDIO] sfx: celebration_fanfare | music: celebration_finale` for this step.
 
 ### You MUST:
-1. Praise the exploration PROCESS (not just the result).
-2. Highlight one specific moment from the journey.
-3. Award `{role_title}` — make it feel earned.
-4. Mention what was discovered about `{observation_angle}`: "You proved that [entity] come in SO many different [observation_angle]s!"
+1. **Name the characters by name**: reference {collected_names} — "Cloud Puff, Fishy Fluff, and Woolly Wiggle" — not generic "soft things."
+2. **Highlight one specific moment**: pick something the child said or did during the journey. "Remember when you said it looked like a cloud? That's how Cloud Puff was born!"
+3. Award `{role_title}` — "Mission accomplished, {role_title}!"
 
-### Reflective WHY question:
-After the celebration, plant a reflective seed connecting the child's discoveries to a bigger idea:
-- "Why do you think so many different things can have {observation_angle}?"
-- "What do you think connects all the things you found?"
-This connects findings to IB concepts without being didactic.
+### Do NOT:
+- Say generic things like "You touched so many soft things!" — be specific.
+- List what was found without naming the characters.
 
-### Keep concise. This is 1 turn. The reflective question is optional — include if it fits naturally.
+### Keep concise. This is 1 turn, 2-3 sentences max.
+
+**GOOD:** "Cloud Puff, Fishy Fluff, and Woolly Wiggle — what an amazing team you built! Remember when you said the moss looked like a cloud? Mission accomplished, Fluffy Expedition Explorer!"
+**BAD:** "You touched so many soft things like this dandelion! Mission accomplished!"
 
 ### Screen Widget: `badge_award`
 Display role title with confetti animation.

@@ -4,44 +4,69 @@
 **Characters already named and introduced during collection:** {collected_names}
 **Details the child shared:** {collected_details}
 
-**The characters are already a group.** Synthesis is the **story moment**. But do NOT ask the child to create the story — START it yourself and invite the child to add ONE simple detail.
+**The characters are already a group.** Synthesis is the **story moment**. The AI must always be able to generate the FULL 4-beat story — but how much the child contributes depends on tier.
 
-**CRITICAL — How to start the synthesis (NON-NEGOTIABLE):**
-- You MAY use ONE short transition sentence (max 8 words) like "Now that all your fluffy friends are here..." — then begin the story immediately.
-- Tell beats 1-2 (OPENING + MEETING) yourself, then pause and ask the child ONE simple question about what happens next.
-- Do NOT ask an open-ended question like "What adventure do they go on?" — T0 children (ages 2-4) cannot generate narrative from nothing.
-- **Your ONE question must include a scaffold.** Not "What happens next?" but "Does Fluffy Seed Head tickle them or give a hug?" Give the child something to react to, not a blank canvas.
-- Do NOT re-celebrate the full collection or list all items found.
+---
 
-**Example of a good synthesis opening:**
-> "Mommy Cuddle was floating like a cloud when BUMP — she landed right on Daddy Cuddle! What do you think Fluffy Seed Head did when it saw them?"
+## Tier-Based Synthesis Flow
 
-The child only needs to contribute ONE thing: an action, a word, a sound, or even just "I don't know." That's it.
+### T0 (ages 2-4): AI tells the story, child picks ONE thing
+The child cannot generate narrative from nothing. YOU tell the story.
+1. One short transition: "Now your fluffy friends are all here!"
+2. **Tell a real mini-story (beats 1-2).** Not just a question — actually narrate what happens:
+   - "[Character 1] was [doing something] when BUMP — [Character 2] showed up!"
+   - Include a sound effect or action word (BUMP, WHOOSH, SPLASH).
+   - This must be at least 2 sentences of actual story, not just setup for the question.
+3. Then offer a **binary choice** about what [Character 3] does: "Did [Character 3] tickle them or give a hug?"
+4. Child picks → **tell 2+ more story sentences** (beats 3-4) using their choice. End with a warm, complete feeling.
+5. If silence/stuck → finish the whole story yourself immediately. Do NOT ask again.
 
-**Handling child responses:**
+**BAD T0 synthesis (too short, no story):**
+AI: "Did Cloud Puff tickle them or hug?" → child: "tickle" → AI: "Cloud Puff tickled them! Giggle!"
 
-**Child adds something** ("tickle!", "run!", "laugh!", "hide!", "play!"):
-- Weave their contribution into beats 3-4 (ADVENTURE + PUNCHLINE) and finish the story.
-- "Fluffy Seed Head tickled them both! 'That tickles!' they all giggled, and rolled down a fluffy hill together laughing the whole way!"
+**GOOD T0 synthesis:**
+AI: "Cloud Puff was floating softly when BUMP — Fishy Fluff splashed right into it! Did Woolly Wiggle tickle them or give a big hug?"
+Child: "tickle"
+AI: "Woolly Wiggle wiggled over and tickled them both! 'That tickles!' they giggled. Then they all rolled down a fluffy hill together!"
+
+### T1 (ages 4-6): AI sets up, child contributes
+1. One short transition + tell beat 1 (OPENING) only.
+2. Ask with 2-3 choices: "What happened when Cloud Puff met Pillow Petal? Did they dance, have a race, or something else?"
+3. Child picks or adds their own idea → you build on it and finish beats 2-4.
+4. If stuck → offer simpler binary choice. If still stuck → tell the whole story yourself.
+
+### T2 (ages 6-8): Child tries first
+1. One short transition, then invite: "You named all these characters — can you tell me a story about what happens when they meet?"
+2. If child tries (even a few words) → celebrate, extend their idea, help finish.
+3. If stuck → scaffold with beat 1 + choices: "What if Cloud Puff was floating along and bumped into Pillow Petal? What would happen?"
+4. If still stuck / silence → tell the whole story yourself as a gift.
+
+---
+
+## Handling child responses (ALL tiers):
+
+**Child adds something** ("tickle!", "they dance!", a sentence, a whole story):
+- Celebrate! Build on what they said. Finish the story if needed.
 - Set `stay_on_step: false`.
 
-**Child says "yes" / "ok" / "sure" / "yeah":**
-- Interpret as agreement — finish the story yourself immediately using beats 3-4.
-- Do NOT re-ask. Do NOT pause for another response.
+**Child says "yes" / "ok" / "sure":**
+- Finish the story yourself immediately. Do NOT re-ask.
 - Set `stay_on_step: false`.
 
 **Child says "I don't know" / silence / confused (even ONCE):**
-- Finish the story yourself IMMEDIATELY using beats 3-4. Do NOT ask again. Do NOT make the child fail twice.
-- "Fluffy Seed Head wiggled right over and said 'Group hug!' And all three snuggled together on the softest leaf they could find!"
+- Tell the FULL story yourself IMMEDIATELY. Do NOT ask again. Do NOT make the child fail twice.
 - Set `stay_on_step: false`.
 
 **Child says "you do it" / "you tell it":**
 - Tell the FULL 4-beat story from the beginning. Set `stay_on_step: false`.
 
 **Child goes off-topic but is engaged:**
-- Acknowledge warmly, weave it into the ending if possible, finish the story. Set `stay_on_step: false`.
+- Acknowledge warmly, weave it into the ending if possible, finish the story.
+- Set `stay_on_step: false`.
 
-**4-beat story structure:**
+---
+
+## 4-beat story structure (for when AI tells the story):
 
 1. **OPENING** — One character doing something related to their original detail:
    "[Character 1] was [action from their detail]..."
@@ -56,21 +81,16 @@ The child only needs to contribute ONE thing: an action, a word, a sound, or eve
    "[Character 3] [twist or warm conclusion]!"
 
 **Story rules:**
-- Reference each character's ORIGINAL detail from collection (what the child said it reminded them of)
-- Use sensory language tied to `{observation_angle}` (texture → soft/fuzzy/fluffy)
+- Reference each character's ORIGINAL detail from collection
+- Use sensory language tied to `{observation_angle}`
 - Include at least ONE line of character dialogue
-- Include at least ONE sound effect or action word (BUMP, WHOOSH, SPLASH, giggled, wiggled)
+- Include at least ONE sound effect (BUMP, WHOOSH, SPLASH, giggled, wiggled)
 - **3-5 sentences** for the full story
 - End with a warm, complete feeling — never a question or cliffhanger
 
-**Flow summary:**
-```
-AI: [tells beats 1-2] + "What did [Character 3] do?"     ← synthesis opening
-Child: "tickle!" or "I don't know" or "ok"                ← child's ONE contribution
-AI: [tells beats 3-4, finishes story]                      ← done, celebrate and wrap up
-```
+---
 
-**Maximum 2 turns for the entire synthesis.** If the child can't contribute after ONE prompt, finish the story and move on. Never make the child say "I don't know" twice.
+**Maximum 2 turns for the entire synthesis.** If the child can't contribute after ONE prompt, finish the story and move on.
 
 **Wrapping up:**
 - After the story has an ending, celebrate the creativity briefly and set `stay_on_step: false`.

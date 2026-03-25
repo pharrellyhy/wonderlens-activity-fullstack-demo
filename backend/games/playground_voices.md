@@ -12,7 +12,6 @@ feature_keywords: [colorful, outdoor, fun, play]
 photo_features: [swings, slides, monkey bars, soft ground]
 plain_description: "Use your voice to speak for playground equipment and act out what the swing, slide, and monkey bars would say or feel in different situations."
 steps_summary:
-  - "Learn the voice acting game with a quick demo round"
   - "Act out what the swing says on a sunny morning, what the slide feels on a hot day, and what the monkey bars feel in the rain"
   - "Talk about how the same playground feels different at different times and how each piece has its own job"
   - "Earn the Playground Feelings Reporter badge!"

@@ -12,7 +12,6 @@ feature_keywords: [paws, mane, roar, fur]
 photo_features: [yellow-brown fur, big body, strong paws]
 plain_description: "Go outside and find 2 things that look big, strong, or tough, then compare which is the biggest and which is the toughest."
 steps_summary:
-  - "See a quick example of finding something big and describing why it looks strong"
   - "Find 2 things nearby that look big, strong, or tough"
   - "Describe what makes each one look brave or strong"
   - "Compare the finds — which is biggest and which is toughest"

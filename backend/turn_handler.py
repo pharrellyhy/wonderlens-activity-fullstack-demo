@@ -14,6 +14,7 @@ try:
     from .schemas import ScreenFrame
     from .schemas.creative_slots import Cat5CreativeSlots
     from .schemas.session_state import ConversationTurn, SessionStateModel
+    from .schemas.turn_plan import TurnPlan
     from .schemas.turn_response import TurnResponse
     from .state_machine import (
         EARLY_EXIT,
@@ -28,6 +29,7 @@ except ImportError:
     from schemas import ScreenFrame
     from schemas.creative_slots import Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel
+    from schemas.turn_plan import TurnPlan
     from schemas.turn_response import TurnResponse
     from state_machine import (
         EARLY_EXIT,
@@ -427,6 +429,61 @@ def _validate_response(
 
 
 # ---------------------------------------------------------------------------
+# Plan-aware validation (two-pass diagnostics)
+# ---------------------------------------------------------------------------
+
+# Common household/outdoor items that indicate the speaker is suggesting specific
+# things the child should go find — violates the do_not_suggest_items constraint.
+_ITEM_SUGGESTION_RE = re.compile(
+    r"(?i)\b(?:find|look for|grab|get|bring|search for|spot)\b"
+    r"[^.!?]{0,40}"
+    r"\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
+    r"|flower|shell|stone|button|coin|bottle|box|bag|hat|glove|scarf|key|pen|pencil"
+    r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble)\b"
+)
+
+
+def _validate_plan(
+    state: SessionStateModel,
+    plan: TurnPlan,
+    dialogue: str,
+) -> str:
+    """Validate the TurnPlan and compare it against the speaker's dialogue.
+
+    Returns a diagnostic label:
+    - "valid" — no plan-level issues detected
+    - "speaker_violation" — plan constraints were correct but the speaker ignored them
+    - "planner_failure" — the plan itself has issues that need a full retry
+
+    Args:
+        state: Current session state.
+        plan: The TurnPlan from the planner pass.
+        dialogue: The dialogue string from the speaker's TurnResponse.
+    """
+    # Check 1: do_not_suggest_items is true but dialogue names specific findable items
+    if plan.do_not_suggest_items and _ITEM_SUGGESTION_RE.search(dialogue):
+        logger.warning(
+            "plan_validation: speaker_violation — do_not_suggest_items=true but dialogue suggests items: %s",
+            dialogue[:120],
+        )
+        return "speaker_violation"
+
+    # Check 2: correct-photo collection step should have a sensory_observation in the plan
+    if (
+        state.current_step.startswith("STEP_3_COLLECT_")
+        and state.collection_phase == "detail"
+        and not plan.sensory_observation
+    ):
+        logger.warning(
+            "plan_validation: planner_failure — empty sensory_observation for detail phase on %s",
+            state.current_step,
+        )
+        return "planner_failure"
+
+    return "valid"
+
+
+# ---------------------------------------------------------------------------
 # LLM generation with retry + validation
 # ---------------------------------------------------------------------------
 
@@ -464,7 +521,8 @@ async def _generate_with_retry(
     """Generate a turn response with validation and retry.
 
     Attempts up to _MAX_GENERATION_ATTEMPTS times. After each generation,
-    runs post-processing validation. If validation fails, appends a corrective
+    runs plan-aware validation (if a TurnPlan is available) followed by
+    post-processing validation. If validation fails, appends a corrective
     hint and retries. The hint is removed from history after retry.
     """
     last_response: TurnResponse | None = None
@@ -489,6 +547,20 @@ async def _generate_with_retry(
             )
 
         last_response = response
+        plan = script_agent.last_plan
+
+        # Plan-aware validation: diagnose planner vs speaker issues
+        if plan is not None:
+            plan_verdict = _validate_plan(state, plan, response.dialogue)
+            if plan_verdict != "valid":
+                logger.info(
+                    "plan_validation: step=%s attempt=%d verdict=%s plan=%s",
+                    state.current_step,
+                    attempt + 1,
+                    plan_verdict,
+                    plan.model_dump_json(indent=None),
+                )
+
         is_valid, hint = _validate_response(state, response, is_first_on_step)
 
         if is_valid:
@@ -504,7 +576,18 @@ async def _generate_with_retry(
             )
             return response
 
-        logger.info(f"Validation failed for step {state.current_step} (attempt {attempt + 1}): {hint[:80]}")
+        # Log both the plan and response on validation failure for diagnostics
+        if plan is not None:
+            logger.info(
+                "validation_failure_with_plan: step=%s attempt=%d hint=%s plan=%s response_dialogue=%s",
+                state.current_step,
+                attempt + 1,
+                hint[:80],
+                plan.model_dump_json(indent=None),
+                response.dialogue[:120],
+            )
+        else:
+            logger.info(f"Validation failed for step {state.current_step} (attempt {attempt + 1}): {hint[:80]}")
 
         if attempt < _MAX_GENERATION_ATTEMPTS - 1:
             # Append corrective hint as a system-like message in conversation history

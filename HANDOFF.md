@@ -4,6 +4,39 @@ Last updated: 2026-03-26
 
 ---
 
+## Two-Pass Generation (Planner + Speaker)
+
+**Problem**: The single-call Script Agent asks the LLM to simultaneously understand child input, make structural decisions (question type, item suggestions, progress phrasing), track game state, and generate warm age-appropriate language — all in one JSON response. This produces responses where language is right but structure is wrong (suggesting specific items, asking wrong question types, repeating patterns). Structural decisions and creative language compete for the same context window.
+
+**Solution**: Replaced the single Script Agent LLM call with two sequential calls — a Planner that outputs structured JSON (`TurnPlan`) describing WHAT to say, and a Speaker that generates natural dialogue from the plan. Both use the same Qwen 3.5+ model via ALI DashScope. Post-processing validation now runs plan-aware checks. Old single-pass path is preserved as fallback. Design plan in `docs/plans/2026-03-26-two-pass-generation.md`.
+
+**Edits**:
+- `backend/schemas/turn_plan.py` — **NEW**: `TurnPlan` Pydantic model with content decisions (celebrate_item, sensory_observation, name_choices, question_type, story_beat), constraints (must_model_first, offer_binary_choice, do_not_suggest_items), tone/format guidance, and screen/audio pass-through fields
+- `backend/schemas/__init__.py` — added `TurnPlan` to exports
+- `backend/agents/planner.py` — **NEW**: `Planner` class with `plan_turn()` method; builds state context, loads planner prompt template, calls LLM with JSON mode at lower temperature (0.3); reuses `_build_conversation_context`, `_build_creative_slots_text`, `_load_tier_constraints`, `_get_client` from script_agent
+- `backend/skills/planner_system.md` — **NEW**: Planner system prompt focused on decisions (no language generation); includes key rules for item suggestion avoidance, T0 scaffolding, progress variation
+- `backend/skills/speaker_system.md` — **NEW**: Minimal Speaker system prompt — converts TurnPlan to warm dialogue with tier-appropriate sentence limits
+- `backend/agents/script_agent.py` — restructured `ScriptAgent` for two-pass: added `__init__` with `last_plan` attribute; new `_plan_turn()` (calls Planner), `_speak_turn()` (calls Speaker with plan + tier info), `_speak_turn_streaming()` (streaming Speaker for early TTS); `generate_turn()` and `generate_turn_streaming()` now orchestrate planner→speaker→merge with single-pass fallback on failure; original logic preserved in `_generate_turn_single_pass()` and `_generate_turn_streaming_single_pass()`; added `_load_tier_rules_raw()` helper
+- `backend/config.py` — added `planner_max_tokens` (400), `planner_temperature` (0.3), `speaker_temperature` (0.7) settings
+- `backend/turn_handler.py` — added `TurnPlan` import; added `_validate_plan()` for plan-aware diagnostics (speaker_violation vs planner_failure); `_generate_with_retry()` now reads `script_agent.last_plan` to log plan JSON alongside response on validation failures
+- `tests/test_turn_plan.py` — **NEW**: 17 tests for TurnPlan schema (defaults, full construction, validation, JSON roundtrip)
+- `tests/test_planner.py` — **NEW**: 23 tests for Planner agent (state context building, prompt assembly, LLM call mocking, plan parsing)
+
+**NOT Changed**:
+- `backend/skills/script_turn.md` — existing system prompt unchanged (used by single-pass fallback)
+- `backend/skills/step_instructions/` — all step instruction files unchanged
+- `backend/state_machine.py` — step flow logic unchanged
+- `backend/turn_handler.py` `_validate_response()` — existing post-processing validation unchanged
+- `backend/turn_handler.py` `resolve_turn()` — turn resolution flow unchanged; two-pass is transparent to callers
+- Frontend code — no changes
+
+**Verification**:
+- `uv run pytest tests/test_turn_plan.py tests/test_planner.py tests/test_turn_handler.py -v` — 60 passed
+- `uv run ruff check backend/ && uv run ruff format --check backend/` — clean (pre-existing server.py format issue)
+- `uv run pytest tests/ -q --ignore=tests/test_ai_quality.py` — 288 passed, 29 failed (all failures pre-existing)
+
+---
+
 ## Review Follow-Up: Fix Example-Driven Prompt Interpolation + Tighten Local Coverage
 
 **Problem**: Reviewing the code modified for `docs/plans/example-driven-prompts-implementation.md` exposed one concrete script-agent bug and several stale local tests. The new Cat5 mission prompt introduced `{activity_name}` and `{tier}` placeholders, but `backend/agents/script_agent.py` did not inject either value, so literal braces leaked into the generated prompt text. The new compact tier summary also still emitted raw Python list reprs like `~[5, 10]` and `['simple', 'playful', 'exclamations']`, which makes the prompt noisier than intended. On the local test side, one naming-story fragment assertion still expected the old rule-heavy copy, and the scenario matcher tests were still relying on registry side effects plus old demo-catalog assumptions instead of isolating the current feature-matching path.
@@ -291,29 +324,5 @@ Last updated: 2026-03-26
 - Manual: Play through Cat5 collection, verify progress counts with SFX directives
 - Manual: Click a game photo, verify plain summary + expandable steps in GameDetailView
 - Manual: Start session, verify TTS muted by default, toggle works, silence timer still fires
-
----
-
-## Review Follow-Up: Let Cat5 Synthesis Finish After One Child Reply
-
-**Problem**: Reviewing the newer Cat5 synthesis prompt updates exposed one stale backend guardrail in `backend/turn_handler.py`. The synthesis handler still forced `stay_on_step` unless it had seen two child turns on `STEP_4_SYNTHESIS`, but the reviewed prompt contract now caps synthesis at one child contribution before the AI finishes the activity. In practice, that meant valid first replies like "tickle!" or "ok" would be held on synthesis for an unnecessary extra turn.
-
-**Solution**: Narrowed the synthesis completion guardrail to the actual requirement: block completion only until the first child synthesis reply exists, while still forcing `stay_on_step` when the AI ends with a question or when synthesis has not received any child reply yet. I added a focused regression test for the first-child-reply completion path.
-
-**Edits**:
-- `backend/turn_handler.py` — changed the Cat5 synthesis guardrail from "at least 2 child turns" to "at least 1 child turn" so the backend matches the updated synthesis contract
-- local `tests/test_turn_handler.py` — added regression coverage proving a single child synthesis reply can complete synthesis and advance to celebrate
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/state_machine.py` and the Cat5 detail-photo screen-frame work — reviewed earlier and left unchanged in this follow-up
-- Cat5 prompt files in `backend/skills/step_instructions/` — their newer one-reply synthesis contract was kept as the source of truth; no additional prompt edits were needed here
-- Frontend synthesis UI/device widget wiring — reviewed against the backend step transition and left unchanged
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py::test_synthesis_can_finish_after_first_child_reply -q` — PASS (`1 passed`)
-- `uv run pytest tests/test_turn_handler.py -q` — PASS (`20 passed`)
-- `uv run ruff check backend/turn_handler.py tests/test_turn_handler.py` — PASS
-- `uv run ruff format --check backend/turn_handler.py tests/test_turn_handler.py` — PASS
 
 ---

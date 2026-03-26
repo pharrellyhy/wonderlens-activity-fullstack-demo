@@ -447,6 +447,9 @@ def _build_system_prompt(state: SessionStateModel) -> str:
 class ScriptAgent:
     """Generates per-turn dialogue using Qwen via ALI DashScope."""
 
+    def __init__(self) -> None:
+        self.last_plan: TurnPlan | None = None
+
     async def generate_turn(self, state: SessionStateModel) -> TurnResponse:
         """Generate the next dialogue turn using two-pass (planner + speaker) with single-pass fallback.
 
@@ -465,6 +468,7 @@ class ScriptAgent:
         """
         try:
             plan = await self._plan_turn(state)
+            self.last_plan = plan
             turn = await self._speak_turn(state, plan)
 
             # Merge plan's screen/audio decisions into the speaker response
@@ -479,6 +483,7 @@ class ScriptAgent:
 
         except Exception as e:
             logger.warning(f"Two-pass generation failed, falling back to single-pass: {e}")
+            self.last_plan = None
             return await self._generate_turn_single_pass(state)
 
     async def _plan_turn(self, state: SessionStateModel) -> TurnPlan:
@@ -659,10 +664,167 @@ class ScriptAgent:
     async def generate_turn_streaming(
         self, state: SessionStateModel, on_dialogue: Callable | None = None
     ) -> TurnResponse:
-        """Generate the next dialogue turn using streaming.
+        """Generate the next dialogue turn using two-pass streaming.
 
-        Streams tokens from the LLM, extracting the dialogue value early
-        so TTS can start before the full JSON is complete.
+        Calls the Planner (non-streaming — small JSON output), then streams
+        the Speaker call to extract dialogue tokens for early TTS delivery.
+        Falls back to single-pass streaming if two-pass fails.
+
+        Args:
+            state: Full session state.
+            on_dialogue: Optional async callable(str) invoked with the dialogue
+                text as soon as it's extracted from the partial JSON stream.
+
+        Returns:
+            TurnResponse with dialogue, tone, and screen instructions.
+
+        Raises:
+            ScriptAgentError: If generation fails.
+        """
+        try:
+            # Step 1: Planner (non-streaming — small JSON)
+            plan = await self._plan_turn(state)
+            self.last_plan = plan
+
+            # Step 2: Speaker (streaming for early TTS)
+            turn = await self._speak_turn_streaming(state, plan, on_dialogue)
+
+            # Merge plan's screen/audio decisions into the speaker response
+            turn.screen_widget = plan.screen_widget
+            turn.screen_widget_params = plan.screen_widget_params
+            turn.screen_animation = plan.screen_animation
+            turn.sfx_cue = plan.sfx_cue
+            turn.child_intent = plan.child_intent
+            turn.stay_on_step = plan.stay_on_step
+
+            return turn
+
+        except Exception as e:
+            logger.warning(f"Two-pass streaming failed, falling back to single-pass streaming: {e}")
+            self.last_plan = None
+            return await self._generate_turn_streaming_single_pass(state, on_dialogue)
+
+    async def _speak_turn_streaming(
+        self, state: SessionStateModel, plan: TurnPlan, on_dialogue: Callable | None = None
+    ) -> TurnResponse:
+        """Run the Speaker pass with streaming to extract dialogue early for TTS.
+
+        Args:
+            state: Full session state (used for tier info).
+            plan: The structured TurnPlan from the planner pass.
+            on_dialogue: Optional async callable(str) invoked with the dialogue
+                text as soon as it's extracted from the partial stream.
+
+        Returns:
+            TurnResponse with dialogue and tone_marker from the speaker LLM.
+
+        Raises:
+            ScriptAgentError: If the speaker LLM call fails.
+        """
+        settings = get_settings()
+        start = time.perf_counter()
+
+        # Load tier rules for speaker prompt placeholders
+        tier_rules = _load_tier_rules_raw(state.tier)
+        words_per_sentence = tier_rules.get("words_per_sentence", [5, 10])
+        if isinstance(words_per_sentence, list) and len(words_per_sentence) == 2:
+            words_per_sentence_str = f"{words_per_sentence[0]}-{words_per_sentence[1]}"
+        else:
+            words_per_sentence_str = str(words_per_sentence)
+
+        # Build speaker system prompt from template
+        template = _SPEAKER_PROMPT_PATH.read_text() if _SPEAKER_PROMPT_PATH.exists() else ""
+        speaker_prompt = template.replace("{tier}", state.tier)
+        speaker_prompt = speaker_prompt.replace("{tier_label}", str(tier_rules.get("label", "")))
+        speaker_prompt = speaker_prompt.replace("{tier_ages}", str(tier_rules.get("ages", "")))
+        speaker_prompt = speaker_prompt.replace("{max_sentences}", str(tier_rules.get("max_sentences", 2)))
+        speaker_prompt = speaker_prompt.replace("{words_per_sentence}", words_per_sentence_str)
+        speaker_prompt = speaker_prompt.replace("{turn_plan_json}", plan.model_dump_json(indent=2))
+        speaker_prompt = speaker_prompt.replace("{emotion_tag}", plan.emotion_tag)
+
+        user_prompt = (
+            "Generate the dialogue for this plan. "
+            'Output valid JSON: {"dialogue": "[emotion_tag] Your text here", "tone_marker": "..."}'
+        )
+
+        try:
+            client = _get_client()
+
+            response_stream = await client.chat.completions.create(
+                model=settings.ali_model,
+                messages=[
+                    {"role": "system", "content": speaker_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=settings.speaker_temperature,
+                max_tokens=settings.script_turn_max_tokens,
+                response_format={"type": "json_object"},
+                extra_body={"enable_thinking": False},
+                stream=True,
+            )
+
+            accumulated = ""
+            dialogue_sent = False
+
+            async for chunk in response_stream:
+                delta = chunk.choices[0].delta if chunk.choices else None
+                if delta and delta.content:
+                    accumulated += delta.content
+
+                # Extract dialogue from partial JSON for early TTS
+                if not dialogue_sent and on_dialogue and accumulated:
+                    match = _DIALOGUE_RE.search(accumulated)
+                    if match:
+                        try:
+                            dialogue_text = json.loads(f'"{match.group(1)}"')
+                            await on_dialogue(dialogue_text)
+                            dialogue_sent = True
+                        except json.JSONDecodeError:
+                            pass
+
+            if not accumulated:
+                raise ScriptAgentError("Empty response from Speaker LLM streaming")
+
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.info(
+                f"Speaker LLM response (stream): step={state.current_step}, round={state.current_round}, "
+                f"activity={state.activity_type}\n--- SPEAKER RAW ---\n{accumulated}\n--- END ---"
+            )
+
+            # Parse the minimal JSON — speaker returns only dialogue + tone_marker
+            speaker_data = json.loads(accumulated)
+            turn = TurnResponse(
+                dialogue=speaker_data.get("dialogue", ""),
+                tone_marker=speaker_data.get("tone_marker", "gentle"),
+                screen_widget="photo_display",
+                screen_widget_params={},
+            )
+            _ensure_emotion_tag(turn, state)
+
+            logger.info(
+                f"Speaker turn (stream): step={state.current_step}, round={state.current_round}, latency={latency_ms}ms"
+            )
+            await log_agent_call(state.session_id, "speaker", latency_ms, True)
+
+            # If dialogue wasn't sent during streaming, send it now
+            if not dialogue_sent and on_dialogue:
+                await on_dialogue(turn.dialogue)
+
+            return turn
+
+        except ScriptAgentError:
+            raise
+
+        except Exception as e:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.error(f"Speaker streaming failed ({latency_ms}ms): {e}")
+            await log_agent_call(state.session_id, "speaker", latency_ms, False, error_message=str(e))
+            raise ScriptAgentError(f"Speaker streaming failed: {e}") from e
+
+    async def _generate_turn_streaming_single_pass(
+        self, state: SessionStateModel, on_dialogue: Callable | None = None
+    ) -> TurnResponse:
+        """Fallback: single-pass streaming generation (original path).
 
         Args:
             state: Full session state.

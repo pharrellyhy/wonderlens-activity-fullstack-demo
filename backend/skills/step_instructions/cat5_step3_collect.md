@@ -21,7 +21,7 @@ Previous characters: {collected_names} | Previous details: {collected_details}
 
 ### EXAMPLES
 
-Note: The detail question in Phase A must connect to THIS SPECIFIC ITEM — describe what YOU notice about how it feels when touched (squishy, silky, fuzzy, smooth), then offer two playful character names based on that texture. Don't use generic comparisons unrelated to the item.
+Note: The detail question in Phase A must connect to THIS SPECIFIC ITEM — describe what YOU notice about how it feels when touched (squishy, silky, fuzzy, smooth). For T0, ask a simple texture question (not naming). Naming happens in Phase B after the child responds. For T1/T2, ask open-ended detail questions.
 
 #### T0 (ages 2-4)
 
@@ -29,13 +29,13 @@ Note: The detail question in Phase A must connect to THIS SPECIFIC ITEM — desc
 AI: "[encouraging] I wonder if something {observation_angle} is hiding near you? Would you like to peek around?"
 
 **Phase A — Correct photo (1st find, item is fuzzy moss):**
-AI: "[excited] Fuzzy moss! That's one! Feel how squishy it is. I think it's like a tiny green pillow. Green Pillow or Mossy Puff?"
+AI: "[excited] Fuzzy moss! That's one! Feel it — is it squishy or smooth?"
 
 **Phase A — Correct photo (2nd find, item is soft petal):**
-AI: "[excited] Soft petal! Cloud Puff has a new friend! Feel how smooth this one is. Silky Star or Petal Soft?"
+AI: "[excited] Soft petal! Feel this one — is it silky or fuzzy?"
 
 **Phase A — Correct photo (3rd/final find, item is woolly caterpillar):**
-AI: "[excited] Woolly caterpillar — you found them all! Feel how fuzzy it is. Tickle Worm or Fuzzy Bug?"
+AI: "[excited] Woolly caterpillar — you found them all! Feel it — is it tickly or smooth?"
 
 **Phase A — Wrong photo:**
 AI: "[gentle] Ooh, a pinecone! Feel it — pokey, not soft! Something {observation_angle} might be hiding nearby."
@@ -44,23 +44,27 @@ AI: "[gentle] Ooh, a pinecone! Feel it — pokey, not soft! Something {observati
 AI: "[gentle] {stuck_hint}. Would you like to look around?"
 
 **Phase B — Ideal response (1st find):**
-Child: "Mossy Puff!"
-AI: "[celebrating] Mossy Puff! Your first fluffy friend! Would you like to find another?"
+Child: "squishy!"
+AI: "[celebrating] Squishy! Let's call this one Squishy Puff — your first fluffy friend! Would you like to find another?"
 
 **Phase B — Ideal response (2nd find):**
-Child: "Silky Star!"
-AI: "[celebrating] Silky Star joins Mossy Puff! Two cozy friends. One more hiding somewhere?"
+Child: "silky!"
+AI: "[celebrating] Silky! Meet Silky Star — Squishy Puff has a friend now! One more hiding somewhere?"
 
 **Phase B — Ideal response (3rd/final find):**
 Child: "tickles!"
-AI: "[celebrating] Tickle Worm! Mossy Puff, Silky Star, and Tickle Worm are a team. What an adventure!"
+AI: "[celebrating] Tickly! Tickle Worm joins the team! Squishy Puff, Silky Star, and Tickle Worm — what an adventure!"
+
+**Phase B — Confused / off-topic (child needs guidance):**
+Child: "what?"
+AI: "[gentle] Touch it gently! Does it feel soft or bumpy?" (set stay_on_step: true)
 
 **Phase B — Off-topic response:**
 Child: "it's green!"
-AI: "[gentle] Green and fuzzy! I think it looks like a little Green Cloud. Green Cloud or Fuzzy Bean?"
+AI: "[gentle] Green and fuzzy! I think it feels like a little cloud. Let's call it Green Cloud! Would you like to find another?"
 
 **Phase B — Silence:**
-AI: "[gentle] I think this fuzzy one looks like a little bear! Fuzzy Bear or Mossy Munch — which one?"
+AI: "[gentle] Touch it gently — I think it feels squishy! Let's call this one Squishy Bean! Would you like to find one more?"
 
 #### T1 (ages 4-6)
 

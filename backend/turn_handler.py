@@ -503,6 +503,7 @@ def _plan_retry_hint(plan_verdict: str) -> str:
 # ---------------------------------------------------------------------------
 
 _MAX_GENERATION_ATTEMPTS = 3
+_MAX_DETAIL_EXCHANGES = 3
 
 # Per-step retry stats for measuring prompt quality improvements.
 # Key: step name → {total, first_pass, retried, exhausted}
@@ -728,6 +729,7 @@ async def resolve_turn(
             _record_correct_collection_pick(state, turn_input.photo_id)
             # Phase A -> Phase B: correct photo triggers detail-harvesting question
             state.collection_phase = "detail"
+            state.detail_exchange_count = 0
         else:
             collection_wrong = True
             state.consecutive_wrong += 1
@@ -827,6 +829,8 @@ async def resolve_turn(
         and not turn_input.photo_id
         and has_child_input
     ):
+        state.detail_exchange_count += 1
+
         # Record the child's detail response
         child_text = turn_input.text if turn_input.text else "..."
         _record_collection_detail(state, child_text)
@@ -842,6 +846,7 @@ async def resolve_turn(
         if remaining_count == 0:
             # Keep the collected-photo view for this response, then auto-advance into synthesis.
             state.round_advance_pending = True
+            state.detail_exchange_count = 0
             return TurnResult(
                 turn_response=turn_response,
                 screen_frame=_get_screen_frame(state),
@@ -850,12 +855,26 @@ async def resolve_turn(
                 error_exit=state.status == "error",
             )
 
-        # Phase B always completes in one exchange — ignore stay_on_step from the AI.
-        # The AI may ask an invitational question ("Would you like to find one more?")
-        # but that's the transition to the next photo-pick round, not a detail follow-up.
+        # Respect stay_on_step from the AI — the child may be confused or
+        # off-topic and needs guidance back before advancing. Cap at 3
+        # exchanges to prevent infinite loops.
+        if turn_response.stay_on_step and state.detail_exchange_count < _MAX_DETAIL_EXCHANGES:
+            logger.info(
+                "Phase B: child needs guidance (exchange %d/%d), staying in detail phase",
+                state.detail_exchange_count,
+                _MAX_DETAIL_EXCHANGES,
+            )
+            return TurnResult(
+                turn_response=turn_response,
+                screen_frame=_get_screen_frame(state),
+                auto_advance=False,
+                response_type=response_type,
+                error_exit=state.status == "error",
+            )
 
         # Detail phase complete — move to the next collection round in photo-pick mode.
         state.collection_phase = "photo"
+        state.detail_exchange_count = 0
         _advance_state(state)
 
         return TurnResult(

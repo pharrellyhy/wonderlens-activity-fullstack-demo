@@ -42,10 +42,6 @@ logger = setup_logger(__name__)
 
 _PLANNER_PROMPT_PATH = Path(__file__).parent.parent / "skills" / "planner_system.md"
 
-# Hardcoded defaults until Task 4 adds config settings
-_PLANNER_MAX_TOKENS = 400
-_PLANNER_TEMPERATURE = 0.3
-
 
 class PlannerError(Exception):
     """Raised when the Planner Agent fails to produce a valid TurnPlan."""
@@ -182,8 +178,8 @@ class Planner:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                temperature=_PLANNER_TEMPERATURE,
-                max_tokens=_PLANNER_MAX_TOKENS,
+                temperature=settings.planner_temperature,
+                max_tokens=settings.planner_max_tokens,
                 response_format={"type": "json_object"},
                 extra_body={"enable_thinking": False},
             )

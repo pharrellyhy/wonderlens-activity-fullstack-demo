@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import BASE from '../utils/basePath';
 
-const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA==';
 
 /**
  * Build a WAV file (Blob) from raw PCM 16-bit LE mono samples.

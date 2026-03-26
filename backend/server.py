@@ -10,6 +10,7 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -143,6 +144,7 @@ class TTSRequest(BaseModel):
 class DeepLinkStartRequest(BaseModel):
     entity: str
     tier: str = "T0"
+    context_url: str = ""
     conversation_context: list[UpstreamConversationTurn] = Field(default_factory=list)
 
 
@@ -179,8 +181,27 @@ async def start_deep_link(req: DeepLinkStartRequest) -> JSONResponse:
         recipe = load_instruction_recipe(activity_type)
         state = recipe_to_session_state(recipe, session_id, req.tier, entity_config.demo_filename)
 
+        # Fetch upstream conversation from context_url (server-side, no CORS issues)
+        conversation_context = list(req.conversation_context)
+        if req.context_url and not conversation_context:
+            try:
+                async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                    ctx_res = await client.get(req.context_url)
+                    ctx_res.raise_for_status()
+                    ctx_data = ctx_res.json()
+                if isinstance(ctx_data, list):
+                    conversation_context = [
+                        UpstreamConversationTurn(role=t["role"], text=t["text"])
+                        for t in ctx_data
+                        if isinstance(t, dict)
+                        and t.get("role") in ("ai", "child")
+                        and isinstance(t.get("text"), str)
+                    ]
+            except Exception as ctx_err:
+                logger.warning(f"Failed to fetch context_url {req.context_url}: {ctx_err}")
+
         state.deep_linked = True
-        state.upstream_conversation = list(req.conversation_context)
+        state.upstream_conversation = conversation_context
 
         if state.template_type == "cat5":
             state.round_items = generate_round_items(state.activity_type, state.total_rounds)

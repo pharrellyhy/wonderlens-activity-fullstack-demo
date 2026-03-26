@@ -38,7 +38,7 @@ export default function useSfxPlayer() {
       src.connect(ctx.destination);
       src.start(0);
       // Also unlock HTML Audio elements
-      const silence = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=');
+      const silence = new Audio('data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA==');
       silence.volume = 0;
       silence.play().catch(() => {});
       unlockedRef.current = true;

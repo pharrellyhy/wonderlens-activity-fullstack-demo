@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import useConversation from './useConversation';
 import useSfxPlayer from './useSfxPlayer';
 import useSilenceTimer from './useSilenceTimer';
@@ -64,6 +64,28 @@ export default function useSessionOrchestration(tier) {
   }, []);
 
   const { isSpeaking, speak, speakFromStream, stop: stopTTS, unlock: unlockTTS } = useTTS(handleSpeakingDone);
+
+  // Unlock audio on the first user gesture (click/touch/keydown).
+  // Deep link sessions start via redirect (no user gesture), so the unlock
+  // calls inside startDeepLinkSession never satisfy browser autoplay policy.
+  // This listener catches the first real interaction and unlocks then.
+  useLayoutEffect(() => {
+    const handler = () => {
+      unlockSfx();
+      unlockTTS();
+      for (const evt of ['click', 'touchstart', 'keydown']) {
+        document.removeEventListener(evt, handler, true);
+      }
+    };
+    for (const evt of ['click', 'touchstart', 'keydown']) {
+      document.addEventListener(evt, handler, { capture: true, once: false });
+    }
+    return () => {
+      for (const evt of ['click', 'touchstart', 'keydown']) {
+        document.removeEventListener(evt, handler, true);
+      }
+    };
+  }, [unlockSfx, unlockTTS]);
 
   const handleSilence = useCallback(() => {
     if (sessionState?.status === 'active') {
@@ -197,18 +219,19 @@ export default function useSessionOrchestration(tier) {
     }
   }, [clearMutedCompletionTimeout, start, tier, unlockSfx, unlockTTS]);
 
-  const startDeepLinkSession = useCallback(async (entity, deepLinkTier, conversationContext = []) => {
+  const startDeepLinkSession = useCallback(async (entity, deepLinkTier, contextUrl = '') => {
+    // Audio unlock is NOT called here — deep link sessions start via redirect
+    // (useEffect), not a user gesture, so unlock would be rejected by the
+    // browser.  The first-interaction listener registered above handles it.
     clearMutedCompletionTimeout();
-    unlockSfx();
-    unlockTTS();
     try {
       setRetryCount(0);
-      return await startDeepLink(entity, deepLinkTier, conversationContext);
+      return await startDeepLink(entity, deepLinkTier, contextUrl);
     } catch (error) {
       setRetryCount(prev => prev + 1);
       throw error;
     }
-  }, [clearMutedCompletionTimeout, startDeepLink, unlockSfx, unlockTTS]);
+  }, [clearMutedCompletionTimeout, startDeepLink]);
 
   const handleSendMessage = useCallback((text) => {
     if (!text.trim() || !isActive || turnPending) return;

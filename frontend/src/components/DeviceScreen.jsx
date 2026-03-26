@@ -8,6 +8,7 @@ import AnimationOverlay from '../widgets/AnimationOverlay';
 import SfxIndicator from './SfxIndicator';
 import useSfxPlayer from '../hooks/useSfxPlayer';
 import { CameraIcon } from '../icons';
+import { asset } from '../utils/basePath';
 
 const WIDGET_MAP = {
   photo_display: PhotoDisplay,
@@ -91,7 +92,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
         <AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">
           {WidgetComponent ? (
             <div className="w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center">
-              <WidgetComponent {...params} photoUrl={params.photoUrl || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
+              <WidgetComponent {...params} photoUrl={asset(params.photoUrl) || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
             </div>
           ) : (
             <div className="text-center p-8 surface-card rounded-2xl">

@@ -8,35 +8,6 @@ import RetryButton from './components/RetryButton';
 import ToyCameraFrame from './components/ToyCameraFrame';
 import useSessionOrchestration from './hooks/useSessionOrchestration';
 
-async function loadDeepLinkConversation(contextPath) {
-  if (!contextPath) {
-    return [];
-  }
-
-  try {
-    const res = await fetch(contextPath);
-    if (!res.ok) {
-      throw new Error(`Context fetch failed: ${res.status}`);
-    }
-
-    const data = await res.json();
-    if (!Array.isArray(data)) {
-      return [];
-    }
-
-    return data
-      .filter((turn) => (
-        turn
-        && (turn.role === 'ai' || turn.role === 'child')
-        && typeof turn.text === 'string'
-      ))
-      .map((turn) => ({ role: turn.role, text: turn.text }));
-  } catch (error) {
-    console.warn('Deep link context load failed', error);
-    return [];
-  }
-}
-
 function getEndedStatusLabel(status) {
   if (status === 'completed') {
     return 'Activity complete!';
@@ -97,10 +68,9 @@ function App() {
     const contextPath = params.get('context') || '';
 
     void (async () => {
-      const conversationContext = await loadDeepLinkConversation(contextPath);
       setTier(deepLinkTier);
       try {
-        await startDeepLinkSession(entity, deepLinkTier, conversationContext);
+        await startDeepLinkSession(entity, deepLinkTier, contextPath);
         window.history.replaceState({}, '', window.location.pathname);
       } catch {
         // Let the existing error UI handle failed deep-link starts.

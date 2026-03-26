@@ -106,10 +106,10 @@ export async function sendTurnSpeak(sessionId, text, isSilent, photoId = null) {
   return { turnData, audioStream, sampleRate };
 }
 
-export async function startDeepLinkSession(entity, tier, conversationContext = []) {
+export async function startDeepLinkSession(entity, tier, contextUrl = '') {
   const body = { entity, tier };
-  if (conversationContext.length > 0) {
-    body.conversation_context = conversationContext;
+  if (contextUrl) {
+    body.context_url = contextUrl;
   }
   const res = await fetch(`${BASE}/api/start-deep-link`, {
     method: 'POST',

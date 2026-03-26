@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { startSession, startDeepLinkSession, sendTurn, sendTurnSpeak } from '../utils/api';
+import { asset } from '../utils/basePath';
 
 export default function useConversation() {
   const [messages, setMessages] = useState([]);
@@ -130,7 +131,7 @@ export default function useConversation() {
     }
   }, [clearPhotoUrl]);
 
-  const startDeepLink = useCallback(async (entity, tier, conversationContext = []) => {
+  const startDeepLink = useCallback(async (entity, tier, contextUrl = '') => {
     setLoading(true);
     setTurnPending(false);
     setError(null);
@@ -142,11 +143,11 @@ export default function useConversation() {
     pendingAudioRef.current = null;
 
     try {
-      const data = await startDeepLinkSession(entity, tier, conversationContext);
+      const data = await startDeepLinkSession(entity, tier, contextUrl);
 
       // Use the icon_src from entity config as the photo URL
       if (data.photo_url) {
-        setPhotoUrl(data.photo_url);
+        setPhotoUrl(asset(data.photo_url));
       }
 
       setSessionId(data.session_id);

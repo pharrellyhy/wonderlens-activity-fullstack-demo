@@ -126,6 +126,47 @@ def _load_tier_rules_raw(tier: str) -> dict:
     return all_rules.get("tiers", {}).get(tier, {})
 
 
+def _format_words_per_sentence(words_per_sentence: object) -> str:
+    """Format tier word-count guidance for prompts."""
+    if isinstance(words_per_sentence, list):
+        if len(words_per_sentence) == 2:
+            return f"{words_per_sentence[0]}-{words_per_sentence[1]}"
+        return ", ".join(str(value) for value in words_per_sentence)
+    return str(words_per_sentence)
+
+
+def _build_speaker_prompt(state: SessionStateModel, plan: TurnPlan) -> str:
+    """Build the speaker system prompt from tier rules and the current plan."""
+    tier_rules = _load_tier_rules_raw(state.tier)
+    template = _SPEAKER_PROMPT_PATH.read_text() if _SPEAKER_PROMPT_PATH.exists() else ""
+
+    replacements = {
+        "{tier}": state.tier,
+        "{tier_label}": str(tier_rules.get("label", "")),
+        "{tier_ages}": str(tier_rules.get("ages", "")),
+        "{max_sentences}": str(tier_rules.get("max_sentences", 2)),
+        "{words_per_sentence}": _format_words_per_sentence(tier_rules.get("words_per_sentence", [5, 10])),
+        "{turn_plan_json}": plan.model_dump_json(indent=2),
+        "{emotion_tag}": plan.emotion_tag,
+    }
+
+    for key, value in replacements.items():
+        template = template.replace(key, value)
+
+    return template
+
+
+def _build_speaker_user_prompt(corrective_hint: str | None = None) -> str:
+    """Build the user message for the speaker pass."""
+    prompt = (
+        "Generate the dialogue for this plan. "
+        'Output valid JSON: {"dialogue": "[emotion_tag] Your text here", "tone_marker": "..."}'
+    )
+    if corrective_hint:
+        prompt += f"\n\n{corrective_hint}"
+    return prompt
+
+
 def _load_step_instructions(state: SessionStateModel) -> str:
     """Load the step-specific instruction file and fill in template variables."""
     step = state.current_step
@@ -507,7 +548,22 @@ class ScriptAgent:
         planner = Planner()
         return await planner.plan_turn(state)
 
-    async def _speak_turn(self, state: SessionStateModel, plan: TurnPlan) -> TurnResponse:
+    async def retry_speaker_turn(
+        self,
+        state: SessionStateModel,
+        plan: TurnPlan,
+        corrective_hint: str | None = None,
+    ) -> TurnResponse:
+        """Retry only the speaker pass using an existing planner output."""
+        self.last_plan = plan
+        return await self._speak_turn(state, plan, corrective_hint=corrective_hint)
+
+    async def _speak_turn(
+        self,
+        state: SessionStateModel,
+        plan: TurnPlan,
+        corrective_hint: str | None = None,
+    ) -> TurnResponse:
         """Run the Speaker pass to convert a TurnPlan into child-facing dialogue.
 
         Loads the speaker prompt template, fills in tier data and the plan JSON,
@@ -527,28 +583,8 @@ class ScriptAgent:
         settings = get_settings()
         start = time.perf_counter()
 
-        # Load tier rules for speaker prompt placeholders
-        tier_rules = _load_tier_rules_raw(state.tier)
-        words_per_sentence = tier_rules.get("words_per_sentence", [5, 10])
-        if isinstance(words_per_sentence, list) and len(words_per_sentence) == 2:
-            words_per_sentence_str = f"{words_per_sentence[0]}-{words_per_sentence[1]}"
-        else:
-            words_per_sentence_str = str(words_per_sentence)
-
-        # Build speaker system prompt from template
-        template = _SPEAKER_PROMPT_PATH.read_text() if _SPEAKER_PROMPT_PATH.exists() else ""
-        speaker_prompt = template.replace("{tier}", state.tier)
-        speaker_prompt = speaker_prompt.replace("{tier_label}", str(tier_rules.get("label", "")))
-        speaker_prompt = speaker_prompt.replace("{tier_ages}", str(tier_rules.get("ages", "")))
-        speaker_prompt = speaker_prompt.replace("{max_sentences}", str(tier_rules.get("max_sentences", 2)))
-        speaker_prompt = speaker_prompt.replace("{words_per_sentence}", words_per_sentence_str)
-        speaker_prompt = speaker_prompt.replace("{turn_plan_json}", plan.model_dump_json(indent=2))
-        speaker_prompt = speaker_prompt.replace("{emotion_tag}", plan.emotion_tag)
-
-        user_prompt = (
-            "Generate the dialogue for this plan. "
-            'Output valid JSON: {"dialogue": "[emotion_tag] Your text here", "tone_marker": "..."}'
-        )
+        speaker_prompt = _build_speaker_prompt(state, plan)
+        user_prompt = _build_speaker_user_prompt(corrective_hint)
 
         try:
             client = _get_client()
@@ -705,7 +741,11 @@ class ScriptAgent:
             return await self._generate_turn_streaming_single_pass(state, on_dialogue)
 
     async def _speak_turn_streaming(
-        self, state: SessionStateModel, plan: TurnPlan, on_dialogue: Callable | None = None
+        self,
+        state: SessionStateModel,
+        plan: TurnPlan,
+        on_dialogue: Callable | None = None,
+        corrective_hint: str | None = None,
     ) -> TurnResponse:
         """Run the Speaker pass with streaming to extract dialogue early for TTS.
 
@@ -724,28 +764,8 @@ class ScriptAgent:
         settings = get_settings()
         start = time.perf_counter()
 
-        # Load tier rules for speaker prompt placeholders
-        tier_rules = _load_tier_rules_raw(state.tier)
-        words_per_sentence = tier_rules.get("words_per_sentence", [5, 10])
-        if isinstance(words_per_sentence, list) and len(words_per_sentence) == 2:
-            words_per_sentence_str = f"{words_per_sentence[0]}-{words_per_sentence[1]}"
-        else:
-            words_per_sentence_str = str(words_per_sentence)
-
-        # Build speaker system prompt from template
-        template = _SPEAKER_PROMPT_PATH.read_text() if _SPEAKER_PROMPT_PATH.exists() else ""
-        speaker_prompt = template.replace("{tier}", state.tier)
-        speaker_prompt = speaker_prompt.replace("{tier_label}", str(tier_rules.get("label", "")))
-        speaker_prompt = speaker_prompt.replace("{tier_ages}", str(tier_rules.get("ages", "")))
-        speaker_prompt = speaker_prompt.replace("{max_sentences}", str(tier_rules.get("max_sentences", 2)))
-        speaker_prompt = speaker_prompt.replace("{words_per_sentence}", words_per_sentence_str)
-        speaker_prompt = speaker_prompt.replace("{turn_plan_json}", plan.model_dump_json(indent=2))
-        speaker_prompt = speaker_prompt.replace("{emotion_tag}", plan.emotion_tag)
-
-        user_prompt = (
-            "Generate the dialogue for this plan. "
-            'Output valid JSON: {"dialogue": "[emotion_tag] Your text here", "tone_marker": "..."}'
-        )
+        speaker_prompt = _build_speaker_prompt(state, plan)
+        user_prompt = _build_speaker_user_prompt(corrective_hint)
 
         try:
             client = _get_client()

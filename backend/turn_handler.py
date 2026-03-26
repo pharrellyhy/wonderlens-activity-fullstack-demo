@@ -483,6 +483,21 @@ def _validate_plan(
     return "valid"
 
 
+def _plan_retry_hint(plan_verdict: str) -> str:
+    """Return a corrective hint for a failed plan-aware validation verdict."""
+    hints = {
+        "speaker_violation": (
+            "CORRECTION: Keep the existing plan, but do NOT suggest specific items for the child to find. "
+            "Use only generic next-step language."
+        ),
+        "planner_failure": (
+            "CORRECTION: Re-plan this detail turn with a concrete sensory observation about the item the child "
+            "already picked before writing the dialogue."
+        ),
+    }
+    return hints.get(plan_verdict, "CORRECTION: Follow the plan more closely.")
+
+
 # ---------------------------------------------------------------------------
 # LLM generation with retry + validation
 # ---------------------------------------------------------------------------
@@ -526,10 +541,20 @@ async def _generate_with_retry(
     hint and retries. The hint is removed from history after retry.
     """
     last_response: TurnResponse | None = None
+    retry_plan: TurnPlan | None = None
 
     for attempt in range(_MAX_GENERATION_ATTEMPTS):
         try:
-            response = await script_agent.generate_turn(state)
+            if retry_plan is not None:
+                response = await script_agent.retry_speaker_turn(
+                    state,
+                    retry_plan,
+                    corrective_hint=_plan_retry_hint("speaker_violation"),
+                )
+                plan = retry_plan
+            else:
+                response = await script_agent.generate_turn(state)
+                plan = script_agent.last_plan
         except ScriptAgentError:
             logger.warning(f"Script Agent failed for step {state.current_step} (attempt {attempt + 1})")
             if attempt < _MAX_GENERATION_ATTEMPTS - 1:
@@ -547,9 +572,9 @@ async def _generate_with_retry(
             )
 
         last_response = response
-        plan = script_agent.last_plan
 
         # Plan-aware validation: diagnose planner vs speaker issues
+        plan_hint = ""
         if plan is not None:
             plan_verdict = _validate_plan(state, plan, response.dialogue)
             if plan_verdict != "valid":
@@ -560,8 +585,18 @@ async def _generate_with_retry(
                     plan_verdict,
                     plan.model_dump_json(indent=None),
                 )
+                plan_hint = _plan_retry_hint(plan_verdict)
+                if plan_verdict == "speaker_violation":
+                    retry_plan = plan
+                else:
+                    retry_plan = None
+        else:
+            retry_plan = None
 
         is_valid, hint = _validate_response(state, response, is_first_on_step)
+        if plan_hint:
+            is_valid = False
+            hint = plan_hint
 
         if is_valid:
             # Clean up any corrective hints from previous attempts
@@ -590,14 +625,15 @@ async def _generate_with_retry(
             logger.info(f"Validation failed for step {state.current_step} (attempt {attempt + 1}): {hint[:80]}")
 
         if attempt < _MAX_GENERATION_ATTEMPTS - 1:
-            # Append corrective hint as a system-like message in conversation history
-            state.conversation_history.append(
-                ConversationTurn(
-                    role="child",
-                    text=hint,
-                    step=state.current_step,
+            if retry_plan is None:
+                # Append corrective hint as a system-like message in conversation history
+                state.conversation_history.append(
+                    ConversationTurn(
+                        role="child",
+                        text=hint,
+                        step=state.current_step,
+                    )
                 )
-            )
 
     # All attempts failed validation — return the last response anyway
     _record_retry_stat(state.current_step, exhausted=True)

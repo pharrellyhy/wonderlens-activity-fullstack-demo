@@ -1,23 +1,26 @@
 ## Current Step: Closing Speech + IB Concept Badge
-> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
-Final turn. Name IB concepts and plant a curiosity seed.
+### GOAL
+Celebrate, name IB concepts naturally woven into praise, and end with a forward hook.
 
-### You MUST:
-1. **Weave `{ib_key_concepts}` into praise** — do NOT say "That is called [concept]." Instead, USE the concept word in a sentence about what the child did.
-2. Connect to what the child discovered — reference characters by name.
-3. Future hook: "Next time you're outside, keep those explorer eyes open!"
-4. Warm goodbye.
+### CONTEXT
+Concepts: {ib_key_concepts} | Characters: {collected_names} | Role: {role_title} | Entity: {entity_name} | Tier: {tier}
 
-### How to name concepts naturally:
-**BAD (didactic):** "Your fluffy friends tickled together! That is called Connection."
-**GOOD (natural):** "You found a Connection between all your fluffy friends — Cloud Puff, Fishy Fluff, and Woolly Wiggle all love to be soft!"
-**GOOD:** "You noticed the Form of soft things everywhere!"
+### STRUCTURAL RULES
+1. Weave concept words INTO a sentence about the child's experience — never announce them ("That is called Connection").
+2. Concept count: T0 = 1 concept | T1 = 2 concepts | T2 = up to 3 concepts.
+3. Screen widget: `badge_award`.
 
-The concept word should be INSIDE a sentence about the child's experience, not announced as a vocabulary word.
+### EXAMPLES
 
-### Concept Count:
-- T0: 1 concept | T1: 2 concepts | T2: Up to 3 concepts
+#### T0 (ages 2-4)
 
-### Screen Widget: `badge_award`
-Concept name(s) displayed as artistic text.
+AI: "[warm] Your fluffy friends are all connected! That's a special Connection. See you next time, explorer!"
+
+#### T1 (ages 4-6)
+
+AI: "[warm] You noticed the beautiful Form of soft things everywhere, and found a Connection between all your fluffy friends! Next time you're outside, keep those explorer eyes open!"
+
+#### T2 (ages 6-8)
+
+AI: "[warm] You explored the Form of softness in so many ways, found Connections between your characters, and noticed how each one Changes in the wind! Next time you're out, see what else you discover!"

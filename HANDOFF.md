@@ -1,6 +1,76 @@
 # Session Handoff
 
-Last updated: 2026-03-25
+Last updated: 2026-03-26
+
+---
+
+## Review Follow-Up: Fix Example-Driven Prompt Interpolation + Tighten Local Coverage
+
+**Problem**: Reviewing the code modified for `docs/plans/example-driven-prompts-implementation.md` exposed one concrete script-agent bug and several stale local tests. The new Cat5 mission prompt introduced `{activity_name}` and `{tier}` placeholders, but `backend/agents/script_agent.py` did not inject either value, so literal braces leaked into the generated prompt text. The new compact tier summary also still emitted raw Python list reprs like `~[5, 10]` and `['simple', 'playful', 'exclamations']`, which makes the prompt noisier than intended. On the local test side, one naming-story fragment assertion still expected the old rule-heavy copy, and the scenario matcher tests were still relying on registry side effects plus old demo-catalog assumptions instead of isolating the current feature-matching path.
+
+**Solution**: Kept the example-driven prompt refactor intact, but fixed the prompt-helper interpolation path and tightened the local review coverage around it. `script_agent.py` now interpolates the new Cat5 mission placeholders and formats tier ranges/styles into compact readable strings. I also moved the helper assertions into existing local test modules, updated the naming-story fragment expectation to the new example-driven copy, and made the scenario matcher tests populate the registry explicitly while checking the intended feature-driven path.
+
+**Edits**:
+- `backend/agents/script_agent.py` — added `{activity_name}` and `{tier}` replacements in `_load_step_instructions()` and formatted `words_per_sentence` / `response_style` into prompt-friendly strings inside `_load_tier_constraints()`
+- local `tests/test_entity_registry.py` — added regression coverage for fully interpolated Cat5 mission instructions and readable compact tier constraints; updated the naming-story fragment assertion to the new example-driven content
+- local `tests/test_scenarios.py` — added coverage for the new `fluffy_expedition_dandelion` scenario asset, populated the registry explicitly via `get_demo_entities()`, and relaxed the ambiguous dot-feature assertion to the current 18-game catalog
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- Example-driven Cat5 step-instruction markdown files in `backend/skills/step_instructions/` — reviewed and left unchanged in this follow-up
+- `backend/turn_handler.py` retry-stat collection/logging — reviewed against the current implementation plan and left unchanged in this pass
+- Frontend code — unchanged; this review stayed on backend prompt/helper behavior and local coverage
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py tests/test_entity_registry.py tests/test_scenarios.py -q` — PASS (`73 passed`)
+- `uv run ruff check backend/agents/script_agent.py backend/turn_handler.py tests/test_entity_registry.py tests/test_scenarios.py` — PASS
+- `uv run ruff format --check backend/agents/script_agent.py backend/turn_handler.py tests/test_entity_registry.py tests/test_scenarios.py` — PASS
+
+---
+
+## Example-Driven Prompt Refactor (Cat5 Prototype)
+
+**Problem**: The prompt system uses 28 step instruction files with 889 total lines and 65+ rules in the heaviest file. More rules means worse per-rule compliance — the system was in a cycle of: AI violates rule → add more rules → prompt gets longer → AI violates different rule. LLMs are pattern-matching engines; examples are concrete and composable, rules are abstract and competing.
+
+**Solution**: Replaced rule-heavy Cat5 step instructions with a hybrid format: minimal structural rules (~5-7 per step) + few-shot example transcripts per tier (T0/T1/T2). Examples carry tone, scaffolding, sentence length, and conversational style. Code-enforced constraints (state machine, post-processing validation) unchanged. Added retry-rate logging to measure before/after impact. Design plan in `docs/plans/example-driven-prompts.md`, implementation plan in `docs/plans/example-driven-prompts-implementation.md`.
+
+**Edits**:
+
+*Retry-rate logging:*
+- `backend/turn_handler.py` — added `_retry_stats` dict, `_record_retry_stat()` helper, and `get_retry_stats()` accessor; logs attempt count + validation outcome after each generation; logs session summary stats at session end
+
+*Cat5 step instruction conversions (all in `backend/skills/step_instructions/`):*
+- `cat5_step1_hook.md` (30→32 lines) — GOAL + 3 structural rules + examples for T0/T1/T2 (cold start, child responds, warm start)
+- `cat5_step2_mission.md` (68→54 lines) — GOAL + 5 structural rules + examples for accept/decline/silence per tier
+- `cat5_step3_collect.md` (125→97 lines) — GOAL + 7 structural rules + ~24 examples covering Phase A/B × correct/wrong/silence × T0/T1/T2
+- `cat5_step3_collect__naming_story.md` (39→55 lines) — 2 variant rules + naming-specific examples per tier
+- `cat5_step4_synthesis.md` (35→49 lines) — GOAL + 6 structural rules + examples for T0/T1/T2 × ideal/stuck/silent
+- `cat5_step4_synthesis__naming_story.md` (96→55 lines) — 3 variant rules + 4-beat story examples per tier
+- `cat5_step5_celebrate.md` (23→19 lines) — GOAL + 3 structural rules + 3 tier examples
+- `cat5_step6_closing.md` (23→20 lines) — GOAL + 3 structural rules + 3 tier examples with natural concept weaving
+- `early_exit.md` (15→22 lines) — GOAL + 2 structural rules + examples with/without collected characters
+
+*System prompt simplification:*
+- `backend/skills/script_turn.md` — removed invitational/forbidden language rule block from Section 2 (now in examples)
+- `backend/agents/script_agent.py` — simplified `_load_tier_constraints()` from 14-line verbose format to compact 4-line summary with per-tier key rule
+
+*New test scenario:*
+- `backend/scenarios/fluffy_expedition_dandelion.yaml` — **NEW**: full Cat5 T0 happy path + wrong photo + silence recovery
+
+**NOT Changed**:
+- `backend/turn_handler.py` post-processing validation (`_validate_response`, `_ends_with_open_question`, `_has_model_phrase`) — unchanged
+- `backend/state_machine.py` — step flow logic unchanged
+- `backend/agents/script_agent.py` template loading (`_load_step_instructions`, `_build_instruction_overlay`, `_build_system_prompt`) — unchanged (format change is transparent)
+- Cat1 step instruction files — not converted in this prototype phase
+- Cat5 comparison_chart and sorting_game variants — not converted in this prototype phase
+- Frontend code — no changes
+
+**Verification**:
+- `uv run ruff check .` — PASS
+- `uv run ruff format --check .` — PASS
+- Template variable audit: all `{variables}` in new files match existing script agent injection points
+- Manual: start fluffy_expedition_dandelion session, verify AI responds with example-style tone/scaffolding
+- Manual: check retry-rate logs appear in server output after a session
 
 ---
 
@@ -245,52 +315,5 @@ Last updated: 2026-03-25
 - `uv run pytest tests/test_turn_handler.py -q` — PASS (`20 passed`)
 - `uv run ruff check backend/turn_handler.py tests/test_turn_handler.py` — PASS
 - `uv run ruff format --check backend/turn_handler.py tests/test_turn_handler.py` — PASS
-
----
-
-## Review Follow-Up: Simplify Cat5 Screen-Frame Enrichment
-
-**Problem**: Reviewing the latest Cat5 progress-indicator fix exposed one concrete implementation issue in the newly modified frame path. `backend/state_machine.py` was still mutating matched Visual Agent `ScreenFrame` objects in place when it injected `roundNumber` and Cat5 `progress_tracker` counts. That works in the happy path, but it makes the visual-frame list stateful and harder to reason about, especially once the Cat5 collect path started adding more step-specific widget params like `filled`, `total`, and `description`.
-
-**Solution**: Kept the current Cat5 behavior, but simplified the implementation around small helpers and immutable frame enrichment. Cat5 detail-photo URL resolution, detail-frame construction, and collect-progress widget params now live in dedicated helpers, and matched Visual Agent frames are copied before round-specific params are added. That preserves the reviewed runtime behavior while avoiding template mutation and making the Cat5 collect path easier to follow.
-
-**Edits**:
-- `backend/state_machine.py` — extracted helpers for Cat5 detail photo URL lookup, detail-frame construction, and collect progress params; replaced in-place Visual Agent frame mutation with copied frame enrichment via `_with_round_context()`
-- local `tests/test_state_machine.py` — extended the Cat5 collect visual-frame regression to assert that matched `widget_params` remain unchanged after `get_screen_frame()` returns
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/turn_handler.py` and the two-phase collection state flow — reviewed and left unchanged in this follow-up
-- `frontend/src/components/DeviceScreen.jsx` and the `photoUrl` fallback wiring — reviewed against the current frame contract and left unchanged
-- Prompt/docs edits in `backend/skills/step_instructions/`, `README.md`, and `docs/game-pipeline-overview.md` — reviewed and left unchanged in this pass
-
-**Verification**:
-- `uv run pytest tests/test_state_machine.py::TestGetScreenFrameWithVisualFrames::test_cat5_collect_visual_frame_gets_progress_counts -q` — PASS (`1 passed`)
-- `uv run pytest tests/test_state_machine.py tests/test_api.py -q` — PASS (`49 passed`)
-- `uv run ruff check backend/state_machine.py tests/test_state_machine.py` — PASS
-- `uv run ruff format --check backend/state_machine.py tests/test_state_machine.py` — PASS
-
----
-
-## Fix: Cat5 Collect Progress Indicator Uses Real Total
-
-**Problem**: The Cat5 two-phase collection loop could show an incorrect collect indicator in the device screen, as seen in `images/issue-4.png`. The root cause was in `backend/state_machine.py`: when a collect step used a Visual Agent frame, the matched frame only got `roundNumber`, so a `progress_tracker` widget fell back to its own default `total=4`. The Cat5 hardcoded collect fallback also used the round number itself as `filled`, which made progress semantics depend on step index instead of the actual number of collected photos.
-
-**Solution**: Moved the Cat5 collect-frame enrichment back into the state machine contract. Detail phase now always short-circuits to `photo_display`, even when visual frames are present. Photo phase collect frames now populate `progress_tracker` with `filled=len(collected_photos)` and the real `collection_count`, so the widget shows the correct number of slots and the right active slot. I added focused regression coverage for both the visual-frame and fallback paths.
-
-**Edits**:
-- `backend/state_machine.py` — short-circuits Cat5 detail mode before Visual Agent frame matching; enriches Cat5 collect `progress_tracker` frames with real `filled`/`total` values from collection state; aligns the hardcoded collect fallback to use collected-photo count instead of round index
-- local `tests/test_state_machine.py` — added regression coverage for Visual Agent collect frames receiving real progress counts and for detail mode ignoring matched collect visuals in favor of the just-collected photo
-- `HANDOFF.md` — added this fix entry
-
-**NOT Changed**:
-- `frontend/src/widgets/ProgressTracker.jsx` — widget defaults and rendering logic unchanged; the fix is upstream in frame generation
-- `frontend/src/App.jsx` footer/session labels — reviewed and left unchanged
-- Turn handling, prompt files, and Cat1 state-machine behavior — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_state_machine.py tests/test_api.py -q` — PASS (`49 passed`)
-- `uv run ruff check backend/state_machine.py tests/test_state_machine.py` — PASS
-- `uv run ruff format --check backend/state_machine.py tests/test_state_machine.py` — PASS
 
 ---

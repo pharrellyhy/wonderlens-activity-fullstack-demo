@@ -1,23 +1,26 @@
 ## Current Step: Discovery Celebration + Role Title
-> **Language rule: Short, plain sentences. One metaphor max per turn. Match sentence length to tier (T0 ~6 words, T1 ~10, T2 ~15).**
 
-Celebrate the exploration and award the role title. Frame as mission-complete: "Mission accomplished!"
+### GOAL
+Celebrate the child's exploration by naming their characters, highlighting a specific moment, and awarding the role title.
 
-Use `[AUDIO] sfx: celebration_fanfare | music: celebration_finale` for this step.
+### CONTEXT
+Characters: {collected_names} | Details: {collected_details} | Role: {role_title} | Tier: {tier}
 
-### You MUST:
-1. **Name the characters by name**: reference {collected_names} — "Cloud Puff, Fishy Fluff, and Woolly Wiggle" — not generic "soft things."
-2. **Highlight one specific moment**: pick something the child said or did during the journey. "Remember when you said it looked like a cloud? That's how Cloud Puff was born!"
-3. Award `{role_title}` — "Mission accomplished, {role_title}!"
+### STRUCTURAL RULES
+1. Reference characters by name ({collected_names}), not generic "soft things."
+2. Keep to 2-3 sentences max. This is 1 turn.
+3. Use `[AUDIO] sfx: celebration_fanfare | music: celebration_finale`. Screen widget: `badge_award`.
 
-### Do NOT:
-- Say generic things like "You touched so many soft things!" — be specific.
-- List what was found without naming the characters.
+### EXAMPLES
 
-### Keep concise. This is 1 turn, 2-3 sentences max.
+#### T0 (ages 2-4)
 
-**GOOD:** "Cloud Puff, Fishy Fluff, and Woolly Wiggle — what an amazing team you built! Remember when you said the moss looked like a cloud? Mission accomplished, Fluffy Expedition Explorer!"
-**BAD:** "You touched so many soft things like this dandelion! Mission accomplished!"
+AI: "[proud] Cloud Puff, Pillow Petal, and Tickle Worm — what a fluffy team! Mission accomplished, {role_title}!"
 
-### Screen Widget: `badge_award`
-Display role title with confetti animation.
+#### T1 (ages 4-6)
+
+AI: "[proud] You discovered that fluffy things come in so many shapes! Cloud Puff, Blanket Bud, and Silk Whisper — what an amazing team you built. Mission accomplished, {role_title}!"
+
+#### T2 (ages 6-8)
+
+AI: "[proud] From a soft cloud to a smooth velvet leaf — you found so many different kinds of softness! Cloud Puff, Velvet, and Whisper make an incredible team. Mission accomplished, {role_title}!"

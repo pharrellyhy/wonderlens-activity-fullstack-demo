@@ -170,6 +170,8 @@ def _get_response_type(step: str) -> str:
 def _ended_result(state: SessionStateModel) -> TurnResult:
     """Build the terminal response payload after advancing past the last step."""
     state.status = "completed"
+    if _retry_stats:
+        logger.info("session_retry_stats: %s", _retry_stats)
     return TurnResult(
         turn_response=TurnResponse(
             dialogue="",
@@ -430,6 +432,29 @@ def _validate_response(
 
 _MAX_GENERATION_ATTEMPTS = 3
 
+# Per-step retry stats for measuring prompt quality improvements.
+# Key: step name → {total, first_pass, retried, exhausted}
+_retry_stats: dict[str, dict[str, int]] = {}
+
+
+def _record_retry_stat(step: str, *, first_pass: bool = False, retried: bool = False, exhausted: bool = False) -> None:
+    """Record a generation attempt outcome for the given step."""
+    if step not in _retry_stats:
+        _retry_stats[step] = {"total": 0, "first_pass": 0, "retried": 0, "exhausted": 0}
+    stats = _retry_stats[step]
+    stats["total"] += 1
+    if first_pass:
+        stats["first_pass"] += 1
+    if retried:
+        stats["retried"] += 1
+    if exhausted:
+        stats["exhausted"] += 1
+
+
+def get_retry_stats() -> dict[str, dict[str, int]]:
+    """Return a copy of the current retry stats for logging/API consumption."""
+    return dict(_retry_stats)
+
 
 async def _generate_with_retry(
     script_agent: ScriptAgent,
@@ -469,6 +494,14 @@ async def _generate_with_retry(
         if is_valid:
             # Clean up any corrective hints from previous attempts
             state.conversation_history = [t for t in state.conversation_history if not t.text.startswith("CORRECTION:")]
+            is_first = attempt == 0
+            _record_retry_stat(state.current_step, first_pass=is_first, retried=not is_first)
+            logger.info(
+                "script_generation: step=%s attempts=%d tier=%s validation=passed",
+                state.current_step,
+                attempt + 1,
+                state.tier,
+            )
             return response
 
         logger.info(f"Validation failed for step {state.current_step} (attempt {attempt + 1}): {hint[:80]}")
@@ -484,8 +517,12 @@ async def _generate_with_retry(
             )
 
     # All attempts failed validation — return the last response anyway
+    _record_retry_stat(state.current_step, exhausted=True)
     logger.warning(
-        f"All {_MAX_GENERATION_ATTEMPTS} attempts failed validation for {state.current_step}, using last response"
+        "script_generation: step=%s attempts=%d tier=%s validation=exhausted",
+        state.current_step,
+        _MAX_GENERATION_ATTEMPTS,
+        state.tier,
     )
     # Clean up any corrective hints from history
     state.conversation_history = [t for t in state.conversation_history if not t.text.startswith("CORRECTION:")]

@@ -61,7 +61,12 @@ def _get_client() -> AsyncOpenAI:
 
 
 def _load_tier_constraints(tier: str) -> str:
-    """Format tier rules into a readable string for the prompt."""
+    """Format tier rules into a compact string for the prompt.
+
+    Produces a concise summary: tier label, sentence limits, tone, and the
+    single most important scaffolding rule per tier.  Detailed tone and
+    style guidance now lives in the per-step example transcripts.
+    """
     if not _TIER_RULES_PATH.exists():
         return f"Tier: {tier}"
 
@@ -72,29 +77,29 @@ def _load_tier_constraints(tier: str) -> str:
     if not rules:
         return f"Tier: {tier}"
 
+    words_per_sentence = rules.get("words_per_sentence", "")
+    if isinstance(words_per_sentence, list):
+        if len(words_per_sentence) == 2:
+            words_per_sentence = f"{words_per_sentence[0]}-{words_per_sentence[1]}"
+        else:
+            words_per_sentence = ", ".join(str(value) for value in words_per_sentence)
+
+    response_style = rules.get("response_style", "")
+    if isinstance(response_style, list):
+        response_style = ", ".join(str(value) for value in response_style)
+
+    tier_key_rules = {
+        "T0": "Always model your idea first, then offer a choice. Never ask open questions alone.",
+        "T1": "Light scaffolding. Can ask guided questions.",
+        "T2": "Can invite child to try first. Scaffold only if stuck.",
+    }
+
     lines = [
-        f"Tier: {tier} ({rules.get('label', '')})",
-        f"Ages: {rules.get('ages', '')}",
-        f"Words per sentence: {rules.get('words_per_sentence', '')}",
-        f"Max sentences per turn: {rules.get('max_sentences', '')}",
-        f"Hook rule: {rules.get('hook_rule', '')} — {rules.get('hook_description', '')}",
-        f"Closing: {rules.get('closing_speech', '')} — {rules.get('closing_description', '')}",
-        f"Tone: {rules.get('tone', '')}",
-        f"Response style: {rules.get('response_style', '')}",
-        f"Round count range: {rules.get('pathway_rounds', '')}",
-        f"Available concepts: {rules.get('available_key_concepts', '')}",
-        f"Max concept badges: {rules.get('max_concept_badges', '')}",
-        f"Good hook example: {rules.get('example_good_hook', '')}",
-        f"Bad hook example: {rules.get('example_bad_hook', '')}",
+        f"Tier: {tier} ({rules.get('label', '')}, ages {rules.get('ages', '')})",
+        f"Sentences: max {rules.get('max_sentences', '')}, ~{words_per_sentence} words each.",
+        f"Style: {rules.get('tone', '')}. {response_style}",
+        f"Key rule: {tier_key_rules.get(tier, '')}",
     ]
-
-    invitational = rules.get("invitational_patterns", [])
-    if invitational:
-        lines.append(f"Invitational patterns: {', '.join(invitational)}")
-
-    forbidden = rules.get("forbidden_directives", [])
-    if forbidden:
-        lines.append(f"FORBIDDEN directives: {', '.join(forbidden)}")
 
     return "\n".join(lines)
 
@@ -153,7 +158,9 @@ def _load_step_instructions(state: SessionStateModel) -> str:
 
     # Fill template variables from creative slots
     replacements: dict[str, str] = {
+        "{activity_name}": state.activity_type.replace("_", " ").title(),
         "{entity_name}": state.entity_name,
+        "{tier}": state.tier,
         "{round_number}": str(state.current_round),
         "{total_rounds}": str(state.total_rounds),
         "{ib_key_concepts}": ", ".join(state.ib_key_concepts),

@@ -1,0 +1,153 @@
+# Fluffy Expedition Dandelion — Category 5 (Collection), T0
+# Tests the full Cat5 collection flow including two-phase loop,
+# wrong photo handling, silence recovery, and naming story synthesis.
+
+activity_name: "The Fluffy Expedition"
+entity: dandelion
+tier: T0
+age_range: "2-4"
+scene: "Child is outdoors in a park and photographs a dandelion with white fluffy seeds"
+visual_features: ["white fluffy seeds", "round seed head", "thin green stem", "delicate structure"]
+category: "Category 5 — Collection/Tracking Exploration (Out-of-Device)"
+key_concepts: ["Connection"]
+related_concepts: ["Form", "Sensory Awareness", "Nature", "Texture"]
+
+activity_steps_summary: |
+  Step 1 (Hook): React to the dandelion's fluffiness with excitement. Ask an imaginative question.
+  Step 2 (Mission): Assign "Fluffy Expedition Explorer" role. Find 3 soft things.
+  Step 3 (Collection, 3 rounds): Child finds items, AI celebrates, asks detail question, names characters.
+  Step 4 (Synthesis): Short story with the three named characters.
+  Step 5 (Celebrate): Award role title, name characters.
+  Step 6 (Closing): Name Connection concept naturally.
+
+turns:
+  # --- Vision result ---
+  - role: system
+    event: vision_result
+    data:
+      entity: "dandelion"
+      confidence: 0.94
+      scene: "outdoor park"
+      features: ["white", "fluffy", "seeds", "round"]
+
+  # --- Step 1: Hook ---
+  - role: ai
+    step: 1_hook
+    expected_tone: "excited, wonder"
+    must_contain: ["fluffy"]
+    must_not_contain: ["what is this", "how many", "what color", "do you know"]
+
+  - role: child
+    type: ideal
+    text: "Up!"
+
+  - role: ai
+    step: 1_followup_ideal
+    expected_tone: "delighted, building on child's word"
+    must_validate_first: true
+
+  # --- Step 2: Mission Briefing ---
+  - role: ai
+    step: 2_mission
+    expected_tone: "adventurous, invitational"
+    must_contain: ["soft", "find"]
+    must_not_contain: ["Go find", "Now let's go", "Off you go"]
+
+  - role: child
+    type: ideal
+    text: "Yeah!"
+
+  - role: ai
+    step: 2_accepted
+    expected_tone: "celebrating"
+
+  # --- Step 3 Round 1: Correct photo + ideal detail ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Fuzzy moss]"
+
+  - role: ai
+    step: 3_round1_phaseA
+    expected_tone: "excited"
+    must_contain: ["1"]
+
+  - role: child
+    type: ideal
+    text: "A cloud!"
+
+  - role: ai
+    step: 3_round1_phaseB
+    expected_tone: "celebrating"
+
+  # --- Step 3 Round 2: Wrong photo first, then correct + silence ---
+  - role: child
+    type: unexpected
+    text: "[selected wrong photo: Hard rock]"
+
+  - role: ai
+    step: 3_round2_wrong
+    expected_tone: "gentle redirect"
+    must_validate_first: true
+
+  - role: child
+    type: ideal
+    text: "[collected correct item: Soft petal]"
+
+  - role: ai
+    step: 3_round2_phaseA
+    expected_tone: "excited"
+    must_contain: ["2"]
+
+  - role: child
+    type: silent
+    text: ""
+
+  - role: ai
+    step: 3_round2_phaseB_silence
+    expected_tone: "gentle scaffold"
+    must_validate_first: true
+
+  # --- Step 3 Round 3: Correct photo + ideal detail ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Woolly caterpillar]"
+
+  - role: ai
+    step: 3_round3_phaseA
+    expected_tone: "excited, building ensemble"
+    must_contain: ["3"]
+
+  - role: child
+    type: ideal
+    text: "Tickles!"
+
+  - role: ai
+    step: 3_round3_phaseB
+    expected_tone: "celebrating"
+
+  # --- Step 4: Synthesis ---
+  - role: ai
+    step: 4_synthesis
+    expected_tone: "dreamy, storytelling"
+    must_validate_first: true
+
+  - role: child
+    type: ideal
+    text: "tickle"
+
+  - role: ai
+    step: 4_synthesis_response
+    expected_tone: "celebrating, story conclusion"
+    must_validate_first: true
+
+  # --- Step 5: Celebrate ---
+  - role: ai
+    step: 5_celebrate
+    expected_tone: "proud"
+    must_contain: ["Explorer"]
+
+  # --- Step 6: Closing ---
+  - role: ai
+    step: 6_closing
+    expected_tone: "warm"
+    must_contain: ["Connection"]

@@ -23,7 +23,14 @@ logger = setup_logger(__name__)
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "visual_system.md"
 
-ALLOWED_WIDGETS = {"photo_display", "character_display", "progress_tracker", "photo_grid", "badge_award"}
+ALLOWED_WIDGETS = {
+    "photo_display",
+    "character_display",
+    "progress_tracker",
+    "photo_grid",
+    "badge_award",
+    "explorer_map",
+}
 
 ALLOWED_SFX = {
     "wonder_chime",

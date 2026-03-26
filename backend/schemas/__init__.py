@@ -2,6 +2,7 @@
 
 from .composition_plan import CompositionPlan
 from .creative_slots import Cat1CreativeSlots, Cat5CreativeSlots, CreativeSlots
+from .explorer_map import ExplorerMapCharacter, ExplorerMapState
 from .recipe import ActivityRecipe, InstructionRecipe, RecipeMetadata
 from .session_state import ConversationTurn, SessionStateModel
 from .step_instruction import RoundInstruction, StepGoal, StepInstruction
@@ -16,6 +17,8 @@ __all__ = [
     "CompositionPlan",
     "ConversationTurn",
     "CreativeSlots",
+    "ExplorerMapCharacter",
+    "ExplorerMapState",
     "InstructionRecipe",
     "RecipeMetadata",
     "Round",

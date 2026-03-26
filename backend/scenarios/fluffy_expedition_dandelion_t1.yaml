@@ -1,0 +1,141 @@
+# Fluffy Expedition Dandelion — T1 (ages 4-6)
+# Tests: same game at T1 tier to verify tier differentiation
+# T1 should use lighter scaffolding, guided questions (not binary),
+# and slightly longer sentences than T0
+
+activity_name: "The Fluffy Expedition"
+entity: dandelion
+tier: T1
+age_range: "4-6"
+scene: "Child is outdoors and photographs a dandelion with white fluffy seeds"
+visual_features: ["white fluffy seeds", "round seed head", "thin green stem"]
+category: "Category 5 — Collection/Tracking Exploration (Out-of-Device)"
+key_concepts: ["Form", "Connection"]
+related_concepts: ["Sensory Awareness", "Nature", "Texture"]
+
+activity_steps_summary: |
+  Step 1 (Hook): React to the dandelion. Ask what it reminds them of.
+  Step 2 (Mission): Assign role, mention what they'll do with finds.
+  Step 3 (3 rounds): Child finds items, AI asks guided (not binary) questions.
+  Step 4 (Synthesis): AI sets up story beat 1, child picks from 2-3 choices.
+  Step 5-6: Celebrate and close with 2 IB concepts.
+
+turns:
+  - role: system
+    event: vision_result
+    data:
+      entity: "dandelion"
+      confidence: 0.94
+      scene: "outdoor park"
+      features: ["white", "fluffy", "seeds", "round"]
+
+  # --- Step 1: Hook (T1 — can ask guided question) ---
+  - role: ai
+    step: 1_hook
+    expected_tone: "curious"
+    # T1 hook may use "fluffy", "soft", "parachutes" or other metaphors
+    must_contain: ["seed"]
+
+  - role: child
+    type: ideal
+    text: "It looks like snow!"
+
+  - role: ai
+    step: 1_followup
+    expected_tone: "excited, building on metaphor"
+    must_contain: ["snow"]
+
+  # --- Step 2: Mission (T1 — can mention role title, pattern) ---
+  - role: ai
+    step: 2_mission
+    expected_tone: "adventurous"
+    must_contain: ["find"]
+
+  - role: child
+    type: ideal
+    text: "Yes please!"
+
+  - role: ai
+    step: 2_accepted
+    expected_tone: "celebrating"
+
+  # --- Round 1: Correct + guided question (not binary for T1) ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Fuzzy moss]"
+
+  - role: ai
+    step: 3_round1_phaseA
+    expected_tone: "excited"
+    must_contain: ["1"]
+    # T1 should ask "What does it remind you of?" not "Cloud or pillow?"
+
+  - role: child
+    type: ideal
+    text: "It's like a tiny blanket!"
+
+  - role: ai
+    step: 3_round1_phaseB
+    expected_tone: "celebrating"
+    # Should create a name from the child's own metaphor
+
+  # --- Round 2: Correct + child compares ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Soft petal]"
+
+  - role: ai
+    step: 3_round2_phaseA
+    expected_tone: "excited"
+    must_contain: ["2"]
+
+  - role: child
+    type: ideal
+    text: "Softer than the moss"
+
+  - role: ai
+    step: 3_round2_phaseB
+    expected_tone: "celebrating"
+
+  # --- Round 3: Correct + ideal ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Woolly caterpillar]"
+
+  - role: ai
+    step: 3_round3_phaseA
+    expected_tone: "excited"
+    must_contain: ["3"]
+
+  - role: child
+    type: ideal
+    text: "It wiggles!"
+
+  - role: ai
+    step: 3_round3_phaseB
+    expected_tone: "celebrating"
+
+  # --- Step 4: Synthesis (T1 — AI tells beat 1, offers 2-3 choices) ---
+  - role: ai
+    step: 4_synthesis
+    expected_tone: "dreamy"
+
+  - role: child
+    type: ideal
+    text: "they danced!"
+
+  - role: ai
+    step: 4_synthesis_response
+    expected_tone: "celebrating"
+
+  # --- Step 5: Celebrate ---
+  - role: ai
+    step: 5_celebrate
+    expected_tone: "proud"
+    must_contain: ["Explorer"]
+
+  # --- Step 6: Closing (T1 — 2 concepts) ---
+  - role: ai
+    step: 6_closing
+    expected_tone: "warm"
+    # T1 should weave 2 concepts naturally — Connection is most common

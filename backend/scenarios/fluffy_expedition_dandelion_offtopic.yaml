@@ -1,0 +1,142 @@
+# Fluffy Expedition Dandelion — OFF-TOPIC / MINIMAL RESPONSES
+# Tests: child gives off-topic or minimal responses throughout
+# Validates the AI stays warm, scaffolds with model-first, and completes
+
+activity_name: "The Fluffy Expedition"
+entity: dandelion
+tier: T0
+age_range: "2-4"
+scene: "Child is outdoors and photographs a dandelion with white fluffy seeds"
+visual_features: ["white fluffy seeds", "round seed head", "thin green stem"]
+category: "Category 5 — Collection/Tracking Exploration (Out-of-Device)"
+key_concepts: ["Connection"]
+related_concepts: ["Form", "Sensory Awareness"]
+
+activity_steps_summary: |
+  Step 1 (Hook): React to the dandelion.
+  Step 2 (Mission): Child gives minimal "ok".
+  Step 3 (3 rounds): Child gives off-topic or single-word responses to detail questions.
+  Step 4 (Synthesis): Child says "you do it" — AI tells the full story.
+  Step 5-6: Celebrate and close.
+  NOTE: Tests AI ability to scaffold and generate names from minimal input.
+
+turns:
+  - role: system
+    event: vision_result
+    data:
+      entity: "dandelion"
+      confidence: 0.94
+      scene: "outdoor park"
+      features: ["white", "fluffy", "seeds"]
+
+  # --- Step 1: Hook with off-topic response ---
+  - role: ai
+    step: 1_hook
+    expected_tone: "excited"
+
+  - role: child
+    type: unexpected
+    text: "I'm hungry"
+
+  - role: ai
+    step: 1_followup_offtopic
+    expected_tone: "warm, redirecting"
+    # Should acknowledge then redirect to the dandelion
+
+  # --- Step 2: Minimal acceptance ---
+  - role: ai
+    step: 2_mission
+    expected_tone: "invitational"
+
+  - role: child
+    type: unexpected
+    text: "ok"
+
+  - role: ai
+    step: 2_accepted_minimal
+    expected_tone: "encouraging"
+    # "ok" counts as acceptance
+
+  # --- Round 1: Correct photo + off-topic detail ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Fuzzy moss]"
+
+  - role: ai
+    step: 3_round1_phaseA
+    expected_tone: "excited"
+
+  - role: child
+    type: unexpected
+    text: "green"
+
+  - role: ai
+    step: 3_round1_phaseB_offtopic
+    expected_tone: "warm"
+    must_validate_first: true
+    # Should model a name from "green" + offer binary choice
+
+  # --- Round 2: Correct photo + single word ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Soft petal]"
+
+  - role: ai
+    step: 3_round2_phaseA
+    expected_tone: "excited"
+    must_contain: ["2"]
+
+  - role: child
+    type: unexpected
+    text: "soft"
+
+  - role: ai
+    step: 3_round2_phaseB_minimal
+    expected_tone: "celebrating"
+    # Should create a name from "soft" and reference previous character
+
+  # --- Round 3: Correct photo + "I don't know" ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Woolly caterpillar]"
+
+  - role: ai
+    step: 3_round3_phaseA
+    expected_tone: "excited"
+    must_contain: ["3"]
+
+  - role: child
+    type: unexpected
+    text: "I don't know"
+
+  - role: ai
+    step: 3_round3_phaseB_stuck
+    expected_tone: "gentle"
+    must_validate_first: true
+    # Should model a name and offer binary choice
+
+  # --- Step 4: Synthesis — child asks AI to do it ---
+  - role: ai
+    step: 4_synthesis
+    expected_tone: "dreamy"
+    must_validate_first: true
+
+  - role: child
+    type: unexpected
+    text: "you do it"
+
+  - role: ai
+    step: 4_synthesis_ai_tells
+    expected_tone: "storytelling"
+    # AI should tell the full 4-beat story, not re-ask
+    must_validate_first: true
+
+  # --- Steps 5-6: Celebrate + Close ---
+  - role: ai
+    step: 5_celebrate
+    expected_tone: "proud"
+
+  - role: ai
+    step: 6_closing
+    expected_tone: "warm"
+    must_contain: ["connect"]

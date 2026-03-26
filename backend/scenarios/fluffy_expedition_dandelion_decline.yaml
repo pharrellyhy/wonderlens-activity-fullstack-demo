@@ -1,0 +1,74 @@
+# Fluffy Expedition Dandelion — DECLINE PATH
+# Tests: child declines mission twice → graceful exit
+# Validates re-invitation language stays invitational and count stays fixed
+
+activity_name: "The Fluffy Expedition"
+entity: dandelion
+tier: T0
+age_range: "2-4"
+scene: "Child is outdoors and photographs a dandelion with white fluffy seeds"
+visual_features: ["white fluffy seeds", "round seed head", "thin green stem"]
+category: "Category 5 — Collection/Tracking Exploration (Out-of-Device)"
+key_concepts: ["Connection"]
+related_concepts: ["Form", "Sensory Awareness"]
+
+activity_steps_summary: |
+  Step 1 (Hook): React to the dandelion. Ask imaginative question.
+  Step 2 (Mission): Assign role. Child declines. Re-invite. Child declines again → early exit.
+  NOTE: Tests the double-decline → graceful exit path.
+
+turns:
+  - role: system
+    event: vision_result
+    data:
+      entity: "dandelion"
+      confidence: 0.94
+      scene: "outdoor park"
+      features: ["white", "fluffy", "seeds"]
+
+  # --- Step 1: Hook ---
+  - role: ai
+    step: 1_hook
+    expected_tone: "excited"
+    must_contain: ["fluffy"]
+
+  - role: child
+    type: ideal
+    text: "Pretty!"
+
+  - role: ai
+    step: 1_followup
+    expected_tone: "warm"
+
+  # --- Step 2: Mission — first presentation ---
+  - role: ai
+    step: 2_mission
+    expected_tone: "invitational"
+    must_contain: ["find"]
+    must_not_contain: ["Go find", "Now let's go"]
+
+  # --- Child declines ---
+  - role: child
+    type: unexpected
+    text: "No"
+
+  - role: ai
+    step: 2_decline_1
+    expected_tone: "warm, accepting"
+    must_not_contain: ["but", "come on", "just try"]
+    # Must re-invite with same collection_count, gentler wording
+
+  # --- Child declines again → should trigger graceful exit ---
+  - role: child
+    type: unexpected
+    text: "No I don't want to"
+
+  # AI should exit gracefully:
+  # - Celebrate what was done (looking at the dandelion)
+  # - Warm goodbye, no guilt
+  # - Tomorrow hook
+  # - NO concept naming (activity incomplete)
+  - role: ai
+    step: early_exit
+    expected_tone: "warm, no pressure"
+    must_not_contain: ["Connection", "Form", "but we"]

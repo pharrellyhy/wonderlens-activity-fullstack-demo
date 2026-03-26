@@ -1,0 +1,97 @@
+# Fluffy Expedition Dandelion — SILENT PATH
+# Tests: child goes silent during collection → consecutive silence exit
+# Validates the AI scaffolds gently, then exits warmly after 2 silences
+
+activity_name: "The Fluffy Expedition"
+entity: dandelion
+tier: T0
+age_range: "2-4"
+scene: "Child is outdoors and photographs a dandelion with white fluffy seeds"
+visual_features: ["white fluffy seeds", "round seed head", "thin green stem"]
+category: "Category 5 — Collection/Tracking Exploration (Out-of-Device)"
+key_concepts: ["Connection"]
+related_concepts: ["Form", "Sensory Awareness"]
+
+activity_steps_summary: |
+  Step 1 (Hook): React to the dandelion.
+  Step 2 (Mission): Child accepts.
+  Step 3 (Round 1): Child finds one item, names it. Then goes silent twice → exit.
+  NOTE: Tests consecutive-silence exit mid-collection with partial progress.
+
+turns:
+  - role: system
+    event: vision_result
+    data:
+      entity: "dandelion"
+      confidence: 0.94
+      scene: "outdoor park"
+      features: ["white", "fluffy", "seeds"]
+
+  # --- Step 1: Hook ---
+  - role: ai
+    step: 1_hook
+    expected_tone: "excited"
+
+  - role: child
+    type: ideal
+    text: "Wow!"
+
+  - role: ai
+    step: 1_followup
+    expected_tone: "warm"
+
+  # --- Step 2: Mission accepted ---
+  - role: ai
+    step: 2_mission
+    expected_tone: "invitational"
+
+  - role: child
+    type: ideal
+    text: "OK!"
+
+  - role: ai
+    step: 2_accepted
+    expected_tone: "celebrating"
+
+  # --- Round 1: Correct photo + ideal detail ---
+  - role: child
+    type: ideal
+    text: "[collected correct item: Fuzzy moss]"
+
+  - role: ai
+    step: 3_round1_phaseA
+    expected_tone: "excited"
+    must_contain: ["1"]
+
+  - role: child
+    type: ideal
+    text: "A cloud!"
+
+  - role: ai
+    step: 3_round1_phaseB
+    expected_tone: "celebrating"
+
+  # --- FIRST SILENCE (during round 2 photo phase) ---
+  - role: child
+    type: silent
+    text: ""
+
+  - role: ai
+    step: 3_round2_silence_1
+    expected_tone: "gentle, encouraging"
+    # Should offer a hint or gentle re-engagement, not push
+
+  # --- SECOND CONSECUTIVE SILENCE → must trigger graceful exit ---
+  - role: child
+    type: silent
+    text: ""
+
+  # AI should exit gracefully:
+  # - Celebrate Cloud Puff (the one character they named)
+  # - Warm goodbye
+  # - Tomorrow hook referencing their fluffy friend
+  # - NO concept naming
+  - role: ai
+    step: early_exit
+    expected_tone: "warm, celebrating partial progress"
+    must_not_contain: ["Connection", "Form"]

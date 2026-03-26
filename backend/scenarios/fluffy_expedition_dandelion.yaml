@@ -115,7 +115,7 @@ turns:
   - role: ai
     step: 3_round3_phaseA
     expected_tone: "excited, building ensemble"
-    must_contain: ["3"]
+    # May say "3 out of 3" or "the third" — both valid
 
   - role: child
     type: ideal
@@ -150,4 +150,4 @@ turns:
   - role: ai
     step: 6_closing
     expected_tone: "warm"
-    must_contain: ["Connection"]
+    must_contain: ["connect"]

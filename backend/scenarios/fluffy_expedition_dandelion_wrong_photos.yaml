@@ -1,0 +1,79 @@
+# Fluffy Expedition Dandelion — WRONG PHOTOS PATH
+# Tests: child picks wrong photos twice consecutively → graceful exit
+# Validates gentle redirects and the consecutive-wrong exit trigger
+
+activity_name: "The Fluffy Expedition"
+entity: dandelion
+tier: T0
+age_range: "2-4"
+scene: "Child is outdoors and photographs a dandelion with white fluffy seeds"
+visual_features: ["white fluffy seeds", "round seed head", "thin green stem"]
+category: "Category 5 — Collection/Tracking Exploration (Out-of-Device)"
+key_concepts: ["Connection"]
+related_concepts: ["Form", "Sensory Awareness"]
+
+activity_steps_summary: |
+  Step 1 (Hook): React to the dandelion.
+  Step 2 (Mission): Child accepts.
+  Step 3 (Round 1): Child picks wrong photo, gets gentle redirect. Picks wrong again → exit.
+  NOTE: Tests consecutive-wrong-photo exit path.
+
+turns:
+  - role: system
+    event: vision_result
+    data:
+      entity: "dandelion"
+      confidence: 0.94
+      scene: "outdoor park"
+      features: ["white", "fluffy", "seeds"]
+
+  # --- Steps 1-2: Normal flow ---
+  - role: ai
+    step: 1_hook
+    expected_tone: "excited"
+
+  - role: child
+    type: ideal
+    text: "Fluffy!"
+
+  - role: ai
+    step: 1_followup
+    expected_tone: "warm"
+
+  - role: ai
+    step: 2_mission
+    expected_tone: "invitational"
+
+  - role: child
+    type: ideal
+    text: "Yes!"
+
+  - role: ai
+    step: 2_accepted
+    expected_tone: "celebrating"
+
+  # --- Round 1: FIRST wrong photo ---
+  - role: child
+    type: unexpected
+    text: "[selected wrong photo: Hard rock]"
+
+  - role: ai
+    step: 3_wrong_1
+    expected_tone: "gentle redirect"
+    must_not_contain: ["wrong", "incorrect", "that's not"]
+    # Should acknowledge positively, then redirect toward soft/fluffy
+
+  # --- Round 1: SECOND wrong photo → should trigger exit ---
+  - role: child
+    type: unexpected
+    text: "[selected wrong photo: Spiky pinecone]"
+
+  # AI should exit gracefully:
+  # - No shaming or frustration
+  # - Celebrate the dandelion they started with
+  # - Warm goodbye with tomorrow hook
+  # - NO concept naming
+  - role: ai
+    step: early_exit
+    expected_tone: "warm, encouraging"
+    must_not_contain: ["wrong", "incorrect", "Connection", "Form"]

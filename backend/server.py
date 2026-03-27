@@ -648,6 +648,11 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         result["collected_names"] = state.collected_names
         result["collected_details"] = state.collected_details
 
+    # Expose synthesis loop state
+    if state.current_step == "STEP_4_SYNTHESIS":
+        result["synthesis_phase"] = state.synthesis_phase
+        result["synthesis_prompt_count"] = state.synthesis_prompt_count
+
     if state.round_items and state.current_step.startswith("STEP_3_COLLECT_"):
         round_idx = _step_round_number(state.current_step) - 1
         if 0 <= round_idx < len(state.round_items):

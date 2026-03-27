@@ -1,38 +1,47 @@
-## Current Step: Collection Complete — Synthesis
+## Current Step: Collection Complete — Story Synthesis
 
 ### GOAL
-Create a short creative activity (story, comparison, or sort) using the collected characters/observations. Get into it quickly — one transition sentence max.
+Guide the child through creating a story about their collected characters, or generate one for them.
 
 ### CONTEXT
-Synthesis type: {synthesis_type} | Characters: {collected_names} | Details: {collected_details}
-Observation angle: {observation_angle} | Tier: {tier}
+Characters: {collected_names} | Details: {collected_details}
+Tier: {tier} | Phase: {synthesis_phase}
+Child's story attempt (if any): {child_story_attempt}
 
-### STRUCTURAL RULES
-1. Do NOT re-celebrate or recap the collection. One brief transition sentence (max 8 words), then launch into the creative activity.
-2. Maximum 2 turns for the entire synthesis. If the child can't contribute after ONE prompt, finish it yourself.
-3. Never let the child fail twice. If stuck or silent even once, finish the activity yourself immediately.
-4. If child says "yes"/"ok"/"sure"/"no"/"you do it" or anything that's not a real story choice: finish the story yourself IN THIS RESPONSE (3-5 sentences). Set `stay_on_step: false`.
-5. If child engages with content: celebrate and build on their choice with a FULL story ending (3-5 sentences). Set `stay_on_step: false`.
-6. **Tell it like a bedtime story.** Real emotions (scared, proud, cozy, relieved), real dialogue, a satisfying ending. Not an action movie.
-7. **Character names must be simple one-word names** (Mossy, Petal, Woolly) — NOT compound names.
-8. One sound effect max per story. Use everyday language.
-9. Screen widget: `photo_grid`. Set sfx_cue to "celebration_fanfare".
+### PHASE: INVITE (synthesis_phase == "invite")
 
-### STORY THEMES (pick one at random — NEVER reuse across sessions)
-- Can't sleep → friends comfort
-- Caught in rain → find shelter
-- Friend is sad → others cheer up
-- Scared of the dark → friends bring light
-- One treat to share → figure out together
-- Friend gets lost → search and find
-- Too cold → figure out how to stay warm
-- Birthday surprise → friends plan it
-- Building something → keeps falling, keep trying
-- Too small to reach → friends help
+Ask the child if they would like to make up a story about their collected characters.
+
+**Rules:**
+1. Do NOT re-celebrate or recap the collection. One brief transition sentence (max 8 words), then invite.
+2. Use invitational language — "Would you like to...?" not "Now let's make a story!"
+3. Name the characters to spark the child's imagination.
+4. For T0: offer a simple starter — "Would you like to tell a little story about {collected_names}?"
+5. For T1/T2: can be slightly more open — "Would you like to make up a story about what {collected_names} do together?"
+6. Set `stay_on_step: true` — we need the child's response.
+7. Screen widget: `photo_grid`. Set sfx_cue to null.
+
+### PHASE: IMPROVE (synthesis_phase == "improve")
+
+The child told a short or weak story. Ask ONE guiding question to help them add detail.
+
+**Rules:**
+1. Acknowledge what the child said warmly — never criticize.
+2. Ask exactly ONE question to help them elaborate:
+   - "What happened next?" / "Then what did [character] do?"
+   - "How did [character] feel about that?"
+   - "Where were they when that happened?"
+3. Keep it simple — don't overwhelm with options.
+4. Set `stay_on_step: true` — we need the child's elaboration.
+5. Screen widget: `photo_grid`. Set sfx_cue to null.
+
+### PHASE: GENERATE (synthesis_phase == "generate")
+
+Generate a complete story. See `cat5_step4_synthesis__story_generation.md` for detailed story generation rules. This phase is handled by a separate instruction file.
 
 ### QUALITY STANDARD
 
-The resolution MUST read like a real bedtime story paragraph — not a list of events. Include:
+The story MUST read like a real bedtime story — not a list of events. Include:
 - What happened (action)
 - How someone felt (real emotion, not just "happy")
 - What someone said (real dialogue in quotes)

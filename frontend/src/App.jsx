@@ -51,7 +51,7 @@ function App() {
     messages, sessionId, sessionState, screenFrame, loading, turnPending, error,
     latency, activityType, templateType, photoUrl, errorExit, lastWrongPhotoId,
     retryCount, isActive, isEnded, isInputDisabled,
-    isSpeaking, ttsEnabled, toggleTts, silenceTimerOn, toggleSilenceTimer, isMicActive, sttMode, silenceTimer,
+    isSpeaking, audioInfo, ttsEnabled, toggleTts, silenceTimerOn, toggleSilenceTimer, isMicActive, sttMode, silenceTimer,
     startSession, startDeepLinkSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
   } = useSessionOrchestration(tier);
 
@@ -215,7 +215,7 @@ function App() {
             {getFooterStatusLabel({ loading, turnPending, status: sessionState?.status })}
           </span>
           {isSpeaking && <span className="ml-2 text-[var(--color-teal)]">Speaking...</span>}
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
             <button
               onClick={toggleSilenceTimer}
               className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer border ${silenceTimerOn ? 'border-[var(--color-forest)]/30 bg-[var(--color-forest)]/10 text-[var(--color-forest-dark)]' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
@@ -232,6 +232,14 @@ function App() {
             >
               {ttsEnabled ? '\u{1F50A} TTS' : '\u{1F507} TTS'}
             </button>
+            {audioInfo && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap">
+                {audioInfo.streaming ? 'Opus▸' : 'Opus'}
+                {audioInfo.durationSec && <> {audioInfo.durationSec}s</>}
+                {audioInfo.sizeKB !== '...' && <> {audioInfo.sizeKB}k</>}
+                {audioInfo.pcmSizeKB && <>←{audioInfo.pcmSizeKB}k</>}
+              </span>
+            )}
           </div>
         </div>
       </footer>

@@ -3,47 +3,9 @@ import BASE from '../utils/basePath';
 
 const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA==';
 
-/**
- * Build a WAV file (Blob) from raw PCM 16-bit LE mono samples.
- */
-function pcmToWavBlob(pcmData, sampleRate) {
-  const wavHeader = 44;
-  const buffer = new ArrayBuffer(wavHeader + pcmData.byteLength);
-  const view = new DataView(buffer);
-
-  // RIFF header
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + pcmData.byteLength, true);
-  writeString(view, 8, 'WAVE');
-
-  // fmt sub-chunk
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);           // sub-chunk size
-  view.setUint16(20, 1, true);            // PCM format
-  view.setUint16(22, 1, true);            // mono
-  view.setUint32(24, sampleRate, true);    // sample rate
-  view.setUint32(28, sampleRate * 2, true); // byte rate
-  view.setUint16(32, 2, true);            // block align
-  view.setUint16(34, 16, true);           // bits per sample
-
-  // data sub-chunk
-  writeString(view, 36, 'data');
-  view.setUint32(40, pcmData.byteLength, true);
-
-  // Copy PCM data
-  new Uint8Array(buffer, wavHeader).set(new Uint8Array(pcmData));
-
-  return new Blob([buffer], { type: 'audio/wav' });
-}
-
-function writeString(view, offset, str) {
-  for (let i = 0; i < str.length; i++) {
-    view.setUint8(offset + i, str.charCodeAt(i));
-  }
-}
-
 export default function useTTS(onSpeakingDone) {
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [audioInfo, setAudioInfo] = useState(null);
   const abortRef = useRef(null);
   const audioElRef = useRef(null);
   const audioUrlRef = useRef(null);
@@ -82,6 +44,7 @@ export default function useTTS(onSpeakingDone) {
       window.speechSynthesis.cancel();
     }
     clearAudioElement();
+    setAudioInfo(null);
     setIsSpeaking(false);
   }, [clearAudioElement]);
 
@@ -107,11 +70,16 @@ export default function useTTS(onSpeakingDone) {
   }, [onSpeakingDone]);
 
   /**
-   * Play a WAV blob via an <audio> element — the most reliable cross-platform
-   * approach, especially on mobile browsers that restrict AudioContext.
+   * Play an audio blob (OGG/Opus or WAV) via an <audio> element.
+   * Browsers natively decode OGG/Opus — no manual header construction needed.
    */
-  const playWavBlob = useCallback((wavBlob) => {
-    const url = URL.createObjectURL(wavBlob);
+  const playAudioBlob = useCallback((blob, pcmSize = 0) => {
+    const format = blob.type.includes('ogg') ? 'OGG/Opus' : blob.type.includes('wav') ? 'WAV' : blob.type;
+    const sizeKB = (blob.size / 1024).toFixed(1);
+    const pcmSizeKB = pcmSize ? (pcmSize / 1024).toFixed(1) : null;
+    setAudioInfo({ format, size: blob.size, sizeKB, pcmSize, pcmSizeKB });
+
+    const url = URL.createObjectURL(blob);
     const audio = getAudioElement();
 
     clearAudioElement();
@@ -119,6 +87,13 @@ export default function useTTS(onSpeakingDone) {
     audio.muted = false;
     audio.volume = 1;
     audio.src = url;
+
+    audio.onloadedmetadata = () => {
+      const duration = audio.duration;
+      if (duration && isFinite(duration)) {
+        setAudioInfo((prev) => prev ? { ...prev, durationSec: duration.toFixed(1) } : prev);
+      }
+    };
 
     audio.onended = () => {
       clearAudioElement();
@@ -141,9 +116,10 @@ export default function useTTS(onSpeakingDone) {
   }, [clearAudioElement, getAudioElement, onSpeakingDone]);
 
   /**
-   * Fetch PCM from a ReadableStream, convert to WAV, and play via <audio>.
+   * Collect OGG/Opus audio from a ReadableStream and play via <audio>.
+   * The backend already encodes to OGG/Opus — just collect and play.
    */
-  const playFromStream = useCallback(async (audioStream, sampleRate, signal) => {
+  const playFromStream = useCallback(async (audioStream, signal) => {
     if (!audioStream) {
       setIsSpeaking(false);
       onSpeakingDone?.();
@@ -151,7 +127,6 @@ export default function useTTS(onSpeakingDone) {
     }
 
     try {
-      // Collect all PCM chunks into a single buffer
       const reader = audioStream.getReader();
       const chunks = [];
       let totalLength = 0;
@@ -173,87 +148,71 @@ export default function useTTS(onSpeakingDone) {
         return;
       }
 
-      // Merge chunks
-      const pcmData = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        pcmData.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-
-      // Ensure even byte count (PCM 16-bit)
-      const evenLength = pcmData.byteLength & ~1;
-      const wavBlob = pcmToWavBlob(pcmData.slice(0, evenLength).buffer, sampleRate);
-      playWavBlob(wavBlob);
+      const blob = new Blob(chunks, { type: 'audio/ogg' });
+      playAudioBlob(blob);
     } catch (err) {
       if (err.name === 'AbortError') return;
-      console.warn('Stream-to-WAV playback failed:', err);
+      console.warn('Stream playback failed:', err);
       setIsSpeaking(false);
       onSpeakingDone?.();
     }
-  }, [onSpeakingDone, playWavBlob]);
+  }, [onSpeakingDone, playAudioBlob]);
 
   /**
-   * Fetch PCM as a single ArrayBuffer (no streaming), convert to WAV, and play.
-   * More reliable on mobile browsers that don't support ReadableStream well.
-   */
-  const fetchAndPlayWav = useCallback(async (text, tier, signal) => {
-    try {
-      const res = await fetch(`${BASE}/api/tts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, tier }),
-        signal,
-      });
-      if (signal?.aborted) return;
-      if (res.status === 204 || !res.ok) {
-        fallbackSpeak(text);
-        return;
-      }
-      const sampleRate = parseInt(res.headers.get('X-Sample-Rate') || '24000', 10);
-      const pcmBuffer = await res.arrayBuffer();
-      if (signal?.aborted) return;
-      if (pcmBuffer.byteLength < 2) {
-        fallbackSpeak(text);
-        return;
-      }
-      const evenLength = pcmBuffer.byteLength & ~1;
-      const wavBlob = pcmToWavBlob(pcmBuffer.slice(0, evenLength), sampleRate);
-      playWavBlob(wavBlob);
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      console.warn('TTS fetch failed, using browser speech:', err);
-      fallbackSpeak(text);
-    }
-  }, [fallbackSpeak, playWavBlob]);
-
-  /**
-   * Speak text using /api/tts — fetches full PCM, converts to WAV, plays via <audio>.
+   * Speak text using GET /api/tts — streams OGG/Opus via <audio src> for
+   * progressive playback in Chrome. Falls back to browser speech on error.
    */
   const speak = useCallback(async (text, tier) => {
     if (!text) return;
 
     stop();
     setIsSpeaking(true);
+    setAudioInfo({ format: 'OGG/Opus', sizeKB: '...', pcmSize: 0, pcmSizeKB: null, durationSec: null, streaming: true });
 
-    const controller = new AbortController();
-    abortRef.current = controller;
+    const audio = getAudioElement();
+    clearAudioElement();
 
-    await fetchAndPlayWav(text, tier, controller.signal);
-  }, [stop, fetchAndPlayWav]);
+    const url = `${BASE}/api/tts?text=${encodeURIComponent(text)}&tier=${encodeURIComponent(tier)}`;
+    audio.src = url;
+    audio.muted = false;
+    audio.volume = 1;
+
+    audio.onloadedmetadata = () => {
+      const duration = audio.duration;
+      if (duration && isFinite(duration)) {
+        setAudioInfo((prev) => prev ? { ...prev, durationSec: duration.toFixed(1) } : prev);
+      }
+    };
+
+    audio.onended = () => {
+      clearAudioElement();
+      setIsSpeaking(false);
+      onSpeakingDone?.();
+    };
+    audio.onerror = () => {
+      console.warn('Streaming audio playback failed, using browser speech');
+      clearAudioElement();
+      fallbackSpeak(text);
+    };
+
+    audio.play().catch(() => {
+      clearAudioElement();
+      fallbackSpeak(text);
+    });
+  }, [stop, clearAudioElement, getAudioElement, fallbackSpeak, onSpeakingDone]);
 
   /**
    * Play audio from an already-available ReadableStream (from /api/turn-speak).
-   * Collects the stream into a WAV blob and plays via <audio>.
+   * The stream contains OGG/Opus data — just collect and play.
    */
-  const speakFromStream = useCallback(async (audioStream, sampleRate) => {
+  const speakFromStream = useCallback(async (audioStream) => {
     stop();
     setIsSpeaking(true);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
-    await playFromStream(audioStream, sampleRate, controller.signal);
+    await playFromStream(audioStream, controller.signal);
   }, [stop, playFromStream]);
 
   const unlock = useCallback(() => {
@@ -286,5 +245,5 @@ export default function useTTS(onSpeakingDone) {
     }
   }, [getAudioElement]);
 
-  return { isSpeaking, speak, speakFromStream, stop, unlock };
+  return { isSpeaking, audioInfo, speak, speakFromStream, stop, unlock };
 }

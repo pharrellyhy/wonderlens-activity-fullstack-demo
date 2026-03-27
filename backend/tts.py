@@ -8,6 +8,8 @@ import wave
 from collections.abc import AsyncIterator
 from functools import lru_cache
 
+import av
+import numpy as np
 from google import genai
 from google.genai import types
 
@@ -62,6 +64,12 @@ TIER_VOICES: dict[str, str] = {
 }
 
 SAMPLE_RATE = 24000
+OPUS_BITRATE_BPS = 32000
+# OGG page duration for streaming — 200ms balances latency vs overhead
+_OGG_PAGE_DURATION_US = 200_000
+# Minimum PCM samples to accumulate before encoding an Opus frame (200ms at 24kHz)
+_ENCODE_FRAME_SAMPLES = int(SAMPLE_RATE * 0.2)
+_ENCODE_FRAME_BYTES = _ENCODE_FRAME_SAMPLES * 2
 
 
 @lru_cache(maxsize=1)
@@ -89,6 +97,175 @@ def _pcm_to_wav(pcm_data: bytes, sample_rate: int = SAMPLE_RATE) -> bytes:
         wav.setframerate(sample_rate)
         wav.writeframes(pcm_data)
     return buf.getvalue()
+
+
+def _open_ogg_opus_output(
+    buffer: io.BytesIO, sample_rate: int = SAMPLE_RATE, page_duration_us: int | None = None
+) -> tuple[av.container.OutputContainer, av.audio.stream.AudioStream]:
+    """Create a configured OGG/Opus output container and stream."""
+    options = {"page_duration": str(page_duration_us)} if page_duration_us is not None else None
+    output = av.open(buffer, mode="w", format="ogg", options=options)
+    stream = output.add_stream("libopus", rate=sample_rate)
+    stream.layout = "mono"
+    stream.bit_rate = OPUS_BITRATE_BPS
+    return output, stream
+
+
+def _pcm_to_ogg_opus(pcm_data: bytes, sample_rate: int = SAMPLE_RATE) -> bytes:
+    """Encode raw PCM 16-bit mono audio to OGG/Opus using PyAV.
+
+    Args:
+        pcm_data: Raw PCM 16-bit little-endian mono audio bytes.
+        sample_rate: Sample rate in Hz (default 24000).
+
+    Returns:
+        Complete OGG/Opus file bytes.
+    """
+    samples = np.frombuffer(pcm_data, dtype=np.int16)
+    buf = io.BytesIO()
+    output, stream = _open_ogg_opus_output(buf, sample_rate)
+
+    frame = av.AudioFrame.from_ndarray(samples.reshape(1, -1), format="s16", layout="mono")
+    frame.sample_rate = sample_rate
+    frame.pts = 0
+
+    for pkt in stream.encode(frame):
+        output.mux(pkt)
+    for pkt in stream.encode(None):
+        output.mux(pkt)
+    output.close()
+
+    return buf.getvalue()
+
+
+async def synthesize_speech_ogg_async(text: str, tier: str, max_retries: int = 2) -> tuple[bytes, int] | None:
+    """Synthesize speech and encode to OGG/Opus.
+
+    Collects all PCM from Gemini TTS, encodes to OGG/Opus via PyAV.
+    Falls back to WAV on encoding failure.
+
+    Args:
+        text: Text to synthesize.
+        tier: Age tier (T0, T1, T2) for voice selection.
+        max_retries: Number of retry attempts on connection errors.
+
+    Returns:
+        Tuple of (encoded audio bytes, original PCM size in bytes), or None on TTS failure.
+    """
+    chunks: list[bytes] = []
+    async for chunk in synthesize_speech_stream_async(text, tier, max_retries):
+        chunks.append(chunk)
+
+    if not chunks:
+        return None
+
+    pcm_data = b"".join(chunks)
+    # Ensure even byte count for 16-bit PCM
+    if len(pcm_data) % 2 != 0:
+        pcm_data = pcm_data[:-1]
+
+    if len(pcm_data) == 0:
+        return None
+
+    pcm_size = len(pcm_data)
+    try:
+        return _pcm_to_ogg_opus(pcm_data), pcm_size
+    except Exception as e:
+        logger.warning(f"OGG/Opus encoding failed, falling back to WAV: {e}")
+        return _pcm_to_wav(pcm_data), pcm_size
+
+
+async def synthesize_speech_ogg_stream_async(text: str, tier: str, max_retries: int = 2) -> AsyncIterator[bytes]:
+    """Stream OGG/Opus audio, encoding incrementally as PCM arrives from Gemini.
+
+    Yields OGG page bytes as they are produced, enabling progressive playback
+    in Chrome's <audio> element. First audio chunk arrives ~200ms after Gemini's
+    first PCM chunk.
+
+    Args:
+        text: Text to synthesize.
+        tier: Age tier (T0, T1, T2) for voice selection.
+        max_retries: Number of retry attempts on connection errors.
+
+    Yields:
+        OGG/Opus byte chunks (complete OGG pages).
+    """
+    buf = io.BytesIO()
+    output, ogg_stream = _open_ogg_opus_output(buf, SAMPLE_RATE, _OGG_PAGE_DURATION_US)
+
+    pcm_accum = bytearray()
+    pts = 0
+    total_pcm_bytes = 0
+    ogg_pos = 0
+    start = time.perf_counter()
+
+    def _flush_buf() -> bytes:
+        """Read any new bytes written to the OGG buffer since last flush."""
+        nonlocal ogg_pos
+        new_pos = buf.tell()
+        if new_pos <= ogg_pos:
+            return b""
+        buf.seek(ogg_pos)
+        data = buf.read(new_pos - ogg_pos)
+        buf.seek(new_pos)
+        ogg_pos = new_pos
+        return data
+
+    def _encode_frame(samples: np.ndarray) -> bytes:
+        """Encode one Opus frame and return any new OGG bytes."""
+        nonlocal pts
+        frame = av.AudioFrame.from_ndarray(samples.reshape(1, -1), format="s16", layout="mono")
+        frame.sample_rate = SAMPLE_RATE
+        frame.pts = pts
+        pts += len(samples)
+        for pkt in ogg_stream.encode(frame):
+            output.mux(pkt)
+        return _flush_buf()
+
+    try:
+        async for raw_chunk in synthesize_speech_stream_async(text, tier, max_retries):
+            total_pcm_bytes += len(raw_chunk)
+            # Ensure even byte count for int16
+            pcm_chunk = raw_chunk[: len(raw_chunk) & ~1]
+            if len(pcm_chunk) == 0:
+                continue
+
+            pcm_accum.extend(pcm_chunk)
+
+            # Encode full frames as they accumulate
+            while len(pcm_accum) >= _ENCODE_FRAME_BYTES:
+                frame_bytes = bytes(pcm_accum[:_ENCODE_FRAME_BYTES])
+                del pcm_accum[:_ENCODE_FRAME_BYTES]
+                ogg_bytes = _encode_frame(np.frombuffer(frame_bytes, dtype=np.int16))
+                if ogg_bytes:
+                    yield ogg_bytes
+
+        # Encode remaining PCM
+        if len(pcm_accum) > 0:
+            ogg_bytes = _encode_frame(np.frombuffer(bytes(pcm_accum), dtype=np.int16))
+            if ogg_bytes:
+                yield ogg_bytes
+
+        # Flush encoder and muxer
+        for pkt in ogg_stream.encode(None):
+            output.mux(pkt)
+        output.close()
+        final = _flush_buf()
+        if final:
+            yield final
+
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        duration_ms = (total_pcm_bytes // 2) * 1000 // SAMPLE_RATE
+        logger.info(f"TTS OGG stream done: duration={duration_ms}ms, pcm={total_pcm_bytes}B, latency={latency_ms}ms")
+
+    except Exception as e:
+        # Try to close the container cleanly
+        try:
+            output.close()
+        except Exception:
+            pass
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        logger.error(f"TTS OGG stream failed ({latency_ms}ms): {e}")
 
 
 def _get_speech_config(tier: str) -> types.SpeechConfig:

@@ -31,9 +31,9 @@ export async function sendTurn(sessionId, text, isSilent, photoId = null) {
  * Binary protocol:
  *   [4-byte big-endian uint32: JSON length]
  *   [N bytes: JSON turn data]
- *   [remaining bytes: raw PCM 16-bit mono audio chunks]
+ *   [remaining bytes: OGG/Opus audio]
  *
- * @returns {{ turnData: object, audioStream: ReadableStream|null, sampleRate: number }}
+ * @returns {{ turnData: object, audioStream: ReadableStream|null }}
  */
 export async function sendTurnSpeak(sessionId, text, isSilent, photoId = null) {
   const body = { session_id: sessionId, text, is_silent: isSilent };
@@ -51,7 +51,6 @@ export async function sendTurnSpeak(sessionId, text, isSilent, photoId = null) {
     throw new Error(err.error || `Turn-speak failed: ${res.status}`);
   }
 
-  const sampleRate = parseInt(res.headers.get('X-Sample-Rate') || '24000', 10);
   const reader = res.body.getReader();
 
   // Read 4-byte JSON length prefix
@@ -82,7 +81,7 @@ export async function sendTurnSpeak(sessionId, text, isSilent, photoId = null) {
   const leftover = jsonBuf.slice(jsonLength);
   const turnData = JSON.parse(new TextDecoder().decode(jsonBytes));
 
-  // Create a new ReadableStream for the remaining PCM audio data
+  // Create a new ReadableStream for the remaining OGG/Opus audio data
   const audioStream = new ReadableStream({
     start(controller) {
       // Push any leftover bytes from the JSON read
@@ -103,7 +102,7 @@ export async function sendTurnSpeak(sessionId, text, isSilent, photoId = null) {
     },
   });
 
-  return { turnData, audioStream, sampleRate };
+  return { turnData, audioStream };
 }
 
 export async function startDeepLinkSession(entity, tier, contextUrl = '') {
@@ -126,16 +125,4 @@ export async function transcribeAudio(audioBlob) {
   const res = await fetch(`${BASE}/api/stt`, { method: 'POST', body: formData });
   if (!res.ok) return null;
   return res.json();
-}
-
-export async function synthesizeSpeechStream(text, tier) {
-  const res = await fetch(`${BASE}/api/tts`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, tier }),
-  });
-  if (res.status === 204) return null;
-  if (!res.ok) throw new Error(`TTS failed: ${res.status}`);
-  const sampleRate = parseInt(res.headers.get('X-Sample-Rate') || '24000', 10);
-  return { stream: res.body, sampleRate };
 }

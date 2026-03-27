@@ -191,7 +191,7 @@ export default function useConversation() {
 
   /**
    * Send a turn using the combined /api/turn-speak endpoint.
-   * Returns { turnData, audioStream, sampleRate } so the caller can play audio.
+   * Returns { turnData, audioStream } so the caller can play audio.
    */
   const sendTurnRequest = useCallback(async (text, isSilent, photoId = null) => {
     if (!sessionId || turnPending) return null;
@@ -208,12 +208,12 @@ export default function useConversation() {
 
     try {
       // Use combined turn+TTS endpoint
-      const { turnData, audioStream, sampleRate } = await sendTurnSpeak(
+      const { turnData, audioStream } = await sendTurnSpeak(
         sessionId, text, isSilent, photoId,
       );
 
       // Store audio stream for the orchestration hook to play
-      pendingAudioRef.current = { stream: audioStream, sampleRate };
+      pendingAudioRef.current = { stream: audioStream };
 
       // Apply turn data (sets messages, screen frame, session state)
       applyTurnResponse(turnData);

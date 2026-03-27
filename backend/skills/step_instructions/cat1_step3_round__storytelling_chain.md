@@ -15,3 +15,7 @@
 **Scaffolding if the child is stuck:**
 - Offer two possible directions: "Maybe the {entity_name} found a treasure... or maybe it met a new friend? Which one do you like?"
 - Or narrow the scope: "What sound did the {entity_name} hear? Was it loud or quiet?"
+
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+
+{sampled_examples}

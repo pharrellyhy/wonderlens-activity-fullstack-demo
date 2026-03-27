@@ -1,0 +1,93 @@
+step_group: cat5_celebrate_closing
+examples:
+  # ══════════════════════════════════════════════════════════════════
+  #  CELEBRATE
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T0
+    scenario: ideal
+    style: default
+    text: |
+      **Celebrate — Personal recall:**
+      AI: "[proud] You poked that first one and said 'squishy' — that was the best! You're an amazing {role_title}!"
+
+  - tier: T0
+    scenario: ideal
+    style: default
+    text: |
+      **Celebrate — Name-focused recall:**
+      AI: "[proud] Silky was my favorite name — you picked it all by yourself! What a great {role_title} you are!"
+
+  - tier: T1
+    scenario: ideal
+    style: default
+    text: |
+      **Celebrate — Highlight comparison:**
+      AI: "[proud] You noticed every texture was different — fuzzy, silky, curly! That takes real explorer instincts. Incredible work, {role_title}!"
+
+  - tier: T1
+    scenario: ideal
+    style: default
+    text: |
+      **Celebrate — Story moment recall:**
+      AI: "[proud] When you said Satin Breeze was smoother than Pillow Puff — that was such a sharp observation! Well done, {role_title}!"
+
+  - tier: T2
+    scenario: ideal
+    style: default
+    text: |
+      **Celebrate — Growth reflection:**
+      AI: "[proud] You started with one small discovery and built a whole world of characters and stories from it. That's the mark of a true {role_title}!"
+
+  - tier: T2
+    scenario: ideal
+    style: default
+    text: |
+      **Celebrate — Creative highlight:**
+      AI: "[proud] The name Rumble for something soft on the inside — that showed real creativity. You see things other people miss, {role_title}!"
+
+  # ══════════════════════════════════════════════════════════════════
+  #  CLOSING
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T0
+    scenario: ideal
+    style: default
+    text: |
+      **Closing — 1 IB concept, warm goodbye:**
+      AI: "[warm] All your friends feel soft in their own way — that's a Connection you made! I wonder what you'll discover next time?"
+
+  - tier: T0
+    scenario: ideal
+    style: default
+    text: |
+      **Closing — 1 IB concept, forward-looking:**
+      AI: "[warm] Squish, Fuzz, and Bump are all connected by how gentle they feel. Next time, who knows what you'll find!"
+
+  - tier: T1
+    scenario: ideal
+    style: default
+    text: |
+      **Closing — 2 IB concepts, recap discovery:**
+      AI: "[warm] You explored the Form of softness in so many ways — and found a real Connection between things that looked completely different. What will you notice tomorrow?"
+
+  - tier: T1
+    scenario: ideal
+    style: default
+    text: |
+      **Closing — 2 IB concepts, personal touch:**
+      AI: "[warm] Every find had a different Form — fluffy, smooth, curly. And they're all connected by that same gentle feeling. You've got amazing explorer eyes!"
+
+  - tier: T2
+    scenario: ideal
+    style: default
+    text: |
+      **Closing — 3 IB concepts, reflective:**
+      AI: "[warm] You noticed the Form of each texture, found Connections between completely different things, and saw how Perspective changes what you discover. That's real exploration. What's your next adventure?"
+
+  - tier: T2
+    scenario: ideal
+    style: default
+    text: |
+      **Closing — 3 IB concepts, character-centered:**
+      AI: "[warm] Cloud Puff, Whisper, and Rumble each had a unique Form — but you found the Connection between them. Changing your Perspective helped you see softness everywhere. I can't wait to hear what you find next!"

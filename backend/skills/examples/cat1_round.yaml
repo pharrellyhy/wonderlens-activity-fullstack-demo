@@ -1,0 +1,252 @@
+step_group: cat1_round
+examples:
+  # ══════════════════════════════════════════════════════════════════
+  #  RIDDLE GAME
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T0
+    scenario: correct_photo
+    style: riddle_game
+    text: |
+      **Presenting the round:**
+      AI: "[mysterious] I'm thinking of something! It's round. And it bounces. What is it?"
+
+      **Good answer:**
+      Child: "ball!"
+      AI: "[celebrating] A ball — you got it! Nice guess!"
+
+  - tier: T0
+    scenario: silence
+    style: riddle_game
+    text: |
+      **Silence / stuck:**
+      AI: "[gentle] Here's a bonus clue — you can kick it! Is it a ball or a pillow?"
+
+  - tier: T1
+    scenario: correct_photo
+    style: riddle_game
+    text: |
+      **Presenting the round:**
+      AI: "[mysterious] Here's a tricky one! It's yellow, it's warm, and you can't touch it. What do you think it could be?"
+
+      **Good answer:**
+      Child: "the sun!"
+      AI: "[celebrating] The sun — brilliant! All three clues fit perfectly. How did you figure that out so fast?"
+
+  - tier: T1
+    scenario: wrong_photo
+    style: riddle_game
+    text: |
+      **Wrong/unexpected answer:**
+      Child: "a lamp"
+      AI: "[warm] Ooh, a lamp is yellow and warm — great thinking! But this one is waaay bigger. You can see it in the sky. Is it the sun or the moon?"
+
+  - tier: T2
+    scenario: correct_photo
+    style: riddle_game
+    text: |
+      **Presenting the round:**
+      AI: "[mysterious] This one's a challenge. It has no legs but travels everywhere. It can whisper or roar but has no voice. And you can feel it but never see it. Any guesses?"
+
+      **Good answer:**
+      Child: "the wind!"
+      AI: "[celebrating] The wind — exactly! That 'whisper or roar' clue was the sneaky one. Your reasoning is sharp!"
+
+  - tier: T2
+    scenario: silence
+    style: riddle_game
+    text: |
+      **Silence / stuck:**
+      AI: "[encouraging] It's something you feel on your face when you go outside. Does it blow — is it the wind, or is it something else?"
+
+  # ══════════════════════════════════════════════════════════════════
+  #  PREDICTION GAME
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T0
+    scenario: correct_photo
+    style: prediction_game
+    text: |
+      **Presenting the round:**
+      AI: "[curious] Oh no — a big rain cloud is coming! What do you think happens next?"
+
+      **Good answer:**
+      Child: "it rains!"
+      AI: "[excited] Splash splash! Rain everywhere! Your {entity_name} would need an umbrella!"
+
+  - tier: T0
+    scenario: silence
+    style: prediction_game
+    text: |
+      **Silence / stuck:**
+      AI: "[gentle] I think it starts raining! Would it rain or would the sun come out?"
+
+  - tier: T1
+    scenario: correct_photo
+    style: prediction_game
+    text: |
+      **Presenting the round:**
+      AI: "[curious] Imagine your {entity_name} finds a giant puddle right in its path. What do you think it would do?"
+
+      **Good answer:**
+      Child: "jump right in and splash!"
+      AI: "[excited] A huge splash! I can almost hear it. I bet the water would go everywhere!"
+
+  - tier: T1
+    scenario: wrong_photo
+    style: prediction_game
+    text: |
+      **Unexpected answer:**
+      Child: "it flies away"
+      AI: "[warm] That would be surprising! I was thinking about what happens with the puddle though. Would your {entity_name} splash in it or walk around it?"
+
+  - tier: T2
+    scenario: correct_photo
+    style: prediction_game
+    text: |
+      **Presenting the round:**
+      AI: "[curious] Your {entity_name} discovers that its shadow has started moving on its own — doing completely different things. What do you predict happens when it tries to catch it?"
+
+      **Good answer:**
+      Child: "the shadow runs away and they have to chase it everywhere"
+      AI: "[excited] A shadow chase — what a scene! I love how you thought about the shadow having its own mind. That would make a great story!"
+
+  # ══════════════════════════════════════════════════════════════════
+  #  VOICE ACTING
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T0
+    scenario: correct_photo
+    style: voice_acting
+    text: |
+      **Presenting the round:**
+      AI: "[playful] Your {entity_name} just saw a butterfly for the first time! I think it would say 'Oooh!' Would it say 'Oooh!' or something different?"
+
+      **Good answer:**
+      Child: "wow wow wow!"
+      AI: "[celebrating] 'Wow wow wow!' — so excited! I love that voice!"
+
+  - tier: T1
+    scenario: correct_photo
+    style: voice_acting
+    text: |
+      **Presenting the round:**
+      AI: "[playful] Picture this — your {entity_name} is tiptoeing through the dark and hears a strange noise. I think it would whisper 'What was that?' Would it say that, or something braver?"
+
+      **Good answer:**
+      Child: "who's there! I'm not scared!"
+      AI: "[celebrating] 'Who's there! I'm not scared!' — so brave! Your {entity_name} has real courage!"
+
+  - tier: T1
+    scenario: silence
+    style: voice_acting
+    text: |
+      **Silence / stuck:**
+      AI: "[gentle] Would your {entity_name} whisper 'What was that?' or shout 'Who's there!'?"
+
+  - tier: T2
+    scenario: correct_photo
+    style: voice_acting
+    text: |
+      **Presenting the round:**
+      AI: "[playful] Your {entity_name} just found out its best friend is moving far away. What do you think it would say — something sad, something hopeful, or maybe a mix of both?"
+
+      **Good answer:**
+      Child: "I'll miss you so much but we can write letters every day"
+      AI: "[celebrating] That's so heartfelt — sad and hopeful at the same time! Your {entity_name} really knows how to be a good friend."
+
+  # ══════════════════════════════════════════════════════════════════
+  #  HELPER HOTLINE
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T0
+    scenario: correct_photo
+    style: helper_hotline
+    text: |
+      **Presenting the round:**
+      AI: "[concerned] Ring ring! A bunny is sad. Its ear is droopy. What should we do?"
+
+      **Good answer:**
+      Child: "hug it!"
+      AI: "[celebrating] A hug! That's so kind. The bunny feels better already!"
+
+  - tier: T1
+    scenario: correct_photo
+    style: helper_hotline
+    text: |
+      **Presenting the round:**
+      AI: "[concerned] Ring ring! A squirrel forgot where it buried its acorns and winter is coming. It sounds really worried. What would you tell it?"
+
+      **Good answer:**
+      Child: "I'd help it look everywhere and we'd find them together"
+      AI: "[celebrating] Searching together — that's exactly what a good friend would do! The squirrel would feel so much better knowing it's not alone."
+
+  - tier: T2
+    scenario: correct_photo
+    style: helper_hotline
+    text: |
+      **Presenting the round:**
+      AI: "[concerned] Ring ring! Two friends are arguing about which game to play at recess. One wants tag, the other wants hide-and-seek, and neither will budge. What advice would you give?"
+
+      **Good answer:**
+      Child: "they could play tag first and then hide and seek, or make up a new game that's both"
+      AI: "[celebrating] Taking turns or inventing a combo — that's creative problem-solving! Both friends would feel heard with that approach."
+
+  - tier: T2
+    scenario: silence
+    style: helper_hotline
+    text: |
+      **Silence / stuck:**
+      AI: "[encouraging] Hmm, that's a tough one! Should they take turns choosing, or try to find a game they both like?"
+
+  # ══════════════════════════════════════════════════════════════════
+  #  STORYTELLING CHAIN
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T0
+    scenario: correct_photo
+    style: storytelling_chain
+    text: |
+      **Presenting the round:**
+      AI: "[playful] One morning, your {entity_name} heard a funny noise outside. Did it find a frog or a kitten?"
+
+      **Good answer:**
+      Child: "frog!"
+      AI: "[excited] A little green frog, hopping around! Your {entity_name} and the frog became instant friends!"
+
+  - tier: T0
+    scenario: silence
+    style: storytelling_chain
+    text: |
+      **Silence / stuck:**
+      AI: "[gentle] I think it found a tiny frog! Was the frog happy or grumpy?"
+
+  - tier: T1
+    scenario: correct_photo
+    style: storytelling_chain
+    text: |
+      **Presenting the round:**
+      AI: "[playful] Your {entity_name} was walking through a misty forest when it spotted something glowing behind a tree. Did it tiptoe closer, or call out to see who was there?"
+
+      **Good answer:**
+      Child: "it tiptoed really slowly"
+      AI: "[excited] Step by step, barely breathing — and behind the tree was a jar full of fireflies! They lit up the whole forest like tiny stars."
+
+  - tier: T2
+    scenario: correct_photo
+    style: storytelling_chain
+    text: |
+      **Presenting the round:**
+      AI: "[playful] Your {entity_name} opened an old trunk in the attic and found a letter inside addressed to 'The Bravest One.' What did the letter say?"
+
+      **Good answer:**
+      Child: "it said if you're reading this you've been chosen for a secret mission"
+      AI: "[excited] A secret mission — the letter crumbled to dust right after being read! Now your {entity_name} is the only one who knows. What a way to start an adventure!"
+
+  - tier: T2
+    scenario: stuck
+    style: storytelling_chain
+    text: |
+      **Child is stuck:**
+      Child: "I don't know"
+      AI: "[encouraging] What if the letter had a map on the back — leading somewhere in the house? Or maybe it was a riddle. Which sounds more interesting?"

@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     planner_max_tokens: int = int(_yaml_config.get("planner_max_tokens", 400))
     planner_temperature: float = float(_yaml_config.get("planner_temperature", 0.3))
     speaker_temperature: float = float(_yaml_config.get("speaker_temperature", 0.7))
+    best_of_n: int = int(_yaml_config.get("best_of_n", 1))
     vision_timeout_ms: int = int(_yaml_config.get("vision_timeout_ms", 5000))
     max_retries: int = int(_yaml_config.get("max_retries", 3))
     db_path: str = str(_yaml_config.get("db_path", "data/demo.db"))

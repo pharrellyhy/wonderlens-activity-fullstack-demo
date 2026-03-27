@@ -64,6 +64,9 @@ class SessionStateModel(BaseModel):
     deep_linked: bool = False
     upstream_conversation: list[UpstreamConversationTurn] = Field(default_factory=list)
 
+    # Narrator personality for creative diversity
+    narrator_personality: str = ""
+
     # Vision/entity context
     entity_name: str = ""
     entity_attributes: list[str] = Field(default_factory=list)

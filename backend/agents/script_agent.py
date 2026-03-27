@@ -1,5 +1,6 @@
 """Script Agent — per-turn dialogue generation using Qwen via ALI DashScope."""
 
+import asyncio
 import json
 import random
 import re
@@ -42,6 +43,93 @@ _SPEAKER_PROMPT_PATH = Path(__file__).parent.parent / "skills" / "speaker_system
 _STEP_INSTRUCTIONS_DIR = Path(__file__).parent.parent / "skills" / "step_instructions"
 _TIER_RULES_PATH = Path(__file__).parent.parent / "tier_rules.yaml"
 _FRAGMENTABLE_STEP_PREFIXES = {"STEP_2_RULES", "STEP_3_ROUND", "STEP_3_COLLECT", "STEP_4_SYNTHESIS"}
+_EXAMPLES_DIR = Path(__file__).parent.parent / "skills" / "examples"
+
+# --- Dynamic example library ---
+
+
+@lru_cache(maxsize=8)
+def _load_example_library(step_group: str) -> list[dict]:
+    """Load examples from YAML file for the given step group. Cached."""
+    path = _EXAMPLES_DIR / f"{step_group}.yaml"
+    if not path.exists():
+        logger.warning("example library not found: %s", path)
+        return []
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+    return data.get("examples", [])
+
+
+def _sample_examples(
+    step_group: str,
+    tier: str,
+    n: int = 3,
+    phase: str | None = None,
+    style: str | None = None,
+) -> str:
+    """Randomly sample N examples matching the filters, formatted as markdown."""
+    examples = _load_example_library(step_group)
+    filtered = [e for e in examples if e.get("tier") == tier]
+    if phase:
+        filtered = [e for e in filtered if e.get("phase") == phase]
+    if style and style != "default":
+        styled = [e for e in filtered if e.get("style") == style]
+        if styled:
+            filtered = styled
+
+    if len(filtered) < n:
+        fallback = [e for e in examples if e.get("tier") == tier and e not in filtered]
+        filtered.extend(fallback[: n - len(filtered)])
+
+    selected = random.sample(filtered, min(n, len(filtered)))
+    return "\n\n".join(e.get("text", "").strip() for e in selected)
+
+
+def _map_step_to_example_group(step: str, template_type: str) -> str | None:
+    """Map a step name to its example YAML group identifier."""
+    if step == "STEP_1_HOOK" and template_type == "cat5":
+        return "cat5_hook_mission"
+    if step == "STEP_2_MISSION":
+        return "cat5_hook_mission"
+    if step.startswith("STEP_3_COLLECT_"):
+        return "cat5_collect"
+    if step.startswith("STEP_3_ROUND_"):
+        return "cat1_round"
+    if step == "STEP_4_SYNTHESIS":
+        return "cat5_synthesis"
+    if step in ("STEP_5_CELEBRATE", "STEP_6_CLOSING"):
+        return "cat5_celebrate_closing"
+    return None
+
+
+_PERSONALITIES_PATH = Path(__file__).parent.parent / "skills" / "personalities.yaml"
+
+
+@lru_cache(maxsize=1)
+def _load_personalities_map() -> dict[str, dict]:
+    """Load personalities indexed by ID for fast lookup."""
+    if not _PERSONALITIES_PATH.exists():
+        return {}
+    with open(_PERSONALITIES_PATH) as f:
+        data = yaml.safe_load(f) or {}
+    return {p["id"]: p for p in data.get("personalities", [])}
+
+
+def _format_personality(personality_id: str) -> str:
+    """Format a personality as a prompt section."""
+    if not personality_id:
+        return ""
+    personalities = _load_personalities_map()
+    p = personalities.get(personality_id)
+    if not p:
+        return ""
+    return (
+        f"### Narrator Personality: {personality_id.replace('_', ' ').title()}\n"
+        f"Voice: {p['voice']}\n"
+        f"Celebration style: {p['celebration_style']}\n"
+        f"This is your CHARACTER for this session. Stay in this voice throughout."
+    )
+
 
 # Variety hints injected into the user prompt for early steps where the prompt
 # context is identical across sessions.  A random hint nudges the LLM toward a
@@ -70,14 +158,67 @@ _SYNTHESIS_HINTS = [
     "Theme: they try to build something but it keeps falling down.",
     "Theme: one friend is too small to reach something, others help.",
 ]
-_VARIETY_STEPS = {
-    "STEP_1_HOOK",
-    "STEP_2_RULES",
-    "STEP_2_MISSION",
-    "STEP_4_CELEBRATE",
-    "STEP_5_CELEBRATE",
-    "STEP_5_CLOSING",
-    "STEP_6_CLOSING",
+_COLLECT_PHASE_A_HINTS = [
+    "Celebrate with a sound word first (Ooh! Wow! Whoa!).",
+    "Compare this find to a previous one.",
+    "Notice something specific about the texture or color.",
+    "React as if you are genuinely surprised by what they found.",
+    "Use a simile to describe what you see.",
+    "Express curiosity about a specific detail.",
+    "Pretend you are touching it alongside them.",
+    "Comment on something unexpected about the item.",
+    "Make a playful connection to the original entity.",
+    "Describe what it might feel like with vivid sensory words.",
+    "Celebrate the EFFORT of finding it, not just the find itself.",
+    "Ask about one specific sensory quality (soft? bumpy? smooth?).",
+    "React with genuine delight, not formulaic praise.",
+    "Notice how this one is different from the last.",
+    "Use a metaphor from nature or everyday life.",
+]
+_COLLECT_PHASE_B_HINTS = [
+    "Build on the child's exact words in your celebration.",
+    "The name should connect to what the child said.",
+    "Include the previous characters by name naturally.",
+    "Make the naming moment feel like a mini-celebration.",
+    "React to the child's observation with genuine interest.",
+    "Let the child's description inspire the name.",
+    "Connect this character to the growing group.",
+    "Celebrate the uniqueness of this character compared to others.",
+    "Express wonder about the child's choice of words.",
+    "Make the character feel alive in one sentence.",
+]
+_CELEBRATE_HINTS = [
+    "Reference a SPECIFIC moment the child experienced.",
+    "Quote something the child actually said.",
+    "Recall the funniest or most surprising moment.",
+    "Connect the celebration to the child's personality, not just their finds.",
+    "Make them feel remembered, not just praised.",
+    "Reference a moment where the child was brave or creative.",
+    "Celebrate HOW they explored, not just WHAT they found.",
+    "Mention a character they named and why it was special.",
+    "Recall when they were stuck and how they figured it out.",
+    "Connect two different moments from the session.",
+]
+_CLOSING_HINTS = [
+    "Weave the concept into a personal observation.",
+    "End with a forward-looking question about tomorrow.",
+    "Reference their specific characters one last time.",
+    "Make the goodbye feel like a pause, not an ending.",
+    "Connect the concept to something they discovered today.",
+    "End with warmth and a hint of mystery about next time.",
+    "Frame the concept as something THEY figured out, not something taught.",
+    "Express genuine gratitude for the adventure together.",
+    "Make them feel like they taught YOU something.",
+    "End with a tiny story seed for next time.",
+]
+_STEP_HINT_MAP: dict[str, list[str]] = {
+    "STEP_1_HOOK": _VARIETY_HINTS,
+    "STEP_2_RULES": _VARIETY_HINTS,
+    "STEP_2_MISSION": _VARIETY_HINTS,
+    "STEP_4_CELEBRATE": _CELEBRATE_HINTS,
+    "STEP_5_CELEBRATE": _CELEBRATE_HINTS,
+    "STEP_5_CLOSING": _CLOSING_HINTS,
+    "STEP_6_CLOSING": _CLOSING_HINTS,
 }
 
 # Regex to extract dialogue value from partial JSON stream
@@ -313,6 +454,24 @@ def _load_step_instructions(state: SessionStateModel) -> str:
     for key, value in replacements.items():
         text = text.replace(key, value)
 
+    # Resolve {sampled_examples} with dynamically sampled examples,
+    # then re-run replacements so {entity_name} etc. in examples get filled.
+    if "{sampled_examples}" in text:
+        example_group = _map_step_to_example_group(step, template_type)
+        if example_group:
+            style_key = None
+            if isinstance(slots, Cat1CreativeSlots):
+                style_key = slots.game_mechanic
+            elif isinstance(slots, Cat5CreativeSlots):
+                style_key = slots.synthesis_type
+            sampled = _sample_examples(step_group=example_group, tier=state.tier, n=3, style=style_key)
+            text = text.replace("{sampled_examples}", sampled)
+        else:
+            text = text.replace("{sampled_examples}", "")
+        # Re-run template replacements on injected examples
+        for key, value in replacements.items():
+            text = text.replace(key, value)
+
     # Deep link override for shortened hook
     if state.deep_linked and step == "STEP_1_HOOK":
         text += (
@@ -504,6 +663,7 @@ def _build_system_prompt(state: SessionStateModel) -> str:
         upstream_context = "\n".join(upstream_lines)
 
     replacements = {
+        "{personality}": _format_personality(state.narrator_personality),
         "{tier_constraints}": _load_tier_constraints(state.tier),
         "{step_instructions}": _load_step_instructions(state),
         "{creative_slots}": _build_creative_slots_text(state.creative_slots),
@@ -555,6 +715,11 @@ class ScriptAgent:
         settings = get_settings()
         if not settings.two_pass_enabled:
             self.last_plan = None
+            # Best-of-N for high-impact steps
+            if settings.best_of_n > 1 and (
+                state.current_step.startswith("STEP_3_COLLECT_") or state.current_step == "STEP_4_SYNTHESIS"
+            ):
+                return await self._generate_best_of_n(state, n=settings.best_of_n)
             return await self._generate_turn_single_pass(state)
 
         try:
@@ -684,6 +849,72 @@ class ScriptAgent:
             logger.error(f"Speaker pass failed ({latency_ms}ms): {e}")
             await log_agent_call(state.session_id, "speaker", latency_ms, False, error_message=str(e))
             raise ScriptAgentError(f"Speaker generation failed: {e}") from e
+
+    def _score_candidate(self, turn: TurnResponse, state: SessionStateModel) -> float:
+        """Score a candidate response using lightweight heuristics.
+
+        Returns a score in [0.0, 1.0]. Higher is better.
+        """
+        dialogue = turn.dialogue
+
+        # 1. Phrase novelty: Jaccard distance from recent AI turns (50%)
+        recent_ai = [t.text for t in state.conversation_history[-3:] if t.role == "ai"]
+        if recent_ai:
+            current_words = set(dialogue.lower().split())
+            similarities = []
+            for prev in recent_ai:
+                prev_words = set(prev.lower().split())
+                union = len(current_words | prev_words)
+                similarities.append(len(current_words & prev_words) / max(union, 1))
+            novelty = 1.0 - (sum(similarities) / len(similarities))
+        else:
+            novelty = 1.0
+
+        # 2. Tier compliance: emotion tag + sentence count (30%)
+        has_tag = 1.0 if _EMOTION_TAG_RE.match(dialogue) else 0.0
+        sentences = [s.strip() for s in re.split(r"[.!?]+\s*", dialogue) if s.strip()]
+        tier_max = {"T0": 2, "T1": 3, "T2": 4}.get(state.tier, 3)
+        sentence_ok = 1.0 if len(sentences) <= tier_max else 0.0
+        tier_score = (has_tag + sentence_ok) / 2.0
+
+        # 3. Structural checks: no item suggestions (20%)
+        item_suggestion_re = re.compile(
+            r"(?i)\b(?:find|look for|grab|get|bring|search for|spot)\b"
+            r"[^.!?]{0,40}"
+            r"\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
+            r"|flower|shell|stone|button|coin|bottle|box|bag|hat|glove|scarf|key|pen|pencil"
+            r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble)\b"
+        )
+        structure_score = 0.0 if item_suggestion_re.search(dialogue) else 1.0
+
+        return novelty * 0.5 + tier_score * 0.3 + structure_score * 0.2
+
+    async def _generate_best_of_n(self, state: SessionStateModel, n: int = 2) -> TurnResponse:
+        """Generate N candidates in parallel and return the highest-scoring one."""
+        tasks = [self._generate_turn_single_pass(state) for _ in range(n)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        candidates = [r for r in results if isinstance(r, TurnResponse)]
+        if not candidates:
+            for r in results:
+                if isinstance(r, Exception):
+                    raise ScriptAgentError(f"All {n} candidates failed: {r}") from r
+            raise ScriptAgentError("No candidates generated")
+
+        if len(candidates) == 1:
+            return candidates[0]
+
+        scored = [(self._score_candidate(c, state), c) for c in candidates]
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        logger.info(
+            "best_of_n: step=%s scores=%s picked=%.3f",
+            state.current_step,
+            [f"{s:.3f}" for s, _ in scored],
+            scored[0][0],
+        )
+
+        return scored[0][1]
 
     async def _generate_turn_single_pass(self, state: SessionStateModel) -> TurnResponse:
         """Generate the next dialogue turn using the original single-pass LLM call.
@@ -1013,15 +1244,21 @@ class ScriptAgent:
                 "is confused, or needs a hint before moving on\n"
             )
 
-        # Inject a random variety hint for steps where the prompt context
-        # is identical across sessions — prevents the LLM from repeating itself.
+        # Inject a random variety hint — step-specific pools ensure
+        # every turn gets a contextually relevant creative nudge.
         variety_line = ""
-        is_first_collect = state.current_step in ("STEP_3_COLLECT_1", "STEP_3_ROUND_1") and state.turn_count < 4
         if state.current_step == "STEP_4_SYNTHESIS":
             hint = random.choice(_SYNTHESIS_HINTS)
             variety_line = f"\nStory direction: {hint} Write a DIFFERENT story than the examples.\n"
-        elif state.current_step in _VARIETY_STEPS or is_first_collect:
-            hint = random.choice(_VARIETY_HINTS)
+        elif state.current_step.startswith("STEP_3_COLLECT_"):
+            pool = _COLLECT_PHASE_B_HINTS if state.collection_phase == "detail" else _COLLECT_PHASE_A_HINTS
+            hint = random.choice(pool)
+            variety_line = f"\nStyle hint: {hint}\n"
+        elif state.current_step.startswith("STEP_3_ROUND_"):
+            hint = random.choice(_COLLECT_PHASE_A_HINTS)
+            variety_line = f"\nStyle hint: {hint}\n"
+        elif state.current_step in _STEP_HINT_MAP:
+            hint = random.choice(_STEP_HINT_MAP[state.current_step])
             variety_line = f"\nStyle hint: {hint}\n"
 
         return (

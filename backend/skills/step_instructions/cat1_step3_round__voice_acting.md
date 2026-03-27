@@ -15,3 +15,7 @@
 **Scaffolding if the child is stuck:**
 - Offer a binary choice: "Would your {entity_name} say 'WOW!' or 'Uh oh!'?"
 - Or suggest an emotion to start from: "What if your {entity_name} felt really surprised? What might it say?"
+
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+
+{sampled_examples}

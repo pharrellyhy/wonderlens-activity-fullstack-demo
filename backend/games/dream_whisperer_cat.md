@@ -10,6 +10,7 @@ concepts_earned: [Reflection]
 keywords: [cat, kitten, stuffed cat]
 feature_keywords: [plush, stuffed, toy]
 photo_features: [soft paws, fluffy fur, closed eyes, peaceful expression]
+play_rounds: 3
 plain_description: "Imagine what a sleeping cat is dreaming about and tell a story about what the cat sees in 3 magical dream scenes."
 steps_summary:
   - "Describe what the cat sees while floating on a cloud, swimming in a milk ocean, and exploring a magical garden"
@@ -24,6 +25,11 @@ creative_slots:
     - floating on a cloud in the sky
     - swimming in a milk ocean
     - magical garden of favorites
+    - chasing a glowing star through the dark
+    - riding on a giant friendly bird
+    - exploring a castle made of yarn balls
+    - bouncing on a rainbow bridge
+    - hiding in a cozy cave of pillows
   escalation_axis: familiar to fantastical
   observation_detail: "those soft little paws and fluffy fur"
 
@@ -58,6 +64,41 @@ step_instructions:
       emotion_tag: excited
       acceptable_themes: [treats, yarn, catnip, fish, toys, flowers, mice, food, tuna]
       escalation_note: "peak creativity — most fantastical round"
+    - round_number: 4
+      goal: "Set the dream scene vividly: the cat's ears are perked up — it's chasing a glowing star through the dark! The star zooms and the cat leaps after it — then ask what happens when the cat catches the star"
+      scenario: "The cat's ears perk up! It's chasing a glowing star zooming through the dark! Zoom, leap, zoom!"
+      constraint: "T0 max 2 sentences, use motion and light imagery, then ask what happens when the cat catches the star"
+      emotion_tag: adventurous
+      acceptable_themes: [light, wish, sparkle, glow, bright, warm, magic, catch]
+      escalation_note: "active chase imagery — moderate energy"
+    - round_number: 5
+      goal: "Set the dream scene vividly: the cat is purring happily — it's riding on a giant friendly bird high above the clouds! Feathers are so soft — then ask what the cat sees from way up there"
+      scenario: "The cat is purring and holding on tight! It's riding on a giant friendly bird, soaring high above the clouds!"
+      constraint: "T0 max 2 sentences, paint a soaring flying scene, then ask what the cat sees from above"
+      emotion_tag: dreamy
+      acceptable_themes: [mountains, ocean, houses, trees, tiny, world, far, below]
+      escalation_note: "height and perspective — gentle wonder"
+    - round_number: 6
+      goal: "Set the dream scene vividly: the cat's tail is swishing — it found a castle made ENTIRELY of yarn balls! Towers of yarn, yarn ball stairs, yarn everywhere — then ask what the cat does inside the yarn castle"
+      scenario: "The cat's tail is swishing so fast! It found a castle made entirely of yarn balls — towers, stairs, everything!"
+      constraint: "T0 max 2 sentences, use playful tactile details, then ask what the cat does inside"
+      emotion_tag: playful
+      acceptable_themes: [play, roll, bat, climb, pounce, unravel, tangle, hide]
+      escalation_note: "tactile fantasy — high creativity"
+    - round_number: 7
+      goal: "Set the dream scene vividly: the cat is bouncing higher and higher — it's on a rainbow bridge that stretches across the whole sky! Every color glows under its paws — then ask where the rainbow bridge leads"
+      scenario: "Boing, boing! The cat is bouncing on a rainbow bridge that stretches across the whole sky! Every color glows!"
+      constraint: "T0 max 2 sentences, use color and bouncing imagery, then ask where the bridge leads"
+      emotion_tag: excited
+      acceptable_themes: [home, moon, candy, treasure, friends, cloud, land, dream]
+      escalation_note: "vibrant color fantasy — peak wonder"
+    - round_number: 8
+      goal: "Set the dream scene vividly: the cat curls up tight — it found a cozy cave made of the softest pillows! Everything is warm and snuggly — then ask who or what the cat snuggles with inside"
+      scenario: "Shhh... the cat curls up tight. It found a cozy cave made of the softest, fluffiest pillows!"
+      constraint: "T0 max 2 sentences, use warm cozy sensory details, then ask who or what the cat snuggles with"
+      emotion_tag: gentle
+      acceptable_themes: [teddy, blanket, kitten, friend, mommy, warm, soft, love]
+      escalation_note: "gentle wind-down — cozy resolution"
   celebrate:
     goal: "Award the child the title 'Dream Whisperer' with fanfare — recap the three magical dreams they peeked into (cloud sky, milk ocean, dream garden). Make the child feel like a dream expert."
     constraint: "T0 max 2 sentences, announce role title ceremonially, reference specific dreams from the game"

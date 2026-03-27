@@ -10,6 +10,7 @@ concepts_earned: [Perspective, Function]
 keywords: [playground, swing, slide, monkey bars, park, equipment]
 feature_keywords: [colorful, outdoor, fun, play]
 photo_features: [swings, slides, monkey bars, soft ground]
+play_rounds: 3
 plain_description: "Use your voice to speak for playground equipment and act out what the swing, slide, and monkey bars would say or feel in different situations."
 steps_summary:
   - "Act out what the swing says on a sunny morning, what the slide feels on a hot day, and what the monkey bars feel in the rain"
@@ -20,7 +21,15 @@ creative_slots:
   game_mechanic: voice_acting
   metaphor: The child becomes a Playground Feelings Reporter who speaks for each piece of playground equipment.
   role_title: Playground Feelings Reporter
-  round_scenarios: [The Happy Swing in the sun, The Hot Slide baking in summer, The Lonely Monkey Bars in the rain]
+  round_scenarios:
+    - The Happy Swing in the sun
+    - The Hot Slide baking in summer
+    - The Lonely Monkey Bars in the rain
+    - The Seesaw trying to balance a big kid and a little kid
+    - The Merry-Go-Round spinning really fast
+    - The Sandbox after a fresh snowfall
+    - The Climbing Wall when a shy kid tries it for the first time
+    - The Bench watching all the equipment play
   escalation_axis: Familiar joy to physical discomfort to emotional loneliness
   observation_detail: the colorful equipment waiting for someone to play
 step_instructions:
@@ -64,6 +73,51 @@ step_instructions:
     emotion_tag: gentle
     acceptable_themes: [sad, lonely, crying, bored, miss you, wet, cold]
     escalation_note: Explores deeper emotional states like loneliness — most complex round
+  - round_number: 4
+    goal: 'Set the scene vividly: a seesaw is trying to balance, but a big kid is on one side and a little kid is on the other
+      — the big kid is stuck on the ground and the little kid is stuck in the air. Ask what the seesaw says or feels.'
+    scenario: Uh oh! A big kid sits on one end of the seesaw and a little kid sits on the other. The big kid is stuck on the ground
+      and the little kid is stuck way up in the air!
+    constraint: T1 max 3 sentences, emphasize the imbalance, then ask what the seesaw would say
+    emotion_tag: surprised
+    acceptable_themes: [stuck, help, unfair, heavy, light, balance, tricky, wobble]
+    escalation_note: Introduces problem-solving and fairness — moderate complexity
+  - round_number: 5
+    goal: 'Set the scene vividly: the merry-go-round is spinning really fast — kids are laughing and holding on tight, everything
+      is a blur! Ask what the merry-go-round says or feels.'
+    scenario: The merry-go-round is spinning really really fast! Kids are holding on tight and laughing. Everything is a colorful
+      blur!
+    constraint: T1 max 3 sentences, use motion and speed imagery, then ask what the merry-go-round would say
+    emotion_tag: excited
+    acceptable_themes: [dizzy, fast, whee, spinning, hold on, slow down, fun, wow]
+    escalation_note: Physical sensation and excitement — high energy
+  - round_number: 6
+    goal: 'Set the scene vividly: fresh snow has fallen overnight and the sandbox is buried under a soft white blanket of snow.
+      Nobody has come to play yet. Ask what the sandbox says or feels.'
+    scenario: It snowed last night! The sandbox is buried under a soft white blanket of snow. Nobody has come to play yet and
+      everything is quiet and sparkly.
+    constraint: T1 max 3 sentences, use winter sensory details, then ask what the sandbox would say
+    emotion_tag: gentle
+    acceptable_themes: [cold, buried, hiding, waiting, snow, quiet, sleepy, covered]
+    escalation_note: Seasonal change and patience — reflective mood
+  - round_number: 7
+    goal: 'Set the scene vividly: a shy kid walks up to the climbing wall for the very first time — they look up and it seems SO
+      tall. Ask what the climbing wall says or feels when the shy kid reaches for the first handhold.'
+    scenario: A shy kid walks up to the climbing wall for the very first time. They look up — it seems SO tall! They reach for
+      the first handhold...
+    constraint: T1 max 3 sentences, build encouragement into the scene, then ask what the climbing wall would say
+    emotion_tag: encouraging
+    acceptable_themes: [brave, try, you can, hold on, strong, come on, proud, careful]
+    escalation_note: Empathy and encouragement — emotional complexity
+  - round_number: 8
+    goal: 'Set the scene vividly: the bench at the edge of the playground has been watching all the equipment play all day. It
+      has seen everything — the swinging, the sliding, the climbing. Ask what the bench says or feels about watching everyone.'
+    scenario: The old bench sits at the edge of the playground. It has been watching ALL day — the swinging, the sliding, the
+      climbing, the laughing. What does the bench say about everything it saw?
+    constraint: T1 max 3 sentences, create a wise observer perspective, then ask what the bench would say
+    emotion_tag: warm
+    acceptable_themes: [happy, proud, love, watching, friends, best day, tired, smile]
+    escalation_note: Observer perspective and wisdom — most reflective round
   celebrate:
     goal: Award the child the title 'Playground Feelings Reporter' with fanfare. Recap the specific emotions explored (happy
       swing, hot slide, lonely monkey bars). Make the child feel like a champion.

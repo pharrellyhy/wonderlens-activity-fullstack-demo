@@ -58,7 +58,27 @@ _VARIETY_HINTS = [
     "Open with a silly comparison to something unexpected.",
     "Begin with wonder — 'I wonder...' or 'What if...'",
 ]
-_VARIETY_STEPS = {"STEP_1_HOOK", "STEP_2_RULES", "STEP_2_MISSION"}
+_SYNTHESIS_HINTS = [
+    "Theme: one friend can't sleep, the others comfort them.",
+    "Theme: they get caught in the rain and find shelter.",
+    "Theme: one friend is sad, the others cheer them up.",
+    "Theme: someone is scared of the dark, friends bring light.",
+    "Theme: they find one treat and figure out how to share it.",
+    "Theme: one friend gets lost, the others search and find them.",
+    "Theme: it's cold, they figure out how to stay warm together.",
+    "Theme: it's someone's birthday and the others plan a surprise.",
+    "Theme: they try to build something but it keeps falling down.",
+    "Theme: one friend is too small to reach something, others help.",
+]
+_VARIETY_STEPS = {
+    "STEP_1_HOOK",
+    "STEP_2_RULES",
+    "STEP_2_MISSION",
+    "STEP_4_CELEBRATE",
+    "STEP_5_CELEBRATE",
+    "STEP_5_CLOSING",
+    "STEP_6_CLOSING",
+}
 
 # Regex to extract dialogue value from partial JSON stream
 _DIALOGUE_RE = re.compile(r'"dialogue"\s*:\s*"((?:[^"\\]|\\.)*)"')
@@ -993,11 +1013,14 @@ class ScriptAgent:
                 "is confused, or needs a hint before moving on\n"
             )
 
-        # Inject a random variety hint for early steps where the prompt context
+        # Inject a random variety hint for steps where the prompt context
         # is identical across sessions — prevents the LLM from repeating itself.
         variety_line = ""
         is_first_collect = state.current_step in ("STEP_3_COLLECT_1", "STEP_3_ROUND_1") and state.turn_count < 4
-        if state.current_step in _VARIETY_STEPS or is_first_collect:
+        if state.current_step == "STEP_4_SYNTHESIS":
+            hint = random.choice(_SYNTHESIS_HINTS)
+            variety_line = f"\nStory direction: {hint} Write a DIFFERENT story than the examples.\n"
+        elif state.current_step in _VARIETY_STEPS or is_first_collect:
             hint = random.choice(_VARIETY_HINTS)
             variety_line = f"\nStyle hint: {hint}\n"
 

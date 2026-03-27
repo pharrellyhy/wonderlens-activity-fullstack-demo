@@ -10,6 +10,7 @@ concepts_earned: [Change]
 keywords: [dinosaur, dino, toy dinosaur]
 feature_keywords: [plush, stuffed, toy]
 photo_features: [big teeth, powerful legs, scaly skin, long tail]
+play_rounds: 3
 plain_description: "Use your voice to act out what a dinosaur does as it travels through 3 different time periods in a pretend time machine."
 steps_summary:
   - "Act out what the dinosaur does in a prehistoric jungle, near a rumbling volcano, and by a peaceful lake at sunset"
@@ -24,6 +25,11 @@ creative_slots:
     - prehistoric jungle
     - rumbling volcano
     - peaceful lake at sunset
+    - a snowy mountain top
+    - a dark spooky cave
+    - a field of giant flowers
+    - a stormy ocean beach
+    - meeting another friendly dinosaur
   escalation_axis: everyday to dramatic to peaceful
   observation_detail: "those big teeth and powerful legs"
 
@@ -58,6 +64,41 @@ step_instructions:
       emotion_tag: peaceful
       acceptable_themes: [drinking, resting, sleeping, swimming, relaxing, happy, calm, peaceful]
       escalation_note: "gentle wind-down — peaceful resolution"
+    - round_number: 4
+      goal: "Set the scene vividly: time jump! The dinosaur lands on a snowy mountain top! Everything is white and cold and the wind is WHOOSHING — snowflakes stick to its scaly skin — then ask what the dinosaur does"
+      scenario: "Time jump! A snowy mountain top! Everything is white and freezing cold. Snowflakes land on the dinosaur's scaly nose!"
+      constraint: "T0 max 2 sentences, use cold and wind sensory details, then ask what the dinosaur does"
+      emotion_tag: surprised
+      acceptable_themes: [cold, shiver, snow, shake, slide, roar, sneeze, burrow]
+      escalation_note: "unfamiliar environment — moderate challenge"
+    - round_number: 5
+      goal: "Set the scene vividly: time jump! A dark spooky cave — drip drip drip from the ceiling — it's SO dark the dinosaur can barely see — then ask what the dinosaur does in the dark"
+      scenario: "Time jump! A dark spooky cave! Drip drip drip from the ceiling. It's so dark the dinosaur can barely see!"
+      constraint: "T0 max 2 sentences, use sound and darkness details, then ask what the dinosaur does"
+      emotion_tag: dramatic
+      acceptable_themes: [scared, brave, roar, listen, hide, explore, quiet, careful]
+      escalation_note: "spooky atmosphere — emotional bravery"
+    - round_number: 6
+      goal: "Set the scene vividly: time jump! A field of GIANT flowers — some are taller than the dinosaur! The petals are every color and butterflies flutter everywhere — then ask what the dinosaur does"
+      scenario: "Time jump! A field of GIANT flowers — taller than the dinosaur! Butterflies flutter everywhere and the air smells sweet!"
+      constraint: "T0 max 2 sentences, use colorful and gentle sensory details, then ask what the dinosaur does"
+      emotion_tag: playful
+      acceptable_themes: [smell, pick, walk, play, chase, butterflies, hide, dance]
+      escalation_note: "whimsical contrast — big dino in a gentle place"
+    - round_number: 7
+      goal: "Set the scene vividly: time jump! A stormy ocean beach — CRASH go the waves! Lightning flashes across the sky and the sand is wet under the dinosaur's big feet — then ask what the dinosaur does"
+      scenario: "Time jump! A stormy ocean beach! CRASH go the waves! Lightning flashes and wet sand squishes under the dinosaur's big feet!"
+      constraint: "T0 max 2 sentences, use storm and ocean onomatopoeia, then ask what the dinosaur does"
+      emotion_tag: adventurous
+      acceptable_themes: [splash, swim, roar, run, dig, brave, stomp, watch]
+      escalation_note: "dramatic intensity — wild weather"
+    - round_number: 8
+      goal: "Set the scene vividly: last time jump! The dinosaur sees ANOTHER friendly dinosaur waving its tail — it looks just as happy and friendly! — then ask what the two dinosaurs do together"
+      scenario: "Last time jump! Another friendly dinosaur is right there waving its tail! It looks so happy to see our dinosaur!"
+      constraint: "T0 max 2 sentences, use friendly and social details, then ask what the two dinosaurs do together"
+      emotion_tag: happy
+      acceptable_themes: [play, friends, hug, run, eat, dance, roar, share]
+      escalation_note: "social and warm — friendship resolution"
   celebrate:
     goal: "Award the child the title 'Time Traveler' with fanfare — recap the three time periods they explored (jungle, volcano, peaceful lake). Make the child feel like a brave explorer."
     constraint: "T0 max 2 sentences, announce role title ceremonially, reference specific adventures from the game"

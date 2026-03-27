@@ -193,9 +193,7 @@ async def start_deep_link(req: DeepLinkStartRequest) -> JSONResponse:
                     conversation_context = [
                         UpstreamConversationTurn(role=t["role"], text=t["text"])
                         for t in ctx_data
-                        if isinstance(t, dict)
-                        and t.get("role") in ("ai", "child")
-                        and isinstance(t.get("text"), str)
+                        if isinstance(t, dict) and t.get("role") in ("ai", "child") and isinstance(t.get("text"), str)
                     ]
             except Exception as ctx_err:
                 logger.warning(f"Failed to fetch context_url {req.context_url}: {ctx_err}")

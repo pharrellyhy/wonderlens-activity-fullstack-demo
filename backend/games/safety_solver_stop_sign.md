@@ -10,6 +10,7 @@ concepts_earned: [Responsibility, Function]
 keywords: [stop sign, traffic sign, red sign, octagon, safety sign, street sign]
 feature_keywords: [red, white border, octagon, eight sides, shiny]
 photo_features: [bold red color, eight sides, white border, white letters]
+play_rounds: 3
 plain_description: "Answer pretend phone calls from people who are confused at crossings and decide what they should do to stay safe."
 steps_summary:
   - "Help a rushing driver who wants to skip the stop sign, decide if a driver should wait for a kid crossing the street, and figure out what two cars should do when they arrive at the same time"
@@ -20,8 +21,15 @@ creative_slots:
   game_mechanic: helper_hotline
   metaphor: The stop sign is a superhero for the street, and you are the dispatcher helping people figure out what to do.
   role_title: Safety Solver
-  round_scenarios: [A driver in a big hurry wants to go fast past the sign., 'A driver is stopped, but a little kid is still
-      walking slowly across the street.', Two cars arrive at the stop sign at the exact same time.]
+  round_scenarios:
+    - A driver in a big hurry wants to go fast past the sign.
+    - A driver is stopped, but a little kid is still walking slowly across the street.
+    - Two cars arrive at the stop sign at the exact same time.
+    - A big storm knocked the stop sign down and nobody knows to stop.
+    - A dog runs into the street right in front of a car at the crossing.
+    - An ice cream truck is parked right next to the stop sign and kids are running toward it.
+    - A fire truck with flashing lights and sirens is coming up behind a car at the stop sign.
+    - A person in a wheelchair is crossing the street very slowly and the light is about to change.
   escalation_axis: simple rule following to complex social turn-taking and empathy
   observation_detail: that bright red color and special eight-sided shape
 step_instructions:
@@ -64,6 +72,51 @@ step_instructions:
     emotion_tag: surprised
     acceptable_themes: [take turns, one first, wait, share, go next, wave, polite]
     escalation_note: Complex social negotiation and fairness (turn-taking).
+  - round_number: 4
+    goal: Present a call about a big storm that knocked the stop sign down. Cars are zooming through the crossing with no sign
+      to tell them to stop. Ask the child what everyone should do.
+    scenario: Ring ring! 'Oh no! A big storm knocked the stop sign down! Cars are zooming through the crossing because nobody
+      knows to stop!' What should everyone do?
+    constraint: T1 max 3 sentences, describe the missing sign danger, ask how to solve the problem.
+    emotion_tag: urgent
+    acceptable_themes: [slow down, careful, help, fix, tell someone, police, wave, warning]
+    escalation_note: System failure — thinking about what happens when safety tools are missing.
+  - round_number: 5
+    goal: Present a call about a dog that just ran into the street right in front of a car at the crossing. The driver is stopped
+      at the stop sign. Ask the child what the driver should do.
+    scenario: Ring ring! 'Help! A dog just ran into the street right in front of my car! I am stopped at the stop sign but the
+      dog is right there!' What should the driver do?
+    constraint: T1 max 3 sentences, emphasize the unexpected animal, ask for a decision.
+    emotion_tag: surprised
+    acceptable_themes: [wait, stop, honk, careful, let it go, patient, "no", stay]
+    escalation_note: Unexpected obstacle — adapting rules to new situations.
+  - round_number: 6
+    goal: Present a call about an ice cream truck parked right next to the stop sign with kids running toward it. Cars are trying
+      to drive through. Ask the child how to keep everyone safe.
+    scenario: Ring ring! 'There is an ice cream truck parked right next to the stop sign! Kids are running toward it from everywhere
+      and cars are trying to drive through!' How do we keep everyone safe?
+    constraint: T1 max 3 sentences, highlight the conflict between excitement and safety, ask for a plan.
+    emotion_tag: curious
+    acceptable_themes: [slow down, stop, watch, careful, wait, look, walk, grown-up]
+    escalation_note: Distraction and awareness — balancing fun with safety rules.
+  - round_number: 7
+    goal: Present a call about a fire truck with flashing lights and loud sirens coming up behind a car that is stopped at the
+      stop sign. Ask the child what the car should do.
+    scenario: Ring ring! 'I am stopped at the stop sign, but a fire truck with flashing lights and LOUD sirens is coming up right
+      behind me!' What should the car do?
+    constraint: T1 max 3 sentences, use siren urgency, ask what the car should do.
+    emotion_tag: dramatic
+    acceptable_themes: [move, pull over, let it pass, emergency, out of the way, side, go]
+    escalation_note: Emergency exceptions — understanding when normal rules bend for urgent needs.
+  - round_number: 8
+    goal: Present a call about a person in a wheelchair crossing the street very slowly. The walk signal is about to change but
+      they are not across yet. Ask the child what the waiting cars should do.
+    scenario: Ring ring! 'A person in a wheelchair is crossing the street very slowly. The walk signal is about to change, but
+      they are not all the way across yet!' What should the waiting cars do?
+    constraint: T1 max 3 sentences, emphasize patience and empathy, ask for a decision.
+    emotion_tag: gentle
+    acceptable_themes: [wait, patient, kind, let them finish, stay, help, safe, nice]
+    escalation_note: Empathy and patience — caring for people who need more time.
   celebrate:
     goal: Award the child the title 'Safety Solver' with fanfare — recap how they helped the rushing driver, protected the
       walking kid, and taught cars to take turns.

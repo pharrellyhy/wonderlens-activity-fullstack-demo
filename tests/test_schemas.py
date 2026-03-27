@@ -211,7 +211,7 @@ class TestInstructionRecipe:
     def test_instruction_recipe_validates(self, instruction_recipe: dict) -> None:
         recipe = InstructionRecipe.model_validate(instruction_recipe)
         assert recipe.activity_type == "mood_changer_dog"
-        assert len(recipe.step_instructions.rounds) == 3
+        assert len(recipe.step_instructions.rounds) >= 3
         assert len(recipe.screen_frames) == 4
         assert recipe.celebration_frame is not None
         assert recipe.metadata.tier == "T0"
@@ -227,7 +227,7 @@ class TestInstructionRecipe:
     def test_instruction_recipe_requires_matching_round_count(self, instruction_recipe: dict) -> None:
         instruction_recipe["metadata"]["round_count"] = 99
 
-        with pytest.raises(ValidationError, match="metadata.round_count must match"):
+        with pytest.raises(ValidationError, match="exceeds available step rounds"):
             InstructionRecipe.model_validate(instruction_recipe)
 
     def test_collection_recipe_requires_synthesis_step(self) -> None:

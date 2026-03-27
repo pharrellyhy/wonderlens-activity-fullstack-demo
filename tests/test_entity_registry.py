@@ -258,8 +258,8 @@ class TestStyleFragments:
 
         assert "### Style: Naming Story" in text
         assert "### VARIANT RULES" in text
-        assert "Follow a 4-beat structure" in text
-        assert "The full story should be 3-5 sentences." in text
+        assert "bedtime-style mini-story" in text
+        assert "STORY THEMES" in text
         assert "Comparison Chart" not in text
 
     def test_cat5_mission_prompt_fully_interpolates_example_driven_variables(self) -> None:
@@ -282,8 +282,8 @@ class TestStyleFragments:
 
         text = _load_step_instructions(state)
 
-        assert "Squishy Cloud! Your first fluffy friend!" in text
-        assert "Fuzzy moss! That's one!" not in text
+        assert "Phase B" in text
+        assert "NAMING RULE" in text
 
     def test_game_examples_are_interpolated_like_other_template_variables(self) -> None:
         state = self._build_state("fluffy_expedition_dandelion", "STEP_2_MISSION")

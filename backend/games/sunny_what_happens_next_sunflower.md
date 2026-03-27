@@ -10,6 +10,7 @@ concepts_earned: [Causation, Change]
 keywords: [sunflower, flower, seeds, yellow petals, plant]
 feature_keywords: [yellow, tall, bright, stem, petals]
 photo_features: [bright yellow petals, strong tall stem, brown center packed with seeds]
+play_rounds: 3
 plain_description: "Predict what happens to a sunflower when different things occur, like sunshine, rain, and a visiting bee."
 steps_summary:
   - "Predict what the sunflower does when morning sun lands on it, what happens after a week of rain, and what a bee does when it visits"
@@ -20,7 +21,15 @@ creative_slots:
   game_mechanic: prediction_game
   metaphor: The child becomes a 'Sunflower Scientist' who predicts what happens to a sunflower when different things occur.
   role_title: Sunflower Scientist
-  round_scenarios: [The Morning Sun, The Rainy Week, The Visiting Bee]
+  round_scenarios:
+    - The Morning Sun
+    - The Rainy Week
+    - The Visiting Bee
+    - The Strong Wind Storm
+    - The First Frost of Winter
+    - A Curious Squirrel Climbing the Stem
+    - The Dark Nighttime Sky
+    - A Butterfly Landing on a Petal
   escalation_axis: simple physical movement to complex biological interaction
   observation_detail: bright yellow petals and strong tall stem
 step_instructions:
@@ -59,6 +68,51 @@ step_instructions:
     emotion_tag: excited
     acceptable_themes: [pollen, nectar, seeds, share, eat, fly away, pollinate]
     escalation_note: biological interaction — most complex round
+  - round_number: 4
+    goal: 'Set the scene: a strong wind storm blows through the garden, bending everything sideways. Ask what happens to the
+      sunflower.'
+    scenario: Experiment number four! A strong wind storm blows through the garden. Everything is bending sideways! What happens
+      to the sunflower?
+    constraint: T1 max 3 sentences, use wind and movement imagery, then ask for a prediction.
+    emotion_tag: dramatic
+    acceptable_themes: [bend, sway, strong, hold on, blow, lean, shake, stem]
+    escalation_note: physical stress response — testing resilience
+  - round_number: 5
+    goal: 'Set the scene: the first frost of winter arrives and ice crystals form on the petals early in the morning. Ask what
+      happens to the sunflower.'
+    scenario: Experiment number five! Winter is coming. The first frost arrives and tiny ice crystals sparkle on the petals in
+      the early morning. What happens to the sunflower?
+    constraint: T1 max 3 sentences, use cold and crystal sensory details, then ask for a prediction.
+    emotion_tag: gentle
+    acceptable_themes: [cold, droop, wilt, freeze, brown, seeds drop, die, sleep]
+    escalation_note: seasonal change and life cycle — moderate abstraction
+  - round_number: 6
+    goal: 'Set the scene: a curious squirrel climbs up the tall stem, heading straight for the seeds in the brown center. Ask
+      what happens.'
+    scenario: Experiment number six! A curious squirrel scurries up the tall stem, heading straight for the brown center packed
+      with seeds! What happens next?
+    constraint: T1 max 3 sentences, use climbing and animal behavior details, then ask for a prediction.
+    emotion_tag: surprised
+    acceptable_themes: [eat, seeds, grab, nibble, shake, fall, store, climb]
+    escalation_note: animal interaction — cause and effect with another creature
+  - round_number: 7
+    goal: 'Set the scene: nighttime falls and the sky goes dark — no sun at all, just stars and a moon. Ask what the sunflower
+      does without any sunshine.'
+    scenario: Experiment number seven! Nighttime falls. The sky goes dark — no sun, just stars and a glowing moon. What does the
+      sunflower do without any sunshine?
+    constraint: T1 max 3 sentences, contrast with the morning sun round, then ask for a prediction.
+    emotion_tag: curious
+    acceptable_themes: [sleep, close, droop, rest, still, wait, dark, quiet]
+    escalation_note: absence of stimulus — reasoning about what happens when a cause is removed
+  - round_number: 8
+    goal: 'Set the scene: a beautiful butterfly lands softly on one of the bright yellow petals and rests there. Ask what happens
+      to the sunflower and the butterfly.'
+    scenario: Experiment number eight! A beautiful butterfly floats down and lands softly on one of the bright yellow petals. It
+      rests right there! What happens next?
+    constraint: T1 max 3 sentences, use gentle and delicate sensory details, then ask for a prediction.
+    emotion_tag: warm
+    acceptable_themes: [rest, still, drink, nectar, wings, gentle, pollen, pretty]
+    escalation_note: gentle interaction — symbiotic relationship
   celebrate:
     goal: Award the child the title 'Sunflower Scientist' with fanfare — recap the specific predictions they made (turning
       to sun, growing in rain, sharing with bees). Make the child feel like a champion.

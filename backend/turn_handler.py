@@ -425,6 +425,13 @@ def _validate_response(
                 "'I think it would say ROAR! Would it say ROAR or something different?'"
             )
 
+    # 6. Collection steps: no specific item suggestions
+    if step.startswith("STEP_3_COLLECT_") and _ITEM_SUGGESTION_RE.search(dialogue):
+        return False, (
+            "CORRECTION: Do NOT name specific objects to find (blanket, toy, pillow, etc.). "
+            "You cannot see the child's environment. Say 'something soft' not 'a fuzzy blanket'."
+        )
+
     return True, ""
 
 

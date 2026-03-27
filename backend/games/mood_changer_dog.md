@@ -10,6 +10,7 @@ concepts_earned: [Perspective]
 keywords: [dog, puppy, stuffed dog, toy dog]
 feature_keywords: [plush, stuffed, toy]
 photo_features: [floppy ears, soft fur, cute face, fluffy body]
+play_rounds: 3
 plain_description: "Pretend to be a stuffed dog and use your voice to act out what the dog would say or feel in 3 different situations."
 steps_summary:
   - "Act out what the dog says when warm sunshine lands on its belly, when it trips and goes bump, and when its favorite treat arrives"
@@ -24,6 +25,11 @@ creative_slots:
     - warm sunshine on belly
     - tripped and went bump
     - favorite treat arrives
+    - sees a butterfly flying by
+    - hears thunder outside
+    - best friend comes to visit
+    - bath time surprise
+    - found a muddy puddle
   escalation_axis: comfortable to excited
   observation_detail: "those cute floppy ears and super soft fur"
 
@@ -58,6 +64,41 @@ step_instructions:
       emotion_tag: excited
       acceptable_themes: [excited, happy, yay, wag, treats, hungry, eager, jump]
       escalation_note: "peak excitement — most energetic round"
+    - round_number: 4
+      goal: "Set the scene vividly: a butterfly floats past the dog's nose — the dog watches it dance through the air — then ask what the dog says or does"
+      scenario: "Look! A pretty butterfly floats right past the doggy's nose! It dances in the air!"
+      constraint: "T0 max 2 sentences, gentle wonder and curiosity, then ask what the dog would say"
+      emotion_tag: curious
+      acceptable_themes: [curious, wow, pretty, chase, look, gentle, wonder]
+      escalation_note: "gentle curiosity — moderate"
+    - round_number: 5
+      goal: "Set the scene vividly: the dog hears loud thunder rumbling outside — it's a bit scary — then ask what the dog says or does"
+      scenario: "BOOM! Thunder rumbles outside! The doggy's ears go flat!"
+      constraint: "T0 max 2 sentences, use sound words and body language, then ask what the dog would say"
+      emotion_tag: gentle
+      acceptable_themes: [scared, worried, hide, cuddle, brave, nervous, shaky]
+      escalation_note: "emotional challenge — fear/comfort"
+    - round_number: 6
+      goal: "Set the scene vividly: the dog's best friend comes to visit — pure joy and excitement — then ask what the dog says or does"
+      scenario: "The door opens and the doggy's best friend walks in! The tail goes crazy!"
+      constraint: "T0 max 2 sentences, build excitement with movement and energy, then ask what the dog would say"
+      emotion_tag: excited
+      acceptable_themes: [happy, excited, wag, jump, friend, play, love, yay]
+      escalation_note: "peak social joy — high energy"
+    - round_number: 7
+      goal: "Set the scene vividly: it's bath time and the dog gets lifted into warm water — surprise! — then ask what the dog says or does"
+      scenario: "Splash! The doggy gets plopped into the warm bath! Bubbles everywhere!"
+      constraint: "T0 max 2 sentences, use water sounds and body reactions, then ask what the dog would say"
+      emotion_tag: surprised
+      acceptable_themes: [surprised, wet, splash, shake, funny, "no", help, bubbles]
+      escalation_note: "surprise + physical comedy"
+    - round_number: 8
+      goal: "Set the scene vividly: the dog finds a big muddy puddle and can't resist — then ask what the dog says or does"
+      scenario: "The doggy finds a BIG muddy puddle! It looks so fun and squishy!"
+      constraint: "T0 max 2 sentences, build temptation and mischief, then ask what the dog would say"
+      emotion_tag: playful
+      acceptable_themes: [splash, jump, mud, dirty, fun, messy, play, naughty]
+      escalation_note: "playful mischief — fun transgression"
   celebrate:
     goal: "Award the child the title 'Emotion Translator' with fanfare — recap the specific emotions explored (happy in sunshine, surprised by the bump, excited for treats). Make the child feel like a champion."
     constraint: "T0 max 2 sentences, announce role title ceremonially, reference specific moments from the game"

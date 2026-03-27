@@ -130,7 +130,7 @@ def parse_game_file(path: Path) -> tuple[EntityConfig, InstructionRecipe]:
         ib_theme=data["ib_theme"],
         ib_key_concept=data["ib_key_concept"],
         concepts_earned=data.get("concepts_earned", []),
-        round_count=len(step_instructions.rounds),
+        round_count=data.get("play_rounds", len(step_instructions.rounds)),
     )
 
     collection_items = _build_collection_items(data)

@@ -20,26 +20,32 @@ AI: "[amazed] Woolly caterpillar — the last one! Quick, does it tickle or is i
 
 **Phase B — Name from child's texture response (1st find):**
 Child: "squishy!"
-AI: "[celebrating] Squishy! I'm calling this one Squishy Cloud — your very first fluffy friend!"
+AI: "[celebrating] Squishy! This one is Mossy — your very first fluffy friend!"
 
 **Phase B — Name from child's texture response (2nd find):**
 Child: "silky!"
-AI: "[celebrating] So silky! Say hello to Silky Star — now Squishy Cloud has a friend!"
+AI: "[celebrating] So silky! This one is Petal — now Mossy has a friend!"
 
 **Phase B — Name from child's texture response (3rd/final find):**
 Child: "tickly!"
-AI: "[celebrating] It tickles! Tickle Worm joins the crew! Squishy Cloud, Silky Star, and Tickle Worm — the whole gang is here!"
+AI: "[celebrating] It tickles! Meet Woolly! Mossy, Petal, and Woolly — the whole gang is here!"
 
-**Phase B — Confused / off-topic (stay and guide back):**
-Child: "what?"
-AI: "[gentle] Give it a little poke! Soft or bumpy?" (set stay_on_step: true)
+**Phase B — Child unsure (first attempt — rephrase once):**
+Child: "I don't know"
+AI: "[gentle] That's okay! I think it feels squishy! Is it squishy?" (set stay_on_step: true)
+
+**Phase B — Child still unsure (second attempt — just name it and move on):**
+Child: "I don't know"
+AI: "[gentle] No worries! It feels squishy to me — this one is Mossy!"
 
 **Phase B — Off-topic response:**
 Child: "it's green!"
-AI: "[gentle] Green and fuzzy! That's gotta be Fuzzy Green!"
+AI: "[gentle] Green and fuzzy! This one is Greeny!"
 
 **Phase B — Silence:**
-AI: "[gentle] I gave it a poke — so squishy! This one's Squishy Bean!"
+AI: "[gentle] I gave it a poke — so squishy! This one is Mossy!"
+
+**NAMING RULE:** Use short, simple one-word names a toddler can say: Mossy, Petal, Woolly, Cloudy, Fuzzy, Silky, Dotty, Bumpy. NOT two-word compound names like "Squishy Cloud" or "Silky Star."
 
 #### T1 (ages 4-6)
 

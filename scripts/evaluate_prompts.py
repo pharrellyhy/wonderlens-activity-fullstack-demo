@@ -69,10 +69,13 @@ def find_wrong_item(round_items: list[dict]) -> str | None:
 
 
 def send_turn(client: httpx.Client, payload: dict) -> dict | None:
-    resp = client.post(f"{BASE_URL}/api/turn", json=payload)
-    if resp.status_code != 200:
+    try:
+        resp = client.post(f"{BASE_URL}/api/turn", json=payload)
+        if resp.status_code != 200:
+            return None
+        return resp.json()
+    except (httpx.ReadTimeout, httpx.ConnectError, httpx.RemoteProtocolError):
         return None
-    return resp.json()
 
 
 def _extract_state(turn_data: dict) -> dict:
@@ -125,9 +128,12 @@ def run_and_score(scenario_name: str, tier: str, client: httpx.Client) -> dict:
     progress_phrases: list[str] = []
 
     # Start session
-    resp = client.post(f"{BASE_URL}/api/start-deep-link", json={"entity": entity, "tier": tier})
-    if resp.status_code != 200:
-        return {"error": f"Start failed: {resp.status_code}"}
+    try:
+        resp = client.post(f"{BASE_URL}/api/start-deep-link", json={"entity": entity, "tier": tier})
+        if resp.status_code != 200:
+            return {"error": f"Start failed: {resp.status_code}"}
+    except (httpx.ReadTimeout, httpx.ConnectError, httpx.RemoteProtocolError) as exc:
+        return {"error": f"Start connection error: {exc}"}
 
     data = resp.json()
     session_id = data["session_id"]

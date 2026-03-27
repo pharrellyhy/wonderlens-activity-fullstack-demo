@@ -5,15 +5,21 @@ across the two turn endpoints, ensuring consistent behavior for invitation
 acceptance, round advancement, auto-advance signaling, and history management.
 """
 
+import json
 import re
 from dataclasses import dataclass
 
+import httpx
+from openai import AsyncOpenAI
+
 try:
     from .agents.script_agent import ScriptAgent, ScriptAgentError
+    from .config import get_settings
     from .logger import setup_logger
     from .schemas import ScreenFrame
     from .schemas.creative_slots import Cat5CreativeSlots
     from .schemas.session_state import ConversationTurn, SessionStateModel
+    from .schemas.story_classification import StoryClassification
     from .schemas.turn_plan import TurnPlan
     from .schemas.turn_response import TurnResponse
     from .state_machine import (
@@ -25,10 +31,12 @@ try:
     )
 except ImportError:
     from agents.script_agent import ScriptAgent, ScriptAgentError
+    from config import get_settings
     from logger import setup_logger
     from schemas import ScreenFrame
     from schemas.creative_slots import Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel
+    from schemas.story_classification import StoryClassification
     from schemas.turn_plan import TurnPlan
     from schemas.turn_response import TurnResponse
     from state_machine import (
@@ -296,10 +304,8 @@ def _record_collection_detail(state: SessionStateModel, child_text: str) -> None
 
 
 def _maybe_record_generated_name(state: SessionStateModel, dialogue: str) -> None:
-    """Store a generated naming-story character name when one is easy to extract."""
+    """Store a generated character name when one is easy to extract."""
     if not isinstance(state.creative_slots, Cat5CreativeSlots):
-        return
-    if state.creative_slots.synthesis_type != "naming_story":
         return
     if len(state.collected_names) >= len(state.collected_photos):
         return
@@ -508,6 +514,77 @@ def _plan_retry_hint(plan_verdict: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Story synthesis classification
+# ---------------------------------------------------------------------------
+
+
+async def _classify_story_response(state: SessionStateModel, child_text: str) -> StoryClassification:
+    """Classify a child's response during the story synthesis loop.
+
+    Uses a lightweight LLM call to determine if the child's response is a story
+    attempt, a decline, a request for the AI to tell the story, or unrelated.
+
+    Args:
+        state: Current session state with collected characters/details.
+        child_text: The child's response text.
+
+    Returns:
+        StoryClassification with classification, relatedness, and quality.
+    """
+    collected = ", ".join(state.collected_names) if state.collected_names else "the collected items"
+    prompt = (
+        f"The child was asked to make up a story about these characters: {collected}.\n"
+        f'The child said: "{child_text}"\n\n'
+        f"Classify the child's response:\n"
+        f'- "story_attempt": The child provided ANY narrative content (even a single sentence '
+        f"like 'the dog went to sleep'). Set story_quality to \"good\" if it has 2+ story elements "
+        f'(character + action, or action + outcome) and relates to the characters, or "weak" if '
+        f"it's a single sentence with no progression.\n"
+        f"- \"decline\": The child said no, refused, or doesn't want to ('no', 'I don't want to', "
+        f"shakes head, 'nah').\n"
+        f"- \"ask_ai\": The child wants the AI to tell the story ('you tell me', 'can you make one up?', "
+        f"'tell me a story').\n"
+        f'- "unrelated": The response doesn\'t relate to storytelling or the characters at all.\n\n'
+        f"Set is_related_to_collection to true if the response mentions or relates to the collected "
+        f"characters ({collected}).\n"
+        f'Set story_quality to null unless classification is "story_attempt".'
+    )
+
+    try:
+        settings = get_settings()
+        client = AsyncOpenAI(
+            api_key=settings.ali_api_key,
+            base_url=settings.ali_base_url,
+            max_retries=0,
+            timeout=httpx.Timeout(15.0, connect=5.0),
+        )
+        response = await client.chat.completions.create(
+            model=settings.ali_model,
+            messages=[
+                {"role": "system", "content": "Classify a child's response. Output valid JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.1,
+            max_tokens=150,
+            response_format={"type": "json_object"},
+        )
+        raw = response.choices[0].message.content or "{}"
+        data = json.loads(raw)
+        return StoryClassification(
+            classification=data.get("classification", "unrelated"),
+            is_related_to_collection=data.get("is_related_to_collection", False),
+            story_quality=data.get("story_quality"),
+        )
+    except Exception:
+        logger.warning("Story classification LLM call failed, defaulting to 'unrelated'")
+        return StoryClassification(
+            classification="unrelated",
+            is_related_to_collection=False,
+            story_quality=None,
+        )
+
+
+# ---------------------------------------------------------------------------
 # LLM generation with retry + validation
 # ---------------------------------------------------------------------------
 
@@ -674,6 +751,143 @@ def _should_auto_advance(state: SessionStateModel) -> bool:
         and not step_needs_user_input(state.current_step)
         and not _is_closing_step(state.current_step)
     )
+
+
+# ---------------------------------------------------------------------------
+# Story synthesis loop
+# ---------------------------------------------------------------------------
+
+
+def _synthesis_result(
+    state: SessionStateModel,
+    turn_response: TurnResponse,
+    *,
+    advance: bool = False,
+) -> TurnResult:
+    """Build a TurnResult for synthesis, optionally advancing to the next step."""
+    response_type = _get_response_type(state.current_step)
+    screen_frame = _get_screen_frame(state)
+    _append_ai_turn(state, turn_response.dialogue)
+    state.turn_count += 1
+    if advance:
+        _advance_state(state)
+    auto_advance = advance and not is_terminal(state.current_step) and not step_needs_user_input(state.current_step)
+    if is_terminal(state.current_step):
+        state.status = "completed"
+    return TurnResult(
+        turn_response=turn_response,
+        screen_frame=screen_frame,
+        auto_advance=auto_advance,
+        response_type=response_type,
+        error_exit=state.status == "error",
+    )
+
+
+async def _resolve_synthesis_turn(
+    state: SessionStateModel,
+    turn_input: TurnInput,
+    script_agent: ScriptAgent,
+) -> TurnResult:
+    """Handle STEP_4_SYNTHESIS using phase-based story synthesis loop.
+
+    Phases:
+        invite   — Ask child to make up a story about collected characters.
+        evaluate — Classify child's response and route accordingly.
+        improve  — (T1/T2 only) Ask child to elaborate on weak story.
+        generate — AI generates a complete story.
+
+    Args:
+        state: Mutable session state.
+        turn_input: The child's input for this turn.
+        script_agent: ScriptAgent instance for LLM generation.
+
+    Returns:
+        TurnResult with response and advancement signals.
+    """
+    phase = state.synthesis_phase
+    child_text = turn_input.text or ""
+
+    # --- INVITE phase: generate story invitation ---
+    if phase == "invite":
+        turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+        state.synthesis_phase = "evaluate"
+        state.synthesis_prompt_count += 1
+        return _synthesis_result(state, turn_response, advance=False)
+
+    # --- EVALUATE phase: classify child's response ---
+    if phase == "evaluate":
+        classification = await _classify_story_response(state, child_text)
+        logger.info(
+            "synthesis_classification: classification=%s quality=%s related=%s text=%s",
+            classification.classification,
+            classification.story_quality,
+            classification.is_related_to_collection,
+            child_text[:80],
+        )
+
+        if classification.classification == "story_attempt":
+            state.synthesis_child_story = child_text
+
+            if classification.story_quality == "good":
+                # Good story — celebrate and advance
+                turn_response = await _generate_with_retry(script_agent, state)
+                return _synthesis_result(state, turn_response, advance=True)
+
+            if state.tier == "T0":
+                # T0 weak story — AI expands the child's seed
+                state.synthesis_phase = "generate"
+                turn_response = await _generate_with_retry(script_agent, state)
+                return _synthesis_result(state, turn_response, advance=True)
+
+            # T1/T2 weak story — ask child to elaborate
+            state.synthesis_phase = "improve"
+            turn_response = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(state, turn_response, advance=False)
+
+        if classification.classification in ("decline", "ask_ai"):
+            # Child declined or asked AI to tell — generate full story
+            state.synthesis_phase = "generate"
+            turn_response = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(state, turn_response, advance=True)
+
+        # Unrelated response
+        if state.synthesis_prompt_count < 2:
+            # Re-invite (stay in evaluate for next response)
+            state.synthesis_prompt_count += 1
+            turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+            return _synthesis_result(state, turn_response, advance=False)
+
+        # Max prompts exhausted — AI generates
+        state.synthesis_phase = "generate"
+        turn_response = await _generate_with_retry(script_agent, state)
+        return _synthesis_result(state, turn_response, advance=True)
+
+    # --- IMPROVE phase: child's elaboration arrived ---
+    if phase == "improve":
+        combined_story = f"{state.synthesis_child_story} {child_text}".strip()
+        classification = await _classify_story_response(state, combined_story)
+        logger.info(
+            "synthesis_improve_classification: quality=%s combined=%s",
+            classification.story_quality,
+            combined_story[:100],
+        )
+
+        if classification.story_quality == "good":
+            # Elaboration is good enough — celebrate and advance
+            turn_response = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(state, turn_response, advance=True)
+
+        # Still weak — AI completes the story from child's seed
+        state.synthesis_phase = "generate"
+        state.synthesis_child_story = combined_story
+        turn_response = await _generate_with_retry(script_agent, state)
+        return _synthesis_result(state, turn_response, advance=True)
+
+    # --- GENERATE phase: direct generation fallback ---
+    # Shouldn't normally reach here (generate is handled inline above),
+    # but acts as a safety net.
+    turn_response = await _generate_with_retry(script_agent, state)
+    return _synthesis_result(state, turn_response, advance=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1021,7 +1235,11 @@ async def resolve_turn(
 
     # 7d. Non-round, non-invitation steps (synthesis, celebrate, closing)
 
-    # Interactive step (e.g. STEP_4_SYNTHESIS): first visit generates prompt
+    # 7d-i. STEP_4_SYNTHESIS: story synthesis loop with phase-based routing
+    if state.current_step == "STEP_4_SYNTHESIS":
+        return await _resolve_synthesis_turn(state, turn_input, script_agent)
+
+    # 7d-ii. Other interactive steps (STEP_1_HOOK): first visit or child response
     if step_needs_user_input(state.current_step) and not _already_prompted_on_step(state):
         turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
         _append_ai_turn(state, turn_response.dialogue)
@@ -1034,8 +1252,6 @@ async def resolve_turn(
             error_exit=state.status == "error",
         )
 
-    # Interactive step already prompted: hook advances into STEP_2, synthesis returns its
-    # own completion response before advancing to the next auto-advance step.
     if step_needs_user_input(state.current_step):
         if state.current_step == "STEP_1_HOOK":
             _advance_state(state)
@@ -1050,25 +1266,9 @@ async def resolve_turn(
                 error_exit=state.status == "error",
             )
 
+        # Generic interactive step fallback
         turn_response = await _generate_with_retry(script_agent, state)
-
-        # Guardrail: override stay_on_step when the response still invites child input.
-        # The LLM sometimes sets stay_on_step=false even when the dialogue ends with a
-        # question — which would auto-advance past the child's chance to respond.
-        if not turn_response.stay_on_step and state.current_step == "STEP_4_SYNTHESIS":
-            dialogue_stripped = turn_response.dialogue.rstrip()
-            synthesis_child_turns = sum(
-                1 for t in state.conversation_history if t.step == "STEP_4_SYNTHESIS" and t.role == "child"
-            )
-            if dialogue_stripped.endswith("?"):
-                logger.info("Overriding stay_on_step: synthesis response ends with question")
-                turn_response.stay_on_step = True
-            elif synthesis_child_turns < 1:
-                logger.info("Overriding stay_on_step: synthesis needs at least 1 child turn")
-                turn_response.stay_on_step = True
-
         if turn_response.stay_on_step:
-            # Child needs help (stuck, confused) — stay and respond
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
             return TurnResult(
@@ -1078,7 +1278,6 @@ async def resolve_turn(
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
             )
-        # Step complete — return THIS response (not the next step's), then advance
         response_type = _get_response_type(state.current_step)
         screen_frame = _get_screen_frame(state)
         _append_ai_turn(state, turn_response.dialogue)

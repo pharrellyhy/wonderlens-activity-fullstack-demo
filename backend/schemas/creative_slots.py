@@ -36,7 +36,8 @@ class Cat5CreativeSlots(BaseModel):
     mission_metaphor: str = Field(description="Playful frame for the collection mission")
     role_title: str = Field(description="Fun title awarded at the end")
     synthesis_type: Literal["naming_story", "comparison_chart", "creative_narrative", "sorting_game"] = Field(
-        description="Creative activity for the collected items"
+        default="naming_story",
+        description="Legacy field — synthesis now always uses the story loop regardless of this value",
     )
     stuck_hint: str = Field(description="Hint for where to look if the child is stuck")
     naming_prompt: str = Field(description="Prompt for child to name/characterize each collected item")

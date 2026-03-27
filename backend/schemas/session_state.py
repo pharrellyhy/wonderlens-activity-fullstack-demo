@@ -60,6 +60,15 @@ class SessionStateModel(BaseModel):
     invitation_accepted: bool = False
     round_advance_pending: bool = False
 
+    # Story synthesis loop state
+    synthesis_phase: str = Field(default="invite", description="Story loop phase: invite, evaluate, improve, generate")
+    synthesis_prompt_count: int = Field(
+        default=0, description="Times child has been asked to try making a story (max 2)"
+    )
+    synthesis_child_story: str = Field(
+        default="", description="Child's story attempt, stored for improvement/expansion"
+    )
+
     # Deep link entry
     deep_linked: bool = False
     upstream_conversation: list[UpstreamConversationTurn] = Field(default_factory=list)

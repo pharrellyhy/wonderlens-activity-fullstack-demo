@@ -319,11 +319,18 @@ def _build_speaker_prompt(state: SessionStateModel, plan: TurnPlan) -> str:
     tier_rules = _load_tier_rules_raw(state.tier)
     template = _SPEAKER_PROMPT_PATH.read_text() if _SPEAKER_PROMPT_PATH.exists() else ""
 
+    # Override max_sentences for synthesis story generation — stories need
+    # many more sentences than normal turns.
+    _STORY_SENTENCES = {"T0": 8, "T1": 11, "T2": 14}
+    max_sentences = tier_rules.get("max_sentences", 2)
+    if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase == "generate":
+        max_sentences = _STORY_SENTENCES.get(state.tier, 11)
+
     replacements = {
         "{tier}": state.tier,
         "{tier_label}": str(tier_rules.get("label", "")),
         "{tier_ages}": str(tier_rules.get("ages", "")),
-        "{max_sentences}": str(tier_rules.get("max_sentences", 2)),
+        "{max_sentences}": str(max_sentences),
         "{words_per_sentence}": _format_words_per_sentence(tier_rules.get("words_per_sentence", [5, 10])),
         "{turn_plan_json}": plan.model_dump_json(indent=2),
         "{emotion_tag}": plan.emotion_tag,
@@ -386,11 +393,16 @@ def _load_step_instructions(state: SessionStateModel) -> str:
     if step.startswith(("STEP_3_ROUND_", "STEP_3_COLLECT_")):
         fragment_prefix = step.rsplit("_", maxsplit=1)[0]
 
-    if fragment_prefix in _FRAGMENTABLE_STEP_PREFIXES:
+    # Synthesis step: load phase-specific fragment instead of synthesis_type fragment
+    if step == "STEP_4_SYNTHESIS" and state.synthesis_phase == "generate":
+        fragment_path = _STEP_INSTRUCTIONS_DIR / "cat5_step4_synthesis__story_generation.md"
+        if fragment_path.exists():
+            text += "\n\n" + fragment_path.read_text()
+    elif fragment_prefix in _FRAGMENTABLE_STEP_PREFIXES:
         style_key: str | None = None
         if isinstance(slots, Cat1CreativeSlots):
             style_key = slots.game_mechanic
-        elif isinstance(slots, Cat5CreativeSlots):
+        elif isinstance(slots, Cat5CreativeSlots) and step != "STEP_4_SYNTHESIS":
             style_key = slots.synthesis_type
         if style_key:
             base_name = filename.removesuffix(".md")
@@ -448,8 +460,15 @@ def _load_step_instructions(state: SessionStateModel) -> str:
                 "{sorting_criterion}": slots.sorting_criterion,
                 "{collected_names}": collected_names_str,
                 "{collected_details}": collected_details_str,
+                "{synthesis_phase}": state.synthesis_phase,
+                "{child_story_attempt}": state.synthesis_child_story or "(none)",
+                "{story_theme}": random.choice(_SYNTHESIS_HINTS) if step == "STEP_4_SYNTHESIS" else "",
             }
         )
+
+        # Story sentence count by tier
+        tier_sentence_counts = {"T0": "7-8", "T1": "9-11", "T2": "12-14"}
+        replacements["{story_sentence_count}"] = tier_sentence_counts.get(state.tier, "9-11")
 
     for key, value in replacements.items():
         text = text.replace(key, value)
@@ -600,12 +619,40 @@ def _get_suggested_emotion_tag(state: SessionStateModel) -> str:
 
 
 _AUDIO_DIRECTIVE_RE = re.compile(r"\s*\[AUDIO\][^\]]*(?:\]|$)", re.IGNORECASE)
+_ASTERISK_STAGE_DIRECTION_RE = re.compile(r"\*([^*]{1,40})\*")
+
+
+def _merge_asterisk_directions(dialogue: str) -> str:
+    """Move *whispers*, *gasps* etc. into the emotion tag bracket.
+
+    '[curious] *whispers* Shh...' -> '[curious, whispers] Shh...'
+    If no emotion tag exists, the directions are stripped (the caller adds a tag after).
+    """
+    directions = _ASTERISK_STAGE_DIRECTION_RE.findall(dialogue)
+    if not directions:
+        return dialogue
+
+    # Remove all *...* from the text
+    cleaned = _ASTERISK_STAGE_DIRECTION_RE.sub("", dialogue).strip()
+
+    # Merge into existing emotion tag bracket
+    tag_match = _EMOTION_TAG_RE.match(cleaned)
+    if tag_match:
+        old_tag = tag_match.group(0).rstrip()  # e.g. "[curious]"
+        inner = old_tag[1:-1]  # "curious"
+        merged = ", ".join([inner] + [d.strip() for d in directions])
+        cleaned = f"[{merged}] " + cleaned[tag_match.end() :]
+
+    return cleaned
 
 
 def _clean_dialogue(turn: TurnResponse, state: SessionStateModel) -> None:
     """Post-process dialogue: strip leaked directives and ensure emotion tag."""
     # Strip [AUDIO] sfx/music directives that the LLM copied from step instructions
     turn.dialogue = _AUDIO_DIRECTIVE_RE.sub("", turn.dialogue).rstrip()
+
+    # Move asterisk stage directions into the emotion tag bracket
+    turn.dialogue = _merge_asterisk_directions(turn.dialogue)
 
     # Ensure dialogue starts with a bracketed emotion tag
     if not _EMOTION_TAG_RE.match(turn.dialogue):
@@ -1249,7 +1296,10 @@ class ScriptAgent:
         variety_line = ""
         if state.current_step == "STEP_4_SYNTHESIS":
             hint = random.choice(_SYNTHESIS_HINTS)
-            variety_line = f"\nStory direction: {hint} Write a DIFFERENT story than the examples.\n"
+            if state.synthesis_phase == "generate":
+                variety_line = f"\nStory theme: {hint}\n"
+            else:
+                variety_line = f"\nStory direction: {hint} Write a DIFFERENT story than the examples.\n"
         elif state.current_step.startswith("STEP_3_COLLECT_"):
             pool = _COLLECT_PHASE_B_HINTS if state.collection_phase == "detail" else _COLLECT_PHASE_A_HINTS
             hint = random.choice(pool)

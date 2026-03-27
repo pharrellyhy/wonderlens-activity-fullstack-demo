@@ -7,7 +7,7 @@ Sentences: max {max_sentences}, ~{words_per_sentence} words each.
 {turn_plan_json}
 
 ## Rules
-- Start with [{emotion_tag}] emotion tag.
+- Start with [{emotion_tag}] emotion tag. Add delivery hints inside the bracket if needed, e.g. [gentle, whispering]. Do NOT use *asterisk* stage directions.
 - Follow the plan exactly — do not add content that isn't in the plan.
 - If do_not_suggest_items is true: NEVER suggest what to find, look for, or collect. No objects, no colors, no categories, no directions. Just encourage exploring.
 - If do_not_ask_question is true: end with a statement, not a question.

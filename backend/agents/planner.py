@@ -21,6 +21,7 @@ try:
         _build_conversation_context,
         _build_creative_slots_text,
         _get_client,
+        _load_step_instructions,
         _load_tier_constraints,
     )
 except ImportError:
@@ -35,6 +36,7 @@ except ImportError:
         _build_conversation_context,
         _build_creative_slots_text,
         _get_client,
+        _load_step_instructions,
         _load_tier_constraints,
     )
 
@@ -92,6 +94,11 @@ def _build_state_context(state: SessionStateModel) -> str:
     lines.append("")
     lines.append("Creative Slots:")
     lines.append(_build_creative_slots_text(state.creative_slots))
+
+    # Step instructions — tells the planner what this step is about
+    lines.append("")
+    lines.append("## Step Instructions")
+    lines.append(_load_step_instructions(state))
 
     return "\n".join(lines)
 

@@ -1,6 +1,7 @@
 """Script Agent — per-turn dialogue generation using Qwen via ALI DashScope."""
 
 import json
+import random
 import re
 import time
 from functools import lru_cache
@@ -41,6 +42,23 @@ _SPEAKER_PROMPT_PATH = Path(__file__).parent.parent / "skills" / "speaker_system
 _STEP_INSTRUCTIONS_DIR = Path(__file__).parent.parent / "skills" / "step_instructions"
 _TIER_RULES_PATH = Path(__file__).parent.parent / "tier_rules.yaml"
 _FRAGMENTABLE_STEP_PREFIXES = {"STEP_2_RULES", "STEP_3_ROUND", "STEP_3_COLLECT", "STEP_4_SYNTHESIS"}
+
+# Variety hints injected into the user prompt for early steps where the prompt
+# context is identical across sessions.  A random hint nudges the LLM toward a
+# different opening/style each time.
+_VARIETY_HINTS = [
+    "Start with a sound word (Whoosh! Pop! Wow!).",
+    "Open with something YOU noticed about the photo first.",
+    "Use a metaphor or simile in your opening.",
+    "Start with a playful question about how the child is feeling.",
+    "Begin by whispering — use a soft, mysterious tone.",
+    "Open with an exclamation about the most striking visual detail.",
+    "Pretend you just discovered something surprising.",
+    "Start by describing what you imagine touching it would feel like.",
+    "Open with a silly comparison to something unexpected.",
+    "Begin with wonder — 'I wonder...' or 'What if...'",
+]
+_VARIETY_STEPS = {"STEP_1_HOOK", "STEP_2_RULES", "STEP_2_MISSION"}
 
 # Regex to extract dialogue value from partial JSON stream
 _DIALOGUE_RE = re.compile(r'"dialogue"\s*:\s*"((?:[^"\\]|\\.)*)"')
@@ -402,8 +420,15 @@ def _get_suggested_emotion_tag(state: SessionStateModel) -> str:
     return "gentle"
 
 
-def _ensure_emotion_tag(turn: TurnResponse, state: SessionStateModel) -> None:
-    """Ensure dialogue starts with a bracketed emotion tag; prepend one if missing."""
+_AUDIO_DIRECTIVE_RE = re.compile(r"\s*\[AUDIO\][^\]]*(?:\]|$)", re.IGNORECASE)
+
+
+def _clean_dialogue(turn: TurnResponse, state: SessionStateModel) -> None:
+    """Post-process dialogue: strip leaked directives and ensure emotion tag."""
+    # Strip [AUDIO] sfx/music directives that the LLM copied from step instructions
+    turn.dialogue = _AUDIO_DIRECTIVE_RE.sub("", turn.dialogue).rstrip()
+
+    # Ensure dialogue starts with a bracketed emotion tag
     if not _EMOTION_TAG_RE.match(turn.dialogue):
         tag = _get_suggested_emotion_tag(state)
         turn.dialogue = f"[{tag}] {turn.dialogue}"
@@ -507,6 +532,11 @@ class ScriptAgent:
         Raises:
             ScriptAgentError: If both two-pass and single-pass generation fail.
         """
+        settings = get_settings()
+        if not settings.two_pass_enabled:
+            self.last_plan = None
+            return await self._generate_turn_single_pass(state)
+
         try:
             plan = await self._plan_turn(state)
             self.last_plan = plan
@@ -620,7 +650,7 @@ class ScriptAgent:
                 screen_widget="photo_display",
                 screen_widget_params={},
             )
-            _ensure_emotion_tag(turn, state)
+            _clean_dialogue(turn, state)
 
             logger.info(f"Speaker turn: step={state.current_step}, round={state.current_round}, latency={latency_ms}ms")
             await log_agent_call(state.session_id, "speaker", latency_ms, True)
@@ -682,7 +712,7 @@ class ScriptAgent:
             )
 
             turn = TurnResponse.model_validate_json(text)
-            _ensure_emotion_tag(turn, state)
+            _clean_dialogue(turn, state)
 
             logger.info(f"Script turn: step={state.current_step}, round={state.current_round}, latency={latency_ms}ms")
             await log_agent_call(state.session_id, "script_turn", latency_ms, True)
@@ -717,6 +747,11 @@ class ScriptAgent:
         Raises:
             ScriptAgentError: If generation fails.
         """
+        settings = get_settings()
+        if not settings.two_pass_enabled:
+            self.last_plan = None
+            return await self._generate_turn_streaming_single_pass(state, on_dialogue)
+
         try:
             # Step 1: Planner (non-streaming — small JSON)
             plan = await self._plan_turn(state)
@@ -819,7 +854,7 @@ class ScriptAgent:
                 screen_widget="photo_display",
                 screen_widget_params={},
             )
-            _ensure_emotion_tag(turn, state)
+            _clean_dialogue(turn, state)
 
             logger.info(
                 f"Speaker turn (stream): step={state.current_step}, round={state.current_round}, latency={latency_ms}ms"
@@ -908,7 +943,7 @@ class ScriptAgent:
             )
 
             turn = TurnResponse.model_validate_json(accumulated)
-            _ensure_emotion_tag(turn, state)
+            _clean_dialogue(turn, state)
 
             logger.info(
                 f"Script turn (stream): step={state.current_step}, round={state.current_round}, latency={latency_ms}ms"
@@ -958,11 +993,20 @@ class ScriptAgent:
                 "is confused, or needs a hint before moving on\n"
             )
 
+        # Inject a random variety hint for early steps where the prompt context
+        # is identical across sessions — prevents the LLM from repeating itself.
+        variety_line = ""
+        is_first_collect = state.current_step in ("STEP_3_COLLECT_1", "STEP_3_ROUND_1") and state.turn_count < 4
+        if state.current_step in _VARIETY_STEPS or is_first_collect:
+            hint = random.choice(_VARIETY_HINTS)
+            variety_line = f"\nStyle hint: {hint}\n"
+
         return (
             f"Generate the next turn for step: {step_name}.\n"
             f"This is turn {state.turn_count + 1} of the session.\n"
             f"Round {state.current_round} of {state.total_rounds}."
-            f"{child_input}\n\n"
+            f"{child_input}"
+            f"{variety_line}\n"
             f"Respond with EXACTLY this JSON structure (all fields required):\n"
             f"{{\n"
             f'  "dialogue": "[emotion_tag] Your dialogue text here",\n'

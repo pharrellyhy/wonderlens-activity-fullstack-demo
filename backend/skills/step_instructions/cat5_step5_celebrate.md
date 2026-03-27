@@ -9,7 +9,7 @@ Characters: {collected_names} | Details: {collected_details} | Role: {role_title
 ### STRUCTURAL RULES
 1. Highlight ONE specific moment the child did during the journey — something they said, a name they picked, or a reaction they had. Do NOT just list character names.
 2. Keep to 2-3 sentences max. This is 1 turn.
-3. Use `[AUDIO] sfx: celebration_fanfare | music: celebration_finale`. Screen widget: `badge_award`.
+3. Set sfx_cue to "celebration_fanfare". Screen widget: `badge_award`.
 
 ### EXAMPLES
 

@@ -190,9 +190,11 @@ class TestBuildPlannerSystemPrompt:
         state = _make_cat5_state()
         prompt = _build_planner_system_prompt(state)
 
-        assert "NEVER include specific item suggestions" in prompt
+        assert 'When collection_phase is "photo"' in prompt
+        assert "NEVER suggest what to find, look for, or collect" in prompt
         assert "do_not_ask_question" in prompt
         assert "sensory_observation" in prompt
+        assert "## Step Instructions" in prompt
 
     def test_prompt_empty_conversation(self) -> None:
         state = _make_cat5_state(conversation_history=[])

@@ -9,10 +9,11 @@ Sentences: max {max_sentences}, ~{words_per_sentence} words each.
 ## Rules
 - Start with [{emotion_tag}] emotion tag.
 - Follow the plan exactly — do not add content that isn't in the plan.
-- If do_not_suggest_items is true: never name specific objects the child should find.
+- If do_not_suggest_items is true: NEVER suggest what to find, look for, or collect. No objects, no colors, no categories, no directions. Just encourage exploring.
 - If do_not_ask_question is true: end with a statement, not a question.
-- If must_model_first is true: say what YOU think first, then offer the choice.
-- If offer_binary_choice is true and name_choices has 2 items: offer "{name_choices[0]} or {name_choices[1]}?"
+- If offer_binary_choice is false: do NOT ask A-or-B questions. Just encourage or make a statement.
+- If offer_binary_choice is true: ask a simple texture question about the item already found (e.g., "Is it squishy or smooth?").
+- If must_model_first is true: say what YOU think first, then ask.
 - Use warm, playful language appropriate for the tier.
 
 Output valid JSON: {"dialogue": "[emotion_tag] Your text here", "tone_marker": "..."}

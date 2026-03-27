@@ -128,21 +128,23 @@ class TestTurnPlanFull:
 class TestTurnPlanValidation:
     """Test field constraint validation."""
 
-    def test_child_said_required(self) -> None:
-        """child_said is a required field with no default."""
-        try:
-            TurnPlan(child_emotion="neutral")  # type: ignore[call-arg]
-            raise AssertionError("Should have raised a ValidationError")
-        except Exception as exc:
-            assert "child_said" in str(exc)
+    def test_child_said_defaults_when_missing(self) -> None:
+        """Planner omissions should fall back to an empty child summary."""
+        plan = TurnPlan(child_emotion="neutral")
+        assert plan.child_said == ""
 
-    def test_child_emotion_required(self) -> None:
-        """child_emotion is a required field with no default."""
+    def test_child_emotion_defaults_when_missing(self) -> None:
+        """Planner omissions should fall back to a neutral child emotion."""
+        plan = TurnPlan(child_said="hello")
+        assert plan.child_emotion == "neutral"
+
+    def test_extra_fields_are_rejected(self) -> None:
+        """Unexpected planner keys should still fail schema validation."""
         try:
-            TurnPlan(child_said="hello")  # type: ignore[call-arg]
+            TurnPlan.model_validate({"child_said": "hello", "not_a_valid_plan": True})
             raise AssertionError("Should have raised a ValidationError")
         except Exception as exc:
-            assert "child_emotion" in str(exc)
+            assert "not_a_valid_plan" in str(exc)
 
     def test_max_sentences_accepts_positive_int(self) -> None:
         plan = TurnPlan(child_said="hi", child_emotion="neutral", max_sentences=5)

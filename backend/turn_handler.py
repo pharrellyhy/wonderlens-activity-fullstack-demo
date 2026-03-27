@@ -843,18 +843,6 @@ async def resolve_turn(
 
         remaining_count = max(0, state.total_rounds - len(state.collected_photos))
         response_type = _get_response_type(state.current_step)
-        if remaining_count == 0:
-            # Keep the collected-photo view for this response, then auto-advance into synthesis.
-            state.round_advance_pending = True
-            state.detail_exchange_count = 0
-            return TurnResult(
-                turn_response=turn_response,
-                screen_frame=_get_screen_frame(state),
-                auto_advance=True,
-                response_type=response_type,
-                error_exit=state.status == "error",
-            )
-
         # Respect stay_on_step from the AI — the child may be confused or
         # off-topic and needs guidance back before advancing. Cap at 3
         # exchanges to prevent infinite loops.
@@ -868,6 +856,18 @@ async def resolve_turn(
                 turn_response=turn_response,
                 screen_frame=_get_screen_frame(state),
                 auto_advance=False,
+                response_type=response_type,
+                error_exit=state.status == "error",
+            )
+
+        if remaining_count == 0:
+            # Keep the collected-photo view for this response, then auto-advance into synthesis.
+            state.round_advance_pending = True
+            state.detail_exchange_count = 0
+            return TurnResult(
+                turn_response=turn_response,
+                screen_frame=_get_screen_frame(state),
+                auto_advance=True,
                 response_type=response_type,
                 error_exit=state.status == "error",
             )

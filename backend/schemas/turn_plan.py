@@ -1,6 +1,6 @@
 """Pydantic schema for the Planner LLM output — describes WHAT to say, not HOW."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TurnPlan(BaseModel):
@@ -11,9 +11,13 @@ class TurnPlan(BaseModel):
     that the Speaker pass converts into natural child-facing dialogue.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     # What to respond to
-    child_said: str = Field(description="Summary of what the child said/did this turn")
-    child_emotion: str = Field(description="Detected emotion: excited, confused, silent, disengaged, neutral")
+    child_said: str = Field(default="", description="Summary of what the child said/did this turn")
+    child_emotion: str = Field(
+        default="neutral", description="Detected emotion: excited, confused, silent, disengaged, neutral"
+    )
 
     # Content decisions
     celebrate_item: str | None = Field(default=None, description="Item name to celebrate (if correct photo)")

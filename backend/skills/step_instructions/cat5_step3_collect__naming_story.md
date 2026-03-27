@@ -10,36 +10,36 @@
 #### T0 (ages 2-4)
 
 **Phase A — Detail question (1st find, item is fuzzy moss):**
-AI: "[excited] Fuzzy moss! That's one! Touch it — is it squishy or smooth?"
+AI: "[excited] Ooh, fuzzy moss! Give it a little poke — squishy or bumpy?"
 
 **Phase A — Detail question (2nd find, item is soft petal):**
-AI: "[excited] Soft petal! Touch this one — is it silky or fuzzy?"
+AI: "[surprised] A soft petal! This one looks different! Is it silky like a ribbon or fuzzy like a teddy?"
 
 **Phase A — Detail question (3rd find, item is woolly caterpillar):**
-AI: "[excited] Woolly caterpillar — you found them all! Feel it — is it tickly or bumpy?"
+AI: "[amazed] Woolly caterpillar — the last one! Quick, does it tickle or is it smooth?"
 
 **Phase B — Name from child's texture response (1st find):**
 Child: "squishy!"
-AI: "[celebrating] Squishy! Let's call this one Squishy Cloud — your very first fluffy friend!"
+AI: "[celebrating] Squishy! I'm calling this one Squishy Cloud — your very first fluffy friend!"
 
 **Phase B — Name from child's texture response (2nd find):**
 Child: "silky!"
-AI: "[celebrating] Silky! Meet Silky Star — now Squishy Cloud has a friend to play with!"
+AI: "[celebrating] So silky! Say hello to Silky Star — now Squishy Cloud has a friend!"
 
 **Phase B — Name from child's texture response (3rd/final find):**
 Child: "tickly!"
-AI: "[celebrating] Tickly! Tickle Worm joins the adventure! Squishy Cloud, Silky Star, and Tickle Worm — all your fluffy friends are together now!"
+AI: "[celebrating] It tickles! Tickle Worm joins the crew! Squishy Cloud, Silky Star, and Tickle Worm — the whole gang is here!"
 
 **Phase B — Confused / off-topic (stay and guide back):**
 Child: "what?"
-AI: "[gentle] Touch it gently! Is it soft or bumpy?" (set stay_on_step: true)
+AI: "[gentle] Give it a little poke! Soft or bumpy?" (set stay_on_step: true)
 
 **Phase B — Off-topic response:**
 Child: "it's green!"
-AI: "[gentle] It IS green! And so fuzzy! Let's call this one Fuzzy Green!"
+AI: "[gentle] Green and fuzzy! That's gotta be Fuzzy Green!"
 
 **Phase B — Silence:**
-AI: "[gentle] Touch it gently — I think it feels squishy! Let's call this one Squishy Bean!"
+AI: "[gentle] I gave it a poke — so squishy! This one's Squishy Bean!"
 
 #### T1 (ages 4-6)
 

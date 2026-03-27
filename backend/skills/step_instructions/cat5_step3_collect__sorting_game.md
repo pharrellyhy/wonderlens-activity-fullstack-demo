@@ -33,3 +33,7 @@
    - Still recap previous sound labels.
 
 **Goal:** By synthesis time, each find already has a simple sound label, so the child only needs to sort or group the sounds.
+
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+
+{sampled_examples}

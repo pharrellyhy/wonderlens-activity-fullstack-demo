@@ -18,3 +18,7 @@
 **Escalation across rounds:**
 - Early rounds: 2 easy clues, very concrete (color, shape).
 - Later rounds: 3 clues, more abstract or playful (what it does, how it feels, where it lives).
+
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+
+{sampled_examples}

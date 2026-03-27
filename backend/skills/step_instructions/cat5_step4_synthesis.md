@@ -49,3 +49,7 @@ The story MUST read like a real bedtime story — not a list of events. Include:
 
 Bad: "They all giggled and snuggled together. The end!"
 Good: "'I'm here,' Woolly whispered. Mossy felt warm all over. They closed their eyes and the dark didn't feel scary anymore."
+
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+
+{sampled_examples}

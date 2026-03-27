@@ -10,6 +10,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
+import yaml
+
 try:
     from .entity_registry import entity_name_for_filename, get_creative_slots, is_demo_entity
     from .game_loader import get_demo_recipe
@@ -28,6 +30,25 @@ except ImportError:
 logger = setup_logger(__name__)
 
 _RECIPES_DIR = Path(__file__).parent / "recipes"
+_PERSONALITIES_PATH = Path(__file__).parent / "skills" / "personalities.yaml"
+
+
+@lru_cache(maxsize=1)
+def _load_personalities() -> list[dict]:
+    """Load narrator personalities from YAML."""
+    if not _PERSONALITIES_PATH.exists():
+        return []
+    with open(_PERSONALITIES_PATH) as f:
+        data = yaml.safe_load(f) or {}
+    return data.get("personalities", [])
+
+
+def _pick_narrator_personality() -> str:
+    """Randomly select a narrator personality ID for a new session."""
+    personalities = _load_personalities()
+    if not personalities:
+        return ""
+    return random.choice(personalities)["id"]
 
 
 @lru_cache(maxsize=8)
@@ -105,9 +126,12 @@ def recipe_to_session_state(
         celebration_frame=recipe.celebration_frame,
     )
 
+    state.narrator_personality = _pick_narrator_personality()
+
     logger.info(
         f"Instruction recipe session: {session_id}, activity={activity_type}, "
-        f"template={template_type}, rounds={recipe.metadata.round_count}"
+        f"template={template_type}, rounds={recipe.metadata.round_count}, "
+        f"personality={state.narrator_personality}"
     )
 
     return state

@@ -9,9 +9,30 @@ Or use the with_server.py helper if available.
 Run with: uv run pytest tests/test_e2e.py -m e2e -v
 """
 
+import socket
+
 import pytest
 
-pytestmark = pytest.mark.e2e
+
+def _server_listening(host: str, port: int) -> bool:
+    """Return True if a TCP connection to host:port succeeds."""
+    try:
+        with socket.create_connection((host, port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+_backend_up = _server_listening("localhost", 8000)
+_frontend_up = _server_listening("localhost", 5173)
+
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.skipif(
+        not (_backend_up and _frontend_up),
+        reason="E2E tests require backend (port 8000) and frontend (port 5173) servers running",
+    ),
+]
 
 
 @pytest.fixture(scope="module")

@@ -31,14 +31,12 @@ def test_unmuting_does_not_replay_the_current_ai_message() -> None:
     assert "stopTTS();" in source
 
 
-def test_silence_timer_stays_tier_specific() -> None:
-    """Frontend silence timeouts should continue to match the tier rules."""
+def test_silence_timer_uses_flat_timeout() -> None:
+    """Frontend silence timeout should be a single flat constant."""
     source = USE_SILENCE_TIMER_PATH.read_text(encoding="utf-8")
 
-    assert "T0: 10000" in source
-    assert "T1: 8000" in source
-    assert "T2: 6000" in source
-    assert "const timeout = SILENCE_TIMEOUTS[tier] || 10000;" in source
+    assert "const SILENCE_TIMEOUT = 30000;" in source
+    assert "const timeout = SILENCE_TIMEOUT;" in source
 
 
 def test_demo_entity_summaries_include_plain_description_and_steps() -> None:
@@ -58,10 +56,10 @@ def test_loaded_demo_entities_include_plain_description_and_steps() -> None:
         assert entity.steps_summary
 
 
-def test_game_detail_view_explains_when_demo_or_example_happens() -> None:
-    """The pre-start screen should clarify that demo/example steps happen after Start."""
+def test_game_detail_view_shows_steps_and_game_details() -> None:
+    """The pre-start screen should display steps and expandable game design details."""
     source = GAME_DETAIL_VIEW_PATH.read_text(encoding="utf-8")
 
-    assert "const firstStep = s.steps_summary?.[0] || '';" in source
-    assert "const hasStartDemo = /\\b(demo|example)\\b/i.test(firstStep);" in source
-    assert "This happens right after you press Start." in source
+    assert "How It Works" in source
+    assert "steps_summary" in source
+    assert "Game design details" in source

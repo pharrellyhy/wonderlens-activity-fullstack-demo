@@ -61,6 +61,7 @@ class EntityConfig(BaseModel):
     concepts_earned: list[str] = []
     plain_description: str = ""
     steps_summary: list[str] = []
+    play_rounds: int | None = None
 
 
 # --- Registry data (populated by game_loader at import time) ---
@@ -222,7 +223,7 @@ def _build_entity_summary(entity: EntityConfig) -> dict:
             {
                 "metaphor": slots.metaphor,
                 "game_mechanic": slots.game_mechanic,
-                "round_count": len(slots.round_scenarios),
+                "round_count": entity.play_rounds if entity.play_rounds is not None else len(slots.round_scenarios),
                 "round_scenarios": slots.round_scenarios,
                 "escalation_axis": slots.escalation_axis,
                 "collection_criterion": None,

@@ -171,7 +171,7 @@ class TestEntitiesEndpoint:
         cat_summary = photos_by_id["cat"]["summary"]
         assert cat_summary["category"] == "category_1"
         assert cat_summary["tier"] == "T0"
-        assert cat_summary["round_count"] == 3
+        assert cat_summary["round_count"] == 3  # play_rounds from game frontmatter
         assert cat_summary["round_scenarios"]
         assert cat_summary["collection_criterion"] is None
 
@@ -340,7 +340,7 @@ class TestTurnByTurnEndpoint:
             child_intent="accepted",
         )
         round_turn = TurnResponse(
-            dialogue="[warm] How do you think the dog feels in warm sunshine?",
+            dialogue="[warm] I think the dog feels sleepy in warm sunshine! Would it feel sleepy or playful?",
             tone_marker="curious",
             screen_widget="character_display",
             screen_widget_params={"description": "Round 1"},
@@ -360,7 +360,7 @@ class TestTurnByTurnEndpoint:
         assert data["session_state"]["current_step"] == "STEP_3_ROUND_1"
         assert data["session_state"]["current_round"] == 1
         assert data["turn"]["response_type"] == "round"
-        assert data["turn"]["dialogue"] == "[warm] How do you think the dog feels in warm sunshine?"
+        assert data["turn"]["dialogue"] == "[warm] I think the dog feels sleepy in warm sunshine! Would it feel sleepy or playful?"
         assert data["session_state"]["invitation_decline_count"] == 0
 
     def test_turn_stays_on_step_two_after_first_decline(self, client: TestClient) -> None:

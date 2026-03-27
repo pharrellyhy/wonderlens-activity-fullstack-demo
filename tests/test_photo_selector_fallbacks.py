@@ -9,8 +9,32 @@ FALLBACK_MODULE = REPO_ROOT / "frontend" / "src" / "components" / "photoSelector
 
 
 def _load_fallback_categories() -> list[dict]:
+    # Node.js ESM cannot resolve extensionless imports or Vite's import.meta.env,
+    # so we register a custom loader that intercepts the basePath dependency with
+    # a minimal stub.
+    loader_code = """
+export function resolve(specifier, context, next) {
+  if (specifier.endsWith('/basePath')) {
+    const url = new URL(specifier + '.js', context.parentURL).href;
+    return { url, shortCircuit: true };
+  }
+  return next(specifier, context);
+}
+export function load(url, context, next) {
+  if (url.endsWith('/basePath.js')) {
+    return {
+      format: 'module',
+      source: 'export function asset(p) { return p; } export default "";',
+      shortCircuit: true,
+    };
+  }
+  return next(url, context);
+}
+"""
     script = f"""
-import {{ FALLBACK_CATEGORIES }} from {json.dumps(FALLBACK_MODULE.as_uri())};
+import {{ register }} from 'node:module';
+register('data:text/javascript,' + encodeURIComponent({json.dumps(loader_code)}));
+const {{ FALLBACK_CATEGORIES }} = await import({json.dumps(FALLBACK_MODULE.as_uri())});
 console.log(JSON.stringify(FALLBACK_CATEGORIES));
 """
     result = subprocess.run(

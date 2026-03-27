@@ -21,7 +21,7 @@ def _mock_plan() -> CompositionPlan:
         transition_strategy="natural_question",
         template_type="cat1",
         creative_slots=Cat1CreativeSlots(
-            game_mechanic="what_would_it_say",
+            game_mechanic="mood_guessing",
             metaphor="This dog has stories!",
             role_title="Dog Whisperer",
             round_scenarios=["napping", "at a party"],
@@ -136,7 +136,7 @@ class TestPipelineVisualIntegration:
             activity_type="mood_changer_dog",
             current_step="STEP_1_HOOK",
             creative_slots=Cat1CreativeSlots(
-                game_mechanic="what_would_it_say",
+                game_mechanic="mood_guessing",
                 metaphor="Stories",
                 role_title="Whisperer",
                 round_scenarios=["napping"],

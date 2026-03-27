@@ -34,7 +34,7 @@ def client(tmp_path: Path) -> TestClient:
 
 def _cat1_slots() -> Cat1CreativeSlots:
     return Cat1CreativeSlots(
-        game_mechanic="what_would_it_say",
+        game_mechanic="mood_guessing",
         metaphor="This dog has stories.",
         role_title="Story Whisperer",
         round_scenarios=["napping"],

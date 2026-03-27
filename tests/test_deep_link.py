@@ -14,10 +14,10 @@ def deep_link_client(monkeypatch: pytest.MonkeyPatch, tmp_path):
     async def fake_init_db(_: str) -> None:
         return None
 
-    async def fake_log_session(*_: object) -> None:
+    async def fake_log_session(*_args: object, **_kwargs: object) -> None:
         return None
 
-    async def fake_generate_with_retry(*_: object) -> TurnResponse:
+    async def fake_generate_with_retry(*_args: object, **_kwargs: object) -> TurnResponse:
         return TurnResponse(
             dialogue="[curious] We were just talking about your dinosaur's spikes. Would you like to play?",
             tone_marker="curious",

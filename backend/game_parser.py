@@ -63,6 +63,7 @@ def _build_entity_config(data: dict) -> EntityConfig:
         concepts_earned=data.get("concepts_earned", []),
         plain_description=data.get("plain_description", ""),
         steps_summary=data.get("steps_summary", []),
+        play_rounds=data.get("play_rounds"),
     )
 
 

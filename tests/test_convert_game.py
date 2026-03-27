@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 SCRIPT_PATH = SCRIPTS_DIR / "convert_game.py"
 PROD_GAMES_DIR = REPO_ROOT / "backend" / "games"
+_BICYCLE_PROD = PROD_GAMES_DIR / "bicycle_cat1_prod.md"
 
 
 def _install_pil_stub() -> None:
@@ -72,6 +73,7 @@ def _record_parse_call(parse_calls: list[Path], path: Path) -> None:
     parse_calls.append(path)
 
 
+@pytest.mark.skipif(not _BICYCLE_PROD.exists(), reason="bicycle_cat1_prod.md not present")
 def test_convert_prod_file_creates_parent_dirs_for_custom_output(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -101,6 +103,7 @@ def test_convert_prod_file_creates_parent_dirs_for_custom_output(
     assert parse_calls == [output_path]
 
 
+@pytest.mark.skipif(not _BICYCLE_PROD.exists(), reason="bicycle_cat1_prod.md not present")
 def test_convert_prod_file_validates_dry_run_output(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,

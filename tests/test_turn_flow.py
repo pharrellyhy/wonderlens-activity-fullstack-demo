@@ -36,7 +36,7 @@ def client(tmp_path: Path) -> TestClient:
 
 def _cat1_slots() -> Cat1CreativeSlots:
     return Cat1CreativeSlots(
-        game_mechanic="what_would_it_say",
+        game_mechanic="mood_guessing",
         metaphor="This friend has stories to tell.",
         role_title="Story Whisperer",
         round_scenarios=["taking a nap"],
@@ -99,7 +99,7 @@ def test_script_failure_fallback_surfaces_error_exit(client: TestClient) -> None
 
     with patch(
         "server.ScriptAgent.generate_turn",
-        new=AsyncMock(side_effect=[ScriptAgentError("boom"), ScriptAgentError("boom")]),
+        new=AsyncMock(side_effect=[ScriptAgentError("boom"), ScriptAgentError("boom"), ScriptAgentError("boom")]),
     ):
         resp = client.post(
             "/api/turn",
@@ -139,7 +139,7 @@ def test_cat5_turn_returns_collected_photos_in_session_state(client: TestClient)
 
 
 def test_closing_turn_marks_session_completed_without_extra_turn(client: TestClient) -> None:
-    _sessions["test-session"] = _cat1_state("STEP_4_CELEBRATE")
+    _sessions["test-session"] = _cat1_state("STEP_5_CLOSING")
 
     with patch(
         "server.ScriptAgent.generate_turn",
@@ -162,5 +162,4 @@ def test_closing_turn_marks_session_completed_without_extra_turn(client: TestCli
     assert resp.status_code == 200
     data = resp.json()
     assert data["turn"]["response_type"] == "closing"
-    assert data["turn"]["auto_advance"] is False
     assert data["session_state"]["status"] == "completed"

@@ -1,0 +1,325 @@
+step_group: cat5_collect
+examples:
+  # ══════════════════════════════════════════════════════════════════
+  #  T0 (ages 2-4)
+  # ══════════════════════════════════════════════════════════════════
+
+  # ── Phase A: correct photo ─────────────────────────────────────
+
+  - tier: T0
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (1st find):**
+      AI: "[excited] Ooh, look at that! Your first one! Give it a poke — is it squishy or smooth?"
+
+  - tier: T0
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (2nd find):**
+      AI: "[surprised] Whoa, another one! This feels different! Is it fuzzy like a teddy or slippery like soap?"
+
+  - tier: T0
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (3rd/final find):**
+      AI: "[amazed] You found the last one! Quick — does it tickle or is it bumpy?"
+
+  - tier: T0
+    phase: A
+    scenario: correct_photo
+    style: naming_story
+    text: |
+      **Phase A — Correct photo (1st find, naming story):**
+      AI: "[excited] What a find! Touch it gently — squishy or bumpy?"
+
+  # ── Phase A: wrong photo ───────────────────────────────────────
+
+  - tier: T0
+    phase: A
+    scenario: wrong_photo
+    style: default
+    text: |
+      **Phase A — Wrong photo:**
+      AI: "[gentle] Ooh, interesting! But that one feels hard, not {observation_angle}. Something soft might be hiding close by!"
+
+  # ── Phase A: silence/stuck ─────────────────────────────────────
+
+  - tier: T0
+    phase: A
+    scenario: silence
+    style: default
+    text: |
+      **Phase A — Silence / stuck:**
+      AI: "[gentle] Something {observation_angle} might be really nearby. Would you like to peek around?"
+
+  - tier: T0
+    phase: A
+    scenario: stuck
+    style: default
+    text: |
+      **Phase A — Stuck (second prompt):**
+      AI: "[encouraging] I bet something {observation_angle} is waiting for you! Can you spot it?"
+
+  # ── Phase B: ideal response ────────────────────────────────────
+
+  - tier: T0
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (1st find):**
+      Child: "squishy!"
+      AI: "[celebrating] Squishy! This one is Squish — your very first friend!"
+
+  - tier: T0
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (2nd find):**
+      Child: "fuzzy!"
+      AI: "[celebrating] So fuzzy! Meet Fuzz — now Squish has a buddy!"
+
+  - tier: T0
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (3rd/final find):**
+      Child: "bumpy!"
+      AI: "[celebrating] Bumpy! Say hello to Bump! Squish, Fuzz, and Bump — the whole crew!"
+
+  # ── Phase B: child unsure ──────────────────────────────────────
+
+  - tier: T0
+    phase: B
+    scenario: stuck
+    style: default
+    text: |
+      **Phase B — Child unsure:**
+      Child: "hmm"
+      AI: "[gentle] I think it feels fluffy! Is it fluffy?"
+
+  # ── Phase B: silence ───────────────────────────────────────────
+
+  - tier: T0
+    phase: B
+    scenario: silence
+    style: default
+    text: |
+      **Phase B — Silence:**
+      AI: "[gentle] I touched it — so silky! This one is Silky! Want to find the next one?"
+
+  # ══════════════════════════════════════════════════════════════════
+  #  T1 (ages 4-6)
+  # ══════════════════════════════════════════════════════════════════
+
+  # ── Phase A: correct photo ─────────────────────────────────────
+
+  - tier: T1
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (1st find):**
+      AI: "[excited] Great eye — your very first discovery! It looks so different up close. What does it remind you of?"
+
+  - tier: T1
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (2nd find):**
+      AI: "[surprised] Look at that — another beauty! Feel how different this one is. What stands out compared to your first find?"
+
+  - tier: T1
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (3rd/final find):**
+      AI: "[amazed] That completes the collection! This last one has its own special feel. What makes it different from the others?"
+
+  - tier: T1
+    phase: A
+    scenario: correct_photo
+    style: naming_story
+    text: |
+      **Phase A — Correct photo (1st find, naming story):**
+      AI: "[excited] Your first find! Touch it carefully — what does it feel like? Smooth? Fuzzy? Something else?"
+
+  # ── Phase A: wrong photo ───────────────────────────────────────
+
+  - tier: T1
+    phase: A
+    scenario: wrong_photo
+    style: default
+    text: |
+      **Phase A — Wrong photo:**
+      AI: "[gentle] That's a cool find, but it feels more rough than {observation_angle}. I bet there's something softer hiding nearby."
+
+  # ── Phase A: silence ───────────────────────────────────────────
+
+  - tier: T1
+    phase: A
+    scenario: silence
+    style: default
+    text: |
+      **Phase A — Silence / stuck:**
+      AI: "[encouraging] There's definitely something {observation_angle} close by. Would you like a little hint?"
+
+  # ── Phase B: ideal response ────────────────────────────────────
+
+  - tier: T1
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (1st find):**
+      Child: "it's like a tiny pillow"
+      AI: "[celebrating] A tiny pillow — Pillow Puff! Your first character is cozy already. Would you like to find another?"
+
+  - tier: T1
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (2nd find):**
+      Child: "way smoother than Pillow Puff"
+      AI: "[celebrating] Smoother — meet Satin Breeze! Pillow Puff and Satin Breeze are already best friends. One more out there!"
+
+  - tier: T1
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (3rd/final find):**
+      Child: "it's all curly!"
+      AI: "[celebrating] Curly Twist! Pillow Puff, Satin Breeze, and Curly Twist — the whole squad is here!"
+
+  # ── Phase B: child unsure ──────────────────────────────────────
+
+  - tier: T1
+    phase: B
+    scenario: stuck
+    style: default
+    text: |
+      **Phase B — Child unsure:**
+      Child: "I'm not sure"
+      AI: "[warm] No worries! Close your eyes and touch it. Does it feel more like a cloud or more like a feather?"
+
+  # ── Phase B: silence ───────────────────────────────────────────
+
+  - tier: T1
+    phase: B
+    scenario: silence
+    style: default
+    text: |
+      **Phase B — Silence:**
+      AI: "[gentle] This one feels really velvety to me. What if we called it Velvet? Does that fit?"
+
+  # ══════════════════════════════════════════════════════════════════
+  #  T2 (ages 6-8)
+  # ══════════════════════════════════════════════════════════════════
+
+  # ── Phase A: correct photo ─────────────────────────────────────
+
+  - tier: T2
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (1st find):**
+      AI: "[excited] Excellent first discovery! Look closely at the texture — what do you notice about how it feels compared to the {entity_name}?"
+
+  - tier: T2
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (2nd find):**
+      AI: "[surprised] Another great find! This one seems to have a completely different quality to it. What word would you use to describe it?"
+
+  - tier: T2
+    phase: A
+    scenario: correct_photo
+    style: default
+    text: |
+      **Phase A — Correct photo (3rd/final find):**
+      AI: "[amazed] That's the whole collection! Take a moment — what makes this last one unique from the other two?"
+
+  # ── Phase A: wrong photo ───────────────────────────────────────
+
+  - tier: T2
+    phase: A
+    scenario: wrong_photo
+    style: default
+    text: |
+      **Phase A — Wrong photo:**
+      AI: "[gentle] Interesting pick! Does it really match our {collection_criterion} though? Think about the texture — is it actually {observation_angle}?"
+
+  # ── Phase A: silence ───────────────────────────────────────────
+
+  - tier: T2
+    phase: A
+    scenario: silence
+    style: default
+    text: |
+      **Phase A — Silence / stuck:**
+      AI: "[encouraging] Take your time — think about things you might pass every day without noticing. Anything {observation_angle} come to mind?"
+
+  # ── Phase B: ideal response ────────────────────────────────────
+
+  - tier: T2
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (1st find):**
+      Child: "it's softer than the dandelion but not as fluffy"
+      AI: "[celebrating] A different kind of softness — great observation! What would you name this character?"
+
+  - tier: T2
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (2nd find):**
+      Child: "I'll call her Whisper because it's so light"
+      AI: "[celebrating] Whisper — that's beautiful, the name really captures how delicate it is. One more to complete the trio!"
+
+  - tier: T2
+    phase: B
+    scenario: ideal
+    style: default
+    text: |
+      **Phase B — Ideal response (3rd/final find):**
+      Child: "this one is Rumble because it's rough but still soft underneath"
+      AI: "[celebrating] Rumble — soft with a tough exterior! Cloud Puff, Whisper, and Rumble — what an interesting team you've assembled!"
+
+  # ── Phase B: child unsure ──────────────────────────────────────
+
+  - tier: T2
+    phase: B
+    scenario: stuck
+    style: default
+    text: |
+      **Phase B — Child unsure:**
+      Child: "I can't think of anything"
+      AI: "[gentle] That's fine — sometimes it helps to think about what it reminds you of. Does it feel like something from nature, or more like fabric?"
+
+  # ── Phase B: silence ───────────────────────────────────────────
+
+  - tier: T2
+    phase: B
+    scenario: silence
+    style: default
+    text: |
+      **Phase B — Silence:**
+      AI: "[gentle] Take your time. What's the very first thing you noticed when you touched it — even just one word?"

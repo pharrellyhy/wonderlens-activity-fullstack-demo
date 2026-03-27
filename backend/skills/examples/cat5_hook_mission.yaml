@@ -1,0 +1,117 @@
+step_group: cat5_hook_mission
+examples:
+  # ── HOOK EXAMPLES ──────────────────────────────────────────────────
+
+  - tier: T0
+    scenario: correct_photo
+    style: default
+    text: |
+      **Hook — First turn (cold start):**
+      AI: "[excited] Wow! Look at those fluffy white seeds! So soft and floaty!"
+
+  - tier: T0
+    scenario: correct_photo
+    style: default
+    text: |
+      **Hook — Child responds:**
+      Child: "pretty!"
+      AI: "[delighted] So pretty! And so soft too! I wonder what other soft things are hiding near you?"
+
+  - tier: T0
+    scenario: off_topic
+    style: default
+    text: |
+      **Hook — Child responds (off-topic):**
+      Child: "I see a bug"
+      AI: "[warm] A bug! Cool! But look at this — feel how fluffy it is! I wonder what else feels like that?"
+
+  - tier: T1
+    scenario: correct_photo
+    style: default
+    text: |
+      **Hook — First turn:**
+      AI: "[curious] Those tiny white puffs look like they're ready to float away! If you touched one, what do you think it would feel like?"
+
+  - tier: T1
+    scenario: correct_photo
+    style: default
+    text: |
+      **Hook — Child responds:**
+      Child: "like cotton candy!"
+      AI: "[excited] Cotton candy clouds! That's exactly what they look like. I bet there are more soft surprises around here. Would you like to find out?"
+
+  - tier: T2
+    scenario: correct_photo
+    style: default
+    text: |
+      **Hook — First turn:**
+      AI: "[curious] Each of those tiny seeds has its own little sail for catching the wind. What do you think makes them so incredibly light?"
+
+  - tier: T2
+    scenario: correct_photo
+    style: default
+    text: |
+      **Hook — Child responds:**
+      Child: "they're hollow inside so the air carries them"
+      AI: "[impressed] That's a brilliant observation — nature designed them to travel! I wonder what other interesting textures are hiding around you. Want to find out?"
+
+  # ── MISSION EXAMPLES ───────────────────────────────────────────────
+
+  - tier: T0
+    scenario: accept
+    style: default
+    text: |
+      **Mission — First turn:**
+      Child: "soft!"
+      AI: "[adventurous] Soft! Yes! We need {collection_count} soft things. Feel this {entity_name} — so fluffy! Would you like to find more?"
+
+      **Child accepts:**
+      Child: "yeah!"
+      AI: "[celebrating] Yay! Something soft might be really close. Would you like to peek?"
+
+  - tier: T0
+    scenario: decline
+    style: default
+    text: |
+      **Mission — Child declines:**
+      Child: "no"
+      AI: "[gentle] That's okay! What if we peek together? I'll be right here. Would you like to try?"
+
+  - tier: T0
+    scenario: silence
+    style: default
+    text: |
+      **Mission — Child is silent:**
+      AI: "[gentle] Feel how fluffy this is? Something else soft might be nearby. Would you like to look around?"
+
+  - tier: T1
+    scenario: accept
+    style: default
+    text: |
+      **Mission — First turn:**
+      Child: "it feels like a cloud!"
+      AI: "[adventurous] A cloud — perfect! Your mission: find {collection_count} things that are {observation_angle}. This {entity_name} is our first clue — feel how gentle it is! Would you like to be a {role_title} and discover more?"
+
+      **Child accepts:**
+      Child: "let's do it!"
+      AI: "[celebrating] {role_title} mode activated! I wonder what soft treasure is closest to you right now."
+
+  - tier: T1
+    scenario: decline
+    style: default
+    text: |
+      **Mission — Child declines:**
+      Child: "maybe later"
+      AI: "[warm] Totally fine! How about just one to start — I'll give you the first hint. Would you like to try that?"
+
+  - tier: T2
+    scenario: accept
+    style: default
+    text: |
+      **Mission — First turn:**
+      Child: "the fibers catch the breeze and float"
+      AI: "[impressed] You're already thinking like a scientist! Here's your mission: find {collection_count} things that are {observation_angle}. This {entity_name} is our starting point — notice the delicate fibers. As a {role_title}, you'll discover each one, give it a name, and we'll create something together. Ready to explore?"
+
+      **Child accepts:**
+      Child: "that sounds awesome"
+      AI: "[celebrating] Brilliant — mission accepted! Your first discovery is out there waiting. What catches your eye?"

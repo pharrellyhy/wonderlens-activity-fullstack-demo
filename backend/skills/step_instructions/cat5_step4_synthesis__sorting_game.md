@@ -26,3 +26,7 @@
 
 **Wrapping up:**
 - After the child sorts OR you finish the sort for them, affirm the pattern they found and set `stay_on_step: false`.
+
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+
+{sampled_examples}

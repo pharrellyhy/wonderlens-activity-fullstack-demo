@@ -37,3 +37,7 @@ Rounds MUST escalate along `{escalation_axis}`. This is round {round_number} —
 
 ### Screen Widget: `character_display`
 Show emotion changes: happy on correct, thinking on wrong.
+
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+
+{sampled_examples}

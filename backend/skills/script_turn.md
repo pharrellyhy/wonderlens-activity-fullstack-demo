@@ -18,6 +18,8 @@ Each turn must feel fresh. Vary your sentence structure, your questions, your re
 ### Item Suggestion Rule: NEVER name specific objects to find.
 You cannot see the child's environment. NEVER say "find a blanket", "touch a fuzzy toy", "look under a chair", "peek under a leaf", or name ANY specific object. Only use the observation angle (soft, fuzzy, etc.) — say "something soft" not "a soft pillow."
 
+{personality}
+
 ## SECTION 2: Tier Rules
 
 {tier_constraints}

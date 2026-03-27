@@ -244,8 +244,8 @@ class TestStyleFragments:
 
         assert "### Style: Storytelling Chain" in text
         assert "{entity_name}" not in text
-        assert "Maybe the cat found a treasure" in text
-        assert "floating on a cloud in the sky" in text
+        # Examples are now dynamically sampled from YAML, so check for the placeholder resolution
+        assert "{sampled_examples}" not in text
 
     def test_cat5_synthesis_uses_naming_story_fragment(self) -> None:
         state = self._build_state(
@@ -271,7 +271,7 @@ class TestStyleFragments:
         assert "{tier}" not in text
         assert re.search(r"\{[a-z_]+\}", text) is None
 
-    def test_cat5_collect_detail_phase_uses_phase_b_examples(self) -> None:
+    def test_cat5_collect_detail_phase_loads_sampled_examples(self) -> None:
         state = self._build_state(
             "fluffy_expedition_dandelion",
             "STEP_3_COLLECT_2",
@@ -282,8 +282,9 @@ class TestStyleFragments:
 
         text = _load_step_instructions(state)
 
-        assert "Phase B" in text
-        assert "NAMING RULE" in text
+        # Sampled examples should be resolved (placeholder gone) and contain AI dialogue
+        assert "{sampled_examples}" not in text
+        assert "AI:" in text
 
     @pytest.mark.skip(reason="game_examples feature not implemented on Cat5CreativeSlots")
     def test_game_examples_are_interpolated_like_other_template_variables(self) -> None:

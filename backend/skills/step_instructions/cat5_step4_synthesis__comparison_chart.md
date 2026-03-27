@@ -28,3 +28,7 @@
 **Wrapping up:**
 - After the child shares a ranking OR you do it at their request, affirm the observation and wrap up.
 - Set `stay_on_step: false` once the synthesis activity is complete.
+
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+
+{sampled_examples}

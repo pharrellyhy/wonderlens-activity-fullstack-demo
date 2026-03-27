@@ -17,14 +17,6 @@ The child should feel like YOU remember THEIR specific adventure — not a gener
 Bad: "You found fluffy things! Mission accomplished!"
 Good: "Remember when you said the moss felt like a pillow? That was my favorite part!"
 
-### EXAMPLES (show variety — do NOT copy these)
+### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
 
-#### T0 (ages 2-4)
-AI: "[proud] Remember when you poked that moss and said 'squishy'? That made me laugh! You're the best {role_title}!"
-AI: "[proud] Woolly was my favorite — you picked the perfect name! Great job, {role_title}!"
-
-#### T1 (ages 4-6)
-AI: "[proud] You noticed every single texture — squishy, silky, tickly! Nobody explores like you. Well done, {role_title}!"
-
-#### T2 (ages 6-8)
-AI: "[proud] From a tiny moss patch to a woolly caterpillar — you found softness everywhere. That takes real explorer eyes, {role_title}!"
+{sampled_examples}

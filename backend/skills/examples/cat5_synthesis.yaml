@@ -1,0 +1,91 @@
+step_group: cat5_synthesis
+examples:
+  # ══════════════════════════════════════════════════════════════════
+  #  T0 (ages 2-4)
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T0
+    scenario: ideal
+    style: naming_story
+    text: |
+      **Synthesis — Story opening (binary choice):**
+      AI: "[dreamy] One cold night, Squish couldn't get warm. Fuzz had an idea! Did Fuzz find a blanket, or did Bump start a dance to warm up?"
+
+      **Child picks:**
+      Child: "dance!"
+      AI: "[playful] Bump wiggled and jiggled until everyone was laughing! 'I'm warm now!' Squish said, still giggling. Fuzz joined in and they all bounced in a circle. By the time they stopped, they were toasty warm and out of breath. 'Best dance party ever,' Bump said with a grin."
+
+  - tier: T0
+    scenario: silence
+    style: naming_story
+    text: |
+      **Synthesis — Child silent (auto-complete):**
+      AI: "[gentle] Fuzz found the coziest leaf and pulled it over all three of them. 'Snug as bugs!' Fuzz whispered. Squish and Bump scooted closer. They felt warm from their toes to their noses. 'Goodnight, friends,' Squish yawned, and they all drifted off to sleep."
+
+  - tier: T0
+    scenario: decline
+    style: naming_story
+    text: |
+      **Synthesis — Child says yes/no/ok (non-choice, auto-complete):**
+      Child: "ok"
+      AI: "[gentle] Bump started doing a funny wiggle. 'What are you doing?' Squish asked. 'Warming up!' said Bump. Pretty soon they were all wiggling together, giggling so hard they forgot about the cold. 'Let's do this every night,' Fuzz said, still laughing."
+
+  # ══════════════════════════════════════════════════════════════════
+  #  T1 (ages 4-6)
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T1
+    scenario: ideal
+    style: naming_story
+    text: |
+      **Synthesis — Story opening (open prompt):**
+      AI: "[dreamy] {collected_names} were playing by a puddle when they heard a tiny cry. Someone was stuck! What kind of creature do you think they found?"
+
+      **Child engages:**
+      Child: "a ladybug!"
+      AI: "[excited] A ladybug with one wet wing! Pillow Puff dried the wing gently. 'That tickles!' the ladybug giggled. Satin Breeze fanned it back and forth until it was fluffy again. The ladybug spread both wings wide. 'Thank you — you're the kindest friends a bug could have!' it said, and flew off in a little red spiral."
+
+  - tier: T1
+    scenario: stuck
+    style: naming_story
+    text: |
+      **Synthesis — Child is stuck:**
+      Child: "umm I don't know"
+      AI: "[gentle] What if they found a baby bird that fell from its nest? Pillow Puff made a soft landing pad while Satin Breeze climbed up to show the way. The little bird hopped and flapped and finally made it back. 'You believed in me!' it chirped. Curly Twist smiled. 'We believed in each other.'"
+
+  - tier: T1
+    scenario: silence
+    style: naming_story
+    text: |
+      **Synthesis — Child silent:**
+      AI: "[gentle] They found a tiny snail whose shell had gotten muddy. Satin Breeze polished it gently while Pillow Puff told jokes to keep the snail smiling. When the shell was shiny again, the snail beamed. 'I feel like me again,' it said. Curly Twist grinned. 'You always were — just a little muddy on the outside.'"
+
+  # ══════════════════════════════════════════════════════════════════
+  #  T2 (ages 6-8)
+  # ══════════════════════════════════════════════════════════════════
+
+  - tier: T2
+    scenario: ideal
+    style: naming_story
+    text: |
+      **Synthesis — Story opening (child-directed):**
+      AI: "[curious] Your three characters are all here together. What kind of adventure should we send them on?"
+
+      **Child engages:**
+      Child: "they find a secret garden"
+      AI: "[excited] Cloud Puff spotted a gap in an old stone wall. 'Should we go in?' Whisper asked. Rumble pushed through first — and they all gasped. Flowers of every color, vines twisting up crumbling arches, and in the center, one tree with golden leaves. 'Nobody's been here in ages,' Whisper breathed. Cloud Puff touched a petal gently. 'Maybe they were waiting for someone to come back.' They decided right then — this was their place, and they'd take care of it together."
+
+  - tier: T2
+    scenario: stuck
+    style: naming_story
+    text: |
+      **Synthesis — Child is stuck:**
+      Child: "I can't think of anything"
+      AI: "[gentle] What if they stumbled into an argument about something silly — like who gets to pick the name for a rock they found? Rumble wanted 'Thunder,' Whisper said 'Pebble,' and Cloud Puff suggested 'Rocky.' They debated and debated until they realized the rock already had a tiny name scratched on it — 'Pat.' They burst out laughing. 'Pat it is!' Rumble said. Sometimes the best answer is the one nobody expected."
+
+  - tier: T2
+    scenario: silence
+    style: naming_story
+    text: |
+      **Synthesis — Child silent:**
+      AI: "[gentle] One afternoon, Cloud Puff noticed Whisper sitting alone, looking at the sky. 'What's wrong?' Rumble asked. 'I'm too quiet,' Whisper said. 'Nobody hears me.' Cloud Puff sat down beside her. 'I hear you right now.' Rumble plopped down on the other side. 'Your quiet is what makes us stop and listen.' Whisper smiled. 'Really?' 'Really,' they both said. And for a while, all three just sat together, listening to the world be quiet too."

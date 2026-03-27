@@ -25,6 +25,7 @@ if _SCRIPTS_DIR not in sys.path:
 from scoring import (
     compute_composite_score,
     score_completion_language,
+    score_cross_session_variety,
     score_item_suggestion_free,
     score_phrasing_variety,
     score_tier_compliance,
@@ -293,6 +294,9 @@ def main() -> None:
     all_progress: list[str] = []
     errors: list[str] = []
 
+    # Track per-scenario dialogues across repeats for cross-session variety
+    scenario_dialogues: dict[str, list[list[str]]] = {}
+
     start = time.perf_counter()
 
     with httpx.Client(timeout=30) as client:
@@ -311,12 +315,24 @@ def main() -> None:
                 all_item.extend(result.get("item_suggestion", []))
                 all_completion.extend(result.get("completion_language", []))
                 all_tier.extend(result.get("tier_compliance", []))
-                all_progress.extend(result.get("progress_phrases", []))
+
+                progress = result.get("progress_phrases", [])
+                all_progress.extend(progress)
+
+                # Collect all AI dialogues for this scenario run
+                scenario_dialogues.setdefault(scenario_name, []).append(progress)
 
                 v_rate = sum(v_scores) / len(v_scores) * 100 if v_scores else 0
                 print(f"  {scenario_name} ({tier}): {len(v_scores)} turns scored, validation={v_rate:.0f}%")
 
     variety = score_phrasing_variety(all_progress)
+
+    # Cross-session variety: how different are outputs across repeats of the same scenario?
+    cross_varieties = [
+        score_cross_session_variety(sessions) for sessions in scenario_dialogues.values() if len(sessions) >= 2
+    ]
+    cross_session_variety = sum(cross_varieties) / len(cross_varieties) if cross_varieties else 1.0
+
     composite = compute_composite_score(all_validation, all_item, all_completion, all_tier, variety)
     elapsed = time.perf_counter() - start
 
@@ -342,6 +358,7 @@ def main() -> None:
         f"tier_compliance_rate: {sum(all_tier) / len(all_tier) * 100:.1f}%" if all_tier else "tier_compliance_rate: N/A"
     )
     print(f"phrasing_variety: {variety:.3f}")
+    print(f"cross_session_variety: {cross_session_variety:.3f}")
     print(f"eval_duration_seconds: {elapsed:.1f}")
     print(f"total_responses_scored: {len(all_validation)}")
     if errors:

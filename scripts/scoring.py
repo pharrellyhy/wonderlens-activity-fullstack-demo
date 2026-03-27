@@ -114,6 +114,33 @@ def score_phrasing_variety(progress_phrases: list[str]) -> float:
     return 1.0 - avg_similarity
 
 
+def score_cross_session_variety(session_dialogues: list[list[str]]) -> float:
+    """Score how different dialogues are ACROSS sessions for the same scenario.
+
+    Takes a list of sessions, where each session is a list of AI dialogue strings.
+    Compares corresponding turns across sessions using Jaccard distance.
+    Returns 1.0 for maximum variety, 0.0 for identical outputs across sessions.
+    Returns 1.0 if fewer than 2 sessions.
+    """
+    if len(session_dialogues) < 2:
+        return 1.0
+
+    # Compare corresponding turns across sessions
+    max_turns = max(len(s) for s in session_dialogues)
+    turn_varieties: list[float] = []
+
+    for turn_idx in range(max_turns):
+        phrases = [s[turn_idx] for s in session_dialogues if turn_idx < len(s)]
+        if len(phrases) < 2:
+            continue
+        turn_varieties.append(score_phrasing_variety(phrases))
+
+    if not turn_varieties:
+        return 1.0
+
+    return sum(turn_varieties) / len(turn_varieties)
+
+
 def compute_composite_score(
     validation_scores: list[float],
     item_suggestion_scores: list[float],

@@ -13,6 +13,7 @@ if SCRIPTS_DIR not in sys.path:
 from scoring import (
     compute_composite_score,
     score_completion_language,
+    score_cross_session_variety,
     score_item_suggestion_free,
     score_phrasing_variety,
     score_tier_compliance,
@@ -186,6 +187,29 @@ class TestScorePhrasingVariety:
 
     def test_empty_list_returns_1(self) -> None:
         assert score_phrasing_variety([]) == 1.0
+
+
+# --- score_cross_session_variety ---
+
+
+class TestScoreCrossSessionVariety:
+    def test_identical_sessions_score_low(self) -> None:
+        sessions = [
+            ["That's 1 out of 3!", "That's 2 out of 3!"],
+            ["That's 1 out of 3!", "That's 2 out of 3!"],
+        ]
+        assert score_cross_session_variety(sessions) < 0.3
+
+    def test_varied_sessions_score_high(self) -> None:
+        sessions = [
+            ["Your first treasure!", "Two friends now!"],
+            ["A fluffy discovery!", "The collection grows!"],
+            ["What a find!", "Another soft buddy!"],
+        ]
+        assert score_cross_session_variety(sessions) > 0.6
+
+    def test_single_session_returns_1(self) -> None:
+        assert score_cross_session_variety([["Hello!"]]) == 1.0
 
 
 # --- compute_composite_score ---

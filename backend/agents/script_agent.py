@@ -858,7 +858,7 @@ class ScriptAgent:
         dialogue = turn.dialogue
 
         # 1. Phrase novelty: Jaccard distance from recent AI turns (50%)
-        recent_ai = [t.text for t in state.conversation_history[-3:] if t.speaker == "ai"]
+        recent_ai = [t.text for t in state.conversation_history[-3:] if t.role == "ai"]
         if recent_ai:
             current_words = set(dialogue.lower().split())
             similarities = []

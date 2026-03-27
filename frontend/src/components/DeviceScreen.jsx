@@ -4,6 +4,7 @@ import ProgressTracker from '../widgets/ProgressTracker';
 import CharacterDisplay from '../widgets/CharacterDisplay';
 import PhotoGrid from '../widgets/PhotoGrid';
 import BadgeAward from '../widgets/BadgeAward';
+import ExplorerMap from '../canvas/ExplorerMap';
 import AnimationOverlay from '../widgets/AnimationOverlay';
 import SfxIndicator from './SfxIndicator';
 import useSfxPlayer from '../hooks/useSfxPlayer';
@@ -16,6 +17,7 @@ const WIDGET_MAP = {
   character_display: CharacterDisplay,
   photo_grid: PhotoGrid,
   badge_award: BadgeAward,
+  explorer_map: ExplorerMap,
 };
 
 function getFrameKey(screenFrame) {
@@ -37,6 +39,8 @@ function getFrameKey(screenFrame) {
     screenFrame.widget_params?.title,
     screenFrame.widget_params?.roundNumber,
     screenFrame.widget_params?.photo_id,
+    screenFrame.widget_params?.game_phase,
+    screenFrame.widget_params?.collected_count,
   ].join('|');
 }
 
@@ -89,17 +93,23 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
       )}
 
       <div className="flex-1 min-h-0 grid place-items-center px-2 pb-1 max-[380px]:px-1.5 max-[380px]:pb-0.5">
-        <AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">
-          {WidgetComponent ? (
-            <div className="w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center">
-              <WidgetComponent {...params} photoUrl={asset(params.photoUrl) || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
-            </div>
-          ) : (
-            <div className="text-center p-8 surface-card rounded-2xl">
-              <p className="text-gray-500 text-sm">Widget: {screenFrame.widget}</p>
-            </div>
-          )}
-        </AnimationOverlay>
+        {screenFrame.widget === 'explorer_map' && WidgetComponent ? (
+          <div className="w-full h-full">
+            <WidgetComponent {...params} />
+          </div>
+        ) : (
+          <AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">
+            {WidgetComponent ? (
+              <div className="w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center">
+                <WidgetComponent {...params} photoUrl={asset(params.photoUrl) || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
+              </div>
+            ) : (
+              <div className="text-center p-8 surface-card rounded-2xl">
+                <p className="text-gray-500 text-sm">Widget: {screenFrame.widget}</p>
+              </div>
+            )}
+          </AnimationOverlay>
+        )}
       </div>
 
       {/* Animation label + SFX indicator */}

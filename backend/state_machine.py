@@ -7,10 +7,10 @@ frame to display for each step.
 from typing import Literal, Union
 
 try:
-    from .schemas import ScreenFrame
+    from .schemas import ExplorerMapCharacter, ExplorerMapState, ScreenFrame
     from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 except ImportError:
-    from schemas import ScreenFrame
+    from schemas import ExplorerMapCharacter, ExplorerMapState, ScreenFrame
     from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 
 # --- Step Constants ---
@@ -200,6 +200,97 @@ def _with_round_context(
     return frame_copy
 
 
+def _build_explorer_map_frame(
+    step: str,
+    context: dict,
+    creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots],
+    entity: str,
+    key_concepts: list[str],
+) -> ScreenFrame:
+    """Build an explorer_map ScreenFrame for Cat 5 steps."""
+    collected_photos: list[str] = context.get("collected_photos", [])
+    collected_names: list[str] = context.get("collected_names", [])
+    collection_phase = context.get("collection_phase", "photo")
+    total = creative_slots.collection_count if isinstance(creative_slots, Cat5CreativeSlots) else 3
+    role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
+
+    # Build character list from collected data
+    characters: list[ExplorerMapCharacter] = []
+    for i, photo_id in enumerate(collected_photos):
+        name = collected_names[i] if i < len(collected_names) else ""
+        image = _resolve_cat5_detail_photo_url(context, i + 1, photo_id)
+        characters.append(ExplorerMapCharacter(id=photo_id, name=name, image=image, zone_index=i))
+
+    revealed_zones = list(range(len(collected_photos)))
+
+    # Determine game_phase and animation_cue from step + collection_phase
+    game_phase: str
+    animation_cue: str | None = None
+    sfx_cue: str | None = None
+    active_zone: int | None = None
+
+    if step == "STEP_1_HOOK":
+        game_phase = "hook"
+        sfx_cue = "wonder_chime"
+    elif step == "STEP_2_MISSION":
+        game_phase = "mission"
+        sfx_cue = "mission_accepted"
+        active_zone = 0
+    elif step.startswith("STEP_3_COLLECT_"):
+        _, rnd = _parse_round_step(step)
+        active_zone = rnd - 1
+        if collection_phase == "detail":
+            if len(collected_names) >= len(collected_photos):
+                game_phase = "collect_named"
+                animation_cue = "name_label"
+                sfx_cue = "slot_fill_chime"
+            else:
+                game_phase = "collect_detail"
+                animation_cue = "character_bounce"
+        else:
+            if len(collected_photos) >= rnd:
+                game_phase = "collect_reveal"
+                animation_cue = "fog_reveal"
+                sfx_cue = "photo_shutter_click"
+                revealed_zones = list(range(len(collected_photos)))
+            else:
+                game_phase = "collect_photo"
+                active_zone = rnd - 1
+    elif step == "STEP_4_SYNTHESIS":
+        game_phase = "synthesis"
+        sfx_cue = "excitement_rising"
+    elif step == "STEP_5_CELEBRATE":
+        game_phase = "celebrate"
+        sfx_cue = "badge_awarded"
+    elif step == "STEP_6_CLOSING":
+        game_phase = "closing"
+        sfx_cue = "celebration_fanfare"
+    else:
+        game_phase = "hook"
+
+    map_state = ExplorerMapState(
+        game_phase=game_phase,
+        entity_id=entity,
+        entity_image=f"/icons/{entity}.png",
+        revealed_zones=revealed_zones,
+        characters=characters,
+        active_zone=active_zone,
+        total_zones=total,
+        animation_cue=animation_cue,
+        collected_count=len(collected_photos),
+        badge_title=role_title,
+        badge_concepts=key_concepts,
+    )
+
+    return ScreenFrame(
+        widget="explorer_map",
+        widget_params=map_state.model_dump(),
+        animation=animation_cue,
+        trigger="on_enter",
+        sfx_cue=sfx_cue,
+    )
+
+
 def get_screen_frame(
     step: str,
     template_type: Literal["cat1", "cat5"],
@@ -214,17 +305,24 @@ def get_screen_frame(
     For celebrate steps, prefer the dedicated celebration_frame when available.
     Falls back to hardcoded logic if no match is found.
     """
-    if celebration_frame and step in {"STEP_4_CELEBRATE", "STEP_5_CELEBRATE"}:
-        return celebration_frame
-
     entity = context.get("entity_name", context.get("entity", "object"))
     key_concepts = context.get("ib_key_concepts", context.get("key_concepts", []))
 
-    if template_type == "cat5" and step.startswith("STEP_3_COLLECT_"):
-        _, rnd = _parse_round_step(step)
-        collection_phase = context.get("collection_phase", "photo")
-        if collection_phase == "detail":
-            return _build_cat5_detail_frame(context, entity, rnd)
+    if step == EARLY_EXIT:
+        return ScreenFrame(
+            widget="badge_award",
+            widget_params={"title": "Great job!", "concepts": [], "entity": entity},
+            animation="badge_reveal",
+            trigger="on_correct",
+        )
+
+    # Cat 5: use Explorer's Map for the primary activity flow.
+    if template_type == "cat5":
+        return _build_explorer_map_frame(step, context, creative_slots, entity, key_concepts)
+
+    # Cat 1: celebration frame override
+    if celebration_frame and step in {"STEP_4_CELEBRATE", "STEP_5_CELEBRATE"}:
+        return celebration_frame
 
     # Try matching from Visual Agent frames
     if visual_frames:
@@ -280,67 +378,6 @@ def get_screen_frame(
                 animation="badge_reveal",
                 trigger="on_correct",
             )
-
-    # Cat 5 specific steps
-    if template_type == "cat5":
-        if step == "STEP_2_MISSION":
-            return ScreenFrame(
-                widget="character_display",
-                widget_params={
-                    "description": "Mission briefing",
-                    "entity": entity,
-                    "roundNumber": 0,
-                },
-                animation="appear",
-                trigger="on_enter",
-            )
-
-        if step.startswith("STEP_3_COLLECT_"):
-            _, rnd = _parse_round_step(step)
-            progress_params = _build_cat5_progress_widget_params(context, creative_slots)
-
-            return ScreenFrame(
-                widget="progress_tracker",
-                widget_params=progress_params,
-                animation="slot_fill_chime"
-                if progress_params["filled"] < progress_params["total"]
-                else "celebration_burst",
-                trigger=f"on_round_{rnd}",
-            )
-
-        if step == "STEP_4_SYNTHESIS":
-            return ScreenFrame(
-                widget="photo_grid",
-                widget_params={"description": "All collected items", "entity": entity},
-                animation="sparkle_highlight",
-                trigger="on_enter",
-            )
-
-        if step == "STEP_5_CELEBRATE":
-            role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
-            return ScreenFrame(
-                widget="badge_award",
-                widget_params={"title": role_title, "concepts": key_concepts, "entity": entity},
-                animation="celebration_burst",
-                trigger="on_correct",
-            )
-
-        if step == "STEP_6_CLOSING":
-            return ScreenFrame(
-                widget="badge_award",
-                widget_params={"title": "IB Concepts", "concepts": key_concepts, "entity": entity},
-                animation="badge_reveal",
-                trigger="on_correct",
-            )
-
-    # Early exit / fallback
-    if step == EARLY_EXIT:
-        return ScreenFrame(
-            widget="badge_award",
-            widget_params={"title": "Great job!", "concepts": [], "entity": entity},
-            animation="badge_reveal",
-            trigger="on_correct",
-        )
 
     # Default fallback
     return ScreenFrame(

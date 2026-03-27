@@ -147,6 +147,105 @@ Last updated: 2026-03-27
 
 ---
 
+## Review Follow-Up: Canvas Resize Layout + Entity Anchor Cleanup
+
+**Problem**: A focused review of the new canvas implementation found two concrete issues in the frontend-only explorer-map code. First, scene geometry was only recalculated inside `useGameEngine.applyState()`, so a plain canvas resize could leave fog zones, paths, and characters positioned for the old dimensions until a new backend frame arrived. Second, the engine was preloading `entity_image` and `mapLayout.js` already exposed `computeEntityPosition()`, but the main entity was never actually rendered on the map. That left the mission path visually originating from empty space and kept dead canvas state around.
+
+**Solution**: Kept the current canvas architecture, but simplified the resize path and used the existing entity data instead of carrying it unused. `ExplorerMap.jsx` now re-applies the latest game state after `ResizeObserver` updates the backing canvas size, which lets the engine recompute geometry immediately on resize. `useGameEngine.js` now computes and renders the main entity anchor from `entity_image` and `computeEntityPosition()`, so the canvas matches the intended map structure more closely and no longer keeps unused entity state.
+
+**Edits**:
+- `frontend/src/canvas/ExplorerMap.jsx` — keeps a latest-game-state ref for the resize callback and re-applies the current state after canvas dimension changes so layout stays in sync with the resized canvas
+- `frontend/src/canvas/useGameEngine.js` — uses `computeEntityPosition()` to derive the entity anchor, stores it in engine state, and renders the main entity image on the map before the collected characters
+- `HANDOFF.md` — added this canvas-specific review follow-up entry
+
+**NOT Changed**:
+- Canvas interaction model (character taps, fog taps, celebration confetti) — reviewed and left intact in this pass
+- Backend `ExplorerMapState` schema and Cat 5 frame selection — unchanged in this frontend review follow-up
+- No new frontend test harness was added here; verification stayed with targeted lint/build checks
+
+**Verification**:
+- `cd frontend && npx eslint src/canvas/ExplorerMap.jsx src/canvas/useGameEngine.js src/canvas/mapLayout.js src/canvas/animations.js src/canvas/particleSystem.js src/canvas/sprites.js src/components/DeviceScreen.jsx` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Review Follow-Up: Explorer Map Frame Contract + Canvas Cleanup
+
+**Problem**: Picking up the explorer-map branch against `docs/plans/2026-03-26-explorer-map-game.md` exposed two concrete issues in the newly added code. First, Cat 5 `EARLY_EXIT` no longer honored the existing graceful-exit contract from the build spec and `backend/skills/step_instructions/early_exit.md`: `get_screen_frame()` returned `explorer_map` in a `hook` state instead of a partial `badge_award` frame. Second, the new canvas files carried dead prop threading and unused locals (`isSpeaking`, `sessionState`, `engineRef`, and a few unused helper locals), so the touched frontend files were not lint-clean.
+
+**Solution**: Restored the graceful-exit badge behavior before the Cat 5 explorer-map branch runs, and added focused regression coverage for the new Cat 5 screen-frame mapping. On the frontend side, I removed the unused explorer-map prop plumbing and dead locals so the new canvas path is simpler and passes targeted ESLint cleanly.
+
+**Edits**:
+- `backend/state_machine.py` — handles `EARLY_EXIT` before the Cat 5 explorer-map path, restoring the existing `badge_award` graceful-exit frame for Cat 5 while keeping `explorer_map` for the normal Cat 5 flow
+- `tests/test_state_machine.py` — **NEW**: added focused regression coverage for Cat 5 explorer-map phases, Cat 5 graceful exit, and a Cat 1 non-regression check
+- `frontend/src/App.jsx` — removed unused `isSpeaking` threading into `DeviceScreen` for the explorer-map path
+- `frontend/src/components/DeviceScreen.jsx` — stopped passing unused `isSpeaking` / `sessionState` props into `ExplorerMap`
+- `frontend/src/canvas/ExplorerMap.jsx` — removed unused props and unused `engineRef` capture
+- `frontend/src/canvas/useGameEngine.js` — removed unused locals in render/path update logic
+- `frontend/src/canvas/sprites.js` — removed an unused theme binding in `drawBadge`
+
+**NOT Changed**:
+- Explorer-map rendering/animation behavior itself — this follow-up stayed on frame-contract correctness, regression coverage, and code cleanup rather than adding new canvas behavior
+- Cat 1 widget flow outside the new non-regression test — no behavior changes
+- Backend turn-resolution logic outside screen-frame selection — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_game_parser.py tests/test_scenarios.py tests/test_state_machine.py -q` — PASS (`73 passed`)
+- `uv run ruff check backend/state_machine.py tests/test_state_machine.py` — PASS
+- `uv run ruff format --check backend/state_machine.py tests/test_state_machine.py` — PASS
+- `cd frontend && npx eslint src/App.jsx src/components/DeviceScreen.jsx src/canvas/ExplorerMap.jsx src/canvas/useGameEngine.js src/canvas/mapLayout.js src/canvas/animations.js src/canvas/particleSystem.js src/canvas/sprites.js` — PASS
+- `cd frontend && npm run build` — PASS
+
+---
+
+## Explorer's Map: Cat 5 Interactive Canvas Game
+
+**Problem**: Cat 5 activities (fluffy_expedition_dandelion, polka_dot_patrol) feel like "talking to an AI assistant" — the device screen shows static widgets (ProgressTracker circles, PhotoDisplay, PhotoGrid, BadgeAward) while the child interacts via voice. The goal was to transform the entire Cat 5 experience into an interactive game where the device screen becomes a living, explorable map. Design plan in `docs/plans/2026-03-26-explorer-map-game.md`.
+
+**Solution**: Built a full Canvas 2D game engine that replaces all Cat 5 widgets with a single `explorer_map` widget. The backend sends declarative game state (`ExplorerMapState`); the frontend animates toward it with a 60fps game loop. The map shows fog-covered zones that reveal when items are collected, characters that appear and bounce, connection lines during synthesis, badge overlay with confetti, and sunset effects during closing. All interactions are tap-based and discovery-oriented (no "Tap here!" instructions). Cat 1 activities are completely unaffected.
+
+**Edits**:
+
+*New backend:*
+- `backend/schemas/explorer_map.py` — **NEW**: `ExplorerMapState` and `ExplorerMapCharacter` Pydantic models defining game state payload
+
+*New frontend (6 files in `frontend/src/canvas/`):*
+- `ExplorerMap.jsx` — **NEW**: React component with `<canvas>`, ResizeObserver, pointer events
+- `useGameEngine.js` — **NEW**: game loop (rAF), animation queue, state diffing, image preloading, tap hit-testing, particle coordination
+- `sprites.js` — **NEW**: pure draw functions (background gradient, fog zones, procedural terrain, character sprites, name labels, dotted paths, connection lines, badge)
+- `mapLayout.js` — **NEW**: fractional coordinate layout (zone positions, entity position, path computation, badge/synthesis center)
+- `animations.js` — **NEW**: 10 animation presets with easing (fogReveal, characterAppear, characterBounce, nameLabelAppear, pathDraw, connectionDraw, badgeAppear, sunsetShift, characterWave, zonesPulse)
+- `particleSystem.js` — **NEW**: confetti, sparkle, and leaf particle emitter (~50 particle cap)
+
+*Modified backend:*
+- `backend/state_machine.py` — all Cat 5 steps now return `widget="explorer_map"` with `ExplorerMapState` params via new `_build_explorer_map_frame()` helper; removed old Cat 5 widget branches; moved `celebration_frame` check to Cat 1 only
+- `backend/turn_handler.py` — added `collected_names` and `collected_details` to `_state_context()` dict
+- `backend/agents/visual_agent.py` — added `"explorer_map"` to `ALLOWED_WIDGETS`
+- `backend/schemas/__init__.py` — exported `ExplorerMapState` and `ExplorerMapCharacter`
+
+*Modified frontend:*
+- `frontend/src/components/DeviceScreen.jsx` — registered `ExplorerMap` in `WIDGET_MAP`; explorer_map renders fullscreen (no max-width constraint, no AnimationOverlay wrapper); added `isSpeaking` prop; added `game_phase`/`collected_count` to `getFrameKey`
+- `frontend/src/App.jsx` — threads `isSpeaking` from `useSessionOrchestration` down to `DeviceScreen`
+
+**NOT Changed**:
+- Cat 1 widget system (CharacterDisplay, BadgeAward) — completely unaffected
+- PhotoGallery modal for Cat 5 collection Phase A — unchanged (still overlays during photo selection)
+- Turn handler collection logic (`resolve_turn`) — game state is derived from existing session state
+- Script Agent prompts and dialogue generation — unchanged
+- TTS/SFX playback hooks — unchanged (SFX still driven by `screenFrame.sfx_cue`)
+- Frontend conversation panel — unchanged
+
+**Verification**:
+- `uv run ruff check .` — PASS
+- `uv run ruff format --check state_machine.py turn_handler.py schemas/ agents/visual_agent.py` — PASS
+- `cd frontend && npx vite build` — PASS (295KB JS bundle)
+- Manual: start Cat 5 dandelion session, verify explorer map renders in device screen
+- Manual: complete full collection flow (3 items), verify fog reveals, characters appear, synthesis connections draw
+- Manual: verify Cat 1 activities still show CharacterDisplay/BadgeAward widgets
+- Manual: tap characters on map — verify bounce animation + sparkle particles
+
+---
+
 ## Review Follow-Up: Fix Example-Driven Prompt Interpolation + Tighten Local Coverage
 
 **Problem**: Reviewing the code modified for `docs/plans/example-driven-prompts-implementation.md` exposed one concrete script-agent bug and several stale local tests. The new Cat5 mission prompt introduced `{activity_name}` and `{tier}` placeholders, but `backend/agents/script_agent.py` did not inject either value, so literal braces leaked into the generated prompt text. The new compact tier summary also still emitted raw Python list reprs like `~[5, 10]` and `['simple', 'playful', 'exclamations']`, which makes the prompt noisier than intended. On the local test side, one naming-story fragment assertion still expected the old rule-heavy copy, and the scenario matcher tests were still relying on registry side effects plus old demo-catalog assumptions instead of isolating the current feature-matching path.

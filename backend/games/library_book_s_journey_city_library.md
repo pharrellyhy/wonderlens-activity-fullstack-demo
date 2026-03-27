@@ -10,6 +10,7 @@ concepts_earned: [Function, Connection]
 keywords: [library, book, journey, reading, shelf, checkout, return]
 feature_keywords: [pages, cover, spine, barcode, due date]
 photo_features: [book cover, pages, spine, library barcode, library sticker]
+play_rounds: 4
 plain_description: "Narrate the story of a library book's journey from being chosen on a shelf, to being checked out, read at home, and returned for the next reader."
 steps_summary:
   - "Narrate what happens when a reader picks the book off the shelf"
@@ -21,8 +22,15 @@ creative_slots:
   game_mechanic: storytelling_chain
   metaphor: The library book is a quiet adventurer that has been everywhere in the library system.
   role_title: Book Journey Narrator
-  round_scenarios: [Waiting on the shelf and being chosen by a reader, Going to the checkout desk to be scanned, The adventure
-      of being read at home, The return trip back to the library]
+  round_scenarios:
+    - Waiting on the shelf and being chosen by a reader
+    - Going to the checkout desk to be scanned
+    - The adventure of being read at home
+    - The return trip back to the library
+    - Being read aloud during storytime at school
+    - Getting a brand-new cover after too many adventures
+    - Traveling in a backpack on a rainy day
+    - Being discovered by a child who has never read it before
   escalation_axis: From being stationary on a shelf to moving through the complex library checkout and return system.
   observation_detail: the colorful spine and library stickers that show it belongs to a big system
 step_instructions:
@@ -75,6 +83,43 @@ step_instructions:
     emotion_tag: encouraging
     acceptable_themes: [return, share, others, drop, slot, desk, shelf]
     escalation_note: System completion - closing the loop of the library borrowing cycle.
+  - round_number: 5
+    goal: 'Set the scene of a new chapter: the book is being read aloud by a teacher during storytime at school. A whole class
+      of kids is sitting on the carpet listening. Ask the child to narrate what the kids do when the teacher reads the exciting
+      part.'
+    scenario: Chapter Six. The book is at school now! A teacher holds it up during storytime and reads the exciting part out loud.
+      A whole class of kids is sitting on the carpet. What do the kids do when they hear the exciting part?
+    constraint: T2 max 3 sentences, focus on the shared reading experience, ask what the audience does.
+    emotion_tag: excited
+    acceptable_themes: [gasp, laugh, clap, listen, eyes wide, lean in, cheer, shh]
+    escalation_note: Shared community experience - how one book reaches many readers at once.
+  - round_number: 6
+    goal: 'Set the scene of a new chapter: the book is old and well-loved, its cover is torn and pages are loose. The librarian
+      decides it needs a brand-new cover. Ask the child to narrate what happens when the book gets repaired.'
+    scenario: Chapter Seven. The book has been on SO many adventures that its cover is torn and some pages are coming loose. The
+      librarian says it needs a brand-new cover! What happens when the book gets fixed up?
+    constraint: T2 max 3 sentences, focus on care and preservation, ask what the repair process looks like.
+    emotion_tag: warm
+    acceptable_themes: [tape, glue, new cover, fix, careful, sticker, shiny, better]
+    escalation_note: Maintenance and care - understanding how systems are preserved over time.
+  - round_number: 7
+    goal: 'Set the scene of a new chapter: the book is traveling in a kid''s backpack on a rainy day. The backpack is bouncing
+      and the rain is pattering on the zipper. Ask the child to narrate the book''s journey through the rain.'
+    scenario: Chapter Eight. A kid zips the book into a backpack on a rainy day. The backpack bounces as the kid walks, and rain
+      patters on the zipper. What is the book's journey like inside?
+    constraint: T2 max 3 sentences, use sensory details of movement and weather, ask what the experience is like for the book.
+    emotion_tag: adventurous
+    acceptable_themes: [dark, bumpy, safe, dry, bouncing, cozy, squished, warm]
+    escalation_note: Perspective-taking - imagining the sensory experience from the book's point of view.
+  - round_number: 8
+    goal: 'Set the scene of a new chapter: a child who has never read this book before discovers it on the shelf. Their eyes light
+      up. Ask the child to narrate what happens when a brand-new reader picks up the book for the very first time.'
+    scenario: Chapter Nine. A kid who has NEVER read this book before spots it on the shelf. Their eyes light up and they pull
+      it out. What happens when a brand-new reader opens this book for the very first time?
+    constraint: T2 max 3 sentences, focus on the fresh discovery and excitement, ask what the new reader experiences.
+    emotion_tag: curious
+    acceptable_themes: [excited, wow, new, pictures, read, love, surprised, smile]
+    escalation_note: Full cycle renewal - the journey begins again with a new reader.
   celebrate:
     goal: Award the child the title 'Book Journey Narrator' with fanfare. Recap the epic journey they narrated from the shelf
       to the home and back again, praising their storytelling skills.

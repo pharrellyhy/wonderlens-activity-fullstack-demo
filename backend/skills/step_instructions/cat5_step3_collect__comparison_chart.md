@@ -16,9 +16,9 @@
 - Build on what they noticed — extend their comparison or add a fun twist.
 
 **Progressive comparison building (NON-NEGOTIABLE):**
-- **1st find:** Anchor the observation. "Big round dots — that's our first pattern to remember!" Use `[AUDIO] sfx: slot_fill_chime`.
-- **2nd find:** Compare explicitly to the 1st. "Tiny speckles! So different from the big dots on your first find. We have big AND tiny now!" Use `[AUDIO] sfx: slot_fill_chime`.
-- **3rd/final find:** Summarize the full collection. "Perfect circles! So we have big splotches, tiny speckles, AND perfect circles — three completely different kinds of {observation_angle}!" Use `[AUDIO] sfx: mission_complete_fanfare`.
+- **1st find:** Anchor the observation. "Big round dots — that's our first pattern to remember!" Set sfx_cue to "slot_fill_chime".
+- **2nd find:** Compare explicitly to the 1st. "Tiny speckles! So different from the big dots on your first find. We have big AND tiny now!" Set sfx_cue to "slot_fill_chime".
+- **3rd/final find:** Summarize the full collection. "Perfect circles! So we have big splotches, tiny speckles, AND perfect circles — three completely different kinds of {observation_angle}!" Set sfx_cue to "mission_complete_fanfare".
 - Each response MUST recap ALL previous observations, building a running comparison that makes synthesis feel like a natural conclusion.
 
 **Response branches for Phase B:**

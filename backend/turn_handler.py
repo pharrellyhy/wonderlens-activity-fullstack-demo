@@ -14,6 +14,7 @@ try:
     from .schemas import ScreenFrame
     from .schemas.creative_slots import Cat5CreativeSlots
     from .schemas.session_state import ConversationTurn, SessionStateModel
+    from .schemas.turn_plan import TurnPlan
     from .schemas.turn_response import TurnResponse
     from .state_machine import (
         EARLY_EXIT,
@@ -28,6 +29,7 @@ except ImportError:
     from schemas import ScreenFrame
     from schemas.creative_slots import Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel
+    from schemas.turn_plan import TurnPlan
     from schemas.turn_response import TurnResponse
     from state_machine import (
         EARLY_EXIT,
@@ -425,7 +427,84 @@ def _validate_response(
                 "'I think it would say ROAR! Would it say ROAR or something different?'"
             )
 
+    # 6. Collection steps: no specific item suggestions
+    if step.startswith("STEP_3_COLLECT_") and _ITEM_SUGGESTION_RE.search(dialogue):
+        return False, (
+            "CORRECTION: Do NOT name specific objects to find (blanket, toy, pillow, etc.). "
+            "You cannot see the child's environment. Say 'something soft' not 'a fuzzy blanket'."
+        )
+
     return True, ""
+
+
+# ---------------------------------------------------------------------------
+# Plan-aware validation (two-pass diagnostics)
+# ---------------------------------------------------------------------------
+
+# Common household/outdoor items that indicate the speaker is suggesting specific
+# things the child should go find — violates the do_not_suggest_items constraint.
+_ITEM_SUGGESTION_RE = re.compile(
+    r"(?i)\b(?:find|look for|grab|get|bring|search for|spot)\b"
+    r"[^.!?]{0,40}"
+    r"\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
+    r"|flower|shell|stone|button|coin|bottle|box|bag|hat|glove|scarf|key|pen|pencil"
+    r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble)\b"
+)
+
+
+def _validate_plan(
+    state: SessionStateModel,
+    plan: TurnPlan,
+    dialogue: str,
+) -> str:
+    """Validate the TurnPlan and compare it against the speaker's dialogue.
+
+    Returns a diagnostic label:
+    - "valid" — no plan-level issues detected
+    - "speaker_violation" — plan constraints were correct but the speaker ignored them
+    - "planner_failure" — the plan itself has issues that need a full retry
+
+    Args:
+        state: Current session state.
+        plan: The TurnPlan from the planner pass.
+        dialogue: The dialogue string from the speaker's TurnResponse.
+    """
+    # Check 1: do_not_suggest_items is true but dialogue names specific findable items
+    if plan.do_not_suggest_items and _ITEM_SUGGESTION_RE.search(dialogue):
+        logger.warning(
+            "plan_validation: speaker_violation — do_not_suggest_items=true but dialogue suggests items: %s",
+            dialogue[:120],
+        )
+        return "speaker_violation"
+
+    # Check 2: correct-photo collection step should have a sensory_observation in the plan
+    if (
+        state.current_step.startswith("STEP_3_COLLECT_")
+        and state.collection_phase == "detail"
+        and not plan.sensory_observation
+    ):
+        logger.warning(
+            "plan_validation: planner_failure — empty sensory_observation for detail phase on %s",
+            state.current_step,
+        )
+        return "planner_failure"
+
+    return "valid"
+
+
+def _plan_retry_hint(plan_verdict: str) -> str:
+    """Return a corrective hint for a failed plan-aware validation verdict."""
+    hints = {
+        "speaker_violation": (
+            "CORRECTION: Keep the existing plan, but do NOT suggest specific items for the child to find. "
+            "Use only generic next-step language."
+        ),
+        "planner_failure": (
+            "CORRECTION: Re-plan this detail turn with a concrete sensory observation about the item the child "
+            "already picked before writing the dialogue."
+        ),
+    }
+    return hints.get(plan_verdict, "CORRECTION: Follow the plan more closely.")
 
 
 # ---------------------------------------------------------------------------
@@ -433,6 +512,7 @@ def _validate_response(
 # ---------------------------------------------------------------------------
 
 _MAX_GENERATION_ATTEMPTS = 3
+_MAX_DETAIL_EXCHANGES = 3
 
 # Per-step retry stats for measuring prompt quality improvements.
 # Key: step name → {total, first_pass, retried, exhausted}
@@ -466,14 +546,25 @@ async def _generate_with_retry(
     """Generate a turn response with validation and retry.
 
     Attempts up to _MAX_GENERATION_ATTEMPTS times. After each generation,
-    runs post-processing validation. If validation fails, appends a corrective
+    runs plan-aware validation (if a TurnPlan is available) followed by
+    post-processing validation. If validation fails, appends a corrective
     hint and retries. The hint is removed from history after retry.
     """
     last_response: TurnResponse | None = None
+    retry_plan: TurnPlan | None = None
 
     for attempt in range(_MAX_GENERATION_ATTEMPTS):
         try:
-            response = await script_agent.generate_turn(state)
+            if retry_plan is not None:
+                response = await script_agent.retry_speaker_turn(
+                    state,
+                    retry_plan,
+                    corrective_hint=_plan_retry_hint("speaker_violation"),
+                )
+                plan = retry_plan
+            else:
+                response = await script_agent.generate_turn(state)
+                plan = script_agent.last_plan
         except ScriptAgentError:
             logger.warning(f"Script Agent failed for step {state.current_step} (attempt {attempt + 1})")
             if attempt < _MAX_GENERATION_ATTEMPTS - 1:
@@ -491,7 +582,31 @@ async def _generate_with_retry(
             )
 
         last_response = response
+
+        # Plan-aware validation: diagnose planner vs speaker issues
+        plan_hint = ""
+        if plan is not None:
+            plan_verdict = _validate_plan(state, plan, response.dialogue)
+            if plan_verdict != "valid":
+                logger.info(
+                    "plan_validation: step=%s attempt=%d verdict=%s plan=%s",
+                    state.current_step,
+                    attempt + 1,
+                    plan_verdict,
+                    plan.model_dump_json(indent=None),
+                )
+                plan_hint = _plan_retry_hint(plan_verdict)
+                if plan_verdict == "speaker_violation":
+                    retry_plan = plan
+                else:
+                    retry_plan = None
+        else:
+            retry_plan = None
+
         is_valid, hint = _validate_response(state, response, is_first_on_step)
+        if plan_hint:
+            is_valid = False
+            hint = plan_hint
 
         if is_valid:
             # Clean up any corrective hints from previous attempts
@@ -506,17 +621,29 @@ async def _generate_with_retry(
             )
             return response
 
-        logger.info(f"Validation failed for step {state.current_step} (attempt {attempt + 1}): {hint[:80]}")
+        # Log both the plan and response on validation failure for diagnostics
+        if plan is not None:
+            logger.info(
+                "validation_failure_with_plan: step=%s attempt=%d hint=%s plan=%s response_dialogue=%s",
+                state.current_step,
+                attempt + 1,
+                hint[:80],
+                plan.model_dump_json(indent=None),
+                response.dialogue[:120],
+            )
+        else:
+            logger.info(f"Validation failed for step {state.current_step} (attempt {attempt + 1}): {hint[:80]}")
 
         if attempt < _MAX_GENERATION_ATTEMPTS - 1:
-            # Append corrective hint as a system-like message in conversation history
-            state.conversation_history.append(
-                ConversationTurn(
-                    role="child",
-                    text=hint,
-                    step=state.current_step,
+            if retry_plan is None:
+                # Append corrective hint as a system-like message in conversation history
+                state.conversation_history.append(
+                    ConversationTurn(
+                        role="child",
+                        text=hint,
+                        step=state.current_step,
+                    )
                 )
-            )
 
     # All attempts failed validation — return the last response anyway
     _record_retry_stat(state.current_step, exhausted=True)
@@ -611,6 +738,7 @@ async def resolve_turn(
             _record_correct_collection_pick(state, turn_input.photo_id)
             # Phase A -> Phase B: correct photo triggers detail-harvesting question
             state.collection_phase = "detail"
+            state.detail_exchange_count = 0
         else:
             collection_wrong = True
             state.consecutive_wrong += 1
@@ -710,6 +838,8 @@ async def resolve_turn(
         and not turn_input.photo_id
         and has_child_input
     ):
+        state.detail_exchange_count += 1
+
         # Record the child's detail response
         child_text = turn_input.text if turn_input.text else "..."
         _record_collection_detail(state, child_text)
@@ -722,9 +852,27 @@ async def resolve_turn(
 
         remaining_count = max(0, state.total_rounds - len(state.collected_photos))
         response_type = _get_response_type(state.current_step)
+        # Respect stay_on_step from the AI — the child may be confused or
+        # off-topic and needs guidance back before advancing. Cap at 3
+        # exchanges to prevent infinite loops.
+        if turn_response.stay_on_step and state.detail_exchange_count < _MAX_DETAIL_EXCHANGES:
+            logger.info(
+                "Phase B: child needs guidance (exchange %d/%d), staying in detail phase",
+                state.detail_exchange_count,
+                _MAX_DETAIL_EXCHANGES,
+            )
+            return TurnResult(
+                turn_response=turn_response,
+                screen_frame=_get_screen_frame(state),
+                auto_advance=False,
+                response_type=response_type,
+                error_exit=state.status == "error",
+            )
+
         if remaining_count == 0:
             # Keep the collected-photo view for this response, then auto-advance into synthesis.
             state.round_advance_pending = True
+            state.detail_exchange_count = 0
             return TurnResult(
                 turn_response=turn_response,
                 screen_frame=_get_screen_frame(state),
@@ -733,12 +881,9 @@ async def resolve_turn(
                 error_exit=state.status == "error",
             )
 
-        # Phase B always completes in one exchange — ignore stay_on_step from the AI.
-        # The AI may ask an invitational question ("Would you like to find one more?")
-        # but that's the transition to the next photo-pick round, not a detail follow-up.
-
         # Detail phase complete — move to the next collection round in photo-pick mode.
         state.collection_phase = "photo"
+        state.detail_exchange_count = 0
         _advance_state(state)
 
         return TurnResult(

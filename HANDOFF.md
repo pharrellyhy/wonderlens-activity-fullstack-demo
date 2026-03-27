@@ -1,6 +1,149 @@
 # Session Handoff
 
-Last updated: 2026-03-26
+Last updated: 2026-03-27
+
+---
+
+## Review Follow-Up: Keep TurnPlan Strict While Tolerating Planner Omissions
+
+**Problem**: Reviewing the latest two-pass commits (`afdc03c`, `3eed090`, `b86a16b`, `b7c1d97`, `e156bb3`) plus the in-progress follow-up diff showed one concrete schema/testing mismatch. The new `TurnPlan` defaults for `child_said` and `child_emotion` were intentional for planner resilience, but the schema still accepted arbitrary extra keys. That let junk planner JSON like `{"not_a_valid_plan": true}` validate successfully, so `Planner.plan_turn()` would treat malformed output as a valid plan. The local planner/schema tests had also drifted: they still asserted the old planner prompt wording and the old "child fields are required" behavior.
+
+**Solution**: Kept the new planner-resilience defaults, but made the schema strict again by forbidding unknown fields. That preserves the intended fallback behavior for omitted child-summary fields without allowing arbitrary planner output through. I also simplified the affected tests so they assert the current planner contract: phase-aware anti-suggestion rules, injected step instructions, defaulted child-summary fields, and rejection of unexpected planner keys.
+
+**Edits**:
+- `backend/schemas/turn_plan.py` — added `ConfigDict(extra="forbid")` while keeping the new `child_said=""` and `child_emotion="neutral"` defaults
+- `tests/test_planner.py` — updated the planner-prompt assertions to match the current phase-aware prompt rules and verify step instructions are included in planner context
+- `tests/test_turn_plan.py` — replaced outdated "required field" expectations with default-value coverage and added a regression that rejects unexpected planner keys
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `backend/agents/planner.py`, `backend/agents/script_agent.py`, `backend/turn_handler.py`, and the prompt markdown files touched in the latest two-pass commits — reviewed and left unchanged in this follow-up
+- Frontend code — unchanged
+- The broader prompt-variety / `[AUDIO]` cleanup work already in progress — reviewed, not modified here
+
+**Verification**:
+- `uv run pytest tests/test_planner.py tests/test_turn_plan.py tests/test_turn_handler.py -q` — PASS (`64 passed`)
+- `uv run ruff check backend/schemas/turn_plan.py tests/test_planner.py tests/test_turn_plan.py tests/test_turn_handler.py` — PASS
+- `uv run ruff format --check backend/schemas/turn_plan.py tests/test_planner.py tests/test_turn_plan.py tests/test_turn_handler.py` — PASS
+
+---
+
+## Prompt Quality: Fix Repetition, [AUDIO] Leak, Two-Pass Disabled
+
+**Problem**: Three quality issues discovered during testing: (1) Cat5 T0 collection Phase A responses all used identical "Touch it gently — is it X or Y?" structure across every round and session, because the few-shot examples all shared the same sentence pattern. (2) Cat5 synthesis stories always followed the same "X floated softly when BUMP — Y bounced right in!" template — the single T0 example was copied verbatim every session. (3) `[AUDIO] sfx: slot_fill_chime` markers in step instructions were copied literally into dialogue text by the LLM, causing the child to hear "slot fill chime" spoken aloud. Additionally, the two-pass (planner + speaker) generation was producing worse quality than single-pass — the planner stripped too much context and the speaker generated bland, empty responses — so it was disabled behind a config flag.
+
+**Solution**: Rewrote all T0 examples with structurally diverse patterns so the LLM has multiple templates to draw from. Added explicit "Do NOT reuse the same structure across sessions" instruction to synthesis prompts. Replaced `[AUDIO] sfx:` prose directives with `Set sfx_cue to "..."` JSON field instructions across 6 step instruction files. Added `_clean_dialogue()` post-processing to strip any leaked `[AUDIO]` markers as a safety net. Added random variety hints to the user prompt for hook/mission/first-collect steps to break identical-prompt repetition. Added `two_pass_enabled` config flag (default `false`) to gate two-pass generation.
+
+**Edits**:
+- `backend/skills/step_instructions/cat5_step3_collect.md` — rewrote T0 Phase A examples with 3 distinct opener styles ("Give it a little poke", "This one looks different!", "Quick, does it..."); replaced `[AUDIO]` directives with `sfx_cue` instructions
+- `backend/skills/step_instructions/cat5_step3_collect__naming_story.md` — matching T0 Phase A variety; updated Phase B examples with diverse confirmation styles
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — replaced single T0 example with 2 structurally different story types (chase adventure, rain surprise); added "vary between" instruction; replaced `[AUDIO]` directives
+- `backend/skills/step_instructions/cat5_step4_synthesis__naming_story.md` — replaced single T0 example with 3 different story structures (chase, weather, hide-and-seek); added explicit variety instruction
+- `backend/skills/step_instructions/cat1_step3_round.md` — replaced `[AUDIO]` directive with `sfx_cue` instruction
+- `backend/skills/step_instructions/cat1_step4_celebrate.md` — replaced `[AUDIO]` directive
+- `backend/skills/step_instructions/cat5_step5_celebrate.md` — replaced `[AUDIO]` directive
+- `backend/skills/step_instructions/cat5_step3_collect__sorting_game.md` — replaced `[AUDIO]` directives
+- `backend/skills/step_instructions/cat5_step3_collect__comparison_chart.md` — replaced `[AUDIO]` directives
+- `backend/agents/script_agent.py` — renamed `_ensure_emotion_tag()` to `_clean_dialogue()` which also strips `[AUDIO]` markers from dialogue; added `_VARIETY_HINTS` list and `_VARIETY_STEPS` set; `_build_user_prompt()` injects a random style hint for hook/mission/first-collect steps; added `import random`
+- `backend/config.py` — added `two_pass_enabled` setting (default `false`)
+- `backend/agents/script_agent.py` — `generate_turn()` and `generate_turn_streaming()` check `two_pass_enabled` flag before attempting planner/speaker path
+- `backend/schemas/turn_plan.py` — made `child_said` and `child_emotion` optional with defaults (prevents Pydantic validation crash when planner omits them)
+- `backend/skills/planner_system.md` — added full JSON output schema; updated T0 rules for phase-aware binary choice; added collection_phase guidance
+
+**NOT Changed**:
+- `backend/turn_handler.py` — turn resolution flow, Phase B guidance loops, validation logic all unchanged in this pass
+- `backend/state_machine.py` — unchanged
+- Frontend code — unchanged (auto-advance timing issue noted but not fixed here)
+- Cat1 step instruction content — unchanged beyond `[AUDIO]` directive replacement
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py -q -k "not (correct_photo_enters_detail or detail_response_advances or final_detail_response or retries_speaker_only or replans_after)"` — 17 passed (5 pre-existing failures excluded)
+- `uv run ruff check backend/ && uv run ruff format --check backend/agents/script_agent.py` — clean
+- Manual: start 3 dandelion sessions — Phase A openers varied each time, no "Touch it gently" repetition
+- Manual: synthesis stories used different adventure types across sessions
+- Manual: no `[AUDIO]` markers in spoken dialogue
+
+---
+
+## Review Follow-Up: Final Phase-B Guidance Loop Now Works
+
+**Problem**: Reviewing the newest prompt/turn-flow commit (`afdc03c`, `fix(prompts): simplify T0 naming flow, allow Phase B guidance loops`) exposed one concrete control-flow mismatch in `backend/turn_handler.py`. The commit message and updated prompt assets both say Cat5 Phase B can stay in detail mode for up to three guidance exchanges when the AI sets `stay_on_step=true`, but the runtime still auto-advanced immediately on the final collected item because the `remaining_count == 0` branch ran before the new guidance-loop check. That meant the final naming/synthesis bridge ignored the newly added T0 guidance path on the very case the prompt change was trying to improve. The local ignored turn-handler tests also had no regression covering this new final-item loop behavior.
+
+**Solution**: Kept the new prompt direction intact, but fixed the runtime ordering so final-item Phase B honors `stay_on_step` before auto-advancing into synthesis. `resolve_turn()` now checks the guidance-loop branch first and only sets `round_advance_pending` for the last item once the child no longer needs another detail exchange or the 3-exchange cap is reached. I also added a focused local regression proving that the final Phase B exchange stays in detail mode when the AI explicitly asks for another texture-guidance turn.
+
+**Edits**:
+- `backend/turn_handler.py` — reordered the final-item Phase B logic so `stay_on_step` is respected before the `remaining_count == 0` auto-advance path; the existing 3-exchange cap is preserved
+- local `tests/test_turn_handler.py` — added a regression for the final-item guidance-loop case so the new Cat5 Phase B behavior is locked in during local review runs
+- `HANDOFF.md` — added this review follow-up entry and refreshed the header date
+
+**NOT Changed**:
+- `backend/skills/planner_system.md` and the Cat5 collection prompt fragments updated by `afdc03c` — reviewed and left unchanged in this follow-up
+- `backend/schemas/session_state.py` `detail_exchange_count` field — reviewed and left unchanged; only the consuming control flow needed correction
+- Frontend code — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py -q -k 'final_detail_guidance_loop_stays_on_detail_before_synthesis'` — PASS (`1 passed, 22 deselected`)
+- `uv run pytest tests/test_turn_handler.py -q` — PASS (`23 passed`)
+- `uv run ruff check backend/turn_handler.py tests/test_turn_handler.py` — PASS
+- `uv run ruff format --check backend/turn_handler.py tests/test_turn_handler.py` — PASS
+
+---
+
+## Review Follow-Up: Enforce Plan-Aware Retry Paths
+
+**Problem**: Reviewing the last two-pass generation commits against `docs/plans/2026-03-26-two-pass-generation.md` exposed a concrete gap in the new validation path. `backend/turn_handler.py` added `_validate_plan()` and logged `speaker_violation` / `planner_failure`, but `_generate_with_retry()` still accepted the turn whenever the older `_validate_response()` checks passed. That meant the new two-pass flow could keep a response that violated `do_not_suggest_items`, and it could also keep a detail-phase plan with no `sensory_observation` instead of forcing a re-plan. While tightening local coverage around that path, the new `last_plan` / `retry_speaker_turn` accesses also revealed that the local ignored `tests/test_turn_handler.py` was using overly-generic `AsyncMock()` agents that emitted unawaited-coroutine warnings during pytest cleanup.
+
+**Solution**: Turned the new plan-aware verdicts into real retry decisions. `_generate_with_retry()` now treats `speaker_violation` as a speaker-only retry that reuses the same `TurnPlan` with a corrective hint, and treats `planner_failure` as a full retry that pushes a correction back through the normal planner path. I also simplified the speaker-side prompt assembly by extracting shared prompt/user-prompt helpers and added a `retry_speaker_turn()` entrypoint on `ScriptAgent` so the speaker-only retry path is explicit instead of reaching into private methods. Local review tests now cover both retry branches and use ScriptAgent-shaped mocks so the verification run stays warning-free.
+
+**Edits**:
+- `backend/turn_handler.py` — added `_plan_retry_hint()` and changed `_generate_with_retry()` so `_validate_plan()` failures no longer act as diagnostics only; `speaker_violation` now retries the speaker with the same plan, while `planner_failure` forces a full regenerate with a corrective hint
+- `backend/agents/script_agent.py` — extracted shared speaker prompt builders, added `_format_words_per_sentence()`, and introduced `retry_speaker_turn()` to support plan-preserving speaker retries without duplicating prompt-building logic
+- local `tests/test_turn_handler.py` — added regressions for speaker-only retry vs full re-plan behavior and replaced loose `AsyncMock()` agents with ScriptAgent-shaped mocks to eliminate unawaited-coroutine warnings after the new plan-aware accesses
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `backend/agents/planner.py`, `backend/schemas/turn_plan.py`, and the two-pass prompt markdown files — reviewed and left unchanged in this follow-up
+- `backend/turn_handler.py` step transition/state machine behavior outside retry validation — unchanged
+- Frontend code — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py -q -k 'correct_photo_enters_detail_phase_and_holds_the_round or synthesis_first_visit_generates_prompt'` — PASS (`2 passed, 20 deselected`) and the previous unawaited-coroutine warnings are gone
+- `uv run pytest tests/test_turn_handler.py tests/test_planner.py tests/test_turn_plan.py -q` — PASS (`62 passed`)
+- `uv run ruff check backend/agents/script_agent.py backend/turn_handler.py tests/test_turn_handler.py` — PASS
+- `uv run ruff format --check backend/agents/script_agent.py backend/turn_handler.py tests/test_turn_handler.py` — PASS
+
+---
+
+## Two-Pass Generation (Planner + Speaker)
+
+**Problem**: The single-call Script Agent asks the LLM to simultaneously understand child input, make structural decisions (question type, item suggestions, progress phrasing), track game state, and generate warm age-appropriate language — all in one JSON response. This produces responses where language is right but structure is wrong (suggesting specific items, asking wrong question types, repeating patterns). Structural decisions and creative language compete for the same context window.
+
+**Solution**: Replaced the single Script Agent LLM call with two sequential calls — a Planner that outputs structured JSON (`TurnPlan`) describing WHAT to say, and a Speaker that generates natural dialogue from the plan. Both use the same Qwen 3.5+ model via ALI DashScope. Post-processing validation now runs plan-aware checks. Old single-pass path is preserved as fallback. Design plan in `docs/plans/2026-03-26-two-pass-generation.md`.
+
+**Edits**:
+- `backend/schemas/turn_plan.py` — **NEW**: `TurnPlan` Pydantic model with content decisions (celebrate_item, sensory_observation, name_choices, question_type, story_beat), constraints (must_model_first, offer_binary_choice, do_not_suggest_items), tone/format guidance, and screen/audio pass-through fields
+- `backend/schemas/__init__.py` — added `TurnPlan` to exports
+- `backend/agents/planner.py` — **NEW**: `Planner` class with `plan_turn()` method; builds state context, loads planner prompt template, calls LLM with JSON mode at lower temperature (0.3); reuses `_build_conversation_context`, `_build_creative_slots_text`, `_load_tier_constraints`, `_get_client` from script_agent
+- `backend/skills/planner_system.md` — **NEW**: Planner system prompt focused on decisions (no language generation); includes key rules for item suggestion avoidance, T0 scaffolding, progress variation
+- `backend/skills/speaker_system.md` — **NEW**: Minimal Speaker system prompt — converts TurnPlan to warm dialogue with tier-appropriate sentence limits
+- `backend/agents/script_agent.py` — restructured `ScriptAgent` for two-pass: added `__init__` with `last_plan` attribute; new `_plan_turn()` (calls Planner), `_speak_turn()` (calls Speaker with plan + tier info), `_speak_turn_streaming()` (streaming Speaker for early TTS); `generate_turn()` and `generate_turn_streaming()` now orchestrate planner→speaker→merge with single-pass fallback on failure; original logic preserved in `_generate_turn_single_pass()` and `_generate_turn_streaming_single_pass()`; added `_load_tier_rules_raw()` helper
+- `backend/config.py` — added `planner_max_tokens` (400), `planner_temperature` (0.3), `speaker_temperature` (0.7) settings
+- `backend/turn_handler.py` — added `TurnPlan` import; added `_validate_plan()` for plan-aware diagnostics (speaker_violation vs planner_failure); `_generate_with_retry()` now reads `script_agent.last_plan` to log plan JSON alongside response on validation failures
+- `tests/test_turn_plan.py` — **NEW**: 17 tests for TurnPlan schema (defaults, full construction, validation, JSON roundtrip)
+- `tests/test_planner.py` — **NEW**: 23 tests for Planner agent (state context building, prompt assembly, LLM call mocking, plan parsing)
+
+**NOT Changed**:
+- `backend/skills/script_turn.md` — existing system prompt unchanged (used by single-pass fallback)
+- `backend/skills/step_instructions/` — all step instruction files unchanged
+- `backend/state_machine.py` — step flow logic unchanged
+- `backend/turn_handler.py` `_validate_response()` — existing post-processing validation unchanged
+- `backend/turn_handler.py` `resolve_turn()` — turn resolution flow unchanged; two-pass is transparent to callers
+- Frontend code — no changes
+
+**Verification**:
+- `uv run pytest tests/test_turn_plan.py tests/test_planner.py tests/test_turn_handler.py -v` — 60 passed
+- `uv run ruff check backend/ && uv run ruff format --check backend/` — clean (pre-existing server.py format issue)
+- `uv run pytest tests/ -q --ignore=tests/test_ai_quality.py` — 288 passed, 29 failed (all failures pre-existing)
 
 ---
 
@@ -280,115 +423,5 @@ Last updated: 2026-03-26
 - `uv run ruff format --check tests/test_education_feedback_contracts.py` — PASS
 - `cd frontend && npx eslint src/App.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js` — PASS
 - `cd frontend && npm run build` — PASS
-
----
-
-## Fix Follow-Up: TTS Mute Toggle Replays Current AI Line
-
-**Problem**: After the education feedback pass added a TTS mute toggle, the footer button could appear to stop working in both directions during an active session. The root cause was in `frontend/src/hooks/useSessionOrchestration.js`: the auto-speak effect always advanced `lastSpokenIndexRef` to the latest AI message even when TTS was muted, so toggling TTS back on would rerun the effect but immediately return because that same message was already marked as "spoken." Muting already stopped in-progress speech, but unmuting could not replay the current AI line, which made the toggle feel broken once a line had already appeared on screen.
-
-**Solution**: Kept the toggle UI and muted-TTS timeout cleanup, but fixed the replay contract when turning TTS back on. `toggleTts()` now rewinds `lastSpokenIndexRef` to the previous message index when the current last message is from the AI, which lets the existing auto-speak effect treat the current line as speakable again on unmute. Muting still stops active playback immediately.
-
-**Edits**:
-- `frontend/src/hooks/useSessionOrchestration.js` — when toggling TTS from muted to enabled, rewinds `lastSpokenIndexRef` so the current AI line can replay; retains immediate `stopTTS()` behavior when muting
-- local `tests/test_education_feedback_contracts.py` — added regression coverage proving the unmute path rewinds the current AI message for replay
-- `HANDOFF.md` — added this follow-up entry
-
-**NOT Changed**:
-- `frontend/src/App.jsx` footer button wiring and labels — reviewed and left unchanged
-- `frontend/src/hooks/useTTS.js` — playback implementation unchanged in this follow-up
-- Backend/session API behavior — unchanged; this fix is local to frontend orchestration state
-
-**Verification**:
-- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`80 passed`)
-- `uv run ruff check tests/test_education_feedback_contracts.py` — PASS
-- `uv run ruff format --check tests/test_education_feedback_contracts.py tests/test_entity_registry.py` — PASS
-- `cd frontend && npx eslint src/App.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Review Follow-Up: Harden Education Feedback Pass + Add Coverage
-
-**Problem**: Reviewing the new education-team feedback implementation exposed one concrete frontend bug and several missing-coverage/runtime gaps in the freshly modified surface. In `frontend/src/hooks/useSessionOrchestration.js`, the new muted-TTS path used `setTimeout(handleSpeakingDone, 0)` without storing or clearing the timeout, so a stale callback could still fire after reset, rerender, or a rapid session restart and incorrectly trigger silence timing or auto-advance from an old active-session closure. The expanded 18-game catalog also introduced a real prompt/runtime gap: Cat5 now includes `sorting_game` (`sound_detective_agency_piano`), but there were no `cat5_step3_collect__sorting_game.md` or `cat5_step4_synthesis__sorting_game.md` fragments for the Script Agent to load. The nearby registry tests were also stale: they still assumed a 5-entity demo-only registry, unique keyword ownership across all games, and older naming-story fragment copy.
-
-**Solution**: Kept the education feedback implementation, but tightened the reviewed runtime edges and brought coverage up to date. The muted-TTS path now owns a timeout ref with explicit cleanup on rerender, reset, and new session starts before scheduling a completion callback. I added the missing Cat5 `sorting_game` collect/synthesis fragments so the new piano activity has the same style-specific prompt path as the other Cat5 activities. I also added focused review coverage for the new plain-language summary metadata and updated the stale registry/fragment assertions to match the current 18-game catalog and revised naming-story prompt contract.
-
-**Edits**:
-- `frontend/src/hooks/useSessionOrchestration.js` — added `mutedCompletionTimeoutRef` plus `clearMutedCompletionTimeout()`; clears pending muted-TTS callbacks on rerender, reset, and session start before scheduling a new completion callback
-- `backend/skills/step_instructions/cat5_step3_collect__sorting_game.md` — **NEW**: Cat5 per-find collection guidance for `sorting_game`
-- `backend/skills/step_instructions/cat5_step4_synthesis__sorting_game.md` — **NEW**: Cat5 synthesis guidance for `sorting_game`
-- local `tests/test_education_feedback_contracts.py` — **NEW**: regression coverage for muted-TTS timeout cleanup plus `plain_description`/`steps_summary` propagation into loaded entities and API summaries
-- local `tests/test_entity_registry.py` — updated stale registry assumptions to the current 18-game catalog and current naming-story fragment content
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `frontend/src/App.jsx` and `frontend/src/components/GameDetailView.jsx` — reviewed against the feedback plan and left unchanged in this follow-up
-- `backend/entity_registry.py`, `backend/game_parser.py`, and the 18 game frontmatter files — no further implementation changes were needed after adding focused coverage for the new summary fields
-- Prompt-wide language simplification and scaffold wording across the other step-instruction files — reviewed and left as-is in this pass
-
-**Verification**:
-- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`79 passed`)
-- `uv run ruff check backend/entity_registry.py backend/game_parser.py tests/test_entity_registry.py tests/test_education_feedback_contracts.py` — PASS
-- `uv run ruff format --check backend/entity_registry.py backend/game_parser.py tests/test_entity_registry.py tests/test_education_feedback_contracts.py` — PASS
-- `cd frontend && npx eslint src/App.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Education Team Feedback: Full UX Pass (6 Items)
-
-**Problem**: The education team reviewed the demo and flagged 6 issues: (1) activity flow is unclear and lacks mini-rewards at milestones, (2) GameDetailView is too abstract/metaphorical for testers, (3) AI language is too decorated for kids, (4) TTS auto-play is disruptive, (5) questions are too open-ended, (6) activities lack "game feel." Full feedback in `docs/game_demo_feedback.txt` (Chinese). Design plan in `docs/plans/education-team-feedback.md`.
-
-**Solution**: Prompt-first approach — most changes are in step instruction markdown files, with 2 small frontend changes and backend data additions.
-
-**Edits**:
-
-*Phase 1 — Language Foundation (Change 3):*
-- `backend/prompts/script_system.md` — added `## Language Simplicity Rules` section with tier-specific sentence length limits (T0 ~6 words, T1 ~10, T2 ~15), one-metaphor-max rule, everyday vocabulary guidelines
-- All 26 files in `backend/skills/step_instructions/` — added one-line language reminder after first heading
-
-*Phase 2 — Scaffold + Model Pattern (Change 5):*
-- `backend/skills/step_instructions/cat5_step3_collect.md` — added "model first, then invite" scaffold principle for all tiers; T0 modeling guidance for Phase A; updated silence handler to model + offer 2-3 choices
-- `cat5_step3_collect__naming_story.md` — updated unexpected/silence paths to model a name + offer binary choice
-- `cat5_step3_collect__comparison_chart.md` — updated unexpected/silence paths to model observation + offer binary
-- `cat5_step4_synthesis.md` — added scaffold principle; updated stuck/silence handlers to offer concrete choices
-- `cat5_step4_synthesis__naming_story.md` — added scaffolded question requirement (binary, not open-ended)
-- `cat5_step4_synthesis__comparison_chart.md` — added T0 binary-only rule for ranking
-- `cat1_step3_round.md` — added model-first for hesitation, model + binary for wrong/silence/stuck paths
-
-*Phase 3 — Example Step + Game Feel (Changes 6, 1, 7):*
-- `cat5_step2_mission.md` — added "Embedded Example Demonstration" section (demo one round before invitation, 2-3 sentences); added mission acceptance SFX (`mission_accepted`); added item 7 to "You MUST" list
-- `cat5_step3_collect.md` — added mission/quest framing note; added progress count celebration on correct photo; added `sfx: slot_fill_chime` per find and `sfx: mission_complete_fanfare` on final; replaced "avoid mechanical counters" with "pair numbers with enthusiasm"
-- `cat5_step3_collect__naming_story.md` — added SFX cues to progressive character introductions
-- `cat5_step3_collect__comparison_chart.md` — added SFX cues to progressive comparison building
-- `cat5_step5_celebrate.md` — added "Mission accomplished!" framing and `sfx: celebration_fanfare`
-- `cat1_step3_round.md` — added challenge framing, progress note with `sfx: slot_fill_chime` on good answers
-- `cat1_step4_celebrate.md` — added "You beat all rounds!" framing and `sfx: celebration_fanfare`
-
-*Phase 4 — GameDetailView Redesign (Change 2):*
-- `backend/entity_registry.py` — added `plain_description: str` and `steps_summary: list[str]` fields to `EntityConfig`; added both to `_build_entity_summary()` dict
-- `backend/game_parser.py` — added pass-through of `plain_description` and `steps_summary` from game MD frontmatter
-- All 18 files in `backend/games/` — added `plain_description` and `steps_summary` to YAML frontmatter
-- `frontend/src/components/GameDetailView.jsx` — replaced metaphor quote with plain-language summary; added expandable "See detailed steps" toggle showing ordered step list; kept role_title badge and IB tags
-
-*Phase 5 — TTS Default Muted (Change 4):*
-- `frontend/src/hooks/useSessionOrchestration.js` — added `ttsEnabled` state (default false) with localStorage persistence; wrapped auto-speak effect in `ttsEnabled` condition; when muted, fires `handleSpeakingDone()` via setTimeout so silence timer and auto-advance still work; exports `ttsEnabled` and `toggleTts`
-- `frontend/src/App.jsx` — destructured `ttsEnabled` and `toggleTts`; added mute/unmute toggle button in footer
-
-**NOT Changed**:
-- `backend/state_machine.py` and `backend/turn_handler.py` — no state machine or turn logic changes
-- Agent pipeline (Director, Script, Visual, Recipe Assembler) — unchanged
-- Frontend widget components (BadgeAward, ProgressTracker, PhotoGallery) — unchanged
-- Tests — no test files modified in this pass
-
-**Verification**:
-- `cd backend && uv run ruff check entity_registry.py game_parser.py` — PASS
-- `cd backend && uv run ruff format --check entity_registry.py game_parser.py` — PASS
-- Manual: Start T0/T1/T2 sessions, verify AI uses shorter plain sentences
-- Manual: Start Cat5, verify mission briefing includes example demo before invitation
-- Manual: Play through Cat5 collection, verify progress counts with SFX directives
-- Manual: Click a game photo, verify plain summary + expandable steps in GameDetailView
-- Manual: Start session, verify TTS muted by default, toggle works, silence timer still fires
 
 ---

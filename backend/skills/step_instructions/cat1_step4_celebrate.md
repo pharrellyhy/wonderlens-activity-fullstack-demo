@@ -3,7 +3,7 @@
 
 All gameplay rounds are complete. This is a celebration turn. Frame as game-complete: "You beat all {total_rounds} rounds!"
 
-Use `[AUDIO] sfx: celebration_fanfare | music: celebration_finale` for this step.
+Set sfx_cue to "celebration_fanfare" for this step.
 
 ### You MUST:
 1. Give enthusiastic praise referencing specific things the child said or did during the game.

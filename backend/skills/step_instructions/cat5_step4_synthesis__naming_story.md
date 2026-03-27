@@ -1,54 +1,60 @@
 ### Style: Naming Story
 
 ### VARIANT RULES
-1. Synthesis is a mini-story using the named characters. Follow a 4-beat structure:
-   - **OPENING** — one character doing something related to their detail
-   - **MEETING** — second character appears (with sound effect: BUMP, WHOOSH, SPLASH)
-   - **PROBLEM** — a small challenge or surprise happens (something goes wrong, someone gets stuck, a wish needs fulfilling). This gives the story real tension.
-   - **RESOLUTION** — the characters solve it together using their {observation_angle} traits, ending warmly
-2. Reference each character's ORIGINAL detail from collection. Include at least one line of character dialogue, one sound effect, and sensory language (how things feel, sound, or look).
-3. The full story should be 3-5 sentences. End with a warm, complete feeling — never a question or cliffhanger. The story conclusion after the child's choice MUST be a real narrative (3+ sentences with actions, dialogue, and an ending), not a one-line summary.
+1. Synthesis is a bedtime-style mini-story using the named characters from collection.
+2. Use simple one-word character names (Mossy, Petal, Woolly) — not compound names.
+3. Keep language simple and everyday. One sound effect max per story.
+4. The story must have real emotions — not just "they giggled." Show fear, comfort, pride, relief, coziness.
+5. The resolution MUST be 3-5 sentences with: what happened, how someone felt, what someone said, and a warm ending.
+6. Pick a DIFFERENT theme each session from the list below.
 
-### VARIANT EXAMPLES
+### STORY THEMES (pick one at random each session)
+- One friend can't sleep — the others comfort them
+- They get caught in the rain — find shelter together
+- One friend is sad — the others cheer them up
+- Someone is scared of the dark — friends bring light
+- They find one treat to share between everyone
+- One friend gets lost — the others search and find them
+- It's cold — they figure out how to stay warm
+- Someone's birthday — the others plan a surprise
+- They try to build something — it keeps falling, they keep trying
+- One friend is too small to reach something — others help
 
-#### T0 (ages 2-4)
+### T0 QUALITY EXAMPLE (ages 2-4)
 
-**Opening — AI tells beats 1-2, offers binary choice for the problem:**
-AI: "[dreamy] Cloud Puff was floating softly when BUMP — Pillow Petal bounced right in! Oh no, they got stuck on a branch! Did Tickle Worm tickle the branch or pull them free?"
+This example shows the QUALITY and EMOTION to aim for. Write a DIFFERENT story with a DIFFERENT theme — do NOT copy this plot.
 
-**Child picks "tickle":**
-Child: "tickle"
-AI: "[celebrating] Tickle Worm wiggled up and tickled the branch — it shook and shook! 'Wheee!' Cloud Puff flew free and landed on Pillow Petal. 'That tickles!' they all giggled. Then they floated down together, soft as a feather."
-
-**Child picks "pull":**
-Child: "pull"
-AI: "[celebrating] Tickle Worm grabbed on tight and pulled! POP — Cloud Puff flew free! 'You saved me!' Cloud Puff cheered. Pillow Petal caught them both and they all snuggled together on the softest leaf."
-
-**Child is silent — AI finishes the whole story:**
-AI: "[gentle] Tickle Worm wiggled up and gave the branch a shake! Cloud Puff floated free and landed right on Pillow Petal. 'So soft!' Cloud Puff whispered. They all curled up together and fell asleep."
-
-#### T1 (ages 4-6)
-
-**Opening — AI tells beat 1, offers 2-3 choices for the problem:**
-AI: "[dreamy] Cloud Puff was floating along when Blanket Bud landed right on top! But then the wind started blowing them away! What did they do — hold on tight, hide behind a rock, or call for help?"
+**Opening:**
+AI: "[dreamy] One night, Mossy couldn't sleep. It was dark and quiet and Mossy felt a little scared. Did Petal sing a song or did Woolly come snuggle?"
 
 **Child picks:**
-Child: "they held on tight!"
-AI: "[excited] Cloud Puff grabbed Blanket Bud and held on tight! WHOOOOSH — the wind blew harder and harder. 'Don't let go!' Cloud Puff shouted. Then Silk Whisper wrapped around them both like a cozy scarf. The wind stopped and they all cheered — 'We did it together!'"
+Child: "snuggle!"
+AI: "[gentle] Woolly tiptoed over and curled up right next to Mossy. 'I'm here,' Woolly whispered. Mossy felt warm all over. Then Petal started humming a soft little song. One by one, they all closed their eyes. When morning came, they were still snuggled together. 'Best sleepover ever,' Mossy said with a big yawn."
 
-**Child is stuck:**
-Child: "I don't know"
-AI: "[gentle] The wind blew Cloud Puff up, up, up! 'Help!' Cloud Puff called. Blanket Bud stretched out wide like a parachute — WHOOOOSH — and floated them safely down. Silk Whisper was waiting with the softest landing spot. 'That was fun!' they all laughed."
+**Child says "no" or doesn't pick either option:**
+Child: "no"
+AI: "[gentle] Mossy lay there in the quiet. Then — tap tap tap — Woolly tiptoed over. 'Can't sleep either,' Woolly said. They snuggled up together. Petal heard them whispering and came too. Soon they were all in a warm little pile, and the dark didn't feel scary anymore."
 
-#### T2 (ages 6-8)
+**Child is silent:**
+AI: "[gentle] Woolly heard Mossy tossing and turning and came over. 'It's okay,' Woolly whispered, snuggling in close. Petal heard them and crept over too. 'Room for one more?' Petal asked. They all squished together, warm and safe. Before long, everyone was fast asleep."
 
-**Opening — invite child to tell their story:**
-AI: "[curious] All your characters are here. Can you tell me what happens when they meet — maybe they go on an adventure or solve a problem together?"
+### T1 QUALITY EXAMPLE (ages 4-6)
+
+**Opening:**
+AI: "[dreamy] Mossy, Petal, and Woolly were walking home when big raindrops started falling. They needed to find shelter fast! What did they do — hide under a mushroom, squeeze into a hollow log, or make a tent from a big leaf?"
+
+**Child picks:**
+Child: "the mushroom!"
+AI: "[excited] They squeezed under the biggest mushroom they could find. It was a tight fit! 'Move over!' said Petal, laughing. Woolly's tail stuck out and got all wet. 'My tail!' Woolly giggled. They listened to the rain tapping on the mushroom like a little drum. When the sun came out, they ran through the puddles all the way home."
+
+### T2 QUALITY EXAMPLE (ages 6-8)
+
+**Opening:**
+AI: "[curious] Your three characters are all together. What kind of story should we tell about them?"
 
 **Child tries:**
-Child: "Cloud Puff was flying and got lost in the dark"
-AI: "[excited] Cloud Puff floated into a dark corner and couldn't find the way back! 'Where am I?' Cloud Puff whispered. Then Velvet glowed softly — just enough light to see! Whisper guided them home with the gentlest breeze. 'We'll always find each other,' Velvet said."
+Child: "they find a treasure map"
+AI: "[excited] Mossy found an old leaf with squiggly lines on it. 'I think it's a map!' Mossy said. They followed the lines through the tall grass, past the big rock, and under the old fence. Petal was about to give up when Woolly said, 'Wait — look!' There, hidden under a pile of leaves, was the tiniest, most perfect acorn they'd ever seen. 'Not exactly gold,' Petal said. Mossy picked it up carefully. 'It's better. We found it together.'"
 
-**Child is stuck — AI offers scaffold:**
-Child: "I can't think of anything"
-AI: "[gentle] What if Cloud Puff was floating along and got stuck in a tree — BONK! Would Velvet climb up to help or would Whisper blow Cloud Puff free?"
+**Child is stuck:**
+AI: "[gentle] What if Woolly found something buried in the ground — like a shiny stone or a tiny shell? What would happen next?"

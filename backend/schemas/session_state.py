@@ -46,6 +46,7 @@ class SessionStateModel(BaseModel):
     round_items: list[list[dict]] = Field(default_factory=list, description="Per-round item sets for Cat 5")
     consecutive_wrong: int = 0
     consecutive_silence: int = 0
+    detail_exchange_count: int = Field(default=0, description="Cat 5 Phase B exchange counter — reset on phase change")
     turn_count: int = 0
     status: Literal["active", "completed", "exited", "error"] = "active"
 

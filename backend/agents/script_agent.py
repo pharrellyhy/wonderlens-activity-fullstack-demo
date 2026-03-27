@@ -1,6 +1,7 @@
 """Script Agent — per-turn dialogue generation using Qwen via ALI DashScope."""
 
 import json
+import random
 import re
 import time
 from functools import lru_cache
@@ -19,6 +20,7 @@ try:
     from ..schemas.recipe import InstructionRecipe
     from ..schemas.session_state import SessionStateModel
     from ..schemas.step_instruction import RoundInstruction, StepGoal
+    from ..schemas.turn_plan import TurnPlan
     from ..schemas.turn_response import TurnResponse
     from ..state_machine import get_step_name
 except ImportError:
@@ -29,15 +31,54 @@ except ImportError:
     from schemas.recipe import InstructionRecipe
     from schemas.session_state import SessionStateModel
     from schemas.step_instruction import RoundInstruction, StepGoal
+    from schemas.turn_plan import TurnPlan
     from schemas.turn_response import TurnResponse
     from state_machine import get_step_name
 
 logger = setup_logger(__name__)
 
 _SKILL_PATH = Path(__file__).parent.parent / "skills" / "script_turn.md"
+_SPEAKER_PROMPT_PATH = Path(__file__).parent.parent / "skills" / "speaker_system.md"
 _STEP_INSTRUCTIONS_DIR = Path(__file__).parent.parent / "skills" / "step_instructions"
 _TIER_RULES_PATH = Path(__file__).parent.parent / "tier_rules.yaml"
 _FRAGMENTABLE_STEP_PREFIXES = {"STEP_2_RULES", "STEP_3_ROUND", "STEP_3_COLLECT", "STEP_4_SYNTHESIS"}
+
+# Variety hints injected into the user prompt for early steps where the prompt
+# context is identical across sessions.  A random hint nudges the LLM toward a
+# different opening/style each time.
+_VARIETY_HINTS = [
+    "Start with a sound word (Whoosh! Pop! Wow!).",
+    "Open with something YOU noticed about the photo first.",
+    "Use a metaphor or simile in your opening.",
+    "Start with a playful question about how the child is feeling.",
+    "Begin by whispering — use a soft, mysterious tone.",
+    "Open with an exclamation about the most striking visual detail.",
+    "Pretend you just discovered something surprising.",
+    "Start by describing what you imagine touching it would feel like.",
+    "Open with a silly comparison to something unexpected.",
+    "Begin with wonder — 'I wonder...' or 'What if...'",
+]
+_SYNTHESIS_HINTS = [
+    "Theme: one friend can't sleep, the others comfort them.",
+    "Theme: they get caught in the rain and find shelter.",
+    "Theme: one friend is sad, the others cheer them up.",
+    "Theme: someone is scared of the dark, friends bring light.",
+    "Theme: they find one treat and figure out how to share it.",
+    "Theme: one friend gets lost, the others search and find them.",
+    "Theme: it's cold, they figure out how to stay warm together.",
+    "Theme: it's someone's birthday and the others plan a surprise.",
+    "Theme: they try to build something but it keeps falling down.",
+    "Theme: one friend is too small to reach something, others help.",
+]
+_VARIETY_STEPS = {
+    "STEP_1_HOOK",
+    "STEP_2_RULES",
+    "STEP_2_MISSION",
+    "STEP_4_CELEBRATE",
+    "STEP_5_CELEBRATE",
+    "STEP_5_CLOSING",
+    "STEP_6_CLOSING",
+}
 
 # Regex to extract dialogue value from partial JSON stream
 _DIALOGUE_RE = re.compile(r'"dialogue"\s*:\s*"((?:[^"\\]|\\.)*)"')
@@ -102,6 +143,66 @@ def _load_tier_constraints(tier: str) -> str:
     ]
 
     return "\n".join(lines)
+
+
+def _load_tier_rules_raw(tier: str) -> dict:
+    """Load raw tier rules dict from tier_rules.yaml for a given tier.
+
+    Args:
+        tier: Tier key, e.g. "T0", "T1", "T2".
+
+    Returns:
+        Dict of tier rule values (label, ages, max_sentences, words_per_sentence, etc.).
+        Returns empty dict if the tier or file is not found.
+    """
+    if not _TIER_RULES_PATH.exists():
+        return {}
+
+    with open(_TIER_RULES_PATH) as f:
+        all_rules = yaml.safe_load(f) or {}
+
+    return all_rules.get("tiers", {}).get(tier, {})
+
+
+def _format_words_per_sentence(words_per_sentence: object) -> str:
+    """Format tier word-count guidance for prompts."""
+    if isinstance(words_per_sentence, list):
+        if len(words_per_sentence) == 2:
+            return f"{words_per_sentence[0]}-{words_per_sentence[1]}"
+        return ", ".join(str(value) for value in words_per_sentence)
+    return str(words_per_sentence)
+
+
+def _build_speaker_prompt(state: SessionStateModel, plan: TurnPlan) -> str:
+    """Build the speaker system prompt from tier rules and the current plan."""
+    tier_rules = _load_tier_rules_raw(state.tier)
+    template = _SPEAKER_PROMPT_PATH.read_text() if _SPEAKER_PROMPT_PATH.exists() else ""
+
+    replacements = {
+        "{tier}": state.tier,
+        "{tier_label}": str(tier_rules.get("label", "")),
+        "{tier_ages}": str(tier_rules.get("ages", "")),
+        "{max_sentences}": str(tier_rules.get("max_sentences", 2)),
+        "{words_per_sentence}": _format_words_per_sentence(tier_rules.get("words_per_sentence", [5, 10])),
+        "{turn_plan_json}": plan.model_dump_json(indent=2),
+        "{emotion_tag}": plan.emotion_tag,
+    }
+
+    for key, value in replacements.items():
+        template = template.replace(key, value)
+
+    return template
+
+
+def _build_speaker_user_prompt(corrective_hint: str | None = None) -> str:
+    """Build the user message for the speaker pass."""
+    prompt = (
+        "Generate the dialogue for this plan. "
+        'Output valid JSON: {"dialogue": "[emotion_tag] Your text here", "tone_marker": "..."}'
+    )
+    if corrective_hint:
+        prompt += f"\n\n{corrective_hint}"
+    return prompt
 
 
 def _load_step_instructions(state: SessionStateModel) -> str:
@@ -339,8 +440,15 @@ def _get_suggested_emotion_tag(state: SessionStateModel) -> str:
     return "gentle"
 
 
-def _ensure_emotion_tag(turn: TurnResponse, state: SessionStateModel) -> None:
-    """Ensure dialogue starts with a bracketed emotion tag; prepend one if missing."""
+_AUDIO_DIRECTIVE_RE = re.compile(r"\s*\[AUDIO\][^\]]*(?:\]|$)", re.IGNORECASE)
+
+
+def _clean_dialogue(turn: TurnResponse, state: SessionStateModel) -> None:
+    """Post-process dialogue: strip leaked directives and ensure emotion tag."""
+    # Strip [AUDIO] sfx/music directives that the LLM copied from step instructions
+    turn.dialogue = _AUDIO_DIRECTIVE_RE.sub("", turn.dialogue).rstrip()
+
+    # Ensure dialogue starts with a bracketed emotion tag
     if not _EMOTION_TAG_RE.match(turn.dialogue):
         tag = _get_suggested_emotion_tag(state)
         turn.dialogue = f"[{tag}] {turn.dialogue}"
@@ -425,8 +533,162 @@ def _build_system_prompt(state: SessionStateModel) -> str:
 class ScriptAgent:
     """Generates per-turn dialogue using Qwen via ALI DashScope."""
 
+    def __init__(self) -> None:
+        self.last_plan: TurnPlan | None = None
+
     async def generate_turn(self, state: SessionStateModel) -> TurnResponse:
-        """Generate the next dialogue turn (non-streaming fallback).
+        """Generate the next dialogue turn using two-pass (planner + speaker) with single-pass fallback.
+
+        The two-pass pipeline calls the Planner first to produce a structured TurnPlan,
+        then the Speaker to convert that plan into child-facing dialogue. If the two-pass
+        path fails for any reason, falls back to the original single-pass generation.
+
+        Args:
+            state: Full session state including creative slots and conversation history.
+
+        Returns:
+            TurnResponse with dialogue, tone, and screen instructions.
+
+        Raises:
+            ScriptAgentError: If both two-pass and single-pass generation fail.
+        """
+        settings = get_settings()
+        if not settings.two_pass_enabled:
+            self.last_plan = None
+            return await self._generate_turn_single_pass(state)
+
+        try:
+            plan = await self._plan_turn(state)
+            self.last_plan = plan
+            turn = await self._speak_turn(state, plan)
+
+            # Merge plan's screen/audio decisions into the speaker response
+            turn.screen_widget = plan.screen_widget
+            turn.screen_widget_params = plan.screen_widget_params
+            turn.screen_animation = plan.screen_animation
+            turn.sfx_cue = plan.sfx_cue
+            turn.child_intent = plan.child_intent
+            turn.stay_on_step = plan.stay_on_step
+
+            return turn
+
+        except Exception as e:
+            logger.warning(f"Two-pass generation failed, falling back to single-pass: {e}")
+            self.last_plan = None
+            return await self._generate_turn_single_pass(state)
+
+    async def _plan_turn(self, state: SessionStateModel) -> TurnPlan:
+        """Run the Planner agent to produce a structured TurnPlan.
+
+        Args:
+            state: Full session state.
+
+        Returns:
+            TurnPlan with content decisions, constraints, and tone guidance.
+
+        Raises:
+            PlannerError: If the planner call fails.
+        """
+        # Lazy import to avoid circular dependency (planner imports from script_agent)
+        try:
+            from ..agents.planner import Planner  # noqa: PLC0415
+        except ImportError:
+            from agents.planner import Planner  # noqa: PLC0415
+
+        planner = Planner()
+        return await planner.plan_turn(state)
+
+    async def retry_speaker_turn(
+        self,
+        state: SessionStateModel,
+        plan: TurnPlan,
+        corrective_hint: str | None = None,
+    ) -> TurnResponse:
+        """Retry only the speaker pass using an existing planner output."""
+        self.last_plan = plan
+        return await self._speak_turn(state, plan, corrective_hint=corrective_hint)
+
+    async def _speak_turn(
+        self,
+        state: SessionStateModel,
+        plan: TurnPlan,
+        corrective_hint: str | None = None,
+    ) -> TurnResponse:
+        """Run the Speaker pass to convert a TurnPlan into child-facing dialogue.
+
+        Loads the speaker prompt template, fills in tier data and the plan JSON,
+        calls the LLM at a higher temperature for natural language, and returns
+        a TurnResponse with dialogue and tone_marker fields populated.
+
+        Args:
+            state: Full session state (used for tier info).
+            plan: The structured TurnPlan from the planner pass.
+
+        Returns:
+            TurnResponse with dialogue and tone_marker from the speaker LLM.
+
+        Raises:
+            ScriptAgentError: If the speaker LLM call fails.
+        """
+        settings = get_settings()
+        start = time.perf_counter()
+
+        speaker_prompt = _build_speaker_prompt(state, plan)
+        user_prompt = _build_speaker_user_prompt(corrective_hint)
+
+        try:
+            client = _get_client()
+
+            response = await client.chat.completions.create(
+                model=settings.ali_model,
+                messages=[
+                    {"role": "system", "content": speaker_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=settings.speaker_temperature,
+                max_tokens=settings.script_turn_max_tokens,
+                response_format={"type": "json_object"},
+                extra_body={"enable_thinking": False},
+            )
+
+            latency_ms = int((time.perf_counter() - start) * 1000)
+
+            text = response.choices[0].message.content or ""
+            if not text:
+                raise ScriptAgentError("Empty response from Speaker LLM")
+
+            logger.info(
+                f"Speaker LLM response: step={state.current_step}, round={state.current_round}, "
+                f"activity={state.activity_type}\n--- SPEAKER RAW ---\n{text}\n--- END ---"
+            )
+
+            # Parse the minimal JSON — speaker returns only dialogue + tone_marker
+            speaker_data = json.loads(text)
+            turn = TurnResponse(
+                dialogue=speaker_data.get("dialogue", ""),
+                tone_marker=speaker_data.get("tone_marker", "gentle"),
+                screen_widget="photo_display",
+                screen_widget_params={},
+            )
+            _clean_dialogue(turn, state)
+
+            logger.info(f"Speaker turn: step={state.current_step}, round={state.current_round}, latency={latency_ms}ms")
+            await log_agent_call(state.session_id, "speaker", latency_ms, True)
+            return turn
+
+        except ScriptAgentError:
+            raise
+
+        except Exception as e:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.error(f"Speaker pass failed ({latency_ms}ms): {e}")
+            await log_agent_call(state.session_id, "speaker", latency_ms, False, error_message=str(e))
+            raise ScriptAgentError(f"Speaker generation failed: {e}") from e
+
+    async def _generate_turn_single_pass(self, state: SessionStateModel) -> TurnResponse:
+        """Generate the next dialogue turn using the original single-pass LLM call.
+
+        This is the fallback path used when two-pass generation fails.
 
         Args:
             state: Full session state including creative slots and conversation history.
@@ -470,7 +732,7 @@ class ScriptAgent:
             )
 
             turn = TurnResponse.model_validate_json(text)
-            _ensure_emotion_tag(turn, state)
+            _clean_dialogue(turn, state)
 
             logger.info(f"Script turn: step={state.current_step}, round={state.current_round}, latency={latency_ms}ms")
             await log_agent_call(state.session_id, "script_turn", latency_ms, True)
@@ -488,10 +750,156 @@ class ScriptAgent:
     async def generate_turn_streaming(
         self, state: SessionStateModel, on_dialogue: Callable | None = None
     ) -> TurnResponse:
-        """Generate the next dialogue turn using streaming.
+        """Generate the next dialogue turn using two-pass streaming.
 
-        Streams tokens from the LLM, extracting the dialogue value early
-        so TTS can start before the full JSON is complete.
+        Calls the Planner (non-streaming — small JSON output), then streams
+        the Speaker call to extract dialogue tokens for early TTS delivery.
+        Falls back to single-pass streaming if two-pass fails.
+
+        Args:
+            state: Full session state.
+            on_dialogue: Optional async callable(str) invoked with the dialogue
+                text as soon as it's extracted from the partial JSON stream.
+
+        Returns:
+            TurnResponse with dialogue, tone, and screen instructions.
+
+        Raises:
+            ScriptAgentError: If generation fails.
+        """
+        settings = get_settings()
+        if not settings.two_pass_enabled:
+            self.last_plan = None
+            return await self._generate_turn_streaming_single_pass(state, on_dialogue)
+
+        try:
+            # Step 1: Planner (non-streaming — small JSON)
+            plan = await self._plan_turn(state)
+            self.last_plan = plan
+
+            # Step 2: Speaker (streaming for early TTS)
+            turn = await self._speak_turn_streaming(state, plan, on_dialogue)
+
+            # Merge plan's screen/audio decisions into the speaker response
+            turn.screen_widget = plan.screen_widget
+            turn.screen_widget_params = plan.screen_widget_params
+            turn.screen_animation = plan.screen_animation
+            turn.sfx_cue = plan.sfx_cue
+            turn.child_intent = plan.child_intent
+            turn.stay_on_step = plan.stay_on_step
+
+            return turn
+
+        except Exception as e:
+            logger.warning(f"Two-pass streaming failed, falling back to single-pass streaming: {e}")
+            self.last_plan = None
+            return await self._generate_turn_streaming_single_pass(state, on_dialogue)
+
+    async def _speak_turn_streaming(
+        self,
+        state: SessionStateModel,
+        plan: TurnPlan,
+        on_dialogue: Callable | None = None,
+        corrective_hint: str | None = None,
+    ) -> TurnResponse:
+        """Run the Speaker pass with streaming to extract dialogue early for TTS.
+
+        Args:
+            state: Full session state (used for tier info).
+            plan: The structured TurnPlan from the planner pass.
+            on_dialogue: Optional async callable(str) invoked with the dialogue
+                text as soon as it's extracted from the partial stream.
+
+        Returns:
+            TurnResponse with dialogue and tone_marker from the speaker LLM.
+
+        Raises:
+            ScriptAgentError: If the speaker LLM call fails.
+        """
+        settings = get_settings()
+        start = time.perf_counter()
+
+        speaker_prompt = _build_speaker_prompt(state, plan)
+        user_prompt = _build_speaker_user_prompt(corrective_hint)
+
+        try:
+            client = _get_client()
+
+            response_stream = await client.chat.completions.create(
+                model=settings.ali_model,
+                messages=[
+                    {"role": "system", "content": speaker_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=settings.speaker_temperature,
+                max_tokens=settings.script_turn_max_tokens,
+                response_format={"type": "json_object"},
+                extra_body={"enable_thinking": False},
+                stream=True,
+            )
+
+            accumulated = ""
+            dialogue_sent = False
+
+            async for chunk in response_stream:
+                delta = chunk.choices[0].delta if chunk.choices else None
+                if delta and delta.content:
+                    accumulated += delta.content
+
+                # Extract dialogue from partial JSON for early TTS
+                if not dialogue_sent and on_dialogue and accumulated:
+                    match = _DIALOGUE_RE.search(accumulated)
+                    if match:
+                        try:
+                            dialogue_text = json.loads(f'"{match.group(1)}"')
+                            await on_dialogue(dialogue_text)
+                            dialogue_sent = True
+                        except json.JSONDecodeError:
+                            pass
+
+            if not accumulated:
+                raise ScriptAgentError("Empty response from Speaker LLM streaming")
+
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.info(
+                f"Speaker LLM response (stream): step={state.current_step}, round={state.current_round}, "
+                f"activity={state.activity_type}\n--- SPEAKER RAW ---\n{accumulated}\n--- END ---"
+            )
+
+            # Parse the minimal JSON — speaker returns only dialogue + tone_marker
+            speaker_data = json.loads(accumulated)
+            turn = TurnResponse(
+                dialogue=speaker_data.get("dialogue", ""),
+                tone_marker=speaker_data.get("tone_marker", "gentle"),
+                screen_widget="photo_display",
+                screen_widget_params={},
+            )
+            _clean_dialogue(turn, state)
+
+            logger.info(
+                f"Speaker turn (stream): step={state.current_step}, round={state.current_round}, latency={latency_ms}ms"
+            )
+            await log_agent_call(state.session_id, "speaker", latency_ms, True)
+
+            # If dialogue wasn't sent during streaming, send it now
+            if not dialogue_sent and on_dialogue:
+                await on_dialogue(turn.dialogue)
+
+            return turn
+
+        except ScriptAgentError:
+            raise
+
+        except Exception as e:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.error(f"Speaker streaming failed ({latency_ms}ms): {e}")
+            await log_agent_call(state.session_id, "speaker", latency_ms, False, error_message=str(e))
+            raise ScriptAgentError(f"Speaker streaming failed: {e}") from e
+
+    async def _generate_turn_streaming_single_pass(
+        self, state: SessionStateModel, on_dialogue: Callable | None = None
+    ) -> TurnResponse:
+        """Fallback: single-pass streaming generation (original path).
 
         Args:
             state: Full session state.
@@ -555,7 +963,7 @@ class ScriptAgent:
             )
 
             turn = TurnResponse.model_validate_json(accumulated)
-            _ensure_emotion_tag(turn, state)
+            _clean_dialogue(turn, state)
 
             logger.info(
                 f"Script turn (stream): step={state.current_step}, round={state.current_round}, latency={latency_ms}ms"
@@ -605,11 +1013,23 @@ class ScriptAgent:
                 "is confused, or needs a hint before moving on\n"
             )
 
+        # Inject a random variety hint for steps where the prompt context
+        # is identical across sessions — prevents the LLM from repeating itself.
+        variety_line = ""
+        is_first_collect = state.current_step in ("STEP_3_COLLECT_1", "STEP_3_ROUND_1") and state.turn_count < 4
+        if state.current_step == "STEP_4_SYNTHESIS":
+            hint = random.choice(_SYNTHESIS_HINTS)
+            variety_line = f"\nStory direction: {hint} Write a DIFFERENT story than the examples.\n"
+        elif state.current_step in _VARIETY_STEPS or is_first_collect:
+            hint = random.choice(_VARIETY_HINTS)
+            variety_line = f"\nStyle hint: {hint}\n"
+
         return (
             f"Generate the next turn for step: {step_name}.\n"
             f"This is turn {state.turn_count + 1} of the session.\n"
             f"Round {state.current_round} of {state.total_rounds}."
-            f"{child_input}\n\n"
+            f"{child_input}"
+            f"{variety_line}\n"
             f"Respond with EXACTLY this JSON structure (all fields required):\n"
             f"{{\n"
             f'  "dialogue": "[emotion_tag] Your dialogue text here",\n'

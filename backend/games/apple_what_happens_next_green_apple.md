@@ -10,6 +10,7 @@ concepts_earned: [Connection, Perspective]
 keywords: [green apple, apple, fruit, food, healthy, sour, sweet, crunch]
 feature_keywords: [smooth, shiny, green, stem, round]
 photo_features: [smooth skin, shiny surface, green color, round shape]
+play_rounds: 3
 plain_description: "Predict what happens to a green apple in different situations, like biting it, leaving it out for a week, and slicing it open."
 steps_summary:
   - "Predict what you hear and taste when you bite the apple, what happens if you leave it on the counter for a week, and what is hiding inside when you slice it in half"
@@ -20,8 +21,15 @@ creative_slots:
   game_mechanic: prediction_game
   metaphor: The child becomes an 'Apple Prediction Scientist' who guesses what happens to a green apple in different situations.
   role_title: Apple Prediction Scientist
-  round_scenarios: [Taking a big bite out of the apple, Leaving the apple on the counter for a week, Slicing the apple in
-      half to see inside]
+  round_scenarios:
+    - Taking a big bite out of the apple
+    - Leaving the apple on the counter for a week
+    - Slicing the apple in half to see inside
+    - Dropping the apple into a bucket of water
+    - Putting the apple in the freezer overnight
+    - Peeling off all the green skin
+    - Planting the apple seeds in a pot of soil
+    - Squeezing the apple to make juice
   escalation_axis: Immediate sensory reaction to long-term changes and hidden internal structures
   observation_detail: smooth and shiny skin, like a little green ball
 step_instructions:
@@ -60,6 +68,49 @@ step_instructions:
     emotion_tag: surprised
     acceptable_themes: [seeds, core, white, brown, pips, star, inside]
     escalation_note: Revealing hidden structures — abstract reasoning
+  - round_number: 4
+    goal: 'Set the scene: dropping the apple into a bucket of water. Ask the child to predict whether it sinks or floats and why.'
+    scenario: Prediction number four! You hold the apple over a bucket of water and let go — PLOP! Does the apple sink to the
+      bottom or float on top?
+    constraint: T1 max 3 sentences, build suspense before the drop, ask for a prediction with reasoning.
+    emotion_tag: curious
+    acceptable_themes: [float, sink, water, air, light, heavy, bob, splash]
+    escalation_note: Density and buoyancy reasoning — moderate abstraction
+  - round_number: 5
+    goal: 'Set the scene: putting the apple in the freezer overnight. Ask the child to predict what happens to it after a whole
+      night in the cold.'
+    scenario: Prediction number five! You put the apple in the freezer before bedtime. It stays in there ALL night. What happens
+      to it by morning?
+    constraint: T1 max 3 sentences, emphasize the cold and time passing, ask for a prediction.
+    emotion_tag: surprised
+    acceptable_themes: [cold, frozen, hard, ice, frosty, crack, solid, crunchy]
+    escalation_note: Temperature change over time — cause and effect
+  - round_number: 6
+    goal: 'Set the scene: peeling off ALL the green skin with a peeler. Ask the child to predict what the apple looks like without
+      its skin and how it feels different.'
+    scenario: Prediction number six! Someone takes a peeler and carefully peels off ALL the green skin. What does the apple look
+      like now, and how does it feel?
+    constraint: T1 max 3 sentences, focus on texture and appearance change, ask for a prediction.
+    emotion_tag: curious
+    acceptable_themes: [white, smooth, sticky, slippery, naked, pale, wet, soft]
+    escalation_note: Surface vs interior — observation and texture reasoning
+  - round_number: 7
+    goal: 'Set the scene: planting the apple seeds in a pot of soil and watering them. Ask the child to predict what happens after
+      many weeks of sun and water.'
+    scenario: Prediction number seven! You take the little brown seeds from inside the apple, plant them in a pot of soil, and
+      water them every day. What happens after many weeks?
+    constraint: T1 max 3 sentences, emphasize the passage of time, ask for a prediction about growth.
+    emotion_tag: warm
+    acceptable_themes: [grow, tree, sprout, leaves, plant, apple tree, roots, green]
+    escalation_note: Life cycle reasoning — long-term cause and effect
+  - round_number: 8
+    goal: 'Set the scene: squeezing the apple really hard to make juice. Ask the child to predict what comes out and what is left
+      behind.'
+    scenario: Prediction number eight! You squeeze the apple as hard as you can. What comes out, and what is left behind?
+    constraint: T1 max 3 sentences, use tactile and sensory details, ask for a prediction.
+    emotion_tag: excited
+    acceptable_themes: [juice, liquid, wet, pulp, mush, skin, seeds, sticky]
+    escalation_note: Transformation and separation — physical change reasoning
   celebrate:
     goal: Award the child the title 'Apple Prediction Scientist' with fanfare. Recap their successful predictions about the
       crunch, the changes, and the hidden seeds.

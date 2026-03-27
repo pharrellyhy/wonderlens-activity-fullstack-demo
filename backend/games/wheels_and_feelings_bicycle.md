@@ -10,6 +10,7 @@ concepts_earned: [Function, Connection]
 keywords: [bicycle, bike, wheels, spokes, pedals, chain, ride]
 feature_keywords: [shiny, strong, round, fast]
 photo_features: [shiny wheels, thin spokes, strong frame, pedals]
+play_rounds: 3
 plain_description: "Use your voice to speak as a bicycle and act out what the bike says or feels during 3 different adventures."
 steps_summary:
   - "Act out what the bike says while zooming downhill, how it feels when the tire goes flat, and what it thinks when it discovers a new path"
@@ -20,7 +21,15 @@ creative_slots:
   game_mechanic: voice_acting
   metaphor: The child becomes a 'Bike Whisperer' who can hear what the bicycle feels and says on different adventures.
   role_title: Bike Whisperer
-  round_scenarios: [zooming downhill, getting a flat tire, discovering a new path]
+  round_scenarios:
+    - zooming downhill
+    - getting a flat tire
+    - discovering a new path
+    - waiting outside in the rain
+    - riding through crunchy autumn leaves
+    - getting washed and polished like new
+    - racing alongside a friend on another bike
+    - rolling over a big bumpy puddle
   escalation_axis: from pure physical excitement to facing a problem, to exploring the unknown
   observation_detail: those shiny wheels and thin spokes that look like a spiderweb
 step_instructions:
@@ -62,6 +71,51 @@ step_instructions:
     emotion_tag: curious
     acceptable_themes: [wow, cool, new, explore, curious, pretty, adventure, let's go]
     escalation_note: exploring the unknown — peak imagination
+  - round_number: 4
+    goal: 'Set the scene vividly: it starts raining and the rider runs inside, leaving the bike parked outside all alone getting
+      wet and dripping — then ask what the bike says or feels.'
+    scenario: Adventure number four! It starts raining! The rider runs inside, but the bike is left parked outside all alone.
+      Drip drip drip.
+    constraint: T1 max 3 sentences, use rain and loneliness sensory details, then ask what the bike would say.
+    emotion_tag: gentle
+    acceptable_themes: [wet, lonely, cold, sad, waiting, come back, dripping, miss]
+    escalation_note: abandonment and loneliness — emotional depth
+  - round_number: 5
+    goal: 'Set the scene vividly: riding through a big pile of crunchy autumn leaves — they fly up everywhere and make the best
+      sound — then ask what the bike says or feels.'
+    scenario: Adventure number five! You ride through a HUGE pile of crunchy autumn leaves! They fly up everywhere — crunch crunch
+      crunch!
+    constraint: T1 max 3 sentences, use autumn leaf sensory details and sound words, then ask what the bike would say.
+    emotion_tag: playful
+    acceptable_themes: [crunch, fun, tickle, leaves, messy, silly, colorful, whee]
+    escalation_note: sensory playfulness — joyful texture
+  - round_number: 6
+    goal: 'Set the scene vividly: someone is washing and polishing the bike with a soft cloth until it shines like new — every
+      spoke sparkles — then ask what the bike says or feels about being cleaned up.'
+    scenario: Adventure number six! Someone fills a bucket with soapy water and carefully washes the whole bike. Then they polish
+      it with a soft cloth until every spoke sparkles!
+    constraint: T1 max 3 sentences, use care and cleaning sensory details, then ask what the bike would say.
+    emotion_tag: happy
+    acceptable_themes: [clean, shiny, new, sparkle, pretty, thank you, fresh, loved]
+    escalation_note: being cared for — appreciation and self-worth
+  - round_number: 7
+    goal: 'Set the scene vividly: racing alongside a friend on another bike — pedals spinning, wind in your face, both bikes going
+      fast side by side — then ask what the bike says or feels.'
+    scenario: Adventure number seven! Another kid on a bike pulls up beside you. Now you are racing side by side! Pedals spinning,
+      wind in your face!
+    constraint: T1 max 3 sentences, use competitive and social energy, then ask what the bike would say.
+    emotion_tag: excited
+    acceptable_themes: [fast, race, win, friend, go, faster, together, fun]
+    escalation_note: social competition and friendship — high energy
+  - round_number: 8
+    goal: 'Set the scene vividly: rolling over a big bumpy puddle — SPLASH — muddy water flies everywhere and the wheels get all
+      dirty — then ask what the bike says or feels.'
+    scenario: Adventure number eight! You roll right through a big bumpy puddle — SPLASH! Muddy water flies everywhere and the
+      wheels are covered in mud!
+    constraint: T1 max 3 sentences, use splash and mess sensory details, then ask what the bike would say.
+    emotion_tag: surprised
+    acceptable_themes: [splash, muddy, messy, yuck, fun, dirty, wet, silly]
+    escalation_note: messy surprise — mixed feelings about fun and mess
   celebrate:
     goal: Award the child the title 'Bike Whisperer' with fanfare — recap the specific emotions explored (excitement downhill,
       ouchie with a flat, curiosity on a new path). Make the child feel like a champion.

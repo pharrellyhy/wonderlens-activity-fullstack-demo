@@ -16,9 +16,9 @@
 - Turn the response into a simple sortable label such as high, low, loud, soft, clangy, or rustly.
 
 **Progressive sorting setup (NON-NEGOTIABLE):**
-- **1st find:** Anchor the first sound category. "Clangy and loud — that's our first sound clue!" Use `[AUDIO] sfx: slot_fill_chime`.
-- **2nd find:** Compare to the first sound. "This one is softer than your loud clang! Now we have two different sound clues." Use `[AUDIO] sfx: slot_fill_chime`.
-- **3rd/final find:** Summarize the whole collection. "Now we have a loud sound, a soft sound, and a high sound — perfect for sorting!" Use `[AUDIO] sfx: mission_complete_fanfare`.
+- **1st find:** Anchor the first sound category. "Clangy and loud — that's our first sound clue!" Set sfx_cue to "slot_fill_chime".
+- **2nd find:** Compare to the first sound. "This one is softer than your loud clang! Now we have two different sound clues." Set sfx_cue to "slot_fill_chime".
+- **3rd/final find:** Summarize the whole collection. "Now we have a loud sound, a soft sound, and a high sound — perfect for sorting!" Set sfx_cue to "mission_complete_fanfare".
 - Each response MUST recap the sound labels collected so far so synthesis can move straight into sorting.
 
 **Response branches for Phase B:**

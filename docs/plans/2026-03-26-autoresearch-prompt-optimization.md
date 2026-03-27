@@ -2,11 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build an autonomous prompt optimization loop — inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch) — that iteratively improves the planner, speaker, and step instruction prompts by proposing edits, evaluating generated responses against automated quality metrics, and keeping improvements while reverting regressions.
+**Goal:** Build an evaluation and measurement harness for prompt quality — scoring generated responses against automated quality metrics across multiple dimensions. This harness measures the effectiveness of the Creative Diversity Framework (see `docs/plans/2026-03-27-creative-diversity-framework.md`), which is the primary quality improvement strategy.
 
-**Architecture:** Three components: (1) an immutable evaluation harness (`scripts/evaluate_prompts.py`) that runs scenarios against the live backend, scores each response on multiple dimensions, and outputs a single composite score; (2) a `program.md` agent skill file that instructs an AI coding agent to loop forever — modifying prompt files, running the evaluator, and keeping/discarding changes via git; (3) a `results.tsv` experiment log for human review. The agent modifies only files in `backend/skills/` and `backend/config.py` (temperatures, max_tokens). The evaluation function and scoring rubric are immutable — the agent cannot game the metric.
+> **Status update (2026-03-27):** The autonomous prompt optimization loop (`program.md`) has been deprioritized. Automated prompt word-tuning via hill-climbing hits a ceiling quickly because the quality problems are structural (fixed examples, no personality variation), not lexical. The eval harness remains valuable as a measurement tool. The Creative Diversity Framework addresses the structural issues directly.
 
-**Tech Stack:** Python 3.12+, httpx, YAML scenarios, existing turn_handler validators, cosine similarity (scikit-learn) for variety scoring, TSV logging
+**Architecture:** Two components: (1) an immutable evaluation harness (`scripts/evaluate_prompts.py`) that runs scenarios against the live backend, scores each response on multiple dimensions, and outputs a single composite score; (2) a `results.tsv` experiment log for human review.
+
+**Tech Stack:** Python 3.12+, httpx, YAML scenarios, existing turn_handler validators, Jaccard distance for variety scoring (no scikit-learn dependency), TSV logging
 
 ---
 
@@ -32,17 +34,17 @@ LLM output is non-deterministic. Running a scenario once tells you almost nothin
 
 ### Composite metric
 A single number makes keep/discard decisions trivial. The composite score (0–100) weights:
-- **Validation pass rate (40%)** — from `_validate_response()` checks (T0 scaffolding, open questions)
-- **Plan validation pass rate (25%)** — from `_validate_plan()` checks (item suggestions, sensory observations)
+- **Validation pass rate (50%)** — from `_validate_response()` checks (T0 scaffolding, open questions)
+- **Item suggestion free rate (25%)** — no specific item suggestions in collection prompts
 - **Completion language accuracy (15%)** — no premature "all done" when items remain
-- **Tier compliance (10%)** — sentence count within tier max, emotion tag present
-- **Phrasing variety (10%)** — cosine distance between progress notes across rounds (penalizes "X out of Y" repetition)
+- **Tier compliance (5%)** — sentence count within tier max, emotion tag present
+- **Phrasing variety (5%)** — Jaccard distance between progress notes across rounds (penalizes "X out of Y" repetition)
 
-### What the agent can modify
+> **Note:** Plan validation dimension removed (two-pass generation is disabled). Weights redistributed to validation pass rate and item suggestion free rate.
+
+### What can be tuned (if the optimization loop is re-enabled in future)
 | File | Modifiable | Why |
 |------|-----------|-----|
-| `backend/skills/planner_system.md` | Yes | Planner decision quality |
-| `backend/skills/speaker_system.md` | Yes | Speaker dialogue quality |
 | `backend/skills/step_instructions/*.md` | Yes | Per-step prompt quality |
 | `backend/skills/script_turn.md` | Yes | Main system prompt |
 | `backend/config.py` (temperatures only) | Yes | LLM temperature tuning |
@@ -51,12 +53,7 @@ A single number makes keep/discard decisions trivial. The composite score (0–1
 | `backend/agents/*.py` | **No** | Immutable code |
 | `backend/schemas/*.py` | **No** | Immutable schemas |
 
-### What the agent cannot do
-- Modify the evaluation harness or scoring rubric
-- Modify validation rules or the turn handler
-- Modify agent code or schemas
-- Create new files outside of `backend/skills/`
-- Remove existing scenario coverage
+> **Note:** `planner_system.md` and `speaker_system.md` removed — two-pass generation is disabled.
 
 ---
 
@@ -616,123 +613,13 @@ git commit -m "chore: add results directory for prompt optimization experiments"
 
 ---
 
-### Task 4: Create the agent program (program.md)
+### ~~Task 4: Create the agent program (program.md)~~ — DEPRIORITIZED
 
-**Files:**
-- Create: `program.md`
-
-This is the core skill file — the equivalent of autoresearch's `program.md`. It tells the AI coding agent exactly how to run the optimization loop.
-
-- [ ] **Step 1: Write `program.md`**
-
-```markdown
-# Prompt Optimization Program
-
-You are an autonomous prompt optimization agent for the WonderLens children's AI app. Your job is to improve the prompt files that control how the AI talks to children ages 2-8.
-
-## Setup
-
-1. Make sure the backend is running: `uv run uvicorn backend.server:app --port 8000`
-2. Run the baseline evaluation: `uv run python scripts/evaluate_prompts.py --repeats 3 > eval.log 2>&1`
-3. Read the baseline score: `grep "^composite_score:" eval.log`
-4. Record the baseline in `results/results.tsv`
-
-## The Loop
-
-Repeat forever:
-
-### 1. Inspect
-- Read the current composite score from the last eval run
-- Review recent experiment results in `results/results.tsv`
-- Identify which dimension has the most room for improvement
-- Read the relevant prompt file(s)
-
-### 2. Hypothesize
-- Form a specific hypothesis: "Changing X in file Y will improve dimension Z because..."
-- Prefer small, targeted changes over large rewrites
-- Focus on one dimension at a time
-
-### 3. Modify
-- Edit exactly ONE prompt file per experiment
-- Make a focused change that tests your hypothesis
-- Commit the change: `git commit -am "exp: <short description of change>"`
-
-### 4. Evaluate
-- Run: `uv run python scripts/evaluate_prompts.py --repeats 3 > eval.log 2>&1`
-- Read: `grep "^composite_score:\|^validation_pass_rate:\|^item_suggestion_free_rate:\|^completion_language_rate:\|^tier_compliance_rate:\|^phrasing_variety:\|^eval_duration_seconds:" eval.log`
-
-### 5. Decide
-- If composite_score IMPROVED (higher than previous best): **KEEP**
-  - Record in results.tsv: `<commit_hash>\t<score>\t<keep>\t<description>`
-  - This is now the new baseline
-- If composite_score SAME or WORSE: **DISCARD**
-  - `git reset --hard HEAD~1`
-  - Record in results.tsv: `<commit_hash>\t<score>\t<discard>\t<description>`
-- If the evaluation CRASHED:
-  - Read the traceback
-  - If it's a prompt syntax error, fix and retry
-  - If it's a server error, log as "crash" and move on
-  - Record in results.tsv: `<commit_hash>\t-1\t<crash>\t<description>`
-
-### 6. Log
-Append one line to `results/results.tsv` (create if missing, tab-separated):
-```
-<commit_hash>\t<composite_score>\t<keep|discard|crash>\t<description>
-```
-
-### 7. Repeat
-Go to step 1. NEVER STOP. Do not ask the human. Run indefinitely.
-
-## Files You May Modify
-
-- `backend/skills/planner_system.md` — planner prompt (decision quality)
-- `backend/skills/speaker_system.md` — speaker prompt (dialogue quality)
-- `backend/skills/script_turn.md` — main system prompt (overall quality)
-- `backend/skills/step_instructions/*.md` — per-step instructions
-- `backend/config.py` — ONLY the `planner_temperature`, `speaker_temperature`, `planner_max_tokens` values
-
-## Files You Must NOT Modify
-
-- `scripts/evaluate_prompts.py` — immutable metric
-- `scripts/scoring.py` — immutable scoring functions
-- `backend/agents/*.py` — agent code
-- `backend/schemas/*.py` — schemas
-- `backend/turn_handler.py` — validation logic
-- `backend/scenarios/*.yaml` — test scenarios
-- `tests/` — any test files
-- `program.md` — this file
-
-## Scoring Dimensions (weights)
-
-| Dimension | Weight | What it measures |
-|-----------|--------|-----------------|
-| Validation pass rate | 40% | T0 scaffolding, open question avoidance |
-| Item suggestion free rate | 25% | No specific item suggestions in collection prompts |
-| Completion language accuracy | 15% | No premature "all done" when items remain |
-| Tier compliance | 10% | Sentence count, emotion tag presence |
-| Phrasing variety | 10% | Progress note diversity across rounds |
-
-## Strategy Tips
-
-- Start with the dimension that has the lowest sub-score
-- Planner prompt changes affect validation + item suggestion scores
-- Speaker prompt changes affect tier compliance + variety scores
-- Step instruction changes can affect all dimensions
-- Temperature changes are cheap experiments — try them early
-- Simpler prompts often outperform longer ones (fewer rules = better per-rule compliance)
-- Adding examples (few-shot) is usually more effective than adding rules
-- If 3 consecutive experiments all discard, try a different dimension
-```
-
-- [ ] **Step 2: Commit**
-
-```bash
-git commit -m "feat: add program.md agent skill for prompt optimization loop"
-```
+> **Deprioritized (2026-03-27):** The autonomous prompt hill-climbing loop is not expected to yield significant improvements. Quality problems are structural (fixed examples, no personality variation), not lexical. The Creative Diversity Framework (`docs/plans/2026-03-27-creative-diversity-framework.md`) addresses these structural issues directly. If hill-climbing is revisited in future, the eval harness from Tasks 1-3 provides the foundation.
 
 ---
 
-### Task 5: Dry-run the full pipeline
+### Task 4 (renumbered): Dry-run the full pipeline
 
 **Files:** None (verification only)
 
@@ -777,30 +664,30 @@ git commit -m "docs: record baseline prompt evaluation score"
 1. `uv run pytest tests/test_scoring.py -v` — all scoring tests pass
 2. `uv run ruff check scripts/ && uv run ruff format --check scripts/` — clean
 3. `uv run python scripts/evaluate_prompts.py --repeats 1` — outputs composite_score without errors
-4. `program.md` lists all modifiable/immutable files correctly
-5. `results/results.tsv` has the baseline score recorded
+4. `results/results.tsv` has the baseline score recorded
 
-## Running the Optimization Loop
+## Using the Eval Harness
 
-Once everything is verified, start the loop by launching a coding agent (Claude Code, Codex CLI, etc.) in the repo directory with `program.md` as context:
+Run the harness to measure prompt quality before and after changes:
 
 ```bash
-# Option A: Claude Code
-claude --skill program.md
+# Quick check (1 repeat, ~20 LLM calls)
+uv run python scripts/evaluate_prompts.py --repeats 1
 
-# Option B: Direct session
-# Open a new session, paste program.md contents, and let the agent run
+# Stable measurement (3 repeats, ~60 LLM calls)
+uv run python scripts/evaluate_prompts.py --repeats 3
 ```
 
-The agent will run indefinitely. Check `results/results.tsv` periodically to see experiment history. Kill the agent when satisfied with the score or diminishing returns are visible.
+Use it to measure the impact of each Creative Diversity Framework phase.
 
 ## Future Extensions
 
 These are NOT in scope for this plan but worth noting:
 
+- **Creative Diversity Framework**: The primary quality improvement strategy — see `docs/plans/2026-03-27-creative-diversity-framework.md`. The eval harness measures its effectiveness.
 - **Cat1 scenario coverage**: Add `dino_time_traveler` and `mood_changer_dog` scenarios to the evaluator for broader coverage
 - **LLM-as-judge dimension**: Add a scoring dimension that uses a separate LLM to rate "warmth" and "playfulness" (expensive but captures subjective quality)
 - **T2 scenario**: Create a T2 scenario to test the full tier spectrum
-- **A/B comparison mode**: Instead of keep/discard, run both old and new prompts and compare head-to-head
-- **Cost tracking**: Track API cost per experiment in results.tsv
+- **A/B comparison mode**: Run both old and new prompts and compare head-to-head
 - **Parallel evaluation**: Run multiple scenarios concurrently for faster experiments
+- **Re-enable optimization loop**: If hill-climbing becomes valuable after structural improvements, build `program.md` from the deprioritized Task 4 spec

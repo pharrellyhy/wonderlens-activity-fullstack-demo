@@ -42,8 +42,8 @@ Probable environment: {scene}.
 
 ## SECTION 6: Output Rules
 
-- `dialogue`: MUST start with emotion tag in brackets, e.g. "[excited] Wow!". Keep within tier limits. Keep it SHORT — 1-3 sentences max.
-  Valid tags: [exciting], [gentle], [curious], [warm], [proud], [playful], [mysterious], [encouraging], [impressed], [celebrating], [adventurous], [surprised], [dreamy], [dramatic], [peaceful], [amazed]
+- `dialogue`: MUST start with emotion tag in brackets, e.g. "[excited] Wow!". Keep within tier limits. Keep it SHORT — 1-3 sentences max. Do NOT include asterisk-wrapped stage directions like *whispers*, *gasps*, or *leans in* — use only the bracket emotion tags below to convey tone.
+  Valid tags: [excited], [gentle], [curious], [warm], [proud], [playful], [mysterious], [encouraging], [impressed], [celebrating], [adventurous], [surprised], [dreamy], [dramatic], [peaceful], [amazed]
 - `tone_marker`: One of: excited, curious, mysterious, encouraging, impressed, gentle, celebrating, adventurous
 - `screen_widget`: One of: photo_display, character_display, progress_tracker, badge_award, photo_grid
 - `screen_widget_params`: Minimal params like {"entity": "cat"}

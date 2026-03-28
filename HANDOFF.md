@@ -4,6 +4,66 @@ Last updated: 2026-03-27
 
 ---
 
+## Review Follow-Up: Streaming Opus Cleanup + Coverage Alignment
+
+**Problem**: Reviewing the in-progress `feat/opus-tts` worktree against `docs/plans/2026-03-27-streaming-ogg-opus.md` surfaced three concrete issues. First, the new incremental OGG encoder in `backend/tts.py` was repeatedly `np.concatenate()`-ing growing PCM arrays and duplicated its OGG stream setup between batch and streaming paths, which was heavier and harder to follow than necessary. Second, the frontend threaded `pcmSize` through the `/api/turn-speak` path even though that binary protocol never actually provides `pcm_size` in its JSON header, so the extra state was dead and misleading. Third, local API/TTS coverage had drifted: `tests/test_api.py` still expected the old Cat 5 `photo_display` detail frame, and there was no endpoint-level test for the new streaming `GET /api/tts` contract.
+
+**Solution**: Kept the new OGG/Opus architecture, but simplified the touched paths and tightened local coverage around the real contract. The backend now uses a small shared OGG stream factory and a byte-buffered streaming encoder instead of repeated numpy concatenation. The frontend no longer carries the unused `pcmSize` field through the `turn-speak` playback path, and stopping TTS now also clears the audio indicator state. I also updated the stale Cat 5 API assertion to the current `explorer_map` behavior and added focused coverage for the streaming `GET /api/tts` endpoint.
+
+**Edits**:
+- `backend/tts.py` — added a shared `_open_ogg_opus_output()` helper and replaced the streaming encoder’s repeated `np.concatenate()` path with byte-buffer accumulation and fixed-size frame extraction
+- `backend/server.py` — updated the `/api/turn-speak` docstring/comments to match the current OGG/Opus binary protocol wording
+- `frontend/src/utils/api.js` — removed dead `pcmSize` return data from `sendTurnSpeak()` and deleted the unused `synthesizeSpeechStream()` helper
+- `frontend/src/hooks/useConversation.js` — stopped storing nonexistent `pcmSize` metadata with pending `turn-speak` audio
+- `frontend/src/hooks/useSessionOrchestration.js` — simplified `speakFromStream()` calls to pass only the audio stream
+- `frontend/src/hooks/useTTS.js` — cleared `audioInfo` on stop and removed the unused `pcmSize` parameter from the streamed-turn playback path
+- `tests/test_api.py` — updated the Cat 5 detail-frame expectation to the current `explorer_map` contract and added a focused test for `GET /api/tts` streaming OGG output
+- `tests/test_tts_encoding.py` — moved imports to the module top so the new encoder tests comply with repo import rules
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- The public TTS endpoint split itself — `POST /api/tts` still returns a complete encoded file with `X-PCM-Size`, and `GET /api/tts` still serves the streaming Chrome-first playback path
+- Turn resolution and Script Agent logic — unchanged in this review follow-up
+- Frontend conversation/session flow outside the TTS metadata cleanup — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_tts_encoding.py tests/test_api.py -q` — PASS (`35 passed`)
+- `uv run ruff check backend/server.py backend/tts.py tests/test_api.py tests/test_tts_encoding.py` — PASS
+- `uv run ruff format --check backend/server.py backend/tts.py tests/test_api.py tests/test_tts_encoding.py` — PASS
+- `cd frontend && npx eslint src/App.jsx src/hooks/useConversation.js src/hooks/useSessionOrchestration.js src/hooks/useTTS.js src/utils/api.js` — PASS
+
+---
+
+## Switch TTS Output from PCM/WAV to OGG/Opus via PyAV
+
+**Problem**: The TTS pipeline streamed raw PCM 16-bit mono at 24kHz (~384 kbps) to the frontend, which manually wrapped it in WAV headers. This was unnecessarily large for speech audio and added frontend complexity.
+
+**Solution**: Added OGG/Opus encoding on the backend using PyAV. Collected PCM from Gemini TTS is batch-encoded to OGG/Opus at 32kbps (~12x compression). The `/api/tts` endpoint now returns a complete `audio/ogg` response (or `audio/wav` on encoding fallback) instead of streaming raw PCM. The `/api/turn-speak` endpoint yields OGG/Opus bytes in the binary protocol. The frontend was simplified — removed `pcmToWavBlob()`/`writeString()` WAV construction, removed `sampleRate` threading, and browsers natively decode OGG/Opus. Design plan in `docs/plans/2026-03-27-streaming-ogg-opus.md`.
+
+**Edits**:
+- `pyproject.toml` — added `av>=13.0.0` and `numpy>=1.26.0` dependencies
+- `backend/tts.py` — added `import av, numpy`; added `OPUS_BITRATE_BPS` constant; added `_pcm_to_ogg_opus()` encoder and `synthesize_speech_ogg_async()` that collects PCM chunks and encodes to OGG/Opus with WAV fallback
+- `backend/server.py` — `/api/tts` now returns `Response` with `audio/ogg` content type (or `audio/wav` fallback) via `synthesize_speech_ogg_async()`; `/api/turn-speak` yields OGG/Opus bytes; removed `X-Sample-Rate` header and `SAMPLE_RATE` import; removed `X-Sample-Rate` from CORS exposed headers
+- `frontend/src/hooks/useTTS.js` — deleted `pcmToWavBlob()`/`writeString()`, renamed `playWavBlob` → `playAudioBlob`, simplified `playFromStream` to collect OGG chunks directly, simplified `fetchAndPlayAudio` to use server `Content-Type`, removed `sampleRate` parameter from `speakFromStream`
+- `frontend/src/utils/api.js` — removed `sampleRate` from `sendTurnSpeak()` and `synthesizeSpeechStream()` returns; updated JSDoc
+- `frontend/src/hooks/useConversation.js` — dropped `sampleRate` from destructuring and `pendingAudioRef`
+- `frontend/src/hooks/useSessionOrchestration.js` — dropped `sampleRate` from `speakFromStream` call
+- `tests/test_api.py` — updated TTS endpoint tests to patch `synthesize_speech_ogg_async`, assert `audio/ogg` content type, no `x-sample-rate` header; updated turn-speak mocks from async generators to async functions returning bytes
+- `tests/test_tts_encoding.py` — **NEW**: 4 encoder unit tests (OggS magic, compression ratio, empty input, longer audio)
+
+**NOT Changed**:
+- `backend/tts.py` existing functions (`synthesize_speech_stream_async`, `synthesize_speech`, `_pcm_to_wav`) — preserved as internal/fallback
+- Turn resolution logic, state machine, Script Agent — unchanged
+- Frontend conversation panel, silence timer, SFX — unchanged
+
+**Verification**:
+- `uv run ruff check .` — PASS
+- `uv run ruff format --check .` — PASS
+- `uv run pytest tests/test_tts_encoding.py tests/test_api.py -v` — 31 passed, 1 pre-existing failure
+- `uv run pytest tests/ -m "not e2e"` — 305 passed, 9 pre-existing failures, 0 new failures
+
+---
+
 ## Review Follow-Up: Keep TurnPlan Strict While Tolerating Planner Omissions
 
 **Problem**: Reviewing the latest two-pass commits (`afdc03c`, `3eed090`, `b86a16b`, `b7c1d97`, `e156bb3`) plus the in-progress follow-up diff showed one concrete schema/testing mismatch. The new `TurnPlan` defaults for `child_said` and `child_emotion` were intentional for planner resilience, but the schema still accepted arbitrary extra keys. That let junk planner JSON like `{"not_a_valid_plan": true}` validate successfully, so `Planner.plan_turn()` would treat malformed output as a valid plan. The local planner/schema tests had also drifted: they still asserted the old planner prompt wording and the old "child fields are required" behavior.
@@ -373,55 +433,5 @@ Last updated: 2026-03-27
 - Start Cat1 voice_acting (dog): verify demo phrase is short (2-4 words), round questions offer model + binary choice
 - Start Cat1 storytelling_chain (cat): verify story continuation offers 2 choices, not open "what happens next?"
 - Start Cat5 naming_story (dandelion): verify synthesis has a brief transition before launching into the story
-
----
-
-## Fix Follow-Up: Clarify When Demo Steps Happen In Game Detail View
-
-**Problem**: The education feedback pass made `steps_summary` always visible in `frontend/src/components/GameDetailView.jsx`, which exposed a wording mismatch in the pre-start UI. For games whose first step says things like "Learn the voice acting game with a quick demo round" or "See a quick example of finding something fluffy and giving it a name," the screen showed that promise but did not explain that the demo/example happens only after pressing Start. That made the "How It Works" section read like the demo should already be visible on the detail screen.
-
-**Solution**: Kept the always-visible `steps_summary` list, but added a small inline clarification when the first step mentions a demo or example. The detail view now tells the user "This happens right after you press Start." so the pre-start summary matches the actual flow without changing the game content itself.
-
-**Edits**:
-- `frontend/src/components/GameDetailView.jsx` — detects when the first `steps_summary` item mentions a demo/example and shows a short note under the step list clarifying that it happens after Start
-- local `tests/test_education_feedback_contracts.py` — added regression coverage for the new GameDetailView clarification
-- `HANDOFF.md` — added this follow-up entry
-
-**NOT Changed**:
-- Game frontmatter `steps_summary` text — unchanged; the fix is UI clarification rather than content rewrite
-- Backend entity summary plumbing (`entity_registry.py`, `game_parser.py`) — unchanged
-- Conversation/session flow and prompt behavior after session start — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`81 passed`)
-- `uv run ruff check tests/test_education_feedback_contracts.py` — PASS
-- `uv run ruff format --check tests/test_education_feedback_contracts.py` — PASS
-- `cd frontend && npx eslint src/components/GameDetailView.jsx` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Fix Follow-Up: TTS Toggle No Longer Perturbs Silence Timer
-
-**Problem**: The previous TTS toggle follow-up made unmuting replay the current AI line by rewinding `lastSpokenIndexRef` inside `frontend/src/hooks/useSessionOrchestration.js`. That made the mute button feel more responsive, but it also introduced a concrete UX regression: if the current turn was already muted and the silence timer had started, turning TTS back on replayed the same AI line and cleared the timer for that turn. The result was that the silence timer appeared to start and stop based on the mute button, which is confusing during child input time.
-
-**Solution**: Simplified the toggle contract so it no longer changes the current turn state. Muting still stops active playback immediately, but unmuting now applies only to subsequent AI lines instead of replaying the current one. That keeps the silence timer tied to turn flow rather than to the footer toggle state.
-
-**Edits**:
-- `frontend/src/hooks/useSessionOrchestration.js` — removed the current-message replay rewind from `toggleTts()`; mute still calls `stopTTS()` immediately
-- local `tests/test_education_feedback_contracts.py` — replaced the previous unmute-replay assertion with a regression that ensures the hook does not rewind the current AI message on unmute
-- `HANDOFF.md` — added this follow-up entry
-
-**NOT Changed**:
-- `frontend/src/App.jsx` mute button rendering and labels — unchanged
-- `frontend/src/hooks/useTTS.js` playback transport and unlock logic — unchanged
-- Silence-timer durations and backend turn orchestration — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`80 passed`)
-- `uv run ruff check tests/test_education_feedback_contracts.py` — PASS
-- `uv run ruff format --check tests/test_education_feedback_contracts.py` — PASS
-- `cd frontend && npx eslint src/App.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js` — PASS
-- `cd frontend && npm run build` — PASS
 
 ---

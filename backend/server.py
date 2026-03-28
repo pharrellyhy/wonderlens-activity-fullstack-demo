@@ -44,7 +44,7 @@ try:
     from .schemas.turn_response import TurnResponse
     from .state_machine import get_screen_frame
     from .stt import transcribe_audio
-    from .tts import SAMPLE_RATE, synthesize_speech_stream_async
+    from .tts import synthesize_speech_ogg_async, synthesize_speech_ogg_stream_async
     from .turn_handler import (
         TurnInput,
         _generate_with_retry,
@@ -76,7 +76,7 @@ except ImportError:
     from schemas.turn_response import TurnResponse
     from state_machine import get_screen_frame
     from stt import transcribe_audio
-    from tts import SAMPLE_RATE, synthesize_speech_stream_async
+    from tts import synthesize_speech_ogg_async, synthesize_speech_ogg_stream_async
     from turn_handler import (
         TurnInput,
         _generate_with_retry,
@@ -122,7 +122,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Sample-Rate"],
+    expose_headers=["X-PCM-Size"],
 )
 
 
@@ -483,10 +483,10 @@ async def turn_and_speak(req: TurnRequest) -> Response:
     """Combined turn + TTS endpoint.
 
     Streams Script Agent output, starts TTS as soon as dialogue is extracted,
-    and returns a binary response: [4-byte JSON length][JSON][PCM audio chunks].
+    and returns a binary response: [4-byte JSON length][JSON][OGG/Opus audio].
 
-    This eliminates the round-trip between /api/turn and /api/tts, and allows
-    TTS generation to overlap with Script Agent completion.
+    This eliminates the round-trip between /api/turn and /api/tts, while still
+    allowing TTS generation to overlap with Script Agent completion.
     """
     start_time = time.perf_counter()
     settings = get_settings()
@@ -549,14 +549,13 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         yield struct.pack(">I", len(response_json))
         yield response_json
 
-        # Stream TTS audio
-        async for chunk in synthesize_speech_stream_async(result.turn_response.dialogue, state.tier):
-            yield chunk
+        # Stream OGG/Opus audio pages as they are encoded
+        async for ogg_chunk in synthesize_speech_ogg_stream_async(result.turn_response.dialogue, state.tier):
+            yield ogg_chunk
 
     return StreamingResponse(
         _stream(),
         media_type="application/octet-stream",
-        headers={"X-Sample-Rate": str(SAMPLE_RATE)},
     )
 
 
@@ -572,10 +571,20 @@ async def speech_to_text(audio: UploadFile = File(...)) -> JSONResponse:
 
 @app.post("/api/tts")
 async def text_to_speech(req: TTSRequest) -> Response:
+    result = await synthesize_speech_ogg_async(req.text, req.tier)
+    if result is None:
+        return Response(status_code=204)
+    audio_bytes, pcm_size = result
+    content_type = "audio/ogg" if audio_bytes[:4] == b"OggS" else "audio/wav"
+    return Response(content=audio_bytes, media_type=content_type, headers={"X-PCM-Size": str(pcm_size)})
+
+
+@app.get("/api/tts")
+async def text_to_speech_stream(text: str, tier: str = "T0") -> Response:
+    """Streaming OGG/Opus TTS — set as <audio src> for progressive playback in Chrome."""
     return StreamingResponse(
-        synthesize_speech_stream_async(req.text, req.tier),
-        media_type="audio/pcm",
-        headers={"X-Sample-Rate": str(24000)},
+        synthesize_speech_ogg_stream_async(text, tier),
+        media_type="audio/ogg",
     )
 
 

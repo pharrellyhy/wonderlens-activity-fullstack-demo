@@ -360,7 +360,10 @@ class TestTurnByTurnEndpoint:
         assert data["session_state"]["current_step"] == "STEP_3_ROUND_1"
         assert data["session_state"]["current_round"] == 1
         assert data["turn"]["response_type"] == "round"
-        assert data["turn"]["dialogue"] == "[warm] I think the dog feels sleepy in warm sunshine! Would it feel sleepy or playful?"
+        assert (
+            data["turn"]["dialogue"]
+            == "[warm] I think the dog feels sleepy in warm sunshine! Would it feel sleepy or playful?"
+        )
         assert data["session_state"]["invitation_decline_count"] == 0
 
     def test_turn_stays_on_step_two_after_first_decline(self, client: TestClient) -> None:
@@ -457,7 +460,8 @@ class TestTurnByTurnEndpoint:
         assert data["session_state"]["collection_phase"] == "detail"
         assert data["turn"]["auto_advance"] is False
         assert data["session_state"]["collection_criterion"] == "Find things with spots or dots"
-        assert data["turn"]["screen_frame"]["widget"] == "photo_display"
+        assert data["turn"]["screen_frame"]["widget"] == "explorer_map"
+        assert data["turn"]["screen_frame"]["widget_params"]["game_phase"] == "collect_detail"
         assert data["session_state"]["current_round_items"] == [
             {"id": "spotted_mushroom", "label": "Spotted mushroom", "image": ""},
             {"id": "plain_bark", "label": "Plain bark", "image": ""},
@@ -735,12 +739,12 @@ class TestTurnSpeakEndpoint:
 
         spoken_texts: list[str] = []
 
-        async def _fake_tts_stream(text: str, tier: str):
+        async def _fake_tts_ogg_stream(text, tier, max_retries=2):
             spoken_texts.append(text)
-            yield b"\x00\x01"
+            yield b"OggS\x00\x01"
 
         with patch("server.ScriptAgent.generate_turn", new=AsyncMock(side_effect=[reinvitation_turn, exit_turn])):
-            with patch("server.synthesize_speech_stream_async", new=_fake_tts_stream):
+            with patch("server.synthesize_speech_ogg_stream_async", new=_fake_tts_ogg_stream):
                 response = client.post(
                     "/api/turn-speak",
                     json={"session_id": "test-sess", "text": "still no", "is_silent": False},
@@ -770,11 +774,11 @@ class TestTurnSpeakEndpoint:
             sfx_cue="wonder_chime",
         )
 
-        async def _fake_tts_stream(text: str, tier: str):
-            yield b"\x00\x01"
+        async def _fake_tts_ogg_stream(text, tier, max_retries=2):
+            yield b"OggS\x00\x01"
 
         with patch("server.ScriptAgent.generate_turn_streaming", new=AsyncMock(return_value=final_turn)):
-            with patch("server.synthesize_speech_stream_async", new=_fake_tts_stream):
+            with patch("server.synthesize_speech_ogg_stream_async", new=_fake_tts_ogg_stream):
                 response = client.post(
                     "/api/turn-speak",
                     json={"session_id": "test-sess", "text": "", "is_silent": False, "photo_id": "spotted_mushroom"},
@@ -806,13 +810,13 @@ class TestTurnSpeakEndpoint:
         )
         spoken_texts: list[str] = []
 
-        async def _fake_tts_stream(text: str, tier: str):
+        async def _fake_tts_ogg_stream(text, tier, max_retries=2):
             spoken_texts.append(text)
-            yield b"\x00\x01"
+            yield b"OggS\x00\x01"
 
         with patch("server.ScriptAgent.generate_turn_streaming", new=_fail_streaming):
             with patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=final_turn)):
-                with patch("server.synthesize_speech_stream_async", new=_fake_tts_stream):
+                with patch("server.synthesize_speech_ogg_stream_async", new=_fake_tts_ogg_stream):
                     response = client.post(
                         "/api/turn-speak",
                         json={"session_id": "test-sess", "text": "ready", "is_silent": False},
@@ -828,28 +832,44 @@ class TestTurnSpeakEndpoint:
 
 
 class TestTTSEndpoint:
-    @patch("server.synthesize_speech_stream_async")
+    @patch("server.synthesize_speech_ogg_async")
     def test_tts_success(self, mock_tts: AsyncMock, client: TestClient) -> None:
-        async def _fake_stream():
-            yield b"\x01\x02\x03\x04"
-
-        mock_tts.return_value = _fake_stream()
+        mock_tts.return_value = (b"OggS" + b"\x00" * 20, 48000)
         resp = client.post("/api/tts", json={"text": "Hello world", "tier": "T0"})
         assert resp.status_code == 200
-        assert resp.headers["content-type"].startswith("audio/pcm")
-        assert resp.headers["x-sample-rate"] == "24000"
-        assert resp.content == b"\x01\x02\x03\x04"
+        assert resp.headers["content-type"].startswith("audio/ogg")
+        assert resp.headers["x-pcm-size"] == "48000"
+        assert "x-sample-rate" not in resp.headers
+        assert resp.content == b"OggS" + b"\x00" * 20
 
-    @patch("server.synthesize_speech_stream_async")
+    @patch("server.synthesize_speech_ogg_async")
+    def test_tts_wav_fallback(self, mock_tts: AsyncMock, client: TestClient) -> None:
+        mock_tts.return_value = (b"RIFF" + b"\x00" * 20, 48000)
+        resp = client.post("/api/tts", json={"text": "Hello world", "tier": "T0"})
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("audio/wav")
+
+    @patch("server.synthesize_speech_ogg_async")
     def test_tts_empty_stream(self, mock_tts: AsyncMock, client: TestClient) -> None:
-        async def _empty_stream():
-            if False:
-                yield b""
-
-        mock_tts.return_value = _empty_stream()
+        mock_tts.return_value = None
         resp = client.post("/api/tts", json={"text": "Hello world", "tier": "T0"})
+        assert resp.status_code == 204
+
+    @patch("server.synthesize_speech_ogg_stream_async")
+    def test_tts_streaming_get_success(self, mock_tts_stream: AsyncMock, client: TestClient) -> None:
+        async def _fake_stream(text: str, tier: str, max_retries: int = 2):
+            assert text == "Hello world"
+            assert tier == "T1"
+            yield b"OggS"
+            yield b"\x00\x01"
+
+        mock_tts_stream.side_effect = _fake_stream
+
+        resp = client.get("/api/tts", params={"text": "Hello world", "tier": "T1"})
+
         assert resp.status_code == 200
-        assert resp.content == b""
+        assert resp.headers["content-type"].startswith("audio/ogg")
+        assert resp.content == b"OggS\x00\x01"
 
 
 class TestSTTEndpoint:

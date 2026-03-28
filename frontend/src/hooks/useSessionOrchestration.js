@@ -63,7 +63,7 @@ export default function useSessionOrchestration(tier) {
     }
   }, []);
 
-  const { isSpeaking, speak, speakFromStream, stop: stopTTS, unlock: unlockTTS } = useTTS(handleSpeakingDone);
+  const { isSpeaking, audioInfo, speak, speakFromStream, stop: stopTTS, unlock: unlockTTS } = useTTS(handleSpeakingDone);
 
   // Unlock audio on the first user gesture (click/touch/keydown).
   // Deep link sessions start via redirect (no user gesture), so the unlock
@@ -172,7 +172,7 @@ export default function useSessionOrchestration(tier) {
       const pendingAudio = pendingAudioRef.current;
       if (pendingAudio) {
         pendingAudioRef.current = null;
-        speakFromStream(pendingAudio.stream, pendingAudio.sampleRate);
+        speakFromStream(pendingAudio.stream);
       } else {
         // Fallback: use /api/tts (e.g., for the first turn from /api/start)
         speak(lastMsg.text, tier);
@@ -285,6 +285,7 @@ export default function useSessionOrchestration(tier) {
     isEnded,
     isInputDisabled,
     isSpeaking,
+    audioInfo,
     ttsEnabled,
     toggleTts,
     silenceTimerOn,

@@ -1,6 +1,115 @@
 # Session Handoff
 
-Last updated: 2026-03-27
+Last updated: 2026-03-28
+
+---
+
+## Review Follow-Up: Preserve Response Step in Turn Logs
+
+**Problem**: Reviewing the new comprehensive turn logging changes uncovered one correctness gap in `backend/server.py`. User turns were logged with the correct pre-resolution step, but AI turns were logged with `state.current_step` after `resolve_turn()`. For turns that auto-advance inside the handler, that misattributes the dialogue to the next step. The clearest case is synthesis completion: the generated story belongs to `STEP_4_SYNTHESIS`, but the logged AI row could show `STEP_5_CELEBRATE`.
+
+**Solution**: Kept the new DB schema and state snapshot format, but fixed the AI logging path to use the step attached to the most recently appended AI conversation turn. While touching that path, I also collapsed the duplicated `/api/turn` and `/api/turn-speak` logging blocks into `_log_user_turn()` and `_log_ai_turn()` helpers so both endpoints stay aligned. Added an API regression that proves the logged AI step stays on `STEP_4_SYNTHESIS` even when the persisted state snapshot has already advanced to `STEP_5_CELEBRATE`.
+
+**Edits**:
+- `backend/server.py` — extracted `_log_user_turn()`, `_log_ai_turn()`, and `_latest_ai_turn_step()`; AI turn logging now derives `step` from conversation history instead of post-resolution `state.current_step`
+- `tests/test_api.py` — added a synthesis auto-advance regression covering the AI log `step` vs `state_snapshot.current_step` distinction
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `backend/db.py` schema/migration work — reviewed and kept as-is
+- Hook-turn logging on all three start paths — kept as-is
+- `tests/test_deep_link.py` logging stub update — reviewed and kept as-is
+- Frontend code — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_api.py tests/test_deep_link.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py -q` — PASS (`150 passed, 1 skipped`)
+- `uv run ruff check backend/db.py backend/server.py backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_api.py tests/test_deep_link.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
+- `uv run ruff format --check backend/db.py backend/server.py backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_api.py tests/test_deep_link.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
+
+---
+
+## Comprehensive Turn Logging: User Turns + State Snapshots
+
+**Problem**: The `turns` table only logged AI responses (`role = "ai"`). User input (child speech, silence, photo picks) and internal state machine context (`current_step`, `collection_phase`, `synthesis_phase`, etc.) were not captured. This made post-session debugging extremely difficult — the synthesis gap analysis for session `a6425e09` required cross-referencing agent logs, timestamps, and code to reconstruct what the child did and what state transitions occurred. Design plan in `docs/plans/2026-03-28-comprehensive-turn-logging.md`.
+
+**Solution**: Extended the `turns` table with 3 new nullable columns (`photo_id`, `step`, `state_snapshot`), added user turn logging before `resolve_turn()` in both `/api/turn` and `/api/turn-speak`, enhanced existing AI turn logging with state context, and logged the first hook turn from all 3 start endpoints.
+
+**Edits**:
+- `backend/db.py` — added `photo_id TEXT`, `step TEXT`, `state_snapshot TEXT` columns to `turns` table schema; added `_MIGRATIONS` list with `ALTER TABLE` statements for existing DBs; updated `log_turn()` signature and INSERT to include new columns
+- `backend/server.py` — added `_build_state_snapshot()` helper; added `_log_hook_turn()` helper called from all 3 start endpoints; added user turn `log_turn()` call before `resolve_turn()` in `/api/turn` and `/api/turn-speak`; enhanced AI turn `log_turn()` calls with `step` and `state_snapshot`
+- `tests/test_api.py` — added `TestTurnLogging` class with 3 tests: user+AI turn pair with state snapshots, photo_id capture for collection turns, silence logging
+- `tests/test_deep_link.py` — added `fake_log_turn` mock to match the new hook turn logging in start-deep-link endpoint
+
+**NOT Changed**:
+- `backend/turn_handler.py` — no changes to turn resolution logic
+- `agent_logs` table — unchanged; agent-level timing/token logging is separate from turn logging
+- Frontend code — no changes
+- Existing turn data — migration uses `ALTER TABLE ADD COLUMN` with NULL defaults, preserving all existing rows
+
+**Verification**:
+- `uv run pytest tests/ backend/tests/ --ignore=backend/tests/test_ai_quality.py -q` — PASS (361 passed, 12 skipped)
+- `uv run ruff check backend/db.py backend/server.py tests/test_api.py tests/test_deep_link.py` — PASS
+- `uv run ruff format --check backend/db.py backend/server.py tests/test_api.py tests/test_deep_link.py` — PASS
+
+---
+
+## Review Follow-Up: Synthesis Regression Coverage and Summary Slice Guardrails
+
+**Problem**: Picking up the in-progress handoff entry for synthesis phase filtering, item suggestion validation, and synthesis silence handling showed that the main code changes were reasonable, but the regression coverage was still thin in three places. There was no direct test proving inactive synthesis phase sections are stripped from `cat5_step4_synthesis.md`, no unit coverage for the new silence shortcuts in synthesis `evaluate` and `improve`, and no assertion that Cat1 API summaries now trim `round_scenarios` down to `play_rounds`.
+
+**Solution**: Kept the reviewed backend behavior unchanged and hardened the changed test surface instead. Added direct regressions for phase filtering, both synthesis silence bypass paths, and the Cat1 summary slice. Also removed a now-unnecessary `type: ignore` in `script_agent.py` by using a concrete `re.Match[str]` annotation.
+
+**Edits**:
+- `tests/test_entity_registry.py` — added coverage that Cat1 summaries expose exactly `round_count` scenarios and that `STEP_4_SYNTHESIS` keeps only the active `GENERATE` phase instructions
+- `tests/test_turn_handler.py` — added regressions proving silence in synthesis `evaluate` and `improve` skips `_classify_story_response()` and goes straight to AI generation
+- `backend/agents/script_agent.py` — replaced the local regex callback annotation with `re.Match[str]` and removed the `type: ignore`
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `backend/turn_handler.py` synthesis silence logic — reviewed and kept as-is
+- `backend/entity_registry.py` Cat1 summary slicing — reviewed and kept as-is
+- `tests/test_state_machine.py` and `tests/test_visual_agent.py` — reviewed current assertion updates and left unchanged
+- Frontend code — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py -q` — PASS (`114 passed, 1 skipped`)
+- `uv run ruff check backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
+- `uv run ruff format --check backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
+
+---
+
+## Fix: Synthesis Phase Filtering, Item Suggestion Regex, and Pre-Existing Test Failures
+
+**Problem**: Session logging (session `a6425e09`, T2 fluffy_expedition_dandelion) showed three issues: (1) The story synthesis loop never produced an actual story — the LLM saw all three phase sections (INVITE, IMPROVE, GENERATE) in the prompt simultaneously and kept following the INVITE pattern even when `synthesis_phase` was set to `"generate"`, so turns 14-16 were all questions instead of a 12-14 sentence bedtime story. (2) The item suggestion regex (`_ITEM_SUGGESTION_RE`) only caught verbs like `find|look for|grab` but missed `touch|peek|try|feel`, allowing "Try touching a cozy blanket or a fuzzy rug nearby" to slip through validation. (3) Silence during synthesis was classified as "unrelated" via an LLM call, triggering 2 re-invites before the AI would generate — a poor UX for a silent child. Additionally, 11 pre-existing test failures from the merged `feat/opus-tts` and `feat/synthesis` branches needed fixing.
+
+**Solution**: Three code fixes plus test alignment:
+- Script agent now strips inactive phase sections from synthesis instructions before sending to the LLM, so only the active phase (INVITE, IMPROVE, or GENERATE) is visible
+- Expanded the item suggestion regex with more verbs (`touch|touching|try|feel|peek|check|reach for`) and nouns (`rug|carpet|towel|cloth|cushion|teddy|doll|stuffed`)
+- Silence during synthesis evaluate/improve phases now skips classification and goes straight to AI story generation
+- Fixed 11 pre-existing test failures: Cat5 widget assertions updated from `photo_display`/`character_display`/`progress_tracker` to `explorer_map`, synthesis tests now mock `_classify_story_response` and set `synthesis_phase="evaluate"`, visual agent widget count updated from 5 to 6, entity registry synthesis fragment test updated for unified `__story_generation.md`
+- Also fixed Cat1 `round_scenarios` display bug in `entity_registry.py` — summary was showing all tier scenarios instead of slicing to `play_rounds`
+
+**Edits**:
+- `backend/agents/script_agent.py` — added `_PHASE_SECTION_RE` regex and `_filter_synthesis_phase()` function; called in `_load_step_instructions()` to strip inactive phase sections before template variable substitution
+- `backend/turn_handler.py` — expanded `_ITEM_SUGGESTION_RE` verb/noun lists; added early silence handling in `_resolve_synthesis_turn()` evaluate and improve phases to skip classification and go straight to AI story generation
+- `backend/entity_registry.py` — sliced `round_scenarios` to `play_rounds` in Cat1 game summary so frontend shows correct tier-specific round count
+- `tests/test_entity_registry.py` — updated `test_cat5_fragments_exist_for_registered_synthesis_types` for unified `__story_generation.md`; renamed `test_cat5_synthesis_uses_naming_story_fragment` to `test_cat5_synthesis_uses_story_generation_fragment` with updated assertions and `synthesis_phase="generate"`
+- `tests/test_state_machine.py` — updated Cat5 visual frame tests to expect `explorer_map` widget
+- `tests/test_turn_handler.py` — added `StoryClassification` import + `patch`; synthesis tests now set `synthesis_phase="evaluate"` and mock `_classify_story_response`; widget assertions updated to `explorer_map`; renamed `test_maybe_record_generated_name_skips_comparison_chart` to `test_maybe_record_generated_name_records_for_all_synthesis_types`
+- `tests/test_visual_agent.py` — updated `ALLOWED_WIDGETS` count from 5 to 6
+
+**NOT Changed**:
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — markdown structure unchanged; phase filtering is done in code
+- `backend/skills/step_instructions/cat5_step4_synthesis__story_generation.md` — story generation prompt unchanged
+- `backend/skills/speaker_system.md` — reviewed, no changes needed
+- Frontend code — no changes
+- `backend/tests/test_ai_quality.py` — integration tests that require a running server; 19 failures are all `502 Bad Gateway` (server not running), not code issues
+
+**Verification**:
+- `uv run pytest tests/ backend/tests/ --ignore=backend/tests/test_ai_quality.py -q` — PASS (354 passed, 12 skipped)
+- `uv run ruff check backend/agents/script_agent.py backend/turn_handler.py backend/entity_registry.py` — PASS
+- `uv run ruff format --check backend/agents/script_agent.py backend/turn_handler.py backend/entity_registry.py` — PASS
+- Phase filter unit test: verified INVITE-only, IMPROVE-only, GENERATE-only output from `_filter_synthesis_phase()`
 
 ---
 
@@ -174,264 +283,6 @@ Last updated: 2026-03-27
 
 ---
 
-## Two-Pass Generation (Planner + Speaker)
-
-**Problem**: The single-call Script Agent asks the LLM to simultaneously understand child input, make structural decisions (question type, item suggestions, progress phrasing), track game state, and generate warm age-appropriate language — all in one JSON response. This produces responses where language is right but structure is wrong (suggesting specific items, asking wrong question types, repeating patterns). Structural decisions and creative language compete for the same context window.
-
-**Solution**: Replaced the single Script Agent LLM call with two sequential calls — a Planner that outputs structured JSON (`TurnPlan`) describing WHAT to say, and a Speaker that generates natural dialogue from the plan. Both use the same Qwen 3.5+ model via ALI DashScope. Post-processing validation now runs plan-aware checks. Old single-pass path is preserved as fallback. Design plan in `docs/plans/2026-03-26-two-pass-generation.md`.
-
-**Edits**:
-- `backend/schemas/turn_plan.py` — **NEW**: `TurnPlan` Pydantic model with content decisions (celebrate_item, sensory_observation, name_choices, question_type, story_beat), constraints (must_model_first, offer_binary_choice, do_not_suggest_items), tone/format guidance, and screen/audio pass-through fields
-- `backend/schemas/__init__.py` — added `TurnPlan` to exports
-- `backend/agents/planner.py` — **NEW**: `Planner` class with `plan_turn()` method; builds state context, loads planner prompt template, calls LLM with JSON mode at lower temperature (0.3); reuses `_build_conversation_context`, `_build_creative_slots_text`, `_load_tier_constraints`, `_get_client` from script_agent
-- `backend/skills/planner_system.md` — **NEW**: Planner system prompt focused on decisions (no language generation); includes key rules for item suggestion avoidance, T0 scaffolding, progress variation
-- `backend/skills/speaker_system.md` — **NEW**: Minimal Speaker system prompt — converts TurnPlan to warm dialogue with tier-appropriate sentence limits
-- `backend/agents/script_agent.py` — restructured `ScriptAgent` for two-pass: added `__init__` with `last_plan` attribute; new `_plan_turn()` (calls Planner), `_speak_turn()` (calls Speaker with plan + tier info), `_speak_turn_streaming()` (streaming Speaker for early TTS); `generate_turn()` and `generate_turn_streaming()` now orchestrate planner→speaker→merge with single-pass fallback on failure; original logic preserved in `_generate_turn_single_pass()` and `_generate_turn_streaming_single_pass()`; added `_load_tier_rules_raw()` helper
-- `backend/config.py` — added `planner_max_tokens` (400), `planner_temperature` (0.3), `speaker_temperature` (0.7) settings
-- `backend/turn_handler.py` — added `TurnPlan` import; added `_validate_plan()` for plan-aware diagnostics (speaker_violation vs planner_failure); `_generate_with_retry()` now reads `script_agent.last_plan` to log plan JSON alongside response on validation failures
-- `tests/test_turn_plan.py` — **NEW**: 17 tests for TurnPlan schema (defaults, full construction, validation, JSON roundtrip)
-- `tests/test_planner.py` — **NEW**: 23 tests for Planner agent (state context building, prompt assembly, LLM call mocking, plan parsing)
-
-**NOT Changed**:
-- `backend/skills/script_turn.md` — existing system prompt unchanged (used by single-pass fallback)
-- `backend/skills/step_instructions/` — all step instruction files unchanged
-- `backend/state_machine.py` — step flow logic unchanged
-- `backend/turn_handler.py` `_validate_response()` — existing post-processing validation unchanged
-- `backend/turn_handler.py` `resolve_turn()` — turn resolution flow unchanged; two-pass is transparent to callers
-- Frontend code — no changes
-
-**Verification**:
-- `uv run pytest tests/test_turn_plan.py tests/test_planner.py tests/test_turn_handler.py -v` — 60 passed
-- `uv run ruff check backend/ && uv run ruff format --check backend/` — clean (pre-existing server.py format issue)
 - `uv run pytest tests/ -q --ignore=tests/test_ai_quality.py` — 288 passed, 29 failed (all failures pre-existing)
-
----
-
-## Review Follow-Up: Canvas Resize Layout + Entity Anchor Cleanup
-
-**Problem**: A focused review of the new canvas implementation found two concrete issues in the frontend-only explorer-map code. First, scene geometry was only recalculated inside `useGameEngine.applyState()`, so a plain canvas resize could leave fog zones, paths, and characters positioned for the old dimensions until a new backend frame arrived. Second, the engine was preloading `entity_image` and `mapLayout.js` already exposed `computeEntityPosition()`, but the main entity was never actually rendered on the map. That left the mission path visually originating from empty space and kept dead canvas state around.
-
-**Solution**: Kept the current canvas architecture, but simplified the resize path and used the existing entity data instead of carrying it unused. `ExplorerMap.jsx` now re-applies the latest game state after `ResizeObserver` updates the backing canvas size, which lets the engine recompute geometry immediately on resize. `useGameEngine.js` now computes and renders the main entity anchor from `entity_image` and `computeEntityPosition()`, so the canvas matches the intended map structure more closely and no longer keeps unused entity state.
-
-**Edits**:
-- `frontend/src/canvas/ExplorerMap.jsx` — keeps a latest-game-state ref for the resize callback and re-applies the current state after canvas dimension changes so layout stays in sync with the resized canvas
-- `frontend/src/canvas/useGameEngine.js` — uses `computeEntityPosition()` to derive the entity anchor, stores it in engine state, and renders the main entity image on the map before the collected characters
-- `HANDOFF.md` — added this canvas-specific review follow-up entry
-
-**NOT Changed**:
-- Canvas interaction model (character taps, fog taps, celebration confetti) — reviewed and left intact in this pass
-- Backend `ExplorerMapState` schema and Cat 5 frame selection — unchanged in this frontend review follow-up
-- No new frontend test harness was added here; verification stayed with targeted lint/build checks
-
-**Verification**:
-- `cd frontend && npx eslint src/canvas/ExplorerMap.jsx src/canvas/useGameEngine.js src/canvas/mapLayout.js src/canvas/animations.js src/canvas/particleSystem.js src/canvas/sprites.js src/components/DeviceScreen.jsx` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Review Follow-Up: Explorer Map Frame Contract + Canvas Cleanup
-
-**Problem**: Picking up the explorer-map branch against `docs/plans/2026-03-26-explorer-map-game.md` exposed two concrete issues in the newly added code. First, Cat 5 `EARLY_EXIT` no longer honored the existing graceful-exit contract from the build spec and `backend/skills/step_instructions/early_exit.md`: `get_screen_frame()` returned `explorer_map` in a `hook` state instead of a partial `badge_award` frame. Second, the new canvas files carried dead prop threading and unused locals (`isSpeaking`, `sessionState`, `engineRef`, and a few unused helper locals), so the touched frontend files were not lint-clean.
-
-**Solution**: Restored the graceful-exit badge behavior before the Cat 5 explorer-map branch runs, and added focused regression coverage for the new Cat 5 screen-frame mapping. On the frontend side, I removed the unused explorer-map prop plumbing and dead locals so the new canvas path is simpler and passes targeted ESLint cleanly.
-
-**Edits**:
-- `backend/state_machine.py` — handles `EARLY_EXIT` before the Cat 5 explorer-map path, restoring the existing `badge_award` graceful-exit frame for Cat 5 while keeping `explorer_map` for the normal Cat 5 flow
-- `tests/test_state_machine.py` — **NEW**: added focused regression coverage for Cat 5 explorer-map phases, Cat 5 graceful exit, and a Cat 1 non-regression check
-- `frontend/src/App.jsx` — removed unused `isSpeaking` threading into `DeviceScreen` for the explorer-map path
-- `frontend/src/components/DeviceScreen.jsx` — stopped passing unused `isSpeaking` / `sessionState` props into `ExplorerMap`
-- `frontend/src/canvas/ExplorerMap.jsx` — removed unused props and unused `engineRef` capture
-- `frontend/src/canvas/useGameEngine.js` — removed unused locals in render/path update logic
-- `frontend/src/canvas/sprites.js` — removed an unused theme binding in `drawBadge`
-
-**NOT Changed**:
-- Explorer-map rendering/animation behavior itself — this follow-up stayed on frame-contract correctness, regression coverage, and code cleanup rather than adding new canvas behavior
-- Cat 1 widget flow outside the new non-regression test — no behavior changes
-- Backend turn-resolution logic outside screen-frame selection — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_game_parser.py tests/test_scenarios.py tests/test_state_machine.py -q` — PASS (`73 passed`)
-- `uv run ruff check backend/state_machine.py tests/test_state_machine.py` — PASS
-- `uv run ruff format --check backend/state_machine.py tests/test_state_machine.py` — PASS
-- `cd frontend && npx eslint src/App.jsx src/components/DeviceScreen.jsx src/canvas/ExplorerMap.jsx src/canvas/useGameEngine.js src/canvas/mapLayout.js src/canvas/animations.js src/canvas/particleSystem.js src/canvas/sprites.js` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Explorer's Map: Cat 5 Interactive Canvas Game
-
-**Problem**: Cat 5 activities (fluffy_expedition_dandelion, polka_dot_patrol) feel like "talking to an AI assistant" — the device screen shows static widgets (ProgressTracker circles, PhotoDisplay, PhotoGrid, BadgeAward) while the child interacts via voice. The goal was to transform the entire Cat 5 experience into an interactive game where the device screen becomes a living, explorable map. Design plan in `docs/plans/2026-03-26-explorer-map-game.md`.
-
-**Solution**: Built a full Canvas 2D game engine that replaces all Cat 5 widgets with a single `explorer_map` widget. The backend sends declarative game state (`ExplorerMapState`); the frontend animates toward it with a 60fps game loop. The map shows fog-covered zones that reveal when items are collected, characters that appear and bounce, connection lines during synthesis, badge overlay with confetti, and sunset effects during closing. All interactions are tap-based and discovery-oriented (no "Tap here!" instructions). Cat 1 activities are completely unaffected.
-
-**Edits**:
-
-*New backend:*
-- `backend/schemas/explorer_map.py` — **NEW**: `ExplorerMapState` and `ExplorerMapCharacter` Pydantic models defining game state payload
-
-*New frontend (6 files in `frontend/src/canvas/`):*
-- `ExplorerMap.jsx` — **NEW**: React component with `<canvas>`, ResizeObserver, pointer events
-- `useGameEngine.js` — **NEW**: game loop (rAF), animation queue, state diffing, image preloading, tap hit-testing, particle coordination
-- `sprites.js` — **NEW**: pure draw functions (background gradient, fog zones, procedural terrain, character sprites, name labels, dotted paths, connection lines, badge)
-- `mapLayout.js` — **NEW**: fractional coordinate layout (zone positions, entity position, path computation, badge/synthesis center)
-- `animations.js` — **NEW**: 10 animation presets with easing (fogReveal, characterAppear, characterBounce, nameLabelAppear, pathDraw, connectionDraw, badgeAppear, sunsetShift, characterWave, zonesPulse)
-- `particleSystem.js` — **NEW**: confetti, sparkle, and leaf particle emitter (~50 particle cap)
-
-*Modified backend:*
-- `backend/state_machine.py` — all Cat 5 steps now return `widget="explorer_map"` with `ExplorerMapState` params via new `_build_explorer_map_frame()` helper; removed old Cat 5 widget branches; moved `celebration_frame` check to Cat 1 only
-- `backend/turn_handler.py` — added `collected_names` and `collected_details` to `_state_context()` dict
-- `backend/agents/visual_agent.py` — added `"explorer_map"` to `ALLOWED_WIDGETS`
-- `backend/schemas/__init__.py` — exported `ExplorerMapState` and `ExplorerMapCharacter`
-
-*Modified frontend:*
-- `frontend/src/components/DeviceScreen.jsx` — registered `ExplorerMap` in `WIDGET_MAP`; explorer_map renders fullscreen (no max-width constraint, no AnimationOverlay wrapper); added `isSpeaking` prop; added `game_phase`/`collected_count` to `getFrameKey`
-- `frontend/src/App.jsx` — threads `isSpeaking` from `useSessionOrchestration` down to `DeviceScreen`
-
-**NOT Changed**:
-- Cat 1 widget system (CharacterDisplay, BadgeAward) — completely unaffected
-- PhotoGallery modal for Cat 5 collection Phase A — unchanged (still overlays during photo selection)
-- Turn handler collection logic (`resolve_turn`) — game state is derived from existing session state
-- Script Agent prompts and dialogue generation — unchanged
-- TTS/SFX playback hooks — unchanged (SFX still driven by `screenFrame.sfx_cue`)
-- Frontend conversation panel — unchanged
-
-**Verification**:
-- `uv run ruff check .` — PASS
-- `uv run ruff format --check state_machine.py turn_handler.py schemas/ agents/visual_agent.py` — PASS
-- `cd frontend && npx vite build` — PASS (295KB JS bundle)
-- Manual: start Cat 5 dandelion session, verify explorer map renders in device screen
-- Manual: complete full collection flow (3 items), verify fog reveals, characters appear, synthesis connections draw
-- Manual: verify Cat 1 activities still show CharacterDisplay/BadgeAward widgets
-- Manual: tap characters on map — verify bounce animation + sparkle particles
-
----
-
-## Review Follow-Up: Fix Example-Driven Prompt Interpolation + Tighten Local Coverage
-
-**Problem**: Reviewing the code modified for `docs/plans/example-driven-prompts-implementation.md` exposed one concrete script-agent bug and several stale local tests. The new Cat5 mission prompt introduced `{activity_name}` and `{tier}` placeholders, but `backend/agents/script_agent.py` did not inject either value, so literal braces leaked into the generated prompt text. The new compact tier summary also still emitted raw Python list reprs like `~[5, 10]` and `['simple', 'playful', 'exclamations']`, which makes the prompt noisier than intended. On the local test side, one naming-story fragment assertion still expected the old rule-heavy copy, and the scenario matcher tests were still relying on registry side effects plus old demo-catalog assumptions instead of isolating the current feature-matching path.
-
-**Solution**: Kept the example-driven prompt refactor intact, but fixed the prompt-helper interpolation path and tightened the local review coverage around it. `script_agent.py` now interpolates the new Cat5 mission placeholders and formats tier ranges/styles into compact readable strings. I also moved the helper assertions into existing local test modules, updated the naming-story fragment expectation to the new example-driven copy, and made the scenario matcher tests populate the registry explicitly while checking the intended feature-driven path.
-
-**Edits**:
-- `backend/agents/script_agent.py` — added `{activity_name}` and `{tier}` replacements in `_load_step_instructions()` and formatted `words_per_sentence` / `response_style` into prompt-friendly strings inside `_load_tier_constraints()`
-- local `tests/test_entity_registry.py` — added regression coverage for fully interpolated Cat5 mission instructions and readable compact tier constraints; updated the naming-story fragment assertion to the new example-driven content
-- local `tests/test_scenarios.py` — added coverage for the new `fluffy_expedition_dandelion` scenario asset, populated the registry explicitly via `get_demo_entities()`, and relaxed the ambiguous dot-feature assertion to the current 18-game catalog
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- Example-driven Cat5 step-instruction markdown files in `backend/skills/step_instructions/` — reviewed and left unchanged in this follow-up
-- `backend/turn_handler.py` retry-stat collection/logging — reviewed against the current implementation plan and left unchanged in this pass
-- Frontend code — unchanged; this review stayed on backend prompt/helper behavior and local coverage
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py tests/test_entity_registry.py tests/test_scenarios.py -q` — PASS (`73 passed`)
-- `uv run ruff check backend/agents/script_agent.py backend/turn_handler.py tests/test_entity_registry.py tests/test_scenarios.py` — PASS
-- `uv run ruff format --check backend/agents/script_agent.py backend/turn_handler.py tests/test_entity_registry.py tests/test_scenarios.py` — PASS
-
----
-
-## Example-Driven Prompt Refactor (Cat5 Prototype)
-
-**Problem**: The prompt system uses 28 step instruction files with 889 total lines and 65+ rules in the heaviest file. More rules means worse per-rule compliance — the system was in a cycle of: AI violates rule → add more rules → prompt gets longer → AI violates different rule. LLMs are pattern-matching engines; examples are concrete and composable, rules are abstract and competing.
-
-**Solution**: Replaced rule-heavy Cat5 step instructions with a hybrid format: minimal structural rules (~5-7 per step) + few-shot example transcripts per tier (T0/T1/T2). Examples carry tone, scaffolding, sentence length, and conversational style. Code-enforced constraints (state machine, post-processing validation) unchanged. Added retry-rate logging to measure before/after impact. Design plan in `docs/plans/example-driven-prompts.md`, implementation plan in `docs/plans/example-driven-prompts-implementation.md`.
-
-**Edits**:
-
-*Retry-rate logging:*
-- `backend/turn_handler.py` — added `_retry_stats` dict, `_record_retry_stat()` helper, and `get_retry_stats()` accessor; logs attempt count + validation outcome after each generation; logs session summary stats at session end
-
-*Cat5 step instruction conversions (all in `backend/skills/step_instructions/`):*
-- `cat5_step1_hook.md` (30→32 lines) — GOAL + 3 structural rules + examples for T0/T1/T2 (cold start, child responds, warm start)
-- `cat5_step2_mission.md` (68→54 lines) — GOAL + 5 structural rules + examples for accept/decline/silence per tier
-- `cat5_step3_collect.md` (125→97 lines) — GOAL + 7 structural rules + ~24 examples covering Phase A/B × correct/wrong/silence × T0/T1/T2
-- `cat5_step3_collect__naming_story.md` (39→55 lines) — 2 variant rules + naming-specific examples per tier
-- `cat5_step4_synthesis.md` (35→49 lines) — GOAL + 6 structural rules + examples for T0/T1/T2 × ideal/stuck/silent
-- `cat5_step4_synthesis__naming_story.md` (96→55 lines) — 3 variant rules + 4-beat story examples per tier
-- `cat5_step5_celebrate.md` (23→19 lines) — GOAL + 3 structural rules + 3 tier examples
-- `cat5_step6_closing.md` (23→20 lines) — GOAL + 3 structural rules + 3 tier examples with natural concept weaving
-- `early_exit.md` (15→22 lines) — GOAL + 2 structural rules + examples with/without collected characters
-
-*System prompt simplification:*
-- `backend/skills/script_turn.md` — removed invitational/forbidden language rule block from Section 2 (now in examples)
-- `backend/agents/script_agent.py` — simplified `_load_tier_constraints()` from 14-line verbose format to compact 4-line summary with per-tier key rule
-
-*New test scenario:*
-- `backend/scenarios/fluffy_expedition_dandelion.yaml` — **NEW**: full Cat5 T0 happy path + wrong photo + silence recovery
-
-**NOT Changed**:
-- `backend/turn_handler.py` post-processing validation (`_validate_response`, `_ends_with_open_question`, `_has_model_phrase`) — unchanged
-- `backend/state_machine.py` — step flow logic unchanged
-- `backend/agents/script_agent.py` template loading (`_load_step_instructions`, `_build_instruction_overlay`, `_build_system_prompt`) — unchanged (format change is transparent)
-- Cat1 step instruction files — not converted in this prototype phase
-- Cat5 comparison_chart and sorting_game variants — not converted in this prototype phase
-- Frontend code — no changes
-
-**Verification**:
-- `uv run ruff check .` — PASS
-- `uv run ruff format --check .` — PASS
-- Template variable audit: all `{variables}` in new files match existing script agent injection points
-- Manual: start fluffy_expedition_dandelion session, verify AI responds with example-style tone/scaffolding
-- Manual: check retry-rate logs appear in server output after a session
-
----
-
-## Review Follow-Up: Restore Tier-Specific Silence Timeouts
-
-**Problem**: While reviewing the code modified alongside `docs/plans/education-team-feedback-round2.md`, I found one concrete frontend regression in `frontend/src/hooks/useSilenceTimer.js`: the silence timeout table had been flattened to `20s` for every tier. That diverged from the WonderLens spec and tier rules, which require tier-specific silence handling (`T0=10s`, `T1=8s`, `T2=6s`). Leaving the flattened values in place would make higher tiers noticeably less responsive and violate the project’s age-tier behavior contract.
-
-**Solution**: Restored the documented tier-specific timeout values and added a focused regression test so future review passes catch this contract break immediately.
-
-**Edits**:
-- `frontend/src/hooks/useSilenceTimer.js` — restored `T0: 10000`, `T1: 8000`, `T2: 6000`, and the `10000` default fallback instead of the temporary `20000` values
-- local `tests/test_education_feedback_contracts.py` — added `test_silence_timer_stays_tier_specific()` to lock the frontend timeout table to the documented tier rules
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `frontend/src/hooks/useSessionOrchestration.js` muted-TTS timer-start workaround — reviewed and left intact
-- `frontend/src/components/ConversationPanel.jsx`, `frontend/src/components/GameDetailView.jsx`, and `frontend/src/components/ChatBubble.jsx` — reviewed for the newly added progress/detail messaging behavior and left unchanged in this pass
-- Prompt/game-content files from the round-2 plan — reviewed separately and left unchanged in this follow-up
-
-**Verification**:
-- `uv run pytest tests/test_education_feedback_contracts.py::test_silence_timer_stays_tier_specific -q` — PASS (`1 passed`)
-- `uv run pytest tests/test_entity_registry.py tests/test_game_parser.py tests/test_education_feedback_contracts.py -q` — PASS (`82 passed`)
-- `uv run ruff check tests/test_education_feedback_contracts.py` — PASS
-- `uv run ruff format --check tests/test_education_feedback_contracts.py` — PASS
-- `cd frontend && npx eslint src/App.jsx src/components/ChatBubble.jsx src/components/ConversationPanel.jsx src/components/GameDetailView.jsx src/hooks/useSessionOrchestration.js src/hooks/useSilenceTimer.js` — PASS
-- `cd frontend && npm run build` — PASS
-
----
-
-## Education Team Feedback Round 2: Short Phrases, Guided Questions, Synthesis Transition
-
-**Problem**: Second round of education team feedback (`docs/game_demo_feedback_2.txt`) identified three remaining issues: (1) when the AI models a phrase for the child to echo, it's too long to remember (e.g., "SPLASH TIME! This is the best day ever!"), (2) Cat1 voice_acting and storytelling_chain round questions are too open ("If your dinosaur could talk, what would it say?"), and (3) Cat5 synthesis jumps in too abruptly without any transition. Design plan in `docs/plans/education-team-feedback-round2.md`.
-
-**Solution**: Prompt-level fixes only — no code changes.
-
-**Edits**:
-
-*A) Short repeat phrases:*
-- `backend/prompts/script_system.md` — added "Short model phrases" rule to Language Simplicity section: 2-4 words max when modeling a phrase a child might echo
-- `backend/skills/step_instructions/cat1_step2_rules.md` — added 2-4 word constraint to demo round instruction
-- `backend/skills/step_instructions/cat1_step2_rules__voice_acting.md` — changed demo example from "SPLASH TIME! This is the best day EVER!" to just "SPLASH TIME!" with explicit short-phrase requirement
-
-*B) Cat1 open questions:*
-- `backend/skills/step_instructions/cat1_step3_round__voice_acting.md` — replaced open "what would it say?" pattern with model-first + binary choice: "I think it would say 'WOW!' Would it say 'WOW!' or something different?"
-- `backend/skills/step_instructions/cat1_step3_round__storytelling_chain.md` — replaced open "what happens next?" with 2 concrete choices: "Does the cat find a fish or a ball of yarn?"
-
-*C) Synthesis softer transition:*
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — relaxed "NO celebration, NO recap" to allow ONE short transition sentence (max 8 words) before the creative prompt, e.g., "Now that all your fluffy friends are here..."
-- `backend/skills/step_instructions/cat5_step4_synthesis__naming_story.md` — same: allow one brief transition sentence before the 4-beat story
-
-**NOT Changed**:
-- Backend code (`state_machine.py`, `turn_handler.py`, `entity_registry.py`) — no logic changes
-- Frontend code — no changes
-- Other Cat1 mechanic variants (prediction_game, riddle_game, helper_hotline) — unchanged in this pass
-- Cat5 comparison_chart and sorting_game synthesis variants — unchanged
-
-**Verification**:
-- Start Cat1 voice_acting (dog): verify demo phrase is short (2-4 words), round questions offer model + binary choice
-- Start Cat1 storytelling_chain (cat): verify story continuation offers 2 choices, not open "what happens next?"
-- Start Cat5 naming_story (dandelion): verify synthesis has a brief transition before launching into the story
 
 ---

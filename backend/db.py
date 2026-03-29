@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS turns (
     latency_ms INTEGER,
     is_silent BOOLEAN DEFAULT FALSE,
     consecutive_silence INTEGER DEFAULT 0,
+    photo_id TEXT,
+    step TEXT,
+    state_snapshot TEXT,
     created_at TIMESTAMP DEFAULT (datetime('now', 'localtime'))
 );
 
@@ -62,11 +65,23 @@ CREATE INDEX IF NOT EXISTS idx_agent_logs_session ON agent_logs(session_id);
 """
 
 
+_MIGRATIONS = [
+    "ALTER TABLE turns ADD COLUMN photo_id TEXT",
+    "ALTER TABLE turns ADD COLUMN step TEXT",
+    "ALTER TABLE turns ADD COLUMN state_snapshot TEXT",
+]
+
+
 async def init_db(db_path: str = "data/demo.db") -> None:
     """Create the database directory and tables if they don't exist."""
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(db_path) as db:
         await db.executescript(_SCHEMA_SQL)
+        for migration in _MIGRATIONS:
+            try:
+                await db.execute(migration)
+            except aiosqlite.OperationalError:
+                pass  # Column already exists
         await db.commit()
 
 
@@ -100,13 +115,17 @@ async def log_turn(
     latency_ms: int | None = None,
     is_silent: bool = False,
     consecutive_silence: int = 0,
+    photo_id: str | None = None,
+    step: str | None = None,
+    state_snapshot: str | None = None,
 ) -> None:
     """Insert a turn record for a session."""
     async with aiosqlite.connect(db_path) as db:
         await db.execute(
             """INSERT INTO turns
-            (session_id, turn_number, role, text, response_type, screen_widget, sfx_cue, latency_ms, is_silent, consecutive_silence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (session_id, turn_number, role, text, response_type, screen_widget, sfx_cue,
+             latency_ms, is_silent, consecutive_silence, photo_id, step, state_snapshot)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 session_id,
                 turn_number,
@@ -118,6 +137,9 @@ async def log_turn(
                 latency_ms,
                 is_silent,
                 consecutive_silence,
+                photo_id,
+                step,
+                state_snapshot,
             ),
         )
         await db.commit()

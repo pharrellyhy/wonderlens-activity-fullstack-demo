@@ -17,6 +17,9 @@ def deep_link_client(monkeypatch: pytest.MonkeyPatch, tmp_path):
     async def fake_log_session(*_args: object, **_kwargs: object) -> None:
         return None
 
+    async def fake_log_turn(*_args: object, **_kwargs: object) -> None:
+        return None
+
     async def fake_generate_with_retry(*_args: object, **_kwargs: object) -> TurnResponse:
         return TurnResponse(
             dialogue="[curious] We were just talking about your dinosaur's spikes. Would you like to play?",
@@ -28,6 +31,7 @@ def deep_link_client(monkeypatch: pytest.MonkeyPatch, tmp_path):
 
     monkeypatch.setattr(server, "init_db", fake_init_db)
     monkeypatch.setattr(server, "log_session", fake_log_session)
+    monkeypatch.setattr(server, "log_turn", fake_log_turn)
     monkeypatch.setattr(server, "_generate_with_retry", fake_generate_with_retry)
     monkeypatch.setattr(server, "get_settings", lambda: SimpleNamespace(db_path=str(tmp_path / "test.db")))
 

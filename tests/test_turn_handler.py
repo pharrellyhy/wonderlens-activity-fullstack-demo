@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -13,6 +13,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from schemas.creative_slots import Cat5CreativeSlots
 from schemas.session_state import ConversationTurn, SessionStateModel
+from schemas.story_classification import StoryClassification
 from schemas.turn_plan import TurnPlan
 from schemas.turn_response import TurnResponse
 from state_machine import EARLY_EXIT
@@ -222,7 +223,7 @@ async def test_correct_photo_enters_detail_phase_and_holds_the_round() -> None:
     assert state.collected_photos == ["leaf_heart"]
     assert result.turn_response.dialogue == "Leaf heart! What does it remind you of?"
     assert result.turn_response.stay_on_step is True
-    assert result.screen_frame.widget == "photo_display"
+    assert result.screen_frame.widget == "explorer_map"
     assert result.auto_advance is False
 
 
@@ -253,7 +254,7 @@ async def test_detail_response_advances_to_next_round() -> None:
     assert state.collected_details == ["like a cloud"]
     assert result.turn_response.dialogue == "Cloud Puff! What a perfect name."
     assert state.collected_names == ["Cloud Puff"]
-    assert result.screen_frame.widget == "progress_tracker"
+    assert result.screen_frame.widget == "explorer_map"
     assert result.auto_advance is False
     assert result.response_type == "round"
 
@@ -283,7 +284,7 @@ async def test_final_detail_response_auto_advances_into_synthesis_prompt() -> No
     assert state.collection_phase == "detail"
     assert state.round_advance_pending is True
     assert result.turn_response.dialogue == "Moon Buddy belongs in our collection."
-    assert result.screen_frame.widget == "photo_display"
+    assert result.screen_frame.widget == "explorer_map"
     assert result.auto_advance is True
     assert result.response_type == "round"
 
@@ -346,6 +347,8 @@ async def test_synthesis_can_finish_after_first_child_reply() -> None:
     state = _make_state(
         current_step="STEP_4_SYNTHESIS",
         current_round=3,
+        synthesis_phase="evaluate",
+        synthesis_prompt_count=1,
         conversation_history=[
             ConversationTurn(
                 role="ai", text="Cloud Puff bumped into Mossy Dot. What happened next?", step="STEP_4_SYNTHESIS"
@@ -357,7 +360,13 @@ async def test_synthesis_can_finish_after_first_child_reply() -> None:
         return_value=_mock_turn(dialogue="They rolled into a fluffy pile and laughed together.")
     )
 
-    result = await resolve_turn(state, _make_input(text="they giggled"), agent)
+    mock_classification = AsyncMock(
+        return_value=StoryClassification(
+            classification="story_attempt", is_related_to_collection=True, story_quality="good"
+        )
+    )
+    with patch("turn_handler._classify_story_response", mock_classification):
+        result = await resolve_turn(state, _make_input(text="they giggled"), agent)
 
     assert state.current_step == "STEP_5_CELEBRATE"
     assert result.turn_response.dialogue == "They rolled into a fluffy pile and laughed together."
@@ -371,6 +380,8 @@ async def test_synthesis_second_visit_advances_to_celebrate() -> None:
     state = _make_state(
         current_step="STEP_4_SYNTHESIS",
         current_round=3,
+        synthesis_phase="evaluate",
+        synthesis_prompt_count=1,
         conversation_history=[
             ConversationTurn(role="ai", text="What would you name it?", step="STEP_4_SYNTHESIS"),
             ConversationTurn(role="child", text="Maybe Sunny?", step="STEP_4_SYNTHESIS"),
@@ -379,11 +390,62 @@ async def test_synthesis_second_visit_advances_to_celebrate() -> None:
     agent = _make_agent_mock()
     agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="Great name!"))
 
-    result = await resolve_turn(state, _make_input(text="I call it Sunny"), agent)
+    mock_classification = AsyncMock(
+        return_value=StoryClassification(
+            classification="story_attempt", is_related_to_collection=True, story_quality="good"
+        )
+    )
+    with patch("turn_handler._classify_story_response", mock_classification):
+        result = await resolve_turn(state, _make_input(text="I call it Sunny"), agent)
 
     assert state.current_step == "STEP_5_CELEBRATE"
     assert result.turn_response.dialogue == "Great name!"
     assert result.response_type == "synthesis"
+    assert result.auto_advance is True
+
+
+@pytest.mark.asyncio
+async def test_synthesis_evaluate_silence_skips_classification_and_generates() -> None:
+    """Silence in evaluate should bypass classification and let the AI finish the story."""
+    state = _make_state(
+        current_step="STEP_4_SYNTHESIS",
+        current_round=3,
+        synthesis_phase="evaluate",
+        synthesis_prompt_count=1,
+    )
+    agent = _make_agent_mock()
+    agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="The friends curled up under the stars."))
+
+    with patch("turn_handler._classify_story_response", new=AsyncMock()) as mock_classification:
+        result = await resolve_turn(state, _make_input(is_silent=True), agent)
+
+    mock_classification.assert_not_called()
+    assert state.synthesis_phase == "generate"
+    assert state.current_step == "STEP_5_CELEBRATE"
+    assert result.turn_response.dialogue == "The friends curled up under the stars."
+    assert result.auto_advance is True
+
+
+@pytest.mark.asyncio
+async def test_synthesis_improve_silence_skips_classification_and_generates() -> None:
+    """Silence in improve should preserve the child's seed and let the AI complete it."""
+    state = _make_state(
+        current_step="STEP_4_SYNTHESIS",
+        current_round=3,
+        synthesis_phase="improve",
+        synthesis_child_story="Cloud Puff met Mossy Dot.",
+    )
+    agent = _make_agent_mock()
+    agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="Cloud Puff met Mossy Dot and they became brave."))
+
+    with patch("turn_handler._classify_story_response", new=AsyncMock()) as mock_classification:
+        result = await resolve_turn(state, _make_input(is_silent=True), agent)
+
+    mock_classification.assert_not_called()
+    assert state.synthesis_phase == "generate"
+    assert state.synthesis_child_story == "Cloud Puff met Mossy Dot."
+    assert state.current_step == "STEP_5_CELEBRATE"
+    assert result.turn_response.dialogue == "Cloud Puff met Mossy Dot and they became brave."
     assert result.auto_advance is True
 
 
@@ -461,7 +523,8 @@ def test_maybe_record_generated_name_from_call_pattern() -> None:
     assert state.collected_names == ["Fuzzy Green"]
 
 
-def test_maybe_record_generated_name_skips_comparison_chart() -> None:
+def test_maybe_record_generated_name_records_for_all_synthesis_types() -> None:
+    """All synthesis types now use story generation, so names are always recorded."""
     state = _make_state(
         collected_photos=["leaf_heart"],
         creative_slots=Cat5CreativeSlots(
@@ -478,7 +541,7 @@ def test_maybe_record_generated_name_skips_comparison_chart() -> None:
         ),
     )
     _maybe_record_generated_name(state, 'I see "Big Dots" everywhere!')
-    assert state.collected_names == []
+    assert state.collected_names == ["Big Dots"]
 
 
 def test_maybe_record_generated_name_skips_when_already_named() -> None:

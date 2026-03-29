@@ -33,10 +33,11 @@ def _make_plan(**overrides: object) -> CompositionPlan:
 
 
 class TestConstants:
-    def test_allowed_widgets_has_five_entries(self) -> None:
-        assert len(ALLOWED_WIDGETS) == 5
+    def test_allowed_widgets_has_six_entries(self) -> None:
+        assert len(ALLOWED_WIDGETS) == 6
         assert "photo_display" in ALLOWED_WIDGETS
         assert "badge_award" in ALLOWED_WIDGETS
+        assert "explorer_map" in ALLOWED_WIDGETS
 
     def test_allowed_sfx_has_ten_entries(self) -> None:
         assert len(ALLOWED_SFX) == 10

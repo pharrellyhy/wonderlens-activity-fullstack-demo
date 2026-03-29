@@ -416,8 +416,8 @@ def _validate_response(
                 "'I think this looks like a cloud! What do you think?' or offer a choice."
             )
 
-    # 4. T0 synthesis: must scaffold
-    if step == "STEP_4_SYNTHESIS" and tier == "T0" and is_first_on_step:
+    # 4. T0 synthesis: must scaffold (only during story generation, not invite phase)
+    if step == "STEP_4_SYNTHESIS" and tier == "T0" and state.synthesis_phase != "invite":
         if _ends_with_open_question(dialogue) and " or " not in dialogue.lower():
             return False, (
                 "CORRECTION: For T0 (ages 2-4), do NOT ask open questions in synthesis. "
@@ -450,11 +450,13 @@ def _validate_response(
 # Common household/outdoor items that indicate the speaker is suggesting specific
 # things the child should go find — violates the do_not_suggest_items constraint.
 _ITEM_SUGGESTION_RE = re.compile(
-    r"(?i)\b(?:find|look for|grab|get|bring|search for|spot)\b"
+    r"(?i)\b(?:find|look for|grab|get|bring|search for|spot|touch|touching|try|feel|peek"
+    r"|check|reach for)\b"
     r"[^.!?]{0,40}"
     r"\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
     r"|flower|shell|stone|button|coin|bottle|box|bag|hat|glove|scarf|key|pen|pencil"
-    r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble)\b"
+    r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble"
+    r"|rug|carpet|towel|cloth|cushion|teddy|doll|stuffed)\b"
 )
 
 
@@ -816,6 +818,13 @@ async def _resolve_synthesis_turn(
 
     # --- EVALUATE phase: classify child's response ---
     if phase == "evaluate":
+        # Silence during synthesis → skip classification, go straight to AI story
+        if turn_input.is_silent:
+            logger.info("synthesis_classification: silence detected — skipping to AI story generation")
+            state.synthesis_phase = "generate"
+            turn_response = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(state, turn_response, advance=True)
+
         classification = await _classify_story_response(state, child_text)
         logger.info(
             "synthesis_classification: classification=%s quality=%s related=%s text=%s",
@@ -864,6 +873,13 @@ async def _resolve_synthesis_turn(
 
     # --- IMPROVE phase: child's elaboration arrived ---
     if phase == "improve":
+        # Silence during improve → AI completes the story from whatever seed we have
+        if turn_input.is_silent:
+            logger.info("synthesis_improve: silence detected — AI generating from child's seed")
+            state.synthesis_phase = "generate"
+            turn_response = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(state, turn_response, advance=True)
+
         combined_story = f"{state.synthesis_child_story} {child_text}".strip()
         classification = await _classify_story_response(state, combined_story)
         logger.info(

@@ -1,0 +1,15 @@
+sessions_per_combo: 5
+activities:
+  - fluffy_expedition_dandelion
+  - polka_dot_patrol
+tiers: [T0, T1, T2]
+server_url: "http://localhost:8000"
+output_dir: "eval_results"
+
+thresholds:
+  combined_score_min: 80
+  critical_failures_max: 0
+  cross_session_variety_min: 70
+
+child_sim_model: "gemini-2.0-flash"
+judge_model: "gemini-2.0-flash"

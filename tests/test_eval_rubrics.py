@@ -8,6 +8,7 @@ BACKEND_DIR = REPO_ROOT / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+from eval.child_sim import ChildSimContext, ChildSimulator
 from eval.rubrics import (
     PERSONAS,
     STEP_RUBRICS,
@@ -84,3 +85,47 @@ def test_load_eval_config() -> None:
     assert len(config.activities) >= 1
     assert len(config.tiers) >= 1
     assert config.thresholds.combined_score_min > 0
+
+
+def test_child_sim_context_model() -> None:
+    ctx = ChildSimContext(
+        persona="curious_toddler",
+        tier="T0",
+        activity_name="fluffy_expedition_dandelion",
+        collection_criterion="Find fluffy things",
+        current_step="STEP_3_COLLECT_1",
+        collection_phase="photo",
+        round_items=[{"id": "fuzzy_moss", "label": "Fuzzy moss", "correct": True}],
+        last_ai_dialogue="[excited] Wow! Let's find fluffy things!",
+        collected_names=[],
+        turn_number=3,
+    )
+    assert ctx.persona == "curious_toddler"
+
+
+def test_child_sim_parses_text_response() -> None:
+    sim = ChildSimulator(model="test-model", api_key="fake", base_url="http://fake")
+    raw = '{"text": "soft fuzzy"}'
+    result = sim.parse_response(raw)
+    assert result.text == "soft fuzzy"
+    assert result.photo_id is None
+
+
+def test_child_sim_parses_photo_response() -> None:
+    sim = ChildSimulator(model="test-model", api_key="fake", base_url="http://fake")
+    raw = '{"photo_id": "fuzzy_moss"}'
+    result = sim.parse_response(raw)
+    assert result.photo_id == "fuzzy_moss"
+
+
+def test_child_sim_parses_silence() -> None:
+    sim = ChildSimulator(model="test-model", api_key="fake", base_url="http://fake")
+    raw = '{"is_silent": true}'
+    result = sim.parse_response(raw)
+    assert result.is_silent is True
+
+
+def test_child_sim_fallback_on_bad_json() -> None:
+    sim = ChildSimulator(model="test-model", api_key="fake", base_url="http://fake")
+    result = sim.parse_response("just some random text")
+    assert result.text == "just some random text"

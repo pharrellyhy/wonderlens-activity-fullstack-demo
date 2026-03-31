@@ -147,16 +147,16 @@ _VARIETY_HINTS = [
     "Begin with wonder — 'I wonder...' or 'What if...'",
 ]
 _SYNTHESIS_HINTS = [
-    "Theme: one friend can't sleep, the others comfort them.",
-    "Theme: they get caught in the rain and find shelter.",
-    "Theme: one friend is sad, the others cheer them up.",
-    "Theme: someone is scared of the dark, friends bring light.",
-    "Theme: they find one treat and figure out how to share it.",
-    "Theme: one friend gets lost, the others search and find them.",
-    "Theme: it's cold, they figure out how to stay warm together.",
-    "Theme: it's someone's birthday and the others plan a surprise.",
-    "Theme: they try to build something but it keeps falling down.",
-    "Theme: one friend is too small to reach something, others help.",
+    "One friend can't sleep, the others comfort them.",
+    "They get caught in the rain and find shelter.",
+    "One friend is sad, the others cheer them up.",
+    "Someone is scared of the dark, friends bring light.",
+    "They find one treat and figure out how to share it.",
+    "One friend gets lost, the others search and find them.",
+    "It's cold, they figure out how to stay warm together.",
+    "It's someone's birthday and the others plan a surprise.",
+    "They try to build something but it keeps falling down.",
+    "One friend is too small to reach something, others help.",
 ]
 _COLLECT_PHASE_A_HINTS = [
     "Celebrate with a sound word first (Ooh! Wow! Whoa!).",
@@ -353,6 +353,30 @@ def _build_speaker_user_prompt(corrective_hint: str | None = None) -> str:
     return prompt
 
 
+_PHASE_SECTION_RE = re.compile(
+    r"### PHASE:\s*(\w+)\s*\([^)]*\)\s*\n(.*?)(?=### |\Z)",
+    re.DOTALL,
+)
+
+
+def _filter_synthesis_phase(text: str, active_phase: str) -> str:
+    """Strip inactive phase sections from synthesis instructions.
+
+    The synthesis markdown contains ### PHASE: INVITE, ### PHASE: IMPROVE, and
+    ### PHASE: GENERATE sections. Only the section matching *active_phase* is
+    kept so the LLM doesn't see competing instructions.
+    """
+    active_key = active_phase.upper()
+
+    def _replace(m: re.Match[str]) -> str:
+        phase_name = m.group(1).upper()
+        if phase_name == active_key:
+            return m.group(0)  # keep the active phase
+        return ""  # strip inactive phases
+
+    return _PHASE_SECTION_RE.sub(_replace, text)
+
+
 def _load_step_instructions(state: SessionStateModel) -> str:
     """Load the step-specific instruction file and fill in template variables."""
     step = state.current_step
@@ -388,6 +412,12 @@ def _load_step_instructions(state: SessionStateModel) -> str:
         return f"Current step: {step}. Generate an appropriate response."
 
     text = path.read_text()
+
+    # Synthesis instructions contain all phases — strip inactive ones so the
+    # LLM only sees the section for the current phase and doesn't fall back
+    # to invite-style questions when it should be generating a story.
+    if step == "STEP_4_SYNTHESIS":
+        text = _filter_synthesis_phase(text, state.synthesis_phase)
 
     fragment_prefix = step
     if step.startswith(("STEP_3_ROUND_", "STEP_3_COLLECT_")):
@@ -928,14 +958,17 @@ class ScriptAgent:
         tier_score = (has_tag + sentence_ok) / 2.0
 
         # 3. Structural checks: no item suggestions (20%)
-        item_suggestion_re = re.compile(
-            r"(?i)\b(?:find|look for|grab|get|bring|search for|spot)\b"
-            r"[^.!?]{0,40}"
-            r"\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
+        # For Cat5 collection steps, ANY mention of specific household/outdoor
+        # items is a violation — regardless of verb framing (e.g. "I wonder if
+        # a pillow is hiding" is just as bad as "find a pillow").
+        item_noun_re = re.compile(
+            r"(?i)\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
             r"|flower|shell|stone|button|coin|bottle|box|bag|hat|glove|scarf|key|pen|pencil"
-            r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble)\b"
+            r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble"
+            r"|rug|carpet|towel|cloth|cushion|teddy|doll|stuffed|berry|berries|petal|petals"
+            r"|grass|furniture|acorn|pinecone|mushroom|feather|twig|bark|seed|moss)\b"
         )
-        structure_score = 0.0 if item_suggestion_re.search(dialogue) else 1.0
+        structure_score = 0.0 if item_noun_re.search(dialogue) else 1.0
 
         return novelty * 0.5 + tier_score * 0.3 + structure_score * 0.2
 

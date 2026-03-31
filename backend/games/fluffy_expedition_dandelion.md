@@ -24,7 +24,7 @@ creative_slots:
   mission_metaphor: "You are a Fluffy Expedition Explorer!"
   role_title: Fluffy Expedition Explorer
   synthesis_type: naming_story
-  stuck_hint: "Try touching things around you — look for anything soft or fuzzy"
+  stuck_hint: "Would you like to feel things nearby? Something soft might be waiting for you!"
   naming_prompt: "What would you name this fluffy friend?"
   detail_question_template: "Touch it gently — how does it feel?"
   sorting_criterion: ""
@@ -234,9 +234,9 @@ Child photographs a dandelion → AI marvels at the fluffy seeds → child becom
 
 **AI follow-up:**
 
-1. (cheering) "Go go, Explorer! Find something soft and fluffy!"
+1. (cheering) "Go go, Explorer! I bet something soft and fluffy is hiding nearby — would you like to start looking?"
 2. (helpful, warm) "Fluffy means soft! Like clouds. Like the dandelion. Would you like to touch things and feel for softness?"
-3. (wait 2s) (encouraging) "Look around! Maybe a leaf? Or some grass? Would you like to touch something and see if it feels soft?"
+3. (wait 2s) (encouraging) "I wonder if something soft is waiting right near you! Would you like to touch something and see if it feels fluffy?"
 
 **Screen:** Mission card with "Fluffy Expedition Explorer" badge (dandelion icon with floating seeds), 4 slots (first filled with dandelion photo, 3 empty with cloud-puff placeholders), and a "Find 3!" counter.
 
@@ -302,7 +302,7 @@ Child photographs a dandelion → AI marvels at the fluffy seeds → child becom
 
 **Screen:** Photo slides into slot 4 with a celebration-burst animation and a mission-complete fanfare; progress tracker shows "3 of 3 found!"
 
-**STUCK BRANCH:** "Try touching things around you — look for anything soft or fuzzy! Maybe some grass? Or a flower petal? Would you like to feel that?"
+**STUCK BRANCH:** "Would you like to reach out and touch something nearby? I wonder if it feels soft or fuzzy!"
 
 #### Step 4: Celebration (Synthesis)
 

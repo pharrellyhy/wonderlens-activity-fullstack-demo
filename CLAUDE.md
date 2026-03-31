@@ -7,6 +7,7 @@ This file provides guidance to Claude Code when working with the WonderLens Acti
 - **DO NOT** mention Claude as code generator or code co-author in commits, comments, or docs
 - **Plan before you code** — before starting any implementation work, write a design plan or implementation plan in `docs/plans/` first. No code changes until a plan document exists and covers the approach
 - **Do not auto-commit or push** — never automatically commit or push after finishing a feature or task; only commit/push when explicitly asked
+- **Review and simplify after every change** — after implementing a feature or fixing a bug, launch code-reviewer and code-simplifier sub-agents (in parallel when possible) to review the changes and reduce unnecessary complexity, before reporting the work as complete
 
 ## Project Overview
 
@@ -108,6 +109,7 @@ React split-view: ConversationPanel (left, ~55%) + DeviceScreen (right, ~45%). P
 - Use dataclasses/Pydantic for structured data
 - Use specific exception types, not bare `except:`
 - **All imports at the top of the file** — never import packages inside functions, methods, or conditional blocks; all `import` and `from ... import` statements must appear at the top of the module following PEP 8 import ordering (stdlib → third-party → local)
+- **No linter suppression comments** — never use `# noqa`, `# type: ignore`, or similar inline comments to silence linting or type checking warnings; fix the underlying issue instead (e.g., if an import is needed for side effects, reference it explicitly like `_ = module`)
 
 ## Commit Messages
 

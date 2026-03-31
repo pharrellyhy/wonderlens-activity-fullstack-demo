@@ -632,14 +632,32 @@ def _build_turn_response(
     }
 
 
+def _entity_from_filename(filename: str) -> str:
+    """Extract a best-guess entity name from the photo filename."""
+    if not filename:
+        return "object"
+    stem = filename.rsplit(".", 1)[0] if "." in filename else filename
+    name = re.sub(r"[\d_-]+", " ", stem).strip()
+    return name if name else "object"
+
+
 async def _log_hook_turn(state: SessionStateModel, session_id: str, dialogue: str) -> None:
     """Log the first AI hook turn when a session starts."""
     settings = get_settings()
-    await log_turn(settings.db_path, session_id, state.turn_count, "ai", dialogue, "hook")
+    await log_turn(
+        settings.db_path,
+        session_id,
+        state.turn_count,
+        "ai",
+        dialogue,
+        "hook",
+        step=state.current_step,
+        state_snapshot=_build_state_snapshot(state),
+    )
 
 
 async def _log_user_turn(req: TurnRequest, state: SessionStateModel) -> None:
-    """Log the incoming user turn."""
+    """Log the incoming user turn with the pre-resolution state snapshot."""
     settings = get_settings()
     await log_turn(
         settings.db_path,
@@ -648,6 +666,9 @@ async def _log_user_turn(req: TurnRequest, state: SessionStateModel) -> None:
         "user",
         text=req.text if req.text else None,
         is_silent=req.is_silent,
+        photo_id=req.photo_id,
+        step=state.current_step,
+        state_snapshot=_build_state_snapshot(state),
     )
 
 
@@ -657,7 +678,7 @@ async def _log_ai_turn(
     dialogue: str,
     response_type: str,
 ) -> None:
-    """Log the outgoing AI turn."""
+    """Log the outgoing AI turn with the step that produced the dialogue."""
     settings = get_settings()
     await log_turn(
         settings.db_path,
@@ -668,16 +689,33 @@ async def _log_ai_turn(
         response_type,
         is_silent=req.is_silent,
         consecutive_silence=state.consecutive_silence,
+        step=_latest_ai_turn_step(state, dialogue),
+        state_snapshot=_build_state_snapshot(state),
     )
 
 
-def _entity_from_filename(filename: str) -> str:
-    """Extract a best-guess entity name from the photo filename."""
-    if not filename:
-        return "object"
-    stem = filename.rsplit(".", 1)[0] if "." in filename else filename
-    name = re.sub(r"[\d_-]+", " ", stem).strip()
-    return name if name else "object"
+def _latest_ai_turn_step(state: SessionStateModel, dialogue: str) -> str:
+    """Return the step attached to the most recently appended AI dialogue."""
+    for turn in reversed(state.conversation_history):
+        if turn.role == "ai" and turn.text == dialogue:
+            return turn.step
+    return state.current_step
+
+
+def _build_state_snapshot(state: SessionStateModel) -> str:
+    """Build a compact JSON snapshot of key state fields for turn logging."""
+    snapshot: dict = {
+        "current_step": state.current_step,
+        "current_round": state.current_round,
+        "collection_phase": state.collection_phase,
+        "synthesis_phase": state.synthesis_phase,
+        "consecutive_silence": state.consecutive_silence,
+        "consecutive_wrong": state.consecutive_wrong,
+        "collected_photos": state.collected_photos,
+        "collected_names": state.collected_names,
+        "turn_count": state.turn_count,
+    }
+    return json.dumps(snapshot, separators=(",", ":"))
 
 
 def _session_state_dict(state: SessionStateModel) -> dict:

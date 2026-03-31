@@ -416,8 +416,8 @@ def _validate_response(
                 "'I think this looks like a cloud! What do you think?' or offer a choice."
             )
 
-    # 4. T0 synthesis: must scaffold
-    if step == "STEP_4_SYNTHESIS" and tier == "T0" and is_first_on_step:
+    # 4. T0 synthesis: must scaffold (only during story generation, not invite phase)
+    if step == "STEP_4_SYNTHESIS" and tier == "T0" and state.synthesis_phase != "invite":
         if _ends_with_open_question(dialogue) and " or " not in dialogue.lower():
             return False, (
                 "CORRECTION: For T0 (ages 2-4), do NOT ask open questions in synthesis. "
@@ -440,6 +440,15 @@ def _validate_response(
             "You cannot see the child's environment. Say 'something soft' not 'a fuzzy blanket'."
         )
 
+    # 7. Cat5 steps: no directive language (but invitational framing is OK)
+    if state.template_type == "cat5":
+        stripped = _INVITATIONAL_PREFIX_RE.sub("", dialogue)
+        if _DIRECTIVE_RE.search(stripped):
+            return False, (
+                "CORRECTION: Do NOT use directive language ('Go find!', 'Look for!', 'Try peeking!'). "
+                "Use invitational phrasing: 'Would you like to...?' or 'I wonder if...' instead."
+            )
+
     return True, ""
 
 
@@ -450,11 +459,31 @@ def _validate_response(
 # Common household/outdoor items that indicate the speaker is suggesting specific
 # things the child should go find — violates the do_not_suggest_items constraint.
 _ITEM_SUGGESTION_RE = re.compile(
-    r"(?i)\b(?:find|look for|grab|get|bring|search for|spot)\b"
+    r"(?i)\b(?:find|look for|grab|get|bring|search for|spot|touch|touching|try|feel|peek"
+    r"|check|reach for)\b"
     r"[^.!?]{0,40}"
     r"\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
     r"|flower|shell|stone|button|coin|bottle|box|bag|hat|glove|scarf|key|pen|pencil"
-    r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble)\b"
+    r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble"
+    r"|rug|carpet|towel|cloth|cushion|teddy|doll|stuffed|berry|berries|petal|petals"
+    r"|grass|furniture|acorn|pinecone|mushroom|feather|twig|bark|seed|moss)\b"
+)
+
+# Directive language patterns that command the child to take action.
+# Invitational alternatives ("Would you like to...?", "I wonder...") are OK.
+_DIRECTIVE_RE = re.compile(
+    r"(?i)\b(?:try\s+\w+ing|scan\s+the|check\s+the|go\s+find|go\s+look"
+    r"|look\s+for|search\s+for|now\s+let'?s|let'?s\s+go)\b"
+)
+
+# Invitational prefix + following verb phrase. The pattern consumes everything
+# through the directive verb so the remaining text no longer triggers _DIRECTIVE_RE.
+# e.g. "Would you like to look for" → removed; bare "Look for" → kept.
+_INVITATIONAL_PREFIX_RE = re.compile(
+    r"(?i)\b(?:would you like to|do you want to|shall we|how about we"
+    r"|i wonder if (?:you|we) (?:could|should|can|might))\s+"
+    r"(?:try\s+\w+ing|scan\s+the|check\s+the|go\s+find|go\s+look"
+    r"|look\s+for|search\s+for)"
 )
 
 
@@ -576,11 +605,11 @@ async def _classify_story_response(state: SessionStateModel, child_text: str) ->
             story_quality=data.get("story_quality"),
         )
     except Exception:
-        logger.warning("Story classification LLM call failed, defaulting to 'unrelated'")
+        logger.warning("Story classification LLM call failed, defaulting to story_attempt(weak)")
         return StoryClassification(
-            classification="unrelated",
-            is_related_to_collection=False,
-            story_quality=None,
+            classification="story_attempt",
+            is_related_to_collection=True,
+            story_quality="weak",
         )
 
 
@@ -589,7 +618,7 @@ async def _classify_story_response(state: SessionStateModel, child_text: str) ->
 # ---------------------------------------------------------------------------
 
 _MAX_GENERATION_ATTEMPTS = 3
-_MAX_DETAIL_EXCHANGES = 3
+_MAX_DETAIL_EXCHANGES: dict[str, int] = {"T0": 1, "T1": 2, "T2": 3}
 
 # Per-step retry stats for measuring prompt quality improvements.
 # Key: step name → {total, first_pass, retried, exhausted}
@@ -816,6 +845,22 @@ async def _resolve_synthesis_turn(
 
     # --- EVALUATE phase: classify child's response ---
     if phase == "evaluate":
+        # Silence during synthesis → skip classification, go straight to AI story
+        if turn_input.is_silent:
+            logger.info("synthesis_classification: silence detected — skipping to AI story generation")
+            state.synthesis_phase = "generate"
+            turn_response = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(state, turn_response, advance=True)
+
+        # T0 (ages 2-4): skip LLM classification — treat any non-silent
+        # response as a story seed and let the AI expand it.
+        if state.tier == "T0":
+            logger.info("synthesis_classification: T0 tier — skipping LLM, treating as story seed: %s", child_text[:80])
+            state.synthesis_child_story = child_text
+            state.synthesis_phase = "generate"
+            turn_response = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(state, turn_response, advance=True)
+
         classification = await _classify_story_response(state, child_text)
         logger.info(
             "synthesis_classification: classification=%s quality=%s related=%s text=%s",
@@ -833,13 +878,7 @@ async def _resolve_synthesis_turn(
                 turn_response = await _generate_with_retry(script_agent, state)
                 return _synthesis_result(state, turn_response, advance=True)
 
-            if state.tier == "T0":
-                # T0 weak story — AI expands the child's seed
-                state.synthesis_phase = "generate"
-                turn_response = await _generate_with_retry(script_agent, state)
-                return _synthesis_result(state, turn_response, advance=True)
-
-            # T1/T2 weak story — ask child to elaborate
+            # Weak story — ask child to elaborate (T0 already returned above)
             state.synthesis_phase = "improve"
             turn_response = await _generate_with_retry(script_agent, state)
             return _synthesis_result(state, turn_response, advance=False)
@@ -864,6 +903,13 @@ async def _resolve_synthesis_turn(
 
     # --- IMPROVE phase: child's elaboration arrived ---
     if phase == "improve":
+        # Silence during improve → AI completes the story from whatever seed we have
+        if turn_input.is_silent:
+            logger.info("synthesis_improve: silence detected — AI generating from child's seed")
+            state.synthesis_phase = "generate"
+            turn_response = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(state, turn_response, advance=True)
+
         combined_story = f"{state.synthesis_child_story} {child_text}".strip()
         classification = await _classify_story_response(state, combined_story)
         logger.info(
@@ -917,6 +963,35 @@ async def resolve_turn(
     """
     has_child_input = bool(turn_input.text) or bool(turn_input.photo_id) or turn_input.is_silent
 
+    # Phase/state logging for debugging collection and synthesis flow
+    if state.current_step.startswith("STEP_3_"):
+        logger.info(
+            "resolve_turn: step=%s phase=%s round=%d/%d photos=%s names=%s "
+            "detail_count=%d pending=%s input=(text=%s photo=%s silent=%s)",
+            state.current_step,
+            state.collection_phase,
+            state.current_round,
+            state.total_rounds,
+            [p[:20] for p in state.collected_photos],
+            state.collected_names,
+            state.detail_exchange_count,
+            state.round_advance_pending,
+            repr(turn_input.text[:30]) if turn_input.text else None,
+            turn_input.photo_id,
+            turn_input.is_silent,
+        )
+    elif state.current_step.startswith("STEP_4_") or state.current_step.startswith("STEP_5_"):
+        logger.info(
+            "resolve_turn: step=%s synthesis_phase=%s names=%s details=%s child_story=%s input=(text=%s silent=%s)",
+            state.current_step,
+            state.synthesis_phase,
+            state.collected_names,
+            state.collected_details,
+            repr(state.synthesis_child_story[:40]) if state.synthesis_child_story else None,
+            repr(turn_input.text[:30]) if turn_input.text else None,
+            turn_input.is_silent,
+        )
+
     # --- 1. Silence counting ---
     if turn_input.is_silent:
         state.consecutive_silence += 1
@@ -951,6 +1026,7 @@ async def resolve_turn(
         if _is_correct_collection_photo(state, turn_input.photo_id):
             _record_correct_collection_pick(state, turn_input.photo_id)
             # Phase A -> Phase B: correct photo triggers detail-harvesting question
+            logger.info("Phase transition: photo -> detail (correct photo %s)", turn_input.photo_id)
             state.collection_phase = "detail"
             state.detail_exchange_count = 0
         else:
@@ -1060,20 +1136,21 @@ async def resolve_turn(
 
         # Generate AI response (processes detail, names character or acknowledges)
         turn_response = await _generate_with_retry(script_agent, state)
+
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
         _maybe_record_generated_name(state, turn_response.dialogue)
 
-        remaining_count = max(0, state.total_rounds - len(state.collected_photos))
         response_type = _get_response_type(state.current_step)
         # Respect stay_on_step from the AI — the child may be confused or
-        # off-topic and needs guidance back before advancing. Cap at 3
-        # exchanges to prevent infinite loops.
-        if turn_response.stay_on_step and state.detail_exchange_count < _MAX_DETAIL_EXCHANGES:
+        # off-topic and needs guidance back before advancing. Cap is
+        # tier-dependent: T0=1, T1=2, T2=3 to reduce chatter for young children.
+        max_exchanges = _MAX_DETAIL_EXCHANGES.get(state.tier, 3)
+        if turn_response.stay_on_step and state.detail_exchange_count < max_exchanges:
             logger.info(
                 "Phase B: child needs guidance (exchange %d/%d), staying in detail phase",
                 state.detail_exchange_count,
-                _MAX_DETAIL_EXCHANGES,
+                max_exchanges,
             )
             return TurnResult(
                 turn_response=turn_response,
@@ -1083,27 +1160,15 @@ async def resolve_turn(
                 error_exit=state.status == "error",
             )
 
-        if remaining_count == 0:
-            # Keep the collected-photo view for this response, then auto-advance into synthesis.
-            state.round_advance_pending = True
-            state.detail_exchange_count = 0
-            return TurnResult(
-                turn_response=turn_response,
-                screen_frame=_get_screen_frame(state),
-                auto_advance=True,
-                response_type=response_type,
-                error_exit=state.status == "error",
-            )
-
-        # Detail phase complete — move to the next collection round in photo-pick mode.
-        state.collection_phase = "photo"
+        # Detail phase complete — defer advance to next empty turn so the
+        # naming / transition dialogue plays while the child still sees
+        # the current detail screen.
+        state.round_advance_pending = True
         state.detail_exchange_count = 0
-        _advance_state(state)
-
         return TurnResult(
             turn_response=turn_response,
             screen_frame=_get_screen_frame(state),
-            auto_advance=False,
+            auto_advance=True,
             response_type=response_type,
             error_exit=state.status == "error",
         )
@@ -1113,13 +1178,21 @@ async def resolve_turn(
         if state.round_advance_pending and not has_child_input:
             state.round_advance_pending = False
             if state.current_step.startswith("STEP_3_COLLECT_"):
+                logger.info("Deferred advance: detail -> photo, advancing to next round")
                 state.collection_phase = "photo"
             _advance_state(state)
+            logger.info(
+                "After advance: step=%s round=%d phase=%s",
+                state.current_step,
+                state.current_round,
+                state.collection_phase,
+            )
 
             if is_terminal(state.current_step):
                 return _ended_result(state)
 
             turn_response = await _generate_with_retry(script_agent, state)
+
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
 

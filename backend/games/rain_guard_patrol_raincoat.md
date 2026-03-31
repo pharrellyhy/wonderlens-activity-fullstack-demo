@@ -23,7 +23,7 @@ creative_slots:
   mission_metaphor: You are a Rain Guard!
   role_title: Rain Guard
   synthesis_type: naming_story
-  stuck_hint: Look up for a roof or tree, or look for big leaves.
+  stuck_hint: "Would you like to peek around? Something that keeps rain away might be nearby!"
   naming_prompt: What should we call this friend?
   detail_question_template: "What does this rain helper remind you of?"
   sorting_criterion: ""
@@ -217,9 +217,9 @@ Child photographs their raincoat outside → AI goes "swish-swish!" and notices 
 
 **AI follow-up:**
 
-1. (cheering) "Go go, Rain Guard! Find things that cover and protect!"
-2. (helpful, warm) "Things that block rain! A big leaf? A roof? An umbrella? Go look!"
-3. (wait 2s) (encouraging) "Look up! A roof? Look down! A big leaf? Find something that stops rain!"
+1. (cheering) "Go go, Rain Guard! I bet something that covers and protects is right nearby — would you like to start looking?"
+2. (helpful, warm) "Things that block rain! A big leaf? A roof? An umbrella? I wonder if one is close by!"
+3. (wait 2s) (encouraging) "I wonder what could stop the rain around here! Would you like to peek up high or down low?"
 
 **Screen:** Mission card with "Rain Guard" badge (raindrop shield icon), 3 slots (first filled with raincoat photo, 2 empty with raindrop-splash placeholders), and a "Find 2!" counter.
 

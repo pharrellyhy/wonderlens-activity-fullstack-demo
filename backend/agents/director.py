@@ -74,7 +74,7 @@ def _default_creative_slots_cat5(context: dict) -> Cat5CreativeSlots:
         mission_metaphor=f"You are a Shape Detective on a secret {entity} mission!",
         role_title=f"{entity.title()} Shape Specialist",
         synthesis_type="naming_story" if tier in ("T0", "T1") else "comparison_chart",
-        stuck_hint="Try looking around you — there might be interesting shapes nearby!",
+        stuck_hint="Would you like to peek around? Something interesting might be nearby!",
         naming_prompt="What shape does this remind you of? Give it a fun name!",
     )
 

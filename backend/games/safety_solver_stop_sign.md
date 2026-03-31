@@ -299,6 +299,6 @@ celebration_frame:
 **AI follow-up:**
 
 1. (celebrating) "That is right — Function and Responsibility! You earned your badge, Safety Solver. Next time you see a stop sign, you will know it is working hard — just like you!"
-2. (warm) "Go look at a real stop sign — you will see it in a whole new way now! And remember, it is always on duty. See you next time, Safety Solver!"
+2. (warm) "Next time you see a real stop sign, you will see it in a whole new way! And remember, it is always on duty. See you next time, Safety Solver!"
 
 **Screen:** Safety Solver badge centered with "Function" and "Responsibility" in bold friendly lettering below; a gear icon for Function, a heart-and-hands icon for Responsibility; stop sign photo glowing warmly behind the text with soft sparkle animations.

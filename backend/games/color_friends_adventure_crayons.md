@@ -23,7 +23,7 @@ creative_slots:
   mission_metaphor: You are a Color Scout!
   role_title: Color Scout
   synthesis_type: naming_story
-  stuck_hint: Look at flowers or leaves, colors love to hide there!
+  stuck_hint: "Would you like to peek at things nearby? Colors love to hide!"
   naming_prompt: What should we name this color friend?
   detail_question_template: "What does this colorful thing remind you of?"
   sorting_criterion: ""
@@ -197,7 +197,7 @@ Child photographs crayons outside → AI admires the bright colors → child pic
 
 1. (thrilled) "I love red too! Red is so bright. I wonder — is red hiding out here?"
 2. (warm, accepting) "All the colors! So pretty! Pick ONE. Which one is your favorite today?"
-3. (wait 2s) (soft, playful) "Look at all those colors. Point to your favorite! Which one makes you smile?"
+3. (wait 2s) (soft, playful) "So many colors! Which one is your favorite? Which one makes you smile?"
 
 **Screen:** Crayon photo centered with each crayon gently pulsing in its own color glow; warm sparkle animation and playful color dots floating upward like bubbles.
 
@@ -213,9 +213,9 @@ Child photographs crayons outside → AI admires the bright colors → child pic
 
 **AI follow-up:**
 
-1. (cheering) "Go go, Color Scout! Find your color!"
-2. (helpful, warm) "Your favorite color! Look at flowers. Look at leaves. Find that color!"
-3. (wait 2s) (encouraging) "Look around! Is something that color? A flower? A leaf? Go find it!"
+1. (cheering) "Go go, Color Scout! I bet your color is somewhere close — would you like to start looking?"
+2. (helpful, warm) "Your favorite color! I wonder if a flower or a leaf has that color. Would you like to check?"
+3. (wait 2s) (encouraging) "I bet something that color is hiding nearby! Would you like to peek around?"
 
 **Screen:** Mission card with "Color Scout" badge (crayon icon with magnifying glass), 3 slots (first filled with crayon photo, 2 empty with color-splash placeholders), and a "Find 2!" counter.
 

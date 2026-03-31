@@ -32,7 +32,7 @@ creative_slots:
   mission_metaphor: You are a Safety Inspector on a mission to find safety helpers!
   role_title: Safety Inspector
   synthesis_type: comparison_chart
-  stuck_hint: Look near the street for signs, painted lines, metal posts, or anything bright and colorful.
+  stuck_hint: "Would you like to peek around? Something safe and bright might be nearby!"
   naming_prompt: What is this helper's safety job? Does it warn, protect, or guide?
   detail_question_template: "What safety job does this one do — does it warn, protect, or guide?"
   sorting_criterion: "safety function (warning helpers vs protecting helpers vs guiding helpers)"
@@ -247,9 +247,9 @@ Child photographs a firefighter figure, AI notices the bright stripes and helmet
 
 **AI follow-up:**
 
-1. (cheering) "Inspector is on patrol! Look for signs, posts, bright paint, fences, or anything that helps people stay safe. Take a photo when you find one!"
-2. (explaining warmly) "A safety helper is anything that keeps people safe! A stop sign tells cars to stop. A crosswalk shows you where to walk. A fire hydrant holds water for firefighters. Look around — they are everywhere!"
-3. (wait 2s) (gently encouraging) "Here is your first clue — look near the street for signs or painted lines. Look for anything bright or colorful. Safety helpers are often easy to see!"
+1. (cheering) "Inspector is on patrol! I bet there are safety helpers all around — would you like to start looking?"
+2. (explaining warmly) "A safety helper is anything that keeps people safe! A stop sign tells cars to stop. A crosswalk shows you where to walk. A fire hydrant holds water for firefighters. Would you like to see if one is nearby?"
+3. (wait 2s) (gently encouraging) "I wonder if there's something bright or colorful near the street — safety helpers are often easy to spot! Would you like to peek around?"
 
 **Screen:** Mission card with "Safety Inspector" badge (shield with check mark), 4 collection slots (first filled with firefighter photo labeled "Job: Keeps People Safe!"), and a three-step task list.
 

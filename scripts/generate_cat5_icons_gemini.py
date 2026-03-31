@@ -73,11 +73,7 @@ def generate_image(client: genai.Client, prompt: str) -> Image.Image:
             )
             return extract_image(response)
         except (genai_errors.ClientError, genai_errors.APIError, httpx.ConnectError) as exc:
-            is_retryable = (
-                "RESOURCE_EXHAUSTED" in str(exc)
-                or "429" in str(exc)
-                or isinstance(exc, httpx.ConnectError)
-            )
+            is_retryable = "RESOURCE_EXHAUSTED" in str(exc) or "429" in str(exc) or isinstance(exc, httpx.ConnectError)
             if not is_retryable:
                 raise
             if attempt == MAX_RETRIES - 1:

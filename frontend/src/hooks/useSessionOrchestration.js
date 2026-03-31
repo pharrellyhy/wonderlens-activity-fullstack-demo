@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import useCharacterSfx from './useCharacterSfx';
 import useConversation from './useConversation';
 import useSfxPlayer from './useSfxPlayer';
 import useSilenceTimer from './useSilenceTimer';
@@ -39,12 +40,18 @@ export default function useSessionOrchestration(tier) {
   } = useConversation();
 
   const { unlock: unlockSfx } = useSfxPlayer();
+  const { preload: preloadCharacterSfx, playForTurn, stop: stopCharacterSfx, unlock: unlockCharacterSfx } = useCharacterSfx();
+  const characterSfxControlsRef = useRef(null);
 
   const isActive = sessionState?.status === 'active';
   const isEnded = sessionState?.status === 'completed' || sessionState?.status === 'exited' || sessionState?.status === 'error';
   const isInputDisabled = isEnded || loading || turnPending;
 
   const handleSpeakingDone = useCallback(() => {
+    // Play outro character sounds when TTS finishes
+    characterSfxControlsRef.current?.playOutros();
+    characterSfxControlsRef.current = null;
+
     if (sessionState?.status === 'active') {
       // Check if the last message was an auto-advance step
       if (autoAdvancePendingRef.current) {
@@ -73,6 +80,7 @@ export default function useSessionOrchestration(tier) {
     const handler = () => {
       unlockSfx();
       unlockTTS();
+      unlockCharacterSfx();
       for (const evt of ['click', 'touchstart', 'keydown']) {
         document.removeEventListener(evt, handler, true);
       }
@@ -85,7 +93,7 @@ export default function useSessionOrchestration(tier) {
         document.removeEventListener(evt, handler, true);
       }
     };
-  }, [unlockSfx, unlockTTS]);
+  }, [unlockCharacterSfx, unlockSfx, unlockTTS]);
 
   const handleSilence = useCallback(() => {
     if (sessionState?.status === 'active') {
@@ -122,6 +130,13 @@ export default function useSessionOrchestration(tier) {
     sendMessage(speech.transcript);
   }, [isActive, sendMessage, silenceTimer, speech.resultId, speech.transcript]);
 
+  // Preload character sounds when activity type is known
+  useEffect(() => {
+    if (activityType) {
+      preloadCharacterSfx(activityType);
+    }
+  }, [activityType, preloadCharacterSfx]);
+
   // Persist TTS preference to localStorage
   useEffect(() => {
     localStorage.setItem('ttsEnabled', ttsEnabled);
@@ -151,7 +166,7 @@ export default function useSessionOrchestration(tier) {
     });
   }, [stopTTS]);
 
-  // Auto-speak AI messages and handle auto-advance
+  // Auto-speak AI messages and handle auto-advance with character sound orchestration
   useEffect(() => {
     if (messages.length === 0) return;
     clearMutedCompletionTimeout();
@@ -162,35 +177,50 @@ export default function useSessionOrchestration(tier) {
     lastSpokenIndexRef.current = lastIndex;
     silenceTimer.clear();
 
-    // Set auto-advance flag if this step doesn't need user input
-    if (lastMsg.autoAdvance && !lastMsg.errorExit) {
-      autoAdvancePendingRef.current = true;
+    // Set or clear auto-advance flag based on current message
+    autoAdvancePendingRef.current = !!(lastMsg.autoAdvance && !lastMsg.errorExit);
+
+    const characterCues = lastMsg.characterSfx || [];
+
+    // Start character sounds -- playForTurn returns overlay/outro controls
+    const startTTSAfterIntros = () => {
+      if (ttsEnabled) {
+        const pendingAudio = pendingAudioRef.current;
+        if (pendingAudio) {
+          pendingAudioRef.current = null;
+          speakFromStream(pendingAudio.stream);
+        } else {
+          speak(lastMsg.text, tier);
+        }
+      } else {
+        // TTS muted — let character sounds play briefly before triggering done
+        pendingAudioRef.current = null;
+        const mutedDelay = characterCues.length > 0 ? 500 : 0;
+        mutedCompletionTimeoutRef.current = window.setTimeout(() => {
+          mutedCompletionTimeoutRef.current = null;
+          handleSpeakingDone();
+        }, mutedDelay);
+      }
+      // Start overlay sounds shortly after TTS begins (or immediately when muted)
+      characterSfxControlsRef.current?.startOverlays();
+    };
+
+    if (characterCues.length > 0) {
+      characterSfxControlsRef.current = playForTurn(characterCues, {
+        onIntrosDone: startTTSAfterIntros,
+      });
+    } else {
+      characterSfxControlsRef.current = null;
+      startTTSAfterIntros();
     }
 
-    if (ttsEnabled) {
-      // Check if there's a pending audio stream from /api/turn-speak
-      const pendingAudio = pendingAudioRef.current;
-      if (pendingAudio) {
-        pendingAudioRef.current = null;
-        speakFromStream(pendingAudio.stream);
-      } else {
-        // Fallback: use /api/tts (e.g., for the first turn from /api/start)
-        speak(lastMsg.text, tier);
-      }
-    } else {
-      // TTS muted — skip audio but still trigger done callback for silence timer / auto-advance
-      pendingAudioRef.current = null;
-      mutedCompletionTimeoutRef.current = window.setTimeout(() => {
-        mutedCompletionTimeoutRef.current = null;
-        handleSpeakingDone();
-      }, 0);
-    }
     return clearMutedCompletionTimeout;
   }, [
     clearMutedCompletionTimeout,
     handleSpeakingDone,
     messages,
     pendingAudioRef,
+    playForTurn,
     silenceTimer,
     speak,
     speakFromStream,
@@ -211,13 +241,14 @@ export default function useSessionOrchestration(tier) {
     clearMutedCompletionTimeout();
     unlockSfx();
     unlockTTS();
+    unlockCharacterSfx();
     try {
       setRetryCount(0);
       await start(photo, tier);
     } catch {
       setRetryCount(prev => prev + 1);
     }
-  }, [clearMutedCompletionTimeout, start, tier, unlockSfx, unlockTTS]);
+  }, [clearMutedCompletionTimeout, start, tier, unlockCharacterSfx, unlockSfx, unlockTTS]);
 
   const startDeepLinkSession = useCallback(async (entity, deepLinkTier, contextUrl = '') => {
     // Audio unlock is NOT called here — deep link sessions start via redirect
@@ -258,13 +289,15 @@ export default function useSessionOrchestration(tier) {
   const resetSession = useCallback(() => {
     clearMutedCompletionTimeout();
     stopTTS();
+    stopCharacterSfx();
     silenceTimer.clear();
     speech.stop();
     reset();
     setRetryCount(0);
     lastSpokenIndexRef.current = -1;
     autoAdvancePendingRef.current = false;
-  }, [clearMutedCompletionTimeout, reset, silenceTimer, speech, stopTTS]);
+    characterSfxControlsRef.current = null;
+  }, [clearMutedCompletionTimeout, reset, silenceTimer, speech, stopCharacterSfx, stopTTS]);
 
   return {
     messages,

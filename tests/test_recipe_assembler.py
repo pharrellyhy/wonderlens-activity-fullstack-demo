@@ -1,7 +1,6 @@
 """Tests for the Recipe Assembler."""
 
 import pytest
-
 from agents.recipe_assembler import ALLOWED_SFX, RecipeAssembler
 from schemas import CompositionPlan, Round, ScreenFrame, VisualComposition, VoiceScript
 

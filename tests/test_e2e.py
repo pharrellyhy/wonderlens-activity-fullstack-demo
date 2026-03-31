@@ -39,7 +39,7 @@ pytestmark = [
 def browser_page():
     """Launch a headless Chromium browser and yield a page."""
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright  # noqa: PLC0415
     except ImportError:
         pytest.skip("playwright not installed — run: pip install playwright && playwright install chromium")
 

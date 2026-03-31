@@ -1,0 +1,117 @@
+# Sound library for immersive game audio.
+# Character sounds play as SHORT intro clips before the narrator speaks.
+# Environment sounds play as soft overlays during speech.
+# The narrator also voice-acts the character sounds in the dialogue text.
+
+mood_changer_dog:
+  sounds:
+    # Character intro clips — play before narrator reacts
+    - id: dog_bark_happy
+      category: character
+      when: the dog is happy or excited — before you voice-act "Woof woof!"
+    - id: dog_whimper_sad
+      category: character
+      when: the dog is sad or scared — before you voice-act "Whimper whimper..."
+    - id: dog_pant_content
+      category: character
+      when: the dog is relaxed or content — before calm moments
+    - id: dog_sniff_curious
+      category: character
+      when: the dog is investigating — before you voice-act "Sniff sniff..."
+    # Environment overlays — play during speech
+    - id: env_birds_chirp
+      category: environment
+      when: outdoor sunny scenarios — park, garden, warm sunshine
+    - id: env_breeze_gentle
+      category: environment
+      when: calm outdoor moments — gentle weather, peaceful settings
+    - id: env_rain_soft
+      category: environment
+      when: rain scenarios — gentle rain, puddles, cozy indoor-looking-out
+    - id: env_thunder_distant
+      category: environment
+      when: storm or thunder scenarios — scary weather
+
+dream_whisperer_cat:
+  sounds:
+    - id: cat_purr_soft
+      category: character
+      when: the cat is content or sleepy — before you voice-act "Purrrrr..."
+    - id: cat_meow_curious
+      category: character
+      when: the cat is curious — before you voice-act "Mew? Mew mew?"
+    - id: cat_meow_happy
+      category: character
+      when: the cat is happy — before delightful moments
+    - id: cat_hiss_surprised
+      category: character
+      when: something surprising — before startled reactions
+    - id: env_fireplace_crackle
+      category: environment
+      when: cozy indoor scenes — warm, safe, comfortable feelings
+    - id: env_rain_window
+      category: environment
+      when: rainy dream scenes, cozy indoor vibes
+    - id: env_clock_tick
+      category: environment
+      when: quiet moments, bedtime scenes
+    - id: env_wind_chime
+      category: environment
+      when: magical or whimsical dream moments
+
+time_machine_dinosaur:
+  sounds:
+    - id: dino_roar_friendly
+      category: character
+      when: the dinosaur arrives or celebrates — before you voice-act "RAAAWR!"
+    - id: dino_stomp_heavy
+      category: character
+      when: the dinosaur walks or makes an entrance — before "STOMP STOMP!"
+    - id: dino_growl_playful
+      category: character
+      when: the dinosaur reacts dramatically — before growling moments
+    - id: dino_chomp_munching
+      category: character
+      when: eating scenes — before "Chomp chomp chomp!"
+    - id: env_jungle_ambience
+      category: environment
+      when: prehistoric jungle settings — tropical, lush
+    - id: env_volcano_rumble
+      category: environment
+      when: volcanic or dramatic prehistoric moments
+    - id: env_waterfall_distant
+      category: environment
+      when: peaceful prehistoric scenes near water
+    - id: env_time_whoosh
+      category: environment
+      when: time travel moments — jumping between eras
+
+polka_dot_patrol:
+  sounds:
+    - id: nature_birds_chirp
+      category: nature
+      when: outdoor exploration moments
+    - id: nature_breeze_gentle
+      category: nature
+      when: calm outdoor atmosphere
+    - id: nature_leaves_rustle
+      category: nature
+      when: searching through nature, exploring
+    - id: nature_cricket_chirp
+      category: nature
+      when: quiet outdoor moments
+
+fluffy_expedition_dandelion:
+  sounds:
+    - id: nature_wind_soft
+      category: nature
+      when: gentle breeze carrying seeds
+    - id: nature_dandelion_puff
+      category: nature
+      when: blowing a dandelion, seeds floating
+    - id: nature_grass_rustle
+      category: nature
+      when: walking through grass, searching
+    - id: nature_bees_buzz
+      category: nature
+      when: flowers nearby, sunny garden

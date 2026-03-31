@@ -53,7 +53,9 @@ def make_canvas(background: str = "mint") -> Image.Image:
     return base
 
 
-def shadow_ellipse(image: Image.Image, box: tuple[int, int, int, int], fill: tuple[int, int, int, int] = SHADOW) -> None:
+def shadow_ellipse(
+    image: Image.Image, box: tuple[int, int, int, int], fill: tuple[int, int, int, int] = SHADOW
+) -> None:
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     draw.ellipse(box, fill=fill)
@@ -61,7 +63,9 @@ def shadow_ellipse(image: Image.Image, box: tuple[int, int, int, int], fill: tup
     image.alpha_composite(layer)
 
 
-def stroke_line(draw: ImageDraw.ImageDraw, points: list[tuple[float, float]], fill: tuple[int, int, int, int], width: int) -> None:
+def stroke_line(
+    draw: ImageDraw.ImageDraw, points: list[tuple[float, float]], fill: tuple[int, int, int, int], width: int
+) -> None:
     draw.line(points, fill=OUTLINE, width=width + 4, joint="curve")
     draw.line(points, fill=fill, width=width, joint="curve")
 
@@ -273,7 +277,9 @@ def draw_fluffy_seed(image: Image.Image) -> None:
         outer = (128 + math.cos(radians) * 52, 118 + math.sin(radians) * 52)
         mid = (128 + math.cos(radians) * 36, 118 + math.sin(radians) * 36)
         stroke_line(draw, [(128, 118), mid], rgb("#f8fbf3"), 3)
-        draw.ellipse((outer[0] - 5, outer[1] - 5, outer[0] + 5, outer[1] + 5), fill=rgb("#fffef9"), outline=OUTLINE, width=2)
+        draw.ellipse(
+            (outer[0] - 5, outer[1] - 5, outer[0] + 5, outer[1] + 5), fill=rgb("#fffef9"), outline=OUTLINE, width=2
+        )
     draw.ellipse((108, 98, 144, 130), fill=(255, 255, 255, 35))
 
 
@@ -282,7 +288,11 @@ def draw_soft_petal(image: Image.Image) -> None:
     draw = ImageDraw.Draw(image)
     points = [(128, 76), (170, 120), (152, 184), (128, 202), (102, 184), (84, 122)]
     draw.polygon(points, fill=rgb("#f3a8be"), outline=OUTLINE)
-    draw.polygon([(128, 92), (152, 124), (140, 176), (128, 186), (116, 176), (102, 124)], fill=rgb("#f7c5d2"), outline=(0, 0, 0, 0))
+    draw.polygon(
+        [(128, 92), (152, 124), (140, 176), (128, 186), (116, 176), (102, 124)],
+        fill=rgb("#f7c5d2"),
+        outline=(0, 0, 0, 0),
+    )
     stroke_line(draw, [(128, 92), (128, 184)], rgb("#f9dbe5"), 4)
     stroke_line(draw, [(128, 122), (146, 152)], rgb("#f6d7e2"), 3)
     stroke_line(draw, [(128, 128), (110, 156)], rgb("#f6d7e2"), 3)
@@ -312,7 +322,11 @@ def draw_hard_rock(image: Image.Image) -> None:
     draw = ImageDraw.Draw(image)
     points = [(82, 174), (66, 132), (98, 92), (152, 82), (190, 118), (180, 174), (132, 194)]
     draw.polygon(points, fill=rgb("#8a9199"), outline=OUTLINE)
-    draw.polygon([(96, 164), (86, 132), (106, 108), (142, 100), (166, 126), (160, 164), (128, 176)], fill=rgb("#a2aab2"), outline=(0, 0, 0, 0))
+    draw.polygon(
+        [(96, 164), (86, 132), (106, 108), (142, 100), (166, 126), (160, 164), (128, 176)],
+        fill=rgb("#a2aab2"),
+        outline=(0, 0, 0, 0),
+    )
     stroke_line(draw, [(100, 160), (120, 136), (148, 146)], rgb("#737a82"), 4)
 
 
@@ -322,9 +336,13 @@ def draw_spiky_pinecone(image: Image.Image) -> None:
     draw.ellipse((94, 74, 162, 186), fill=rgb("#9c6b3c"), outline=OUTLINE, width=4)
     scale_centers = [
         (128, 94),
-        (114, 114), (142, 114),
-        (102, 136), (128, 136), (154, 136),
-        (114, 158), (142, 158),
+        (114, 114),
+        (142, 114),
+        (102, 136),
+        (128, 136),
+        (154, 136),
+        (114, 158),
+        (142, 158),
     ]
     for cx, cy in scale_centers:
         points = [(cx, cy - 16), (cx + 14, cy + 4), (cx, cy + 18), (cx - 14, cy + 4)]
@@ -360,7 +378,11 @@ def draw_dry_leaf(image: Image.Image) -> None:
     draw = ImageDraw.Draw(image)
     points = [(126, 74), (170, 102), (184, 150), (152, 192), (112, 186), (78, 150), (90, 102)]
     draw.polygon(points, fill=rgb("#c58a42"), outline=OUTLINE)
-    draw.polygon([(126, 86), (154, 110), (164, 148), (144, 176), (114, 172), (92, 146), (102, 110)], fill=rgb("#e0a15a"), outline=(0, 0, 0, 0))
+    draw.polygon(
+        [(126, 86), (154, 110), (164, 148), (144, 176), (114, 172), (92, 146), (102, 110)],
+        fill=rgb("#e0a15a"),
+        outline=(0, 0, 0, 0),
+    )
     stroke_line(draw, [(126, 82), (128, 186)], rgb("#8f5b2e"), 4)
     stroke_line(draw, [(128, 120), (150, 100)], rgb("#a66a35"), 3)
     stroke_line(draw, [(128, 138), (102, 114)], rgb("#a66a35"), 3)

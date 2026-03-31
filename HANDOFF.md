@@ -1,6 +1,34 @@
 # Session Handoff
 
-Last updated: 2026-03-30
+Last updated: 2026-03-31
+
+---
+
+## Review Follow-Up: Immersive Character Sounds Frontend Contract + Schema Tightening
+
+**Problem**: Reviewing the in-progress `feat/immersive-character-sounds` worktree against `docs/plans/2026-03-28-immersive-character-sounds.md` surfaced three concrete issues. First, the frontend only preserved `character_sfx` for normal `/api/turn` responses; hook turns from `/api/start` and `/api/start-deep-link` dropped that field, so first-turn ambient or character sounds would never play. Second, the muted TTS path in `useSessionOrchestration.js` triggered `playOutros()` inside the timeout callback and then called `handleSpeakingDone()`, which played the same outro cues a second time. Third, `TurnPlan.character_sfx` was still typed as raw `list[dict]` even though the branch had already introduced a dedicated `CharacterSfxCue` schema, which kept planner parsing looser than necessary and forced redundant dict-to-model conversion in `ScriptAgent`.
+
+**Solution**: Kept the overall immersive-sound design and narrowed the fixes to the verified contract gaps. The conversation hook now carries `character_sfx` for first-turn messages as well as regular turn responses, so hook audio can reach the orchestration layer. The muted playback path now lets `handleSpeakingDone()` own outro playback, eliminating the duplicate-fire path. On the backend, `TurnPlan` now uses `CharacterSfxCue` directly, which simplifies the plan-to-turn merge and validates planner sound entries earlier without changing the server-side cue whitelist and timing normalization.
+
+**Edits**:
+- `frontend/src/hooks/useConversation.js` - preserved `characterSfx` when hydrating the initial hook message from both `/api/start` and `/api/start-deep-link`
+- `frontend/src/hooks/useSessionOrchestration.js` - removed the extra muted-path `playOutros()` call so outro cues only fire once per turn
+- `frontend/src/hooks/useCharacterSfx.js` - removed unused pool bookkeeping and dead preload metadata so the hook matches its current lazy-cache behavior more clearly
+- `backend/schemas/turn_plan.py` - changed `character_sfx` from raw dicts to `list[CharacterSfxCue]`
+- `backend/agents/script_agent.py` - simplified the two-pass merge path to reuse validated `CharacterSfxCue` models directly
+- `tests/test_turn_plan.py` - added coverage for `character_sfx` defaults and dict-to-model coercion in `TurnPlan`
+- `tests/test_character_sound_frontend_contracts.py` - added source-level regressions for hook-turn `character_sfx` preservation and the muted outro path
+- `HANDOFF.md` - added this review follow-up entry
+
+**NOT Changed**:
+- `backend/server.py` cue validation and response wiring - unchanged in this review follow-up
+- Character sound asset files under `frontend/public/sfx/character/` - reviewed, not modified
+- The separate script/test formatting changes already present in the worktree - reviewed, not modified in this follow-up
+
+**Verification**:
+- `uv run pytest backend/tests/test_character_sounds.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py tests/test_backend_imports.py tests/test_device_screen_layout.py -q` - PASS (`40 passed`)
+- `uv run ruff check backend/schemas/turn_plan.py backend/agents/script_agent.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py backend/tests/test_character_sounds.py tests/test_backend_imports.py tests/test_device_screen_layout.py` - PASS
+- `uv run ruff format --check backend/schemas/turn_plan.py backend/agents/script_agent.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py` - PASS
 
 ---
 

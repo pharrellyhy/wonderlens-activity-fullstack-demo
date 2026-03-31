@@ -13,7 +13,10 @@ def test_device_screen_keeps_widget_area_centered_on_tall_viewports() -> None:
     source = DEVICE_SCREEN_PATH.read_text(encoding="utf-8")
 
     assert 'className="flex-1 min-h-0 grid place-items-center' in source
-    assert '<AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">' in source
+    assert (
+        '<AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">'
+        in source
+    )
 
 
 def test_animation_overlay_accepts_layout_class_name() -> None:

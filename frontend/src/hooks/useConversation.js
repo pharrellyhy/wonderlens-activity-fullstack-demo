@@ -62,6 +62,7 @@ export default function useConversation() {
           responseType: data.turn.response_type,
           toneMarker: data.turn.tone_marker,
           sfx: data.turn.audio?.sfx,
+          characterSfx: data.turn.character_sfx || [],
           errorExit: data.turn.error_exit || false,
           autoAdvance: data.turn.auto_advance || false,
         },
@@ -119,6 +120,7 @@ export default function useConversation() {
           responseType: data.first_turn.response_type || 'hook',
           toneMarker: data.first_turn.tone_marker,
           sfx: data.first_turn.audio?.sfx,
+          characterSfx: data.first_turn.character_sfx || [],
         }]);
       }
 
@@ -177,6 +179,7 @@ export default function useConversation() {
           responseType: data.first_turn.response_type || 'hook',
           toneMarker: data.first_turn.tone_marker,
           sfx: data.first_turn.audio?.sfx,
+          characterSfx: data.first_turn.character_sfx || [],
         }]);
       }
 

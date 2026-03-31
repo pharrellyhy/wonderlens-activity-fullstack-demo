@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 try:
     from .agents.pipeline import initialize_session
     from .agents.script_agent import ScriptAgent
+    from .character_sounds import pick_fallback_cue, validate_character_sfx
     from .config import get_settings
     from .db import init_db, log_session, log_turn, update_session_status
     from .entity_registry import (
@@ -56,6 +57,7 @@ try:
 except ImportError:
     from agents.pipeline import initialize_session
     from agents.script_agent import ScriptAgent
+    from character_sounds import pick_fallback_cue, validate_character_sfx
     from config import get_settings
     from db import init_db, log_session, log_turn, update_session_status
     from entity_registry import (
@@ -223,7 +225,7 @@ async def start_deep_link(req: DeepLinkStartRequest) -> JSONResponse:
             {"entity_name": state.entity_name, "ib_key_concepts": state.ib_key_concepts},
             visual_frames=state.visual_frames or None,
         )
-        first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
+        first_turn_data = _build_turn_response(first_turn, hook_frame, "hook", activity_type=state.activity_type)
         await _log_hook_turn(state, session_id, first_turn.dialogue)
 
         vision_result = {
@@ -309,7 +311,7 @@ async def start_session(
                 {"entity_name": state.entity_name, "ib_key_concepts": state.ib_key_concepts},
                 visual_frames=state.visual_frames or None,
             )
-            first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
+            first_turn_data = _build_turn_response(first_turn, hook_frame, "hook", activity_type=state.activity_type)
             await _log_hook_turn(state, session_id, first_turn.dialogue)
 
             vision_result = {
@@ -389,7 +391,7 @@ async def start_session(
             {"entity_name": state.entity_name, "ib_key_concepts": state.ib_key_concepts},
             visual_frames=state.visual_frames or None,
         )
-        first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
+        first_turn_data = _build_turn_response(first_turn, hook_frame, "hook", activity_type=state.activity_type)
         await _log_hook_turn(state, session_id, first_turn.dialogue)
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
@@ -462,7 +464,13 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
     await _log_ai_turn(req, state, result.turn_response.dialogue, response_type)
 
     latency_ms = int((time.perf_counter() - start_time) * 1000)
-    turn_data = _build_turn_response(result.turn_response, result.screen_frame, response_type, result.error_exit)
+    turn_data = _build_turn_response(
+        result.turn_response,
+        result.screen_frame,
+        response_type,
+        result.error_exit,
+        activity_type=state.activity_type,
+    )
     turn_data["auto_advance"] = result.auto_advance
 
     return JSONResponse(
@@ -497,7 +505,7 @@ async def turn_and_speak(req: TurnRequest) -> Response:
             status_code=400,
         )
 
-    async def _stream() -> bytes:  # type: ignore[return]
+    async def _stream():  # type: ignore[return]
         script_agent = ScriptAgent()
 
         await _log_user_turn(req, state)
@@ -524,7 +532,13 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         await _log_ai_turn(req, state, result.turn_response.dialogue, response_type)
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
-        turn_data = _build_turn_response(result.turn_response, result.screen_frame, response_type, result.error_exit)
+        turn_data = _build_turn_response(
+            result.turn_response,
+            result.screen_frame,
+            response_type,
+            result.error_exit,
+            activity_type=state.activity_type,
+        )
         turn_data["auto_advance"] = result.auto_advance
 
         # Yield JSON header (4-byte length prefix + JSON)
@@ -585,6 +599,7 @@ def _build_turn_response(
     screen_frame: ScreenFrame,
     response_type: str,
     error_exit: bool = False,
+    activity_type: str = "",
 ) -> dict:
     """Build the turn response dict for the API."""
     # Merge Script Agent's sfx_cue into screen frame so frontend SFX player picks it up
@@ -595,23 +610,25 @@ def _build_turn_response(
     audio: dict = {"sfx": turn.sfx_cue or frame_dict.get("sfx_cue")}
     if screen_frame.sfx_label:
         audio["sfx_label"] = screen_frame.sfx_label
+
+    # Validate character/environment sound cues; fall back if LLM returned none
+    character_sfx = []
+    if activity_type:
+        validated = (
+            validate_character_sfx(activity_type, turn.character_sfx)
+            if turn.character_sfx
+            else pick_fallback_cue(activity_type)
+        )
+        character_sfx = [c.model_dump() for c in validated]
+
     return {
         "dialogue": turn.dialogue,
         "tone_marker": turn.tone_marker,
         "screen_frame": frame_dict,
         "audio": audio,
+        "character_sfx": character_sfx,
         "response_type": response_type,
         "error_exit": error_exit,
-    }
-
-
-def _state_context(state: SessionStateModel) -> dict:
-    """Build a context dict from session state for screen frame generation."""
-    return {
-        "entity_name": state.entity_name,
-        "entity": state.entity_name,
-        "ib_key_concepts": state.ib_key_concepts,
-        "key_concepts": state.ib_key_concepts,
     }
 
 

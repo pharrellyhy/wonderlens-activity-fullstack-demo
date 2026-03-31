@@ -14,26 +14,26 @@ import yaml
 from openai import AsyncOpenAI
 
 try:
+    from ..character_sounds import get_sound_list_for_prompt
     from ..config import get_settings
     from ..db import log_agent_call
     from ..logger import setup_logger
     from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
-    from ..schemas.recipe import InstructionRecipe
     from ..schemas.session_state import SessionStateModel
     from ..schemas.step_instruction import RoundInstruction, StepGoal
     from ..schemas.turn_plan import TurnPlan
-    from ..schemas.turn_response import TurnResponse
+    from ..schemas.turn_response import CharacterSfxCue, TurnResponse
     from ..state_machine import get_step_name
 except ImportError:
+    from character_sounds import get_sound_list_for_prompt
     from config import get_settings
     from db import log_agent_call
     from logger import setup_logger
     from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
-    from schemas.recipe import InstructionRecipe
     from schemas.session_state import SessionStateModel
     from schemas.step_instruction import RoundInstruction, StepGoal
     from schemas.turn_plan import TurnPlan
-    from schemas.turn_response import TurnResponse
+    from schemas.turn_response import CharacterSfxCue, TurnResponse
     from state_machine import get_step_name
 
 logger = setup_logger(__name__)
@@ -749,6 +749,7 @@ def _build_system_prompt(state: SessionStateModel) -> str:
         "{entity_attributes}": ", ".join(state.entity_attributes) if state.entity_attributes else "not specified",
         "{scene}": state.scene or "not specified",
         "{photo_feature_anchors}": photo_feature_anchors,
+        "{character_sound_list}": get_sound_list_for_prompt(state.activity_type),
         "{template_type}": f"Category {'1' if state.template_type == 'cat1' else '5'} ({state.template_type})",
         "{current_step}": f"{state.current_step} — {get_step_name(state.current_step)}",
         "{current_round}": str(state.current_round),
@@ -811,6 +812,8 @@ class ScriptAgent:
             turn.sfx_cue = plan.sfx_cue
             turn.child_intent = plan.child_intent
             turn.stay_on_step = plan.stay_on_step
+            if plan.character_sfx:
+                turn.character_sfx = list(plan.character_sfx)
 
             return turn
 
@@ -1098,6 +1101,8 @@ class ScriptAgent:
             turn.sfx_cue = plan.sfx_cue
             turn.child_intent = plan.child_intent
             turn.stay_on_step = plan.stay_on_step
+            if plan.character_sfx:
+                turn.character_sfx = list(plan.character_sfx)
 
             return turn
 

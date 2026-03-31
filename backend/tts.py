@@ -40,21 +40,25 @@ _GEMINI_TTS_TAGS: set[str] = {
     "long pause",
 }
 
-# Matches any [tag] at the start of text (our emotion tags)
-_LEADING_TAG_RE = re.compile(r"^\[([^\]]+)\]\s*")
+# Matches any [tag] anywhere in text
+_BRACKET_TAG_RE = re.compile(r"\[([^\]]+)\]\s*")
 
 
 def _strip_unsupported_tags(text: str) -> str:
-    """Strip bracket tags not supported by Gemini TTS.
+    """Strip ALL bracket tags not supported by Gemini TTS.
 
-    Removes leading emotion tags like [excited], [warm], [proud] that would
-    be spoken as literal words. Preserves Gemini-native tags like [laughing],
-    [whispering], [curious] anywhere in the text.
+    Removes emotion tags like [excited] and stray cue IDs like [nature_grass_rustle]
+    that the LLM may embed in dialogue. Preserves only Gemini-native tags like
+    [laughing], [whispering], [curious].
     """
-    match = _LEADING_TAG_RE.match(text)
-    if match and match.group(1).lower() not in _GEMINI_TTS_TAGS:
-        text = text[match.end() :]
-    return text
+
+    def _replace(m: re.Match) -> str:
+        tag = m.group(1).lower()
+        if tag in _GEMINI_TTS_TAGS:
+            return m.group(0)  # keep Gemini tag as-is
+        return ""  # strip non-Gemini tag
+
+    return _BRACKET_TAG_RE.sub(_replace, text).strip()
 
 
 TIER_VOICES: dict[str, str] = {
@@ -101,7 +105,7 @@ def _pcm_to_wav(pcm_data: bytes, sample_rate: int = SAMPLE_RATE) -> bytes:
 
 def _open_ogg_opus_output(
     buffer: io.BytesIO, sample_rate: int = SAMPLE_RATE, page_duration_us: int | None = None
-) -> tuple[av.container.OutputContainer, av.audio.stream.AudioStream]:
+) -> tuple:  # (OutputContainer, AudioStream) — PyAV types not resolvable by Pyright
     """Create a configured OGG/Opus output container and stream."""
     options = {"page_duration": str(page_duration_us)} if page_duration_us is not None else None
     output = av.open(buffer, mode="w", format="ogg", options=options)
@@ -365,7 +369,7 @@ async def synthesize_speech_stream(text: str, tier: str) -> AsyncIterator[bytes]
         for chunk in stream:
             if not chunk.candidates or not chunk.candidates[0].content:
                 continue
-            for part in chunk.candidates[0].content.parts:
+            for part in chunk.candidates[0].content.parts or []:
                 if hasattr(part, "inline_data") and part.inline_data and part.inline_data.data:
                     pcm_chunk = part.inline_data.data
                     total_bytes += len(pcm_chunk)
@@ -420,7 +424,7 @@ async def synthesize_speech_stream_async(text: str, tier: str, max_retries: int 
             async for chunk in response_stream:
                 if not chunk.candidates or not chunk.candidates[0].content or not chunk.candidates[0].content.parts:
                     continue
-                for part in chunk.candidates[0].content.parts:
+                for part in chunk.candidates[0].content.parts or []:
                     if hasattr(part, "inline_data") and part.inline_data and part.inline_data.data:
                         pcm_chunk = part.inline_data.data
                         total_bytes += len(pcm_chunk)

@@ -2,7 +2,7 @@
 
 import json
 
-from schemas import TurnPlan
+from schemas import CharacterSfxCue, TurnPlan
 
 
 class TestTurnPlanDefaults:
@@ -46,6 +46,7 @@ class TestTurnPlanDefaults:
         assert plan.screen_widget_params == {}
         assert plan.screen_animation is None
         assert plan.sfx_cue is None
+        assert plan.character_sfx == []
         assert plan.child_intent is None
 
 
@@ -75,6 +76,7 @@ class TestTurnPlanFull:
             screen_widget_params={"items": ["leaf"]},
             screen_animation="sparkle_burst",
             sfx_cue="collect_chime",
+            character_sfx=[CharacterSfxCue(cue="dog_bark_happy", timing="intro")],
             child_intent="accepted",
         )
         assert plan.celebrate_item == "spotty leaf"
@@ -89,7 +91,16 @@ class TestTurnPlanFull:
         assert plan.screen_widget_params == {"items": ["leaf"]}
         assert plan.screen_animation == "sparkle_burst"
         assert plan.sfx_cue == "collect_chime"
+        assert plan.character_sfx == [CharacterSfxCue(cue="dog_bark_happy", timing="intro")]
         assert plan.child_intent == "accepted"
+
+    def test_character_sfx_dicts_coerce_to_models(self) -> None:
+        plan = TurnPlan(
+            child_said="I found a spotty leaf!",
+            child_emotion="excited",
+            character_sfx=[{"cue": "dog_bark_happy", "timing": "overlay"}],
+        )
+        assert plan.character_sfx == [CharacterSfxCue(cue="dog_bark_happy", timing="overlay")]
 
     def test_t0_constraints(self) -> None:
         """T0 tier plans should model first and offer binary choices."""
@@ -208,6 +219,7 @@ class TestTurnPlanSerialization:
             "screen_widget_params",
             "screen_animation",
             "sfx_cue",
+            "character_sfx",
             "child_intent",
         }
         assert set(dumped.keys()) == expected_fields

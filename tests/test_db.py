@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from db import get_session, init_db, log_session, log_turn, update_session_status
 
 

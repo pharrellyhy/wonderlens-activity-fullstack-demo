@@ -11,7 +11,7 @@ try:
 except ImportError:
     from schemas.turn_response import CharacterSfxCue
 
-_DATA_PATH = Path(__file__).parent / "data" / "character_sounds.yaml"
+_DATA_PATH = Path(__file__).parent / "character_sounds.yaml"
 
 # Max 2 cues: 1 character intro + 1 ambient overlay
 _MAX_CUES_PER_TURN = 2

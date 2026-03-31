@@ -51,6 +51,7 @@ try:
         _generate_with_retry,
         _should_auto_advance,
         _step_round_number,
+        get_retry_stats,
         resolve_turn,
     )
     from .vision import analyze_image
@@ -84,6 +85,7 @@ except ImportError:
         _generate_with_retry,
         _should_auto_advance,
         _step_round_number,
+        get_retry_stats,
         resolve_turn,
     )
     from vision import analyze_image
@@ -209,7 +211,7 @@ async def start_deep_link(req: DeepLinkStartRequest) -> JSONResponse:
         await log_session(settings.db_path, session_id, req.tier, activity_type, source="deep_link")
 
         script_agent = ScriptAgent()
-        first_turn = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+        first_turn, _gen_debug = await _generate_with_retry(script_agent, state, is_first_on_step=True)
 
         state.conversation_history.append(
             ConversationTurn(role="ai", text=first_turn.dialogue, step=state.current_step, round_number=None)
@@ -294,7 +296,7 @@ async def start_session(
 
             # Generate hook turn via Script Agent (uses instruction recipe)
             script_agent = ScriptAgent()
-            first_turn = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+            first_turn, _gen_debug = await _generate_with_retry(script_agent, state, is_first_on_step=True)
 
             # Record hook in conversation history; STEP_2 is generated on the first follow-up turn.
             state.conversation_history.append(
@@ -473,13 +475,15 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
     )
     turn_data["auto_advance"] = result.auto_advance
 
-    return JSONResponse(
-        {
-            "turn": turn_data,
-            "session_state": _session_state_dict(state),
-            "latency_ms": latency_ms,
-        }
-    )
+    response_payload: dict = {
+        "turn": turn_data,
+        "session_state": _session_state_dict(state),
+        "latency_ms": latency_ms,
+    }
+    if result.debug:
+        response_payload["debug"] = result.debug
+
+    return JSONResponse(response_payload)
 
 
 @app.post("/api/turn-speak")
@@ -542,13 +546,14 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         turn_data["auto_advance"] = result.auto_advance
 
         # Yield JSON header (4-byte length prefix + JSON)
-        response_json = json.dumps(
-            {
-                "turn": turn_data,
-                "session_state": _session_state_dict(state),
-                "latency_ms": latency_ms,
-            }
-        ).encode()
+        stream_payload: dict = {
+            "turn": turn_data,
+            "session_state": _session_state_dict(state),
+            "latency_ms": latency_ms,
+        }
+        if result.debug:
+            stream_payload["debug"] = result.debug
+        response_json = json.dumps(stream_payload).encode()
         yield struct.pack(">I", len(response_json))
         yield response_json
 

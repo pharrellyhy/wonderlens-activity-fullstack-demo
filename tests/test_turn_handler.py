@@ -721,11 +721,13 @@ async def test_generate_with_retry_retries_speaker_only_after_plan_violation() -
     )
     agent = _SpeakerRetryAgent()
 
-    response = await _generate_with_retry(agent, state)
+    response, gen_debug = await _generate_with_retry(agent, state)
 
     assert response.dialogue == "I wonder what else is nearby!"
     assert agent.generate_calls == 1
     agent.retry_speaker_turn.assert_awaited_once()
+    assert gen_debug.final_verdict == "passed"
+    assert gen_debug.attempt_count == 2
 
 
 @pytest.mark.asyncio
@@ -766,8 +768,10 @@ async def test_generate_with_retry_replans_after_planner_failure() -> None:
     )
     agent = _PlannerRetryAgent()
 
-    response = await _generate_with_retry(agent, state)
+    response, gen_debug = await _generate_with_retry(agent, state)
 
     assert response.dialogue == "That one feels bumpy, like tiny pebbles."
     assert agent.generate_calls == 2
     agent.retry_speaker_turn.assert_not_awaited()
+    assert gen_debug.final_verdict == "passed"
+    assert gen_debug.attempt_count == 2

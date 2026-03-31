@@ -226,6 +226,7 @@ async def start_deep_link(req: DeepLinkStartRequest) -> JSONResponse:
             visual_frames=state.visual_frames or None,
         )
         first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
+        await _log_hook_turn(state, session_id, first_turn.dialogue)
 
         vision_result = {
             "entity": state.entity_name,
@@ -311,6 +312,7 @@ async def start_session(
                 visual_frames=state.visual_frames or None,
             )
             first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
+            await _log_hook_turn(state, session_id, first_turn.dialogue)
 
             vision_result = {
                 "entity": state.entity_name,
@@ -390,6 +392,7 @@ async def start_session(
             visual_frames=state.visual_frames or None,
         )
         first_turn_data = _build_turn_response(first_turn, hook_frame, "hook")
+        await _log_hook_turn(state, session_id, first_turn.dialogue)
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
         logger.info(
@@ -439,6 +442,8 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
 
     script_agent = ScriptAgent()
 
+    await _log_user_turn(req, state)
+
     # Resolve the turn using unified turn handler
     result = await resolve_turn(
         state, TurnInput(text=req.text, is_silent=req.is_silent, photo_id=req.photo_id), script_agent
@@ -456,16 +461,7 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
         completion_reason = "closing_delivered" if result.response_type == "closing" else "all_steps_done"
         await update_session_status(settings.db_path, req.session_id, "completed", completion_reason, state.turn_count)
 
-    await log_turn(
-        settings.db_path,
-        req.session_id,
-        state.turn_count,
-        "ai",
-        result.turn_response.dialogue,
-        response_type,
-        is_silent=req.is_silent,
-        consecutive_silence=state.consecutive_silence,
-    )
+    await _log_ai_turn(req, state, result.turn_response.dialogue, response_type)
 
     latency_ms = int((time.perf_counter() - start_time) * 1000)
     turn_data = _build_turn_response(result.turn_response, result.screen_frame, response_type, result.error_exit)
@@ -508,6 +504,8 @@ async def turn_and_speak(req: TurnRequest) -> Response:
     async def _stream() -> bytes:  # type: ignore[return]
         script_agent = ScriptAgent()
 
+        await _log_user_turn(req, state)
+
         # Resolve the turn using unified turn handler
         result = await resolve_turn(
             state, TurnInput(text=req.text, is_silent=req.is_silent, photo_id=req.photo_id), script_agent
@@ -527,16 +525,7 @@ async def turn_and_speak(req: TurnRequest) -> Response:
                 settings.db_path, req.session_id, "completed", completion_reason, state.turn_count
             )
 
-        await log_turn(
-            settings.db_path,
-            req.session_id,
-            state.turn_count,
-            "ai",
-            result.turn_response.dialogue,
-            response_type,
-            is_silent=req.is_silent,
-            consecutive_silence=state.consecutive_silence,
-        )
+        await _log_ai_turn(req, state, result.turn_response.dialogue, response_type)
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
         turn_data = _build_turn_response(result.turn_response, result.screen_frame, response_type, result.error_exit)
@@ -638,6 +627,83 @@ def _entity_from_filename(filename: str) -> str:
     stem = filename.rsplit(".", 1)[0] if "." in filename else filename
     name = re.sub(r"[\d_-]+", " ", stem).strip()
     return name if name else "object"
+
+
+async def _log_hook_turn(state: SessionStateModel, session_id: str, dialogue: str) -> None:
+    """Log the first AI hook turn when a session starts."""
+    settings = get_settings()
+    await log_turn(
+        settings.db_path,
+        session_id,
+        state.turn_count,
+        "ai",
+        dialogue,
+        "hook",
+        step=state.current_step,
+        state_snapshot=_build_state_snapshot(state),
+    )
+
+
+async def _log_user_turn(req: TurnRequest, state: SessionStateModel) -> None:
+    """Log the incoming user turn with the pre-resolution state snapshot."""
+    settings = get_settings()
+    await log_turn(
+        settings.db_path,
+        req.session_id,
+        state.turn_count + 1,
+        "user",
+        text=req.text if req.text else None,
+        is_silent=req.is_silent,
+        photo_id=req.photo_id,
+        step=state.current_step,
+        state_snapshot=_build_state_snapshot(state),
+    )
+
+
+async def _log_ai_turn(
+    req: TurnRequest,
+    state: SessionStateModel,
+    dialogue: str,
+    response_type: str,
+) -> None:
+    """Log the outgoing AI turn with the step that produced the dialogue."""
+    settings = get_settings()
+    await log_turn(
+        settings.db_path,
+        req.session_id,
+        state.turn_count,
+        "ai",
+        dialogue,
+        response_type,
+        is_silent=req.is_silent,
+        consecutive_silence=state.consecutive_silence,
+        step=_latest_ai_turn_step(state, dialogue),
+        state_snapshot=_build_state_snapshot(state),
+    )
+
+
+def _latest_ai_turn_step(state: SessionStateModel, dialogue: str) -> str:
+    """Return the step attached to the most recently appended AI dialogue."""
+    for turn in reversed(state.conversation_history):
+        if turn.role == "ai" and turn.text == dialogue:
+            return turn.step
+    return state.current_step
+
+
+def _build_state_snapshot(state: SessionStateModel) -> str:
+    """Build a compact JSON snapshot of key state fields for turn logging."""
+    snapshot: dict = {
+        "current_step": state.current_step,
+        "current_round": state.current_round,
+        "collection_phase": state.collection_phase,
+        "synthesis_phase": state.synthesis_phase,
+        "consecutive_silence": state.consecutive_silence,
+        "consecutive_wrong": state.consecutive_wrong,
+        "collected_photos": state.collected_photos,
+        "collected_names": state.collected_names,
+        "turn_count": state.turn_count,
+    }
+    return json.dumps(snapshot, separators=(",", ":"))
 
 
 def _session_state_dict(state: SessionStateModel) -> dict:

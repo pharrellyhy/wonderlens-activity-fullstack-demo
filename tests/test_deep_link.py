@@ -7,6 +7,7 @@ import server
 from entity_registry import lookup_by_entity_name
 from fastapi.testclient import TestClient
 from schemas.turn_response import TurnResponse
+from turn_handler import GenerationDebugInfo
 
 
 @pytest.fixture()
@@ -17,17 +18,25 @@ def deep_link_client(monkeypatch: pytest.MonkeyPatch, tmp_path):
     async def fake_log_session(*_args: object, **_kwargs: object) -> None:
         return None
 
-    async def fake_generate_with_retry(*_args: object, **_kwargs: object) -> TurnResponse:
-        return TurnResponse(
+    async def fake_log_turn(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    async def fake_generate_with_retry(*_args: object, **_kwargs: object) -> tuple:
+        response = TurnResponse(
             dialogue="[curious] We were just talking about your dinosaur's spikes. Would you like to play?",
             tone_marker="curious",
             screen_widget="character_display",
             screen_widget_params={},
             screen_animation="appear",
         )
+        debug_info = GenerationDebugInfo(
+            step="STEP_1_HOOK", attempt_count=1, final_verdict="passed", attempts=[],
+        )
+        return response, debug_info
 
     monkeypatch.setattr(server, "init_db", fake_init_db)
     monkeypatch.setattr(server, "log_session", fake_log_session)
+    monkeypatch.setattr(server, "log_turn", fake_log_turn)
     monkeypatch.setattr(server, "_generate_with_retry", fake_generate_with_retry)
     monkeypatch.setattr(server, "get_settings", lambda: SimpleNamespace(db_path=str(tmp_path / "test.db")))
 

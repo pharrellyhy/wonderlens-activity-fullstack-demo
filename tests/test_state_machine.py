@@ -185,18 +185,17 @@ class TestGetScreenFrameWithVisualFrames:
 
         assert frame.widget == "photo_display"
 
-    def test_uses_visual_frame_for_cat5_collect(self) -> None:
+    def test_uses_explorer_map_for_cat5_collect(self) -> None:
         visual_frames = _make_visual_frames()
         context = {"entity_name": "leaf", "ib_key_concepts": ["Form"]}
 
         frame = get_screen_frame("STEP_3_COLLECT_1", "cat5", _cat5_slots(), context, visual_frames=visual_frames)
 
-        # Should match on_round_1
-        assert frame.trigger == "on_round_1"
-        assert frame.sfx_cue == "game_start_chime"
+        # Cat5 now always uses explorer_map
+        assert frame.widget == "explorer_map"
+        assert frame.trigger == "on_enter"
 
-    def test_cat5_collect_visual_frame_gets_progress_counts(self) -> None:
-        visual_frames = _make_visual_frames()
+    def test_cat5_collect_explorer_map_has_progress(self) -> None:
         context = {
             "entity_name": "leaf",
             "ib_key_concepts": ["Form"],
@@ -204,24 +203,12 @@ class TestGetScreenFrameWithVisualFrames:
             "collected_photos": ["leaf_heart"],
         }
 
-        frame = get_screen_frame("STEP_3_COLLECT_2", "cat5", _cat5_slots(), context, visual_frames=visual_frames)
+        frame = get_screen_frame("STEP_3_COLLECT_2", "cat5", _cat5_slots(), context)
 
-        assert frame.widget == "character_display"
-        assert frame.widget_params["roundNumber"] == 2
+        assert frame.widget == "explorer_map"
+        assert frame.widget_params["collected_count"] == 1
 
-        visual_frames[2].widget = "progress_tracker"
-        visual_frames[2].widget_params = {}
-
-        progress_frame = get_screen_frame(
-            "STEP_3_COLLECT_2", "cat5", _cat5_slots(), context, visual_frames=visual_frames
-        )
-
-        assert progress_frame.widget == "progress_tracker"
-        assert progress_frame.widget_params["filled"] == 1
-        assert progress_frame.widget_params["total"] == 2
-        assert visual_frames[2].widget_params == {}
-
-    def test_cat5_detail_phase_uses_collected_photo_display(self) -> None:
+    def test_cat5_detail_phase_uses_explorer_map(self) -> None:
         context = {
             "entity_name": "leaf",
             "ib_key_concepts": ["Form"],
@@ -237,9 +224,7 @@ class TestGetScreenFrameWithVisualFrames:
 
         frame = get_screen_frame("STEP_3_COLLECT_1", "cat5", _cat5_slots(), context, visual_frames=None)
 
-        assert frame.widget == "photo_display"
-        assert frame.widget_params["photo_id"] == "leaf_heart"
-        assert frame.widget_params["photoUrl"] == "/icons/leaf_heart.png"
+        assert frame.widget == "explorer_map"
 
     def test_cat5_detail_phase_ignores_collect_visual_frame(self) -> None:
         visual_frames = _make_visual_frames()
@@ -252,8 +237,8 @@ class TestGetScreenFrameWithVisualFrames:
 
         frame = get_screen_frame("STEP_3_COLLECT_1", "cat5", _cat5_slots(), context, visual_frames=visual_frames)
 
-        assert frame.widget == "photo_display"
-        assert frame.widget_params["photo_id"] == "leaf_heart"
+        # Cat5 always uses explorer_map regardless of visual frames
+        assert frame.widget == "explorer_map"
 
     def test_uses_visual_frame_for_celebration(self) -> None:
         visual_frames = _make_visual_frames()

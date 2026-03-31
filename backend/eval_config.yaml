@@ -1,0 +1,16 @@
+sessions_per_combo: 5
+# Entity names (as accepted by /api/start-deep-link)
+entities:
+  - dandelion        # fluffy_expedition_dandelion (cat5)
+  - ladybug          # polka_dot_patrol (cat5)
+tiers: [T0, T1, T2]
+server_url: "http://localhost:8000"
+output_dir: "eval_results"
+
+thresholds:
+  combined_score_min: 80
+  critical_failures_max: 0
+  cross_session_variety_min: 70
+
+child_sim_model: "qwen3.5-plus"
+judge_model: "qwen3.5-plus"

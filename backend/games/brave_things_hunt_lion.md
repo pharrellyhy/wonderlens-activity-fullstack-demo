@@ -23,7 +23,7 @@ creative_slots:
   mission_metaphor: You are a Brave Things Scout building a Brave Parade!
   role_title: Brave Things Scout
   synthesis_type: comparison_chart
-  stuck_hint: Look down for a big rock or up for a thick tree. Strong things like to hide!
+  stuck_hint: "Would you like to peek around? Something strong might be hiding nearby!"
   naming_prompt: Is this one the biggest or the toughest?
   detail_question_template: "What makes this one look brave or strong to you?"
   sorting_criterion: "strength (biggest and toughest to smallest and gentlest)"
@@ -213,9 +213,9 @@ Child photographs toy lion in the yard → AI roars and wonders what else is bra
 
 **AI follow-up:**
 
-1. (cheering) "Go go go, Brave Scout! Big and strong — like lion!"
-2. (helpful, warm) "Strong means hard! Big! Like a rock. Or a tree. Go look!"
-3. (wait 2s) (encouraging) "Look around! A big rock? A thick tree? Find something strong!"
+1. (cheering) "Go go go, Brave Scout! Big and strong — like lion! Would you like to start looking?"
+2. (helpful, warm) "Strong means hard! Big! Like a rock or a tree. I bet something strong is nearby!"
+3. (wait 2s) (encouraging) "I wonder what's big and strong around here! Would you like to peek around?"
 
 **Screen:** Mission card with "Brave Scout" badge (lion paw icon), 3 slots (first filled with lion photo, 2 empty with paw-print placeholders), and a "Find 2!" counter.
 
@@ -259,7 +259,7 @@ Child photographs toy lion in the yard → AI roars and wonders what else is bra
 
 1. (impressed) "Yes! So big! Now — which is toughest? Which one is really hard?"
 2. (warm, scaffolding) "Lion IS big! Now look — is the rock bigger? Or the [other find]? Which is the biggest of ALL?"
-3. (wait 2s) (gentle, guiding) "Look at all three. Point to the BIGGEST one!"
+3. (wait 2s) (gentle, guiding) "All three are right here! Which one do you think is the BIGGEST?"
 
 **AI says (after child picks biggest):** (curious) "Now — which is toughest? Really hard?"
 

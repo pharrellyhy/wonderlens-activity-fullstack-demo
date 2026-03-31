@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from schemas import ConversationTurn
 from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from schemas.session_state import SessionStateModel
+from schemas.story_classification import StoryClassification
 from schemas.turn_response import TurnResponse
 from server import app
 
@@ -132,6 +133,44 @@ def _step_2_state() -> SessionStateModel:
         ConversationTurn(role="ai", text="[playful] Would you like to try?", step="STEP_2_RULES")
     )
     return state
+
+
+def _synthesis_state() -> SessionStateModel:
+    return SessionStateModel(
+        session_id="test-sess",
+        tier="T0",
+        template_type="cat5",
+        activity_type="polka_dot_patrol",
+        current_step="STEP_4_SYNTHESIS",
+        current_round=2,
+        total_rounds=2,
+        creative_slots=Cat5CreativeSlots(
+            observation_angle="pattern",
+            collection_criterion="Find things with spots or dots",
+            collection_count=2,
+            mission_metaphor="You are a Dot Detective!",
+            role_title="Dot Detective",
+            synthesis_type="naming_story",
+            stuck_hint="Look for circles or speckles nearby!",
+            naming_prompt="What kind of spots do you see?",
+            detail_question_template="How are these dots different?",
+            sorting_criterion="dot size",
+        ),
+        entity_name="ladybug",
+        ib_key_concepts=["Form"],
+        collected_photos=["spotted_mushroom", "dotted_pebble"],
+        collected_names=["Speckle Cap", "Pebble Dot"],
+        collected_details=["big dots", "tiny dots"],
+        synthesis_phase="evaluate",
+        synthesis_prompt_count=1,
+        conversation_history=[
+            ConversationTurn(
+                role="ai",
+                text="[wonder] Would you like to tell a story about Speckle Cap and Pebble Dot?",
+                step="STEP_4_SYNTHESIS",
+            ),
+        ],
+    )
 
 
 class TestHealthEndpoint:
@@ -504,15 +543,11 @@ class TestTurnByTurnEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["session_state"]["current_step"] == "STEP_3_COLLECT_2"
-        assert data["session_state"]["current_round"] == 2
-        assert data["session_state"]["collection_phase"] == "photo"
+        # Detail completion now defers advance via round_advance_pending + auto_advance
+        assert data["session_state"]["current_step"] == "STEP_3_COLLECT_1"
+        assert data["session_state"]["collection_phase"] == "detail"
         assert data["session_state"]["collected_details"] == ["big dots"]
-        assert data["session_state"]["current_round_items"] == [
-            {"id": "dotted_pebble", "label": "Dotted pebble", "image": ""},
-            {"id": "smooth_stone", "label": "Smooth stone", "image": ""},
-            {"id": "pine_needle", "label": "Pine needles", "image": ""},
-        ]
+        assert data["turn"]["auto_advance"] is True
         assert data["turn"]["dialogue"] == "Those giant dots are bold. Want to find one more?"
 
     def test_turn_detail_response_exposes_collected_names_and_details(self, client: TestClient) -> None:
@@ -905,3 +940,167 @@ class TestSTTEndpoint:
 
         assert resp.status_code == 422
         assert resp.json()["error"] == "transcription_failed"
+
+
+class TestTurnLogging:
+    """Verify that both user and AI turns are logged with state snapshots."""
+
+    def test_turn_logs_both_user_and_ai(self, client: TestClient) -> None:
+        import sqlite3  # noqa: PLC0415
+
+        from config import get_settings  # noqa: PLC0415
+        from server import _sessions  # noqa: PLC0415
+
+        _sessions["test-sess"] = _turn_by_turn_state()
+
+        turn = TurnResponse(
+            dialogue="[playful] Would you like to try?",
+            tone_marker="playful",
+            screen_widget="character_display",
+            screen_widget_params={},
+        )
+
+        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=turn)):
+            resp = client.post(
+                "/api/turn",
+                json={"session_id": "test-sess", "text": "hello doggy", "is_silent": False},
+            )
+
+        assert resp.status_code == 200
+
+        db_path = get_settings().db_path
+        conn = sqlite3.connect(db_path)
+        rows = conn.execute(
+            "SELECT role, text, step, state_snapshot, photo_id, is_silent FROM turns WHERE session_id = 'test-sess' ORDER BY id"
+        ).fetchall()
+        conn.close()
+
+        assert len(rows) >= 2
+        user_row = rows[0]
+        ai_row = rows[1]
+
+        # User turn
+        assert user_row[0] == "user"
+        assert user_row[1] == "hello doggy"
+        assert user_row[2] is not None  # step logged
+        snapshot = json.loads(user_row[3])
+        assert "current_step" in snapshot
+        assert "consecutive_silence" in snapshot
+
+        # AI turn
+        assert ai_row[0] == "ai"
+        assert ai_row[1] == "[playful] Would you like to try?"
+        assert ai_row[2] is not None
+        ai_snapshot = json.loads(ai_row[3])
+        assert "current_step" in ai_snapshot
+
+    def test_turn_logs_photo_id_for_collection(self, client: TestClient) -> None:
+        import sqlite3  # noqa: PLC0415
+
+        from config import get_settings  # noqa: PLC0415
+        from server import _sessions  # noqa: PLC0415
+
+        state = _polka_dot_collection_state()
+        _sessions["test-sess"] = state
+
+        turn = TurnResponse(
+            dialogue="[amazed] A dotty leaf!",
+            tone_marker="amazed",
+            screen_widget="explorer_map",
+            screen_widget_params={},
+        )
+
+        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=turn)):
+            resp = client.post(
+                "/api/turn",
+                json={"session_id": "test-sess", "text": "", "is_silent": False, "photo_id": "spotted_mushroom"},
+            )
+
+        assert resp.status_code == 200
+
+        db_path = get_settings().db_path
+        conn = sqlite3.connect(db_path)
+        user_rows = conn.execute(
+            "SELECT photo_id FROM turns WHERE session_id = 'test-sess' AND role = 'user'"
+        ).fetchall()
+        conn.close()
+
+        assert len(user_rows) >= 1
+        assert user_rows[0][0] == "spotted_mushroom"
+
+    def test_silence_logged_for_user_turn(self, client: TestClient) -> None:
+        import sqlite3  # noqa: PLC0415
+
+        from config import get_settings  # noqa: PLC0415
+        from server import _sessions  # noqa: PLC0415
+
+        _sessions["test-sess"] = _turn_by_turn_state()
+
+        turn = TurnResponse(
+            dialogue="[gentle] Are you there?",
+            tone_marker="gentle",
+            screen_widget="character_display",
+            screen_widget_params={},
+        )
+
+        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=turn)):
+            resp = client.post(
+                "/api/turn",
+                json={"session_id": "test-sess", "text": "", "is_silent": True},
+            )
+
+        assert resp.status_code == 200
+
+        db_path = get_settings().db_path
+        conn = sqlite3.connect(db_path)
+        user_rows = conn.execute(
+            "SELECT is_silent, text FROM turns WHERE session_id = 'test-sess' AND role = 'user'"
+        ).fetchall()
+        conn.close()
+
+        assert len(user_rows) >= 1
+        assert user_rows[0][0] == 1  # is_silent = True
+        assert user_rows[0][1] is None  # no text
+
+    def test_ai_turn_keeps_response_step_after_synthesis_auto_advance(self, client: TestClient) -> None:
+        import sqlite3  # noqa: PLC0415
+
+        from config import get_settings  # noqa: PLC0415
+        from server import _sessions  # noqa: PLC0415
+
+        _sessions["test-sess"] = _synthesis_state()
+
+        turn = TurnResponse(
+            dialogue="[gentle] Speckle Cap and Pebble Dot curled up under the moon.",
+            tone_marker="gentle",
+            screen_widget="explorer_map",
+            screen_widget_params={},
+        )
+        classification = StoryClassification(
+            classification="story_attempt",
+            is_related_to_collection=True,
+            story_quality="good",
+        )
+
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=turn)),
+            patch("turn_handler._classify_story_response", new=AsyncMock(return_value=classification)),
+        ):
+            resp = client.post(
+                "/api/turn",
+                json={"session_id": "test-sess", "text": "they snuggled together", "is_silent": False},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["session_state"]["current_step"] == "STEP_5_CELEBRATE"
+
+        db_path = get_settings().db_path
+        conn = sqlite3.connect(db_path)
+        ai_row = conn.execute(
+            "SELECT step, state_snapshot FROM turns WHERE session_id = 'test-sess' AND role = 'ai' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        conn.close()
+
+        assert ai_row is not None
+        assert ai_row[0] == "STEP_4_SYNTHESIS"
+        assert json.loads(ai_row[1])["current_step"] == "STEP_5_CELEBRATE"

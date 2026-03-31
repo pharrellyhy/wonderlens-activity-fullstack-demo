@@ -224,7 +224,9 @@ def _build_entity_summary(entity: EntityConfig) -> dict:
                 "metaphor": slots.metaphor,
                 "game_mechanic": slots.game_mechanic,
                 "round_count": entity.play_rounds if entity.play_rounds is not None else len(slots.round_scenarios),
-                "round_scenarios": slots.round_scenarios,
+                "round_scenarios": slots.round_scenarios[: entity.play_rounds]
+                if entity.play_rounds is not None
+                else slots.round_scenarios,
                 "escalation_axis": slots.escalation_axis,
                 "collection_criterion": None,
                 "collection_count": None,

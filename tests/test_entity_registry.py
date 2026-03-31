@@ -178,6 +178,15 @@ class TestAllEntitiesForApi:
                 assert "label" in photo
                 assert "src" in photo
 
+    def test_cat1_summary_round_scenarios_match_round_count(self) -> None:
+        result = all_entities_for_api()
+        photos_by_id = {photo["id"]: photo for category in result for photo in category["photos"]}
+
+        cat_summary = photos_by_id["cat"]["summary"]
+
+        assert cat_summary["round_scenarios"] is not None
+        assert len(cat_summary["round_scenarios"]) == cat_summary["round_count"]
+
 
 class TestStyleFragments:
     """Verify that fragment files exist for all styles referenced by entities."""
@@ -224,14 +233,20 @@ class TestStyleFragments:
                 assert path.exists(), f"Missing fragment: {path.name} (entity={entity.activity_type})"
 
     def test_cat5_fragments_exist_for_registered_synthesis_types(self) -> None:
+        # Synthesis now uses a single story_generation fragment for all types
+        # (the old per-synthesis-type fragments were removed). Verify that the
+        # collect fragment still exists per synthesis_type and the unified
+        # story_generation fragment exists.
+        story_gen_path = self._STEP_INSTRUCTIONS_DIR / "cat5_step4_synthesis__story_generation.md"
+        assert story_gen_path.exists(), "Missing unified synthesis fragment: cat5_step4_synthesis__story_generation.md"
+
         for entity in ENTITY_REGISTRY:
             if entity.category != "category_5":
                 continue
             assert isinstance(entity.creative_slots, Cat5CreativeSlots)
             synthesis = entity.creative_slots.synthesis_type
-            for base in self._CAT5_FRAGMENT_BASES:
-                path = self._STEP_INSTRUCTIONS_DIR / f"{base}__{synthesis}.md"
-                assert path.exists(), f"Missing fragment: {path.name} (entity={entity.activity_type})"
+            collect_path = self._STEP_INSTRUCTIONS_DIR / f"cat5_step3_collect__{synthesis}.md"
+            assert collect_path.exists(), f"Missing fragment: {collect_path.name} (entity={entity.activity_type})"
 
     def test_cat1_round_fragment_is_loaded_and_interpolated(self) -> None:
         state = self._build_state(
@@ -247,20 +262,33 @@ class TestStyleFragments:
         # Examples are now dynamically sampled from YAML, so check for the placeholder resolution
         assert "{sampled_examples}" not in text
 
-    def test_cat5_synthesis_uses_naming_story_fragment(self) -> None:
+    def test_cat5_synthesis_uses_story_generation_fragment(self) -> None:
         state = self._build_state(
             "fluffy_expedition_dandelion",
             "STEP_4_SYNTHESIS",
             collected_photos=["fuzzy_moss", "soft_petal", "fluffy_seed"],
         )
+        state.synthesis_phase = "generate"
 
         text = _load_step_instructions(state)
 
-        assert "### Style: Naming Story" in text
-        assert "### VARIANT RULES" in text
-        assert "bedtime-style mini-story" in text
+        assert "### Story Generation" in text
+        assert "### STORY REQUIREMENTS" in text
         assert "STORY THEMES" in text
-        assert "Comparison Chart" not in text
+
+    def test_cat5_synthesis_filters_inactive_phase_sections(self) -> None:
+        state = self._build_state(
+            "fluffy_expedition_dandelion",
+            "STEP_4_SYNTHESIS",
+            collected_photos=["fuzzy_moss", "soft_petal", "fluffy_seed"],
+        )
+        state.synthesis_phase = "generate"
+
+        text = _load_step_instructions(state)
+
+        assert "### PHASE: GENERATE" in text
+        assert "### PHASE: INVITE" not in text
+        assert "### PHASE: IMPROVE" not in text
 
     def test_cat5_mission_prompt_fully_interpolates_example_driven_variables(self) -> None:
         state = self._build_state("fluffy_expedition_dandelion", "STEP_2_MISSION")

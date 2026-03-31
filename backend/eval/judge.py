@@ -8,6 +8,7 @@ from openai import AsyncOpenAI
 
 from eval.rubrics import (
     STEP_RUBRICS,
+    TIER_AGE_RANGES,
     SessionJudgement,
     SessionTranscript,
     StepScore,
@@ -19,13 +20,9 @@ logger = logging.getLogger("wonderlens")
 
 def _build_judge_prompt(transcript: SessionTranscript) -> str:
     """Build the judge prompt from a session transcript."""
-    age_map = {"T0": "2-4", "T1": "4-6", "T2": "6-8"}
-    age = age_map.get(transcript.tier, "2-4")
+    age = TIER_AGE_RANGES.get(transcript.tier, "2-4")
 
-    steps: dict[str, list[str]] = {}
-    for turn in transcript.turns:
-        label = step_to_rubric_label(turn.step)
-        steps.setdefault(label, []).append(turn.ai_dialogue)
+    present_labels = {step_to_rubric_label(turn.step) for turn in transcript.turns}
 
     transcript_lines: list[str] = []
     for turn in transcript.turns:
@@ -39,7 +36,7 @@ def _build_judge_prompt(transcript: SessionTranscript) -> str:
 
     rubric_lines: list[str] = []
     for label, rubric in STEP_RUBRICS.items():
-        if label in steps:
+        if label in present_labels:
             rubric_lines.append(f"- {label}: Score these dimensions 1-5: {', '.join(rubric.dimensions)}")
 
     return (
@@ -83,7 +80,7 @@ class EvalJudge:
             api_key=api_key,
             base_url=base_url,
             max_retries=1,
-            timeout=httpx.Timeout(30.0, connect=5.0),
+            timeout=httpx.Timeout(90.0, connect=10.0),
         )
 
     def parse_judgement(self, raw: str) -> SessionJudgement:

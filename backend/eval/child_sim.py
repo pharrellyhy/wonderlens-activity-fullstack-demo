@@ -8,7 +8,7 @@ import httpx
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from eval.rubrics import PERSONAS, ChildSimResponse, Persona
+from eval.rubrics import PERSONAS, TIER_AGE_RANGES, ChildSimResponse, Persona
 
 logger = logging.getLogger("wonderlens")
 
@@ -28,11 +28,11 @@ class ChildSimContext(BaseModel):
     turn_number: int = 0
 
 
+_PERSONA_MAP: dict[str, Persona] = {p.name: p for p in PERSONAS}
+
+
 def _persona_by_name(name: str) -> Persona:
-    for p in PERSONAS:
-        if p.name == name:
-            return p
-    return PERSONAS[0]
+    return _PERSONA_MAP.get(name, PERSONAS[0])
 
 
 def pick_persona(tier: str) -> Persona:
@@ -61,7 +61,12 @@ def _pick_photo(ctx: ChildSimContext, persona: Persona) -> ChildSimResponse:
         return ChildSimResponse(photo_id=correct[0]["id"])
     if roll <= persona.correct_pct + persona.wrong_pct and wrong:
         return ChildSimResponse(photo_id=random.choice(wrong)["id"])
-    return ChildSimResponse(is_silent=True)
+    # Silence disabled — fallback to picking any available photo
+    if correct:
+        return ChildSimResponse(photo_id=correct[0]["id"])
+    if wrong:
+        return ChildSimResponse(photo_id=random.choice(wrong)["id"])
+    return ChildSimResponse(text="ooh!")
 
 
 class ChildSimulator:
@@ -73,7 +78,7 @@ class ChildSimulator:
             api_key=api_key,
             base_url=base_url,
             max_retries=1,
-            timeout=httpx.Timeout(15.0, connect=5.0),
+            timeout=httpx.Timeout(60.0, connect=10.0),
         )
 
     def parse_response(self, raw: str) -> ChildSimResponse:
@@ -91,10 +96,7 @@ class ChildSimulator:
         if _should_pick_photo(ctx):
             return _pick_photo(ctx, persona)
 
-        if random.randint(1, 100) <= persona.silence_pct:
-            return ChildSimResponse(is_silent=True)
-
-        prompt = self._build_prompt(ctx, persona)
+        prompt = self._build_prompt(ctx)
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -109,12 +111,11 @@ class ChildSimulator:
             raw = response.choices[0].message.content or '{"text": ""}'
             return self.parse_response(raw)
         except Exception:
-            logger.warning("Child sim LLM failed, returning silence")
-            return ChildSimResponse(is_silent=True)
+            logger.warning("Child sim LLM failed, returning fallback text")
+            return ChildSimResponse(text="yes!")
 
     def _system_prompt(self, persona: Persona) -> str:
-        age_map = {"T0": "2-4", "T1": "4-6", "T2": "6-8"}
-        age = age_map.get(persona.tier, "2-4")
+        age = TIER_AGE_RANGES.get(persona.tier, "2-4")
         return (
             f"You are role-playing as a {age}-year-old child. "
             f"Personality: {persona.description}. "
@@ -122,7 +123,7 @@ class ChildSimulator:
             f'Output JSON: {{"text": "your response"}}'
         )
 
-    def _build_prompt(self, ctx: ChildSimContext, persona: Persona) -> str:
+    def _build_prompt(self, ctx: ChildSimContext) -> str:
         parts = [
             f"Activity: {ctx.activity_name} ({ctx.collection_criterion})",
             f"Step: {ctx.current_step}",

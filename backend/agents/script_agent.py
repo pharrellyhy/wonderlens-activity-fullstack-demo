@@ -955,14 +955,17 @@ class ScriptAgent:
         tier_score = (has_tag + sentence_ok) / 2.0
 
         # 3. Structural checks: no item suggestions (20%)
-        item_suggestion_re = re.compile(
-            r"(?i)\b(?:find|look for|grab|get|bring|search for|spot)\b"
-            r"[^.!?]{0,40}"
-            r"\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
+        # For Cat5 collection steps, ANY mention of specific household/outdoor
+        # items is a violation — regardless of verb framing (e.g. "I wonder if
+        # a pillow is hiding" is just as bad as "find a pillow").
+        item_noun_re = re.compile(
+            r"(?i)\b(?:pillow|blanket|sock|shoe|cup|spoon|fork|plate|ball|book|toy|rock|leaf|stick"
             r"|flower|shell|stone|button|coin|bottle|box|bag|hat|glove|scarf|key|pen|pencil"
-            r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble)\b"
+            r"|crayon|block|ring|wheel|clock|bowl|jar|lid|pan|pot|ribbon|string|bead|marble"
+            r"|rug|carpet|towel|cloth|cushion|teddy|doll|stuffed|berry|berries|petal|petals"
+            r"|grass|furniture|acorn|pinecone|mushroom|feather|twig|bark|seed|moss)\b"
         )
-        structure_score = 0.0 if item_suggestion_re.search(dialogue) else 1.0
+        structure_score = 0.0 if item_noun_re.search(dialogue) else 1.0
 
         return novelty * 0.5 + tier_score * 0.3 + structure_score * 0.2
 

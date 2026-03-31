@@ -109,6 +109,7 @@ React split-view: ConversationPanel (left, ~55%) + DeviceScreen (right, ~45%). P
 - Use dataclasses/Pydantic for structured data
 - Use specific exception types, not bare `except:`
 - **All imports at the top of the file** — never import packages inside functions, methods, or conditional blocks; all `import` and `from ... import` statements must appear at the top of the module following PEP 8 import ordering (stdlib → third-party → local)
+- **No linter suppression comments** — never use `# noqa`, `# type: ignore`, or similar inline comments to silence linting or type checking warnings; fix the underlying issue instead (e.g., if an import is needed for side effects, reference it explicitly like `_ = module`)
 
 ## Commit Messages
 

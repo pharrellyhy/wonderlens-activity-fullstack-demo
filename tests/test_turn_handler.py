@@ -18,6 +18,9 @@ from schemas.turn_plan import TurnPlan
 from schemas.turn_response import TurnResponse
 from state_machine import EARLY_EXIT
 from turn_handler import (
+    _DIRECTIVE_RE,
+    _INVITATIONAL_PREFIX_RE,
+    _ITEM_SUGGESTION_RE,
     TurnInput,
     _generate_with_retry,
     _maybe_record_generated_name,
@@ -248,15 +251,25 @@ async def test_detail_response_advances_to_next_round() -> None:
 
     result = await resolve_turn(state, _make_input(text="like a cloud"), agent)
 
+    # First response: naming dialogue, state still on COLLECT_1 detail
+    assert state.current_step == "STEP_3_COLLECT_1"
+    assert state.collection_phase == "detail"
+    assert state.round_advance_pending is True
+    assert result.auto_advance is True
+    assert result.turn_response.dialogue == "Cloud Puff! What a perfect name."
+    assert state.collected_details == ["like a cloud"]
+    assert state.collected_names == ["Cloud Puff"]
+
+    # Follow-up auto-advance: now flips to COLLECT_2 photo mode
+    agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="Would you like to find the next one?"))
+    follow_up = await resolve_turn(state, _make_input(), agent)
+
     assert state.current_step == "STEP_3_COLLECT_2"
     assert state.current_round == 2
     assert state.collection_phase == "photo"
-    assert state.collected_details == ["like a cloud"]
-    assert result.turn_response.dialogue == "Cloud Puff! What a perfect name."
-    assert state.collected_names == ["Cloud Puff"]
-    assert result.screen_frame.widget == "explorer_map"
-    assert result.auto_advance is False
-    assert result.response_type == "round"
+    assert follow_up.screen_frame.widget == "explorer_map"
+    assert follow_up.auto_advance is False
+    assert follow_up.response_type == "round"
 
 
 @pytest.mark.asyncio
@@ -304,6 +317,7 @@ async def test_final_detail_guidance_loop_stays_on_detail_before_synthesis() -> 
         current_step="STEP_3_COLLECT_2",
         current_round=2,
         total_rounds=2,
+        tier="T1",  # T1 allows 2 detail exchanges (T0 only allows 1)
         collection_phase="detail",
         collected_photos=["leaf_heart", "rock_circle"],
         round_items=_make_round_items()[:2],
@@ -427,6 +441,66 @@ async def test_synthesis_evaluate_silence_skips_classification_and_generates() -
 
 
 @pytest.mark.asyncio
+async def test_synthesis_t0_skips_classification_and_expands_seed() -> None:
+    """T0 synthesis should skip LLM classification and treat any response as a story seed."""
+    state = _make_state(
+        current_step="STEP_4_SYNTHESIS",
+        current_round=3,
+        tier="T0",
+        synthesis_phase="evaluate",
+        synthesis_prompt_count=1,
+        collected_names=["Cloud Puff", "Mossy Dot"],
+        conversation_history=[
+            ConversationTurn(role="ai", text="Would you like to make up a story?", step="STEP_4_SYNTHESIS"),
+        ],
+    )
+    agent = _make_agent_mock()
+    agent.generate_turn = AsyncMock(
+        return_value=_mock_turn(dialogue="Cloud Puff bounced over to Mossy Dot and they snuggled up.")
+    )
+
+    with patch("turn_handler._classify_story_response", new=AsyncMock()) as mock_classify:
+        result = await resolve_turn(state, _make_input(text="moss go sleep"), agent)
+
+    # LLM classification should NOT be called for T0
+    mock_classify.assert_not_called()
+    # Should route to generate phase (AI expands the seed)
+    assert state.synthesis_phase == "generate"
+    assert state.synthesis_child_story == "moss go sleep"
+    assert state.current_step == "STEP_5_CELEBRATE"
+    assert result.auto_advance is True
+
+
+@pytest.mark.asyncio
+async def test_synthesis_classification_failure_defaults_to_story_attempt() -> None:
+    """If the classification LLM fails, default to story_attempt(weak) not unrelated."""
+    state = _make_state(
+        current_step="STEP_4_SYNTHESIS",
+        current_round=3,
+        tier="T1",
+        synthesis_phase="evaluate",
+        synthesis_prompt_count=1,
+        collected_names=["Cloud Puff"],
+        conversation_history=[
+            ConversationTurn(role="ai", text="Tell me a story!", step="STEP_4_SYNTHESIS"),
+        ],
+    )
+    agent = _make_agent_mock()
+    agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="What happened next?"))
+
+    # Force the LLM call inside _classify_story_response to fail so the
+    # internal except branch runs (patching get_settings triggers the error
+    # inside the try block, not outside the function).
+    with patch("turn_handler.get_settings", side_effect=RuntimeError("LLM timeout")):
+        result = await resolve_turn(state, _make_input(text="cloud puff danced"), agent)
+
+    # Should treat as weak story (T1 → improve phase), NOT as unrelated
+    assert state.synthesis_phase == "improve"
+    assert state.synthesis_child_story == "cloud puff danced"
+    assert result.auto_advance is False
+
+
+@pytest.mark.asyncio
 async def test_synthesis_improve_silence_skips_classification_and_generates() -> None:
     """Silence in improve should preserve the child's seed and let the AI complete it."""
     state = _make_state(
@@ -480,12 +554,80 @@ async def test_silence_during_detail_phase_still_advances() -> None:
 
     result = await resolve_turn(state, _make_input(is_silent=True), agent)
 
-    # First silence doesn't trigger exit (consecutive_silence == 1)
-    assert state.current_step == "STEP_3_COLLECT_2"
-    assert state.collection_phase == "photo"
+    # First silence doesn't trigger exit (consecutive_silence == 1).
+    # Advance is deferred via round_advance_pending (same as non-silent detail).
+    assert state.current_step == "STEP_3_COLLECT_1"
+    assert state.collection_phase == "detail"
+    assert state.round_advance_pending is True
+    assert result.auto_advance is True
     # Silence should NOT be recorded as a detail
     assert state.collected_details == []
-    assert result.auto_advance is False
+
+    # Follow-up auto-advance flips to next round's photo mode
+    agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="Let's keep looking!"))
+    follow_up = await resolve_turn(state, _make_input(), agent)
+
+    assert state.current_step == "STEP_3_COLLECT_2"
+    assert state.collection_phase == "photo"
+    assert follow_up.auto_advance is False
+
+
+# ---------------------------------------------------------------------------
+# Regex pattern tests
+# ---------------------------------------------------------------------------
+
+
+def test_item_suggestion_catches_berry() -> None:
+    assert _ITEM_SUGGESTION_RE.search("Try finding a berry or a button nearby!")
+
+
+def test_item_suggestion_catches_petal() -> None:
+    assert _ITEM_SUGGESTION_RE.search("Look for a soft petal on the ground")
+
+
+def test_item_suggestion_catches_grass() -> None:
+    assert _ITEM_SUGGESTION_RE.search("Feel the grass — is it soft?")
+
+
+def test_item_suggestion_allows_observation_angle() -> None:
+    assert not _ITEM_SUGGESTION_RE.search("Something soft might be nearby")
+
+
+def test_directive_catches_try_peeking() -> None:
+    assert _DIRECTIVE_RE.search("Try peeking at something round!")
+
+
+def test_directive_catches_scan_the() -> None:
+    assert _DIRECTIVE_RE.search("Scan the floor for dots!")
+
+
+def test_directive_catches_go_find() -> None:
+    assert _DIRECTIVE_RE.search("Go find the next one!")
+
+
+def test_directive_catches_look_for() -> None:
+    assert _DIRECTIVE_RE.search("Look for something soft!")
+
+
+def test_directive_allows_invitational() -> None:
+    assert not _DIRECTIVE_RE.search("Would you like to keep looking?")
+
+
+def test_directive_allows_wonder() -> None:
+    assert not _DIRECTIVE_RE.search("I wonder what else is soft nearby...")
+
+
+def test_directive_catches_bare_look_for_but_allows_invitational() -> None:
+    """Bare 'Look for' is directive, but 'Would you like to look for' is OK."""
+    bare = "Look for something soft!"
+    invitational = "Would you like to look for something soft?"
+
+    # Bare directive: should be caught
+    assert _DIRECTIVE_RE.search(bare)
+
+    # Invitational: after stripping prefix, no directive remains
+    stripped = _INVITATIONAL_PREFIX_RE.sub("", invitational)
+    assert not _DIRECTIVE_RE.search(stripped)
 
 
 # ---------------------------------------------------------------------------
@@ -559,7 +701,7 @@ async def test_generate_with_retry_retries_speaker_only_after_plan_violation() -
         def __init__(self) -> None:
             self.last_plan: TurnPlan | None = None
             self.generate_calls = 0
-            self.retry_speaker_turn = AsyncMock(return_value=_mock_turn(dialogue="Try spotting one more thing."))
+            self.retry_speaker_turn = AsyncMock(return_value=_mock_turn(dialogue="I wonder what else is nearby!"))
 
         async def generate_turn(self, state: SessionStateModel) -> TurnResponse:
             self.generate_calls += 1
@@ -581,7 +723,7 @@ async def test_generate_with_retry_retries_speaker_only_after_plan_violation() -
 
     response = await _generate_with_retry(agent, state)
 
-    assert response.dialogue == "Try spotting one more thing."
+    assert response.dialogue == "I wonder what else is nearby!"
     assert agent.generate_calls == 1
     agent.retry_speaker_turn.assert_awaited_once()
 

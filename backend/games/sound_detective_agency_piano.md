@@ -23,7 +23,7 @@ creative_slots:
   mission_metaphor: You are a Sound Detective on an acoustic investigation!
   role_title: Sound Detective
   synthesis_type: sorting_game
-  stuck_hint: Try looking down at sticks and rocks for tap-tap sounds, or at metal fences for clang sounds.
+  stuck_hint: Would you like to tap a stick, a rock, or a metal fence? I wonder what sound it makes!
   naming_prompt: What kind of sound does this make when you tap or shake it?
   detail_question_template: "What kind of sound does this one make — is it high or low, loud or soft?"
   sorting_criterion: "pitch (highest sounds to lowest sounds)"
@@ -238,9 +238,9 @@ Child photographs a piano, AI notices the rows of keys and wonders what else mak
 
 **AI follow-up:**
 
-1. (cheering) "Detective is on the case! Go outside, find something you can tap, shake, or blow on, and take a photo. Report back to me!"
-2. (explaining warmly) "Anything that makes a noise when you tap it, shake it, or blow on it! A metal fence goes CLANG. A stick on the ground goes tap tap. Even a leaf can whoosh! Go find one and take a photo!"
-3. (wait 2s) (gently encouraging) "Here is your first clue — look for something metal, something wooden, or something that moves in the wind. Tap it and listen! Then take a photo."
+1. (cheering) "Detective is on the case! I bet something nearby makes a cool sound — would you like to find out?"
+2. (explaining warmly) "Anything that makes a noise when you tap it, shake it, or blow on it! A metal fence goes CLANG. A stick on the ground goes tap tap. Even a leaf can whoosh! Would you like to find one?"
+3. (wait 2s) (gently encouraging) "I wonder what sounds are hiding around you! Would you like to tap something metal, wooden, or wiggly and see what happens?"
 
 **Screen:** Mission card with "Sound Detective" badge (magnifying glass with a musical note), 4 collection slots (first filled with piano photo labeled "Sound: High + Low!"), and a three-step task list.
 
@@ -250,7 +250,7 @@ Child photographs a piano, AI notices the rows of keys and wonders what else mak
 
 *(Child photographs something outside — e.g., a metal fence, a railing, a pipe)*
 
-**AI says:** (eager detective voice) "Detective report! What did you find? Try tapping it — what kind of sound does it make?"
+**AI says:** (eager detective voice) "Detective report! What did you find? I wonder what kind of sound it makes — would you like to tap it and find out?"
 
 **Child responses:**
 

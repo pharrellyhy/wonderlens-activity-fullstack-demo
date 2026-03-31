@@ -86,7 +86,7 @@ class Thresholds(BaseModel):
 
 class EvalConfig(BaseModel):
     sessions_per_combo: int = 5
-    activities: list[str] = ["fluffy_expedition_dandelion", "polka_dot_patrol"]
+    entities: list[str] = ["dandelion", "ladybug"]  # entity names for /api/start-deep-link
     tiers: list[str] = ["T0", "T1", "T2"]
     server_url: str = "http://localhost:8000"
     output_dir: str = "eval_results"
@@ -183,6 +183,8 @@ STEP_RUBRICS: dict[str, StepRubric] = {
     "CLOSING": StepRubric(dimensions=["ib_concept_weaving", "natural_goodbye"], weight=10),
 }
 
+TIER_AGE_RANGES: dict[str, str] = {"T0": "2-4", "T1": "4-6", "T2": "6-8"}
+
 STEP_TO_RUBRIC: dict[str, str] = {
     "STEP_1_HOOK": "HOOK",
     "STEP_2_MISSION": "MISSION",
@@ -193,12 +195,8 @@ STEP_TO_RUBRIC: dict[str, str] = {
 
 
 def step_to_rubric_label(step: str) -> str:
-    """Map a codebase step name to a rubric label."""
-    if step in STEP_TO_RUBRIC:
-        return STEP_TO_RUBRIC[step]
-    if step.startswith("STEP_3_COLLECT_"):
-        return "COLLECT"
-    return "COLLECT"
+    """Map a codebase step name to a rubric label; defaults to COLLECT."""
+    return STEP_TO_RUBRIC.get(step, "COLLECT")
 
 
 _CONFIG_PATH = Path(__file__).resolve().parent.parent / "eval_config.yaml"

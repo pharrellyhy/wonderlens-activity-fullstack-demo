@@ -35,16 +35,19 @@ def generate_summary_json(
         combos[key]["critical_failures"].extend(j.critical_failures)
 
     for combo in combos.values():
-        avg_rule = sum(combo["rule_scores"]) / len(combo["rule_scores"]) if combo["rule_scores"] else 0
-        avg_judge = sum(combo["judge_scores"]) / len(combo["judge_scores"]) if combo["judge_scores"] else 1
+        avg_rule = sum(combo["rule_scores"]) / len(combo["rule_scores"])
+        avg_judge = sum(combo["judge_scores"]) / len(combo["judge_scores"])
         combo["avg_rule"] = round(avg_rule, 1)
         combo["avg_judge"] = round(avg_judge, 2)
         combo["combined"] = round(_combined_score(avg_rule, avg_judge), 1)
         combo["failure_count"] = len(combo["critical_failures"])
-
-        if combo["combined"] < thresholds.combined_score_min:
-            all_pass = False
-        if combo["failure_count"] > thresholds.critical_failures_max:
+        combo["status"] = (
+            "PASS"
+            if combo["combined"] >= thresholds.combined_score_min
+            and combo["failure_count"] <= thresholds.critical_failures_max
+            else "FAIL"
+        )
+        if combo["status"] == "FAIL":
             all_pass = False
 
     return {"status": "PASS" if all_pass else "FAIL", "combos": combos}
@@ -66,21 +69,16 @@ def generate_markdown_report(
     ]
 
     for combo in summary["combos"].values():
-        status = (
-            "PASS"
-            if combo["combined"] >= thresholds.combined_score_min
-            and combo["failure_count"] <= thresholds.critical_failures_max
-            else "FAIL"
-        )
         lines.append(
             f"| {combo['activity']} | {combo['tier']} | {combo['sessions']} | "
-            f"{combo['avg_rule']} | {combo['avg_judge']}/5 | {combo['combined']}% | {status} |"
+            f"{combo['avg_rule']} | {combo['avg_judge']}/5 | {combo['combined']}% | {combo['status']} |"
         )
 
-    all_failures = []
-    for t, j in zip(transcripts, judgements):
-        for f in j.critical_failures:
-            all_failures.append(f"- {t.session_id} ({t.activity} {t.tier}): {f}")
+    all_failures = [
+        f"- {t.session_id} ({t.activity} {t.tier}): {failure}"
+        for t, j in zip(transcripts, judgements)
+        for failure in j.critical_failures
+    ]
 
     if all_failures:
         lines.extend(["", "## Critical Failures"] + all_failures)

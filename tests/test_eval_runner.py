@@ -20,7 +20,7 @@ async def test_run_single_session_completes() -> None:
     """A mocked session should produce a transcript with turns and scores."""
     config = EvalConfig(
         sessions_per_combo=1,
-        activities=["fluffy_expedition_dandelion"],
+        entities=["dandelion"],
         tiers=["T0"],
         server_url="http://localhost:8000",
     )

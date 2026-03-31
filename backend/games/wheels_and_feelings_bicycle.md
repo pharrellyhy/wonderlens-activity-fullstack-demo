@@ -298,6 +298,6 @@ celebration_frame:
 **AI follow-up:**
 
 1. (celebrating) "That is right — Function and Connection! You earned your badge, Bike Whisperer. Next time you ride, listen close — maybe you will hear what your bike is saying!"
-2. (warm) "Go ride! Your bike has been waiting all day. And now you know all its secrets. See you next time, Bike Whisperer!"
+2. (warm) "Your bike has been waiting all day — and now you know all its secrets! See you next time, Bike Whisperer!"
 
 **Screen:** Bike Whisperer badge centered with "Function" and "Connection" in silver-blue lettering below; a gear icon for Function, a chain-link icon for Connection; bicycle photo glowing warmly behind the text with soft sparkle animations.

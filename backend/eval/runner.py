@@ -33,31 +33,51 @@ logger = logging.getLogger("wonderlens")
 MAX_TURNS = 20
 
 
-def _extract_dialogue(data: dict) -> str:
-    if "first_turn" in data:
-        return data["first_turn"].get("dialogue", "")
-    return data.get("turn", {}).get("dialogue", "")
+def _extract_turn_data(data: dict) -> tuple[str, dict, bool]:
+    """Extract dialogue, session state, and auto_advance from an API response."""
+    turn = data.get("first_turn") or data.get("turn", {})
+    dialogue = turn.get("dialogue", "")
+    auto_advance = turn.get("auto_advance", False)
+    state = data.get("session_state", {})
+    return dialogue, state, auto_advance
 
 
-def _extract_state(data: dict) -> dict:
-    return data.get("session_state", {})
-
-
-def _score_turn(
-    dialogue: str,
-    step: str,
-    tier: str,
-    phase: str,
-    is_first: bool,
-    collected: int,
-    total: int,
-) -> dict[str, float]:
+def _score_turn(dialogue: str, step: str, tier: str, state: dict, is_first: bool) -> dict[str, float]:
+    """Compute rule-based scores for a single turn's dialogue."""
     return {
-        "validation_pass": score_validation_pass(dialogue, step, tier, phase, is_first),
+        "validation_pass": score_validation_pass(
+            dialogue, step, tier, state.get("collection_phase", "photo"), is_first
+        ),
         "item_suggestion_free": score_item_suggestion_free(dialogue),
-        "completion_language": score_completion_language(dialogue, collected, total),
+        "completion_language": score_completion_language(
+            dialogue, len(state.get("collected_photos", [])), state.get("total_rounds", 3)
+        ),
         "tier_compliance": score_tier_compliance(dialogue, tier),
     }
+
+
+def _record_turn(
+    turns: list[TurnRecord],
+    turn_num: int,
+    step: str,
+    dialogue: str,
+    tier: str,
+    state: dict,
+    child_input: ChildSimResponse,
+    is_first_on_step: bool = False,
+) -> None:
+    """Score and append a TurnRecord to the running list."""
+    rule = _score_turn(dialogue, step, tier, state, is_first_on_step)
+    turns.append(
+        TurnRecord(
+            turn_number=turn_num,
+            step=step,
+            ai_dialogue=dialogue,
+            child_input=child_input,
+            session_state=state,
+            rule_scores=rule,
+        )
+    )
 
 
 async def run_single_session(
@@ -74,39 +94,17 @@ async def run_single_session(
         f"{config.server_url}/api/start-deep-link",
         json={"entity": activity, "tier": tier},
     )
-    assert resp.status_code == 200, f"Start failed: {resp.status_code}"
+    if resp.status_code != 200:
+        raise RuntimeError(f"Start failed: {resp.status_code}")
     data = resp.json()
 
     session_id = data["session_id"]
-    dialogue = _extract_dialogue(data)
-    state = _extract_state(data)
+    dialogue, state, auto_advance = _extract_turn_data(data)
 
     turns: list[TurnRecord] = []
-    progress_phrases: list[str] = []
-    validation_scores: list[float] = []
-    item_scores: list[float] = []
-    completion_scores: list[float] = []
-    compliance_scores: list[float] = []
     prev_step = ""
-
     step = state.get("current_step", "STEP_1_HOOK")
-    rule = _score_turn(
-        dialogue, step, tier, state.get("collection_phase", "photo"), True, 0, state.get("total_rounds", 3)
-    )
-    turns.append(
-        TurnRecord(
-            turn_number=0,
-            step=step,
-            ai_dialogue=dialogue,
-            child_input=ChildSimResponse(),
-            session_state=state,
-            rule_scores=rule,
-        )
-    )
-    validation_scores.append(rule["validation_pass"])
-    item_scores.append(rule["item_suggestion_free"])
-    completion_scores.append(rule["completion_language"])
-    compliance_scores.append(rule["tier_compliance"])
+    _record_turn(turns, 0, step, dialogue, tier, state, ChildSimResponse(), is_first_on_step=True)
     prev_step = step
 
     for turn_num in range(1, MAX_TURNS + 1):
@@ -125,7 +123,7 @@ async def run_single_session(
             collection_criterion="",
             current_step=state.get("current_step", ""),
             collection_phase=state.get("collection_phase"),
-            round_items=enriched_items if enriched_items else None,
+            round_items=enriched_items or None,
             last_ai_dialogue=dialogue,
             collected_names=state.get("collected_names", []),
             turn_number=turn_num,
@@ -143,43 +141,40 @@ async def run_single_session(
             break
 
         data = resp.json()
-        dialogue = _extract_dialogue(data)
-        state = _extract_state(data)
+        dialogue, state, auto_advance = _extract_turn_data(data)
         step = state.get("current_step", "")
-        is_first = step != prev_step
-
-        rule = _score_turn(
-            dialogue,
-            step,
-            tier,
-            state.get("collection_phase", "photo"),
-            is_first,
-            len(state.get("collected_photos", [])),
-            state.get("total_rounds", 3),
-        )
-
-        turns.append(
-            TurnRecord(
-                turn_number=turn_num,
-                step=step,
-                ai_dialogue=dialogue,
-                child_input=child_resp,
-                session_state=state,
-                rule_scores=rule,
-            )
-        )
-        validation_scores.append(rule["validation_pass"])
-        item_scores.append(rule["item_suggestion_free"])
-        completion_scores.append(rule["completion_language"])
-        compliance_scores.append(rule["tier_compliance"])
-
-        if step.startswith("STEP_3_COLLECT_"):
-            progress_phrases.append(dialogue)
-
+        _record_turn(turns, turn_num, step, dialogue, tier, state, child_resp, is_first_on_step=step != prev_step)
         prev_step = step
 
+        # Handle auto_advance chain: keep sending empty turns until the
+        # backend stops signaling auto_advance (e.g. detail->next round,
+        # synthesis->celebrate->closing). Cap at 10 to prevent runaway loops.
+        auto_advance_count = 0
+        while auto_advance and state.get("status") == "active" and auto_advance_count < 10:
+            auto_advance_count += 1
+            resp = await client.post(
+                f"{config.server_url}/api/turn",
+                json={"session_id": session_id, "text": "", "is_silent": False},
+            )
+            if resp.status_code != 200:
+                break
+            data = resp.json()
+            dialogue, state, auto_advance = _extract_turn_data(data)
+            step = state.get("current_step", "")
+            _record_turn(
+                turns, turn_num, step, dialogue, tier, state, ChildSimResponse(), is_first_on_step=step != prev_step
+            )
+            prev_step = step
+
+    progress_phrases = [t.ai_dialogue for t in turns if t.step.startswith("STEP_3_COLLECT_")]
     variety = score_phrasing_variety(progress_phrases) if progress_phrases else 1.0
-    composite = compute_composite_score(validation_scores, item_scores, completion_scores, compliance_scores, variety)
+    composite = compute_composite_score(
+        [t.rule_scores["validation_pass"] for t in turns],
+        [t.rule_scores["item_suggestion_free"] for t in turns],
+        [t.rule_scores["completion_language"] for t in turns],
+        [t.rule_scores["tier_compliance"] for t in turns],
+        variety,
+    )
 
     return SessionTranscript(
         session_id=session_id,

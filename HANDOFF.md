@@ -1,6 +1,36 @@
 # Session Handoff
 
-Last updated: 2026-03-28
+Last updated: 2026-03-30
+
+---
+
+## Fix: Cat5 Collection Phase Desync + Synthesis Classification Too Strict
+
+**Problem**: Two Cat5 game flow bugs: (1) When a child completes a detail question in Phase B, the backend returned `collection_phase="photo"` + advanced `current_step` in the same response as the naming dialogue. The frontend immediately showed the next round's photo grid while TTS was still playing "Let's call it Cloud Puff!" (2) For T0 children (ages 2-4), the LLM story classifier often misclassified short story attempts like "moss go sleep" as "unrelated" instead of "story_attempt(weak)", triggering confusing re-invites. Additionally, the classification exception fallback defaulted to "unrelated", compounding the issue when the LLM was down.
+
+**Solution**: Three targeted fixes in `turn_handler.py`:
+- Bug 1: Replaced immediate `collection_phase = "photo"` + `_advance_state()` with the existing `round_advance_pending = True` + `auto_advance = True` pattern (same approach already used for the last-round → synthesis transition). The frontend now keeps showing the detail screen during TTS, then auto-advances to the next round's photo grid.
+- Bug 2a: Added T0 early-return before the `_classify_story_response()` LLM call — treats any non-silent T0 response as a story seed for AI expansion.
+- Bug 2b: Changed `_classify_story_response()` exception fallback from `"unrelated"` to `"story_attempt(weak)"` — fail-safe toward acceptance.
+- Code simplifier removed the now-dead T0 branch in the classification handler and collapsed duplicate TurnResult blocks.
+
+**Edits**:
+- `backend/turn_handler.py` — deferred Phase B→next round advance via `round_advance_pending`; added T0 early-return in `_resolve_synthesis_turn` before LLM classification; changed exception fallback to `story_attempt(weak)`; removed dead T0 branch and collapsed duplicate TurnResult blocks
+- `tests/test_turn_handler.py` — updated `test_detail_response_advances_to_next_round` and `test_silence_during_detail_phase_still_advances` to expect deferred advance; added `test_synthesis_t0_skips_classification_and_expands_seed` and `test_synthesis_classification_failure_defaults_to_story_attempt`
+- `tests/test_api.py` — updated `test_turn_advances_cat5_collection_after_detail_response` to expect deferred advance
+- `docs/plans/2026-03-30-cat5-workflow-diagnosis.md` — diagnostic mermaid diagrams (3 diagrams: backbone, desync sequence, synthesis state machine)
+- `docs/plans/2026-03-30-fix-cat5-collection-desync-and-synthesis.md` — implementation plan
+
+**NOT Changed**:
+- `backend/state_machine.py` — step transitions unchanged; the `round_advance_pending` handler in section 7c already handled the deferred advance pattern
+- `frontend/src/App.jsx` — `showPhotoGallery` condition unchanged; the fix is backend-only
+- `frontend/src/hooks/` — no frontend changes needed; auto-advance already handled by `useSessionOrchestration.js`
+- T1/T2 synthesis classification — still uses LLM classification as before
+
+**Verification**:
+- `cd backend && uv run pytest ../tests/ -v` — 360 passed, 7 skipped
+- `cd backend && uv run ruff check turn_handler.py && uv run ruff format turn_handler.py` — clean
+- `cd backend && uv run mypy turn_handler.py --ignore-missing-imports` — only pre-existing yaml stub issue
 
 ---
 

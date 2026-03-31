@@ -24,7 +24,7 @@ creative_slots:
   mission_metaphor: "You are a Polka-Dot Patrol Officer!"
   role_title: Polka-Dot Patrol Officer
   synthesis_type: comparison_chart
-  stuck_hint: "Try looking at flowers up close, or at the ground near your feet"
+  stuck_hint: "Would you like to peek at flowers up close, or at the ground near your feet? Dots love to hide!"
   naming_prompt: "What kind of dots or spots do you see on this?"
   detail_question_template: "How are the dots on this one different from the ones you found before?"
   sorting_criterion: "dot size (big splotches vs tiny speckles vs perfect circles)"
@@ -234,9 +234,9 @@ Child photographs a ladybug → AI admires its polka dots and sparks imagination
 
 **AI follow-up:**
 
-1. (cheering) "Officer on the case! Keep your eyes peeled for dots and spots. Snap a photo when you find one!"
-2. (helpful, warm) "A patrol means you go looking, like a detective! Try looking at flowers up close, or at the ground near your feet. Spots love to hide!"
-3. (wait 2s) (encouraging) "Try peeking at things up close. Flowers, rocks, leaves — dots could be anywhere! Would you like to start with something nearby?"
+1. (cheering) "Officer on the case! Dots and spots are all around — would you like to start looking?"
+2. (helpful, warm) "A patrol means you look really carefully, like a detective! Would you like to see if something dotty is hiding nearby?"
+3. (wait 2s) (encouraging) "I bet there's something with dots closer than you think! Would you like to peek around?"
 
 **Screen:** Mission card with "Polka-Dot Patrol Officer" badge (ladybug icon with magnifying glass), 4 slots (first filled with ladybug photo, 3 empty with dotted-circle placeholders), and a "Find 3!" counter.
 
@@ -322,7 +322,7 @@ If still stuck: "What about leaves? Turn one over — sometimes the back has lit
 
 1. (impressed) "Yes! Big dots here, tiny speckles there, and round circles on that one. The same pattern looks SO different every time! Would you like to give each one a fun name? Like 'Freckle Stone' or 'Polka Petal'?"
 2. (warm, scaffolding) "They DO all have dots! But look closely — are these dots the same size as those dots? Some are big splotches and some are teensy speckles! What should we call each one?"
-3. (wait 2s) (gentle, guiding) "Look at the dots on each one. This one has big spots. That one has tiny speckles. And this one has perfect circles! Would you like to give each treasure a special name?"
+3. (wait 2s) (gentle, guiding) "This one has big spots, that one has tiny speckles, and this one has perfect circles! Would you like to give each treasure a special name?"
 
 **Child names the finds** (or AI suggests): "Freckle Stone! / Polka Petal! / Speckle Leaf!"
 

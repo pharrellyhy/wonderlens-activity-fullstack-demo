@@ -23,7 +23,7 @@ creative_slots:
   mission_metaphor: You are a Shimmer Spotter on a safari!
   role_title: Shimmer Spotter
   synthesis_type: comparison_chart
-  stuck_hint: Try looking at the water surface for sparkles, wet leaves on the ground, or puddles nearby.
+  stuck_hint: Would you like to check the water surface for sparkles, or peek at wet leaves and puddles nearby?
   naming_prompt: Does this have fins, scales, or a shiny surface like the goldfish?
   detail_question_template: "How does the shimmer on this one look different from the others you found?"
   sorting_criterion: "shininess (most sparkly to least sparkly)"
@@ -237,9 +237,9 @@ A child at a park pond or aquarium photographs a goldfish, then hunts for 3 more
 
 **AI follow-up:**
 
-1. (pumped up) "Let's go! Look near the water for bugs, birds, shiny rocks, or anything that glows. Take a photo when you spot one!"
-2. (warm, explaining) "Shimmery means shiny and sparkly — like the goldfish's scales! Look for wet rocks, water sparkles, or shiny bugs. Anything that catches your eye!"
-3. (wait 2s) (encouraging) "Try looking at the water's edge first. See any bugs or shiny rocks? Take a photo of whatever you spot!"
+1. (pumped up) "Let's go! I bet something shimmery is hiding near the water — would you like to start looking?"
+2. (warm, explaining) "Shimmery means shiny and sparkly — like the goldfish's scales! I wonder if there are wet rocks, water sparkles, or shiny bugs nearby. Would you like to check?"
+3. (wait 2s) (encouraging) "I bet something sparkly is waiting near the water's edge! Would you like to peek over there?"
 
 **Screen:** Mission card with "Shimmer Spotter" badge (magnifying glass with sparkles), four collection slots (first filled with goldfish photo), and a numbered checklist.
 
@@ -285,7 +285,7 @@ A child at a park pond or aquarium photographs a goldfish, then hunts for 3 more
 
 1. (impressed, extending) "The rock shimmers but has no fins. The duck swims but has feathers, not scales. Great sorting, spotter! You found what is the same and what is different."
 2. (scaffolding warmly) "Good pick! Now think — does the rock have fins like the goldfish? No! But does it shimmer? Yes! That is one way to sort them. What about your other finds?"
-3. (wait 2s) (gently guiding) "Look at the pictures. Which one is shiny like the goldfish? Point to it! And which one looks really different? You decide!"
+3. (wait 2s) (gently guiding) "Which one do you think is shiny like the goldfish? And which one looks really different? You decide!"
 
 **AI says:** (warm celebration) "Wow, Shimmer Spotter! You found four things near the water. Some shimmer, some swim, some have scales and some do not. Which one is your favorite find? And why?"
 

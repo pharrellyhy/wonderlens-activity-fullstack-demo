@@ -536,15 +536,11 @@ class TestTurnByTurnEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["session_state"]["current_step"] == "STEP_3_COLLECT_2"
-        assert data["session_state"]["current_round"] == 2
-        assert data["session_state"]["collection_phase"] == "photo"
+        # Detail completion now defers advance via round_advance_pending + auto_advance
+        assert data["session_state"]["current_step"] == "STEP_3_COLLECT_1"
+        assert data["session_state"]["collection_phase"] == "detail"
         assert data["session_state"]["collected_details"] == ["big dots"]
-        assert data["session_state"]["current_round_items"] == [
-            {"id": "dotted_pebble", "label": "Dotted pebble", "image": ""},
-            {"id": "smooth_stone", "label": "Smooth stone", "image": ""},
-            {"id": "pine_needle", "label": "Pine needles", "image": ""},
-        ]
+        assert data["turn"]["auto_advance"] is True
         assert data["turn"]["dialogue"] == "Those giant dots are bold. Want to find one more?"
 
     def test_turn_detail_response_exposes_collected_names_and_details(self, client: TestClient) -> None:

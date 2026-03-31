@@ -89,7 +89,7 @@ def test_turn_record_model() -> None:
 def test_load_eval_config() -> None:
     config = load_eval_config()
     assert config.sessions_per_combo >= 1
-    assert len(config.activities) >= 1
+    assert len(config.entities) >= 1
     assert len(config.tiers) >= 1
     assert config.thresholds.combined_score_min > 0
 

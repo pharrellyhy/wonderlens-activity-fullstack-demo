@@ -23,8 +23,7 @@ creative_slots:
   mission_metaphor: You are a Circle Pattern Reporter on a mission to find circular patterns in the world!
   role_title: Circle Pattern Reporter
   synthesis_type: comparison_chart
-  stuck_hint: Try looking down at puddles for ripples, at wheels on bikes or cars, at flower beds for round centers, or at
-    knots in wooden fences.
+  stuck_hint: Would you like to peek at puddles, wheels, flower centers, or knots in wood? Circles are hiding everywhere!
   naming_prompt: How is this pattern similar to your eye, and what is its purpose?
   detail_question_template: "How is the circle on this one different from the circles you found before?"
   sorting_criterion: "circle size (biggest rings to tiniest dots)"
@@ -239,9 +238,9 @@ Child photographs their eye in a mirror, AI notices the concentric circles and l
 
 **AI follow-up:**
 
-1. (pumped up) "Reporter is ON the case! Go find something round, ringed, dotted, or spiral-shaped, snap a photo, and bring it back to me. Let's build our pattern collection!"
-2. (helpful, clarifying) "Great question! It does not have to look exactly like an eye. Anything with a round shape counts — a flower center, a wheel hub, a puddle ripple, a round rock, even a knot in wood. If it has circles or rings, it is a pattern match! Go find one."
-3. (wait 2s) (encouraging) "Here is a clue — look at flowers, look at the ground, look at anything with wheels or rings. Circles are hiding everywhere once you start searching. Go snap one!"
+1. (pumped up) "Reporter is ON the case! I bet something round is hiding nearby — would you like to start looking?"
+2. (helpful, clarifying) "Great question! It does not have to look exactly like an eye. Anything with a round shape counts — a flower center, a wheel hub, a puddle ripple, a round rock, even a knot in wood. If it has circles or rings, it is a pattern match! Would you like to find one?"
+3. (wait 2s) (encouraging) "I bet circles are hiding everywhere around you! Would you like to peek at flowers, the ground, or anything with wheels or rings?"
 
 **Screen:** Mission card with "Circle Pattern Reporter" badge (magnifying glass with concentric circles), 4 collection slots (first filled with eye photo labeled "Pattern: Circle in Circle"), and a three-step task list.
 

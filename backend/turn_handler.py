@@ -7,7 +7,8 @@ acceptance, round advancement, auto-advance signaling, and history management.
 
 import json
 import re
-from dataclasses import dataclass
+import time
+from dataclasses import asdict, dataclass
 
 import httpx
 from openai import AsyncOpenAI
@@ -60,6 +61,16 @@ class TurnInput:
 
 
 @dataclass
+class GenerationDebugInfo:
+    """Debug telemetry captured during a single _generate_with_retry call."""
+
+    step: str
+    attempt_count: int
+    final_verdict: str  # "passed", "exhausted", "error_fallback"
+    attempts: list[dict]  # [{attempt, verdict, hint, latency_ms, call_type}]
+
+
+@dataclass
 class TurnResult:
     """The resolved outcome of one turn, ready for the endpoint to serialize."""
 
@@ -68,6 +79,7 @@ class TurnResult:
     auto_advance: bool
     response_type: str
     error_exit: bool = False
+    debug: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -619,18 +631,44 @@ async def _generate_with_retry(
     script_agent: ScriptAgent,
     state: SessionStateModel,
     is_first_on_step: bool = False,
-) -> TurnResponse:
+) -> tuple[TurnResponse, GenerationDebugInfo]:
     """Generate a turn response with validation and retry.
 
     Attempts up to _MAX_GENERATION_ATTEMPTS times. After each generation,
     runs plan-aware validation (if a TurnPlan is available) followed by
     post-processing validation. If validation fails, appends a corrective
     hint and retries. The hint is removed from history after retry.
+
+    Returns:
+        A tuple of (TurnResponse, GenerationDebugInfo) capturing the response
+        and diagnostic telemetry about the generation process.
     """
     last_response: TurnResponse | None = None
     retry_plan: TurnPlan | None = None
+    attempts_log: list[dict] = []
+
+    def _log_attempt(verdict: str, hint: str, latency_ms: int, call_type: str) -> None:
+        attempts_log.append(
+            {
+                "attempt": len(attempts_log) + 1,
+                "verdict": verdict,
+                "hint": hint,
+                "latency_ms": latency_ms,
+                "call_type": call_type,
+            }
+        )
+
+    def _make_debug(final_verdict: str) -> GenerationDebugInfo:
+        return GenerationDebugInfo(
+            step=state.current_step,
+            attempt_count=len(attempts_log),
+            final_verdict=final_verdict,
+            attempts=attempts_log,
+        )
 
     for attempt in range(_MAX_GENERATION_ATTEMPTS):
+        attempt_start = time.perf_counter()
+        call_type = "speaker_retry" if retry_plan is not None else "planner_speaker"
         try:
             if retry_plan is not None:
                 response = await script_agent.retry_speaker_turn(
@@ -643,13 +681,15 @@ async def _generate_with_retry(
                 response = await script_agent.generate_turn(state)
                 plan = script_agent.last_plan
         except ScriptAgentError:
+            attempt_ms = int((time.perf_counter() - attempt_start) * 1000)
             logger.warning(f"Script Agent failed for step {state.current_step} (attempt {attempt + 1})")
+            _log_attempt("error", "ScriptAgentError", attempt_ms, call_type)
             if attempt < _MAX_GENERATION_ATTEMPTS - 1:
                 continue
             # Final attempt failed — use fallback
             logger.error(f"Script Agent failed {_MAX_GENERATION_ATTEMPTS} times, using fallback")
             state.status = "error"
-            return TurnResponse(
+            fallback_response = TurnResponse(
                 dialogue="[gentle] That was so much fun! Would you like to play again next time? See you soon!",
                 tone_marker="gentle",
                 screen_widget="badge_award",
@@ -657,7 +697,9 @@ async def _generate_with_retry(
                 screen_animation="badge_reveal",
                 sfx_cue="badge_awarded",
             )
+            return fallback_response, _make_debug("error_fallback")
 
+        attempt_ms = int((time.perf_counter() - attempt_start) * 1000)
         last_response = response
 
         # Plan-aware validation: diagnose planner vs speaker issues
@@ -696,9 +738,11 @@ async def _generate_with_retry(
                 attempt + 1,
                 state.tier,
             )
-            return response
+            _log_attempt("passed", "", attempt_ms, call_type)
+            return response, _make_debug("passed")
 
         # Log both the plan and response on validation failure for diagnostics
+        _log_attempt("failed", hint, attempt_ms, call_type)
         if plan is not None:
             logger.info(
                 "validation_failure_with_plan: step=%s attempt=%d hint=%s plan=%s response_dialogue=%s",
@@ -732,7 +776,7 @@ async def _generate_with_retry(
     )
     # Clean up any corrective hints from history
     state.conversation_history = [t for t in state.conversation_history if not t.text.startswith("CORRECTION:")]
-    return last_response  # type: ignore[return-value]
+    return last_response, _make_debug("exhausted")  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------
@@ -754,6 +798,94 @@ def _should_auto_advance(state: SessionStateModel) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Debug payload helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_step_flow(state: SessionStateModel) -> list[dict]:
+    """Build the ordered step flow for the current session, marking each step's status."""
+    if state.template_type == "cat1":
+        steps = ["STEP_1_HOOK", "STEP_2_RULES"]
+        steps += [f"STEP_3_ROUND_{i}" for i in range(1, state.total_rounds + 1)]
+        steps += ["STEP_4_CELEBRATE", "STEP_5_CLOSING"]
+    else:
+        steps = ["STEP_1_HOOK", "STEP_2_MISSION"]
+        steps += [f"STEP_3_COLLECT_{i}" for i in range(1, state.total_rounds + 1)]
+        steps += ["STEP_4_SYNTHESIS", "STEP_5_CELEBRATE", "STEP_6_CLOSING"]
+
+    # Terminal states: mark all steps done and append the terminal marker
+    if state.current_step in (EARLY_EXIT, "ENDED"):
+        flow = [{"step": s, "status": "done"} for s in steps]
+        flow.append({"step": state.current_step, "status": "current"})
+        return flow
+
+    flow: list[dict] = []
+    found_current = False
+    for s in steps:
+        if s == state.current_step:
+            flow.append({"step": s, "status": "current"})
+            found_current = True
+        elif not found_current:
+            flow.append({"step": s, "status": "done"})
+        else:
+            flow.append({"step": s, "status": "pending"})
+    return flow
+
+
+def _build_debug_payload(
+    state: SessionStateModel,
+    gen_debug: GenerationDebugInfo | None,
+    script_agent: ScriptAgent,
+    turn_response: TurnResponse | None = None,
+) -> dict:
+    """Assemble the debug payload dict for a turn response."""
+    debug: dict = {}
+
+    if gen_debug:
+        debug["generation"] = asdict(gen_debug)
+
+    plan = script_agent.last_plan
+    if plan:
+        debug["planner"] = {
+            "do_not_suggest_items": plan.do_not_suggest_items,
+            "offer_binary_choice": plan.offer_binary_choice,
+            "must_model_first": plan.must_model_first,
+            "do_not_ask_question": plan.do_not_ask_question,
+            "emotion_tag": plan.emotion_tag,
+            "question_type": plan.question_type,
+        }
+
+    if turn_response:
+        debug["llm_output"] = {
+            "tone_marker": turn_response.tone_marker,
+            "stay_on_step": turn_response.stay_on_step,
+            "child_intent": turn_response.child_intent,
+            "screen_widget": turn_response.screen_widget,
+            "sfx_cue": turn_response.sfx_cue,
+        }
+
+    # Synthesis loop counters (only when in or past synthesis)
+    if state.synthesis_prompt_count > 0 or state.current_step == "STEP_4_SYNTHESIS":
+        debug["synthesis"] = {
+            "phase": state.synthesis_phase,
+            "prompt_count": state.synthesis_prompt_count,
+            "story_attempts": state.synthesis_story_attempts,
+            "declines": state.synthesis_declines,
+            "silences": state.synthesis_silences,
+            "unrelated": state.synthesis_unrelated,
+            "child_story": state.synthesis_child_story[:100] if state.synthesis_child_story else None,
+        }
+
+    if script_agent.last_best_of_n:
+        debug["best_of_n"] = script_agent.last_best_of_n
+
+    debug["retry_stats"] = get_retry_stats()
+    debug["step_flow"] = _build_step_flow(state)
+
+    return debug
+
+
+# ---------------------------------------------------------------------------
 # Story synthesis loop
 # ---------------------------------------------------------------------------
 
@@ -763,6 +895,7 @@ def _synthesis_result(
     turn_response: TurnResponse,
     *,
     advance: bool = False,
+    debug: dict | None = None,
 ) -> TurnResult:
     """Build a TurnResult for synthesis, optionally advancing to the next step."""
     response_type = _get_response_type(state.current_step)
@@ -780,6 +913,7 @@ def _synthesis_result(
         auto_advance=auto_advance,
         response_type=response_type,
         error_exit=state.status == "error",
+        debug=debug,
     )
 
 
@@ -804,15 +938,24 @@ async def _resolve_synthesis_turn(
     Returns:
         TurnResult with response and advancement signals.
     """
+
+    def _debug(gen_debug: GenerationDebugInfo | None, turn_response: TurnResponse | None = None) -> dict:
+        return _build_debug_payload(state, gen_debug, script_agent, turn_response)
+
     phase = state.synthesis_phase
     child_text = turn_input.text or ""
 
     # --- INVITE phase: generate story invitation ---
     if phase == "invite":
-        turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state, is_first_on_step=True)
         state.synthesis_phase = "evaluate"
         state.synthesis_prompt_count += 1
-        return _synthesis_result(state, turn_response, advance=False)
+        return _synthesis_result(
+            state,
+            turn_response,
+            advance=False,
+            debug=_debug(gen_debug, turn_response),
+        )
 
     # --- EVALUATE phase: classify child's response ---
     if phase == "evaluate":
@@ -827,40 +970,73 @@ async def _resolve_synthesis_turn(
 
         if classification.classification == "story_attempt":
             state.synthesis_child_story = child_text
+            state.synthesis_story_attempts += 1
 
             if classification.story_quality == "good":
                 # Good story — celebrate and advance
-                turn_response = await _generate_with_retry(script_agent, state)
-                return _synthesis_result(state, turn_response, advance=True)
+                turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+                return _synthesis_result(
+                    state,
+                    turn_response,
+                    advance=True,
+                    debug=_debug(gen_debug, turn_response),
+                )
 
             if state.tier == "T0":
                 # T0 weak story — AI expands the child's seed
                 state.synthesis_phase = "generate"
-                turn_response = await _generate_with_retry(script_agent, state)
-                return _synthesis_result(state, turn_response, advance=True)
+                turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+                return _synthesis_result(
+                    state,
+                    turn_response,
+                    advance=True,
+                    debug=_debug(gen_debug, turn_response),
+                )
 
             # T1/T2 weak story — ask child to elaborate
             state.synthesis_phase = "improve"
-            turn_response = await _generate_with_retry(script_agent, state)
-            return _synthesis_result(state, turn_response, advance=False)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(
+                state,
+                turn_response,
+                advance=False,
+                debug=_debug(gen_debug, turn_response),
+            )
 
         if classification.classification in ("decline", "ask_ai"):
             # Child declined or asked AI to tell — generate full story
+            state.synthesis_declines += 1
             state.synthesis_phase = "generate"
-            turn_response = await _generate_with_retry(script_agent, state)
-            return _synthesis_result(state, turn_response, advance=True)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(
+                state,
+                turn_response,
+                advance=True,
+                debug=_debug(gen_debug, turn_response),
+            )
 
         # Unrelated response
+        state.synthesis_unrelated += 1
         if state.synthesis_prompt_count < 2:
             # Re-invite (stay in evaluate for next response)
             state.synthesis_prompt_count += 1
-            turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
-            return _synthesis_result(state, turn_response, advance=False)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+            return _synthesis_result(
+                state,
+                turn_response,
+                advance=False,
+                debug=_debug(gen_debug, turn_response),
+            )
 
         # Max prompts exhausted — AI generates
         state.synthesis_phase = "generate"
-        turn_response = await _generate_with_retry(script_agent, state)
-        return _synthesis_result(state, turn_response, advance=True)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+        return _synthesis_result(
+            state,
+            turn_response,
+            advance=True,
+            debug=_debug(gen_debug, turn_response),
+        )
 
     # --- IMPROVE phase: child's elaboration arrived ---
     if phase == "improve":
@@ -874,20 +1050,30 @@ async def _resolve_synthesis_turn(
 
         if classification.story_quality == "good":
             # Elaboration is good enough — celebrate and advance
-            turn_response = await _generate_with_retry(script_agent, state)
-            return _synthesis_result(state, turn_response, advance=True)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+            return _synthesis_result(
+                state,
+                turn_response,
+                advance=True,
+                debug=_debug(gen_debug, turn_response),
+            )
 
         # Still weak — AI completes the story from child's seed
         state.synthesis_phase = "generate"
         state.synthesis_child_story = combined_story
-        turn_response = await _generate_with_retry(script_agent, state)
-        return _synthesis_result(state, turn_response, advance=True)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+        return _synthesis_result(
+            state,
+            turn_response,
+            advance=True,
+            debug=_debug(gen_debug, turn_response),
+        )
 
     # --- GENERATE phase: direct generation fallback ---
     # Shouldn't normally reach here (generate is handled inline above),
     # but acts as a safety net.
-    turn_response = await _generate_with_retry(script_agent, state)
-    return _synthesis_result(state, turn_response, advance=True)
+    turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+    return _synthesis_result(state, turn_response, advance=True, debug=_debug(gen_debug, turn_response))
 
 
 # ---------------------------------------------------------------------------
@@ -917,6 +1103,10 @@ async def resolve_turn(
     """
     has_child_input = bool(turn_input.text) or bool(turn_input.photo_id) or turn_input.is_silent
 
+    def _debug(gen_debug: GenerationDebugInfo | None, turn_response: TurnResponse | None = None) -> dict:
+        """Build debug payload with state and script_agent already captured."""
+        return _build_debug_payload(state, gen_debug, script_agent, turn_response)
+
     # --- 1. Silence counting ---
     if turn_input.is_silent:
         state.consecutive_silence += 1
@@ -930,7 +1120,7 @@ async def resolve_turn(
             _append_child_turn(state, "...")
         state.current_step = EARLY_EXIT
         state.status = "exited"
-        turn_response = await _generate_with_retry(script_agent, state)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         _append_ai_turn(state, turn_response.dialogue)
         return TurnResult(
             turn_response=turn_response,
@@ -938,6 +1128,7 @@ async def resolve_turn(
             auto_advance=False,
             response_type="graceful_exit",
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     # --- 3. Record child input in conversation history ---
@@ -961,7 +1152,7 @@ async def resolve_turn(
     if state.consecutive_wrong >= 2:
         state.current_step = EARLY_EXIT
         state.status = "exited"
-        turn_response = await _generate_with_retry(script_agent, state)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         _append_ai_turn(state, turn_response.dialogue)
         return TurnResult(
             turn_response=turn_response,
@@ -969,12 +1160,13 @@ async def resolve_turn(
             auto_advance=False,
             response_type="graceful_exit",
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     # --- 6. Wrong pick retry (stay on step, generate "try again") ---
     if collection_wrong:
         _append_child_turn(state, f"[selected wrong photo: {turn_input.photo_id}]", include_round_number=False)
-        turn_response = await _generate_with_retry(script_agent, state)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
         return TurnResult(
@@ -983,6 +1175,7 @@ async def resolve_turn(
             auto_advance=False,
             response_type="wrong_photo",
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     # --- 7. Step-specific logic ---
@@ -990,7 +1183,7 @@ async def resolve_turn(
     # 7a. Invitation: normal handling (first delivery, acceptance, decline, off-topic)
     if _is_invitation_step(state.current_step):
         is_first = not _already_prompted_on_step(state)
-        turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=is_first)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state, is_first_on_step=is_first)
 
         if turn_response.child_intent == "declined":
             state.invitation_decline_count += 1
@@ -998,7 +1191,7 @@ async def resolve_turn(
                 # Second decline: graceful exit
                 state.current_step = EARLY_EXIT
                 state.status = "exited"
-                turn_response = await _generate_with_retry(script_agent, state)
+                turn_response, gen_debug = await _generate_with_retry(script_agent, state)
                 _append_ai_turn(state, turn_response.dialogue)
                 state.turn_count += 1
                 return TurnResult(
@@ -1007,6 +1200,7 @@ async def resolve_turn(
                     auto_advance=False,
                     response_type="graceful_exit",
                     error_exit=state.status == "error",
+                    debug=_debug(gen_debug, turn_response),
                 )
             # First decline: stay on STEP_2, re-invite
             _append_ai_turn(state, turn_response.dialogue)
@@ -1017,13 +1211,14 @@ async def resolve_turn(
                 auto_advance=False,
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
+                debug=_debug(gen_debug, turn_response),
             )
 
         if turn_response.child_intent == "accepted":
             state.invitation_decline_count = 0
             # Advance immediately to first round/collect step — single response
             _advance_state(state)
-            turn_response = await _generate_with_retry(script_agent, state)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state)
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
             return TurnResult(
@@ -1032,6 +1227,7 @@ async def resolve_turn(
                 auto_advance=_should_auto_advance(state),
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
+                debug=_debug(gen_debug, turn_response),
             )
 
         # Null / off-topic: stay on STEP_2, no auto-advance
@@ -1043,6 +1239,7 @@ async def resolve_turn(
             auto_advance=False,
             response_type=_get_response_type(state.current_step),
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     # 7b½. Cat5 Phase B: child responds to detail-harvesting question
@@ -1059,13 +1256,14 @@ async def resolve_turn(
         _record_collection_detail(state, child_text)
 
         # Generate AI response (processes detail, names character or acknowledges)
-        turn_response = await _generate_with_retry(script_agent, state)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
         _maybe_record_generated_name(state, turn_response.dialogue)
 
         remaining_count = max(0, state.total_rounds - len(state.collected_photos))
         response_type = _get_response_type(state.current_step)
+        debug = _debug(gen_debug, turn_response)
         # Respect stay_on_step from the AI — the child may be confused or
         # off-topic and needs guidance back before advancing. Cap at 3
         # exchanges to prevent infinite loops.
@@ -1081,6 +1279,7 @@ async def resolve_turn(
                 auto_advance=False,
                 response_type=response_type,
                 error_exit=state.status == "error",
+                debug=debug,
             )
 
         if remaining_count == 0:
@@ -1093,6 +1292,7 @@ async def resolve_turn(
                 auto_advance=True,
                 response_type=response_type,
                 error_exit=state.status == "error",
+                debug=debug,
             )
 
         # Detail phase complete — move to the next collection round in photo-pick mode.
@@ -1106,6 +1306,7 @@ async def resolve_turn(
             auto_advance=False,
             response_type=response_type,
             error_exit=state.status == "error",
+            debug=debug,
         )
 
     # 7c. Round steps (STEP_3_ROUND_* / STEP_3_COLLECT_*)
@@ -1119,7 +1320,7 @@ async def resolve_turn(
             if is_terminal(state.current_step):
                 return _ended_result(state)
 
-            turn_response = await _generate_with_retry(script_agent, state)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state)
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
 
@@ -1132,6 +1333,7 @@ async def resolve_turn(
                 auto_advance=_should_auto_advance(state),
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
+                debug=_debug(gen_debug, turn_response),
             )
 
         # Generate response FIRST (for current step), then decide whether to advance.
@@ -1143,7 +1345,7 @@ async def resolve_turn(
             and collection_wrong is False
             and turn_input.photo_id is not None
         )
-        turn_response = await _generate_with_retry(
+        turn_response, gen_debug = await _generate_with_retry(
             script_agent,
             state,
             is_first_on_step=entering_detail,
@@ -1169,7 +1371,7 @@ async def resolve_turn(
                 f"Celebrate this find, then ask about finding the NEXT one.]"
             )
             _append_child_turn(state, corrective_hint, include_round_number=False)
-            turn_response = await _generate_with_retry(script_agent, state)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state)
             # Remove the corrective hint from history so it doesn't leak
             state.conversation_history = [t for t in state.conversation_history if t.text != corrective_hint]
 
@@ -1201,7 +1403,7 @@ async def resolve_turn(
                 _advance_state(state)
                 if is_terminal(state.current_step):
                     return _ended_result(state)
-                turn_response = await _generate_with_retry(script_agent, state)
+                turn_response, gen_debug = await _generate_with_retry(script_agent, state)
             else:
                 # Cat1 round: check whether to defer or advance immediately
                 next_step_name = next_step(
@@ -1221,7 +1423,7 @@ async def resolve_turn(
                     if is_terminal(state.current_step):
                         return _ended_result(state)
 
-                    turn_response = await _generate_with_retry(script_agent, state)
+                    turn_response, gen_debug = await _generate_with_retry(script_agent, state)
 
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
@@ -1231,6 +1433,7 @@ async def resolve_turn(
             auto_advance=auto_advance or _should_auto_advance(state),
             response_type=_get_response_type(state.current_step),
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     # 7d. Non-round, non-invitation steps (synthesis, celebrate, closing)
@@ -1241,7 +1444,7 @@ async def resolve_turn(
 
     # 7d-ii. Other interactive steps (STEP_1_HOOK): first visit or child response
     if step_needs_user_input(state.current_step) and not _already_prompted_on_step(state):
-        turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state, is_first_on_step=True)
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
         return TurnResult(
@@ -1250,12 +1453,13 @@ async def resolve_turn(
             auto_advance=False,
             response_type=_get_response_type(state.current_step),
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     if step_needs_user_input(state.current_step):
         if state.current_step == "STEP_1_HOOK":
             _advance_state(state)
-            turn_response = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state, is_first_on_step=True)
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
             return TurnResult(
@@ -1264,10 +1468,11 @@ async def resolve_turn(
                 auto_advance=False,
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
+                debug=_debug(gen_debug, turn_response),
             )
 
         # Generic interactive step fallback
-        turn_response = await _generate_with_retry(script_agent, state)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         if turn_response.stay_on_step:
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
@@ -1277,6 +1482,7 @@ async def resolve_turn(
                 auto_advance=False,
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
+                debug=_debug(gen_debug, turn_response),
             )
         response_type = _get_response_type(state.current_step)
         screen_frame = _get_screen_frame(state)
@@ -1291,6 +1497,7 @@ async def resolve_turn(
             auto_advance=not is_terminal(state.current_step) and not step_needs_user_input(state.current_step),
             response_type=response_type,
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     # Auto-advance step (celebrate, closing): check if already generated
@@ -1299,7 +1506,7 @@ async def resolve_turn(
         _advance_state(state)
         if is_terminal(state.current_step):
             return _ended_result(state)
-        turn_response = await _generate_with_retry(script_agent, state)
+        turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
         if _is_closing_step(state.current_step):
@@ -1310,10 +1517,11 @@ async def resolve_turn(
             auto_advance=_should_auto_advance(state),
             response_type=_get_response_type(state.current_step),
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     # Not yet generated (e.g. Cat5 celebrate after synthesis) — generate then advance
-    turn_response = await _generate_with_retry(script_agent, state)
+    turn_response, gen_debug = await _generate_with_retry(script_agent, state)
     response_type = _get_response_type(state.current_step)
     screen_frame = _get_screen_frame(state)
     _append_ai_turn(state, turn_response.dialogue)
@@ -1328,6 +1536,7 @@ async def resolve_turn(
             auto_advance=False,
             response_type=response_type,
             error_exit=state.status == "error",
+            debug=_debug(gen_debug, turn_response),
         )
 
     _advance_state(state)
@@ -1340,4 +1549,5 @@ async def resolve_turn(
         auto_advance=not is_terminal(state.current_step) and not step_needs_user_input(state.current_step),
         response_type=response_type,
         error_exit=state.status == "error",
+        debug=_debug(gen_debug, turn_response),
     )

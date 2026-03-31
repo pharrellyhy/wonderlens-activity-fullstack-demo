@@ -742,6 +742,7 @@ class ScriptAgent:
 
     def __init__(self) -> None:
         self.last_plan: TurnPlan | None = None
+        self.last_best_of_n: dict | None = None
 
     async def generate_turn(self, state: SessionStateModel) -> TurnResponse:
         """Generate the next dialogue turn using two-pass (planner + speaker) with single-pass fallback.
@@ -760,6 +761,7 @@ class ScriptAgent:
             ScriptAgentError: If both two-pass and single-pass generation fail.
         """
         settings = get_settings()
+        self.last_best_of_n = None
         if not settings.two_pass_enabled:
             self.last_plan = None
             # Best-of-N for high-impact steps
@@ -942,6 +944,7 @@ class ScriptAgent:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         candidates = [r for r in results if isinstance(r, TurnResponse)]
+        errors = [str(r) for r in results if isinstance(r, Exception)]
         if not candidates:
             for r in results:
                 if isinstance(r, Exception):
@@ -949,6 +952,12 @@ class ScriptAgent:
             raise ScriptAgentError("No candidates generated")
 
         if len(candidates) == 1:
+            self.last_best_of_n = {
+                "n": n,
+                "returned": len(candidates),
+                "errors": errors,
+                "candidates": [{"text": candidates[0].dialogue, "score": None, "picked": True}],
+            }
             return candidates[0]
 
         scored = [(self._score_candidate(c, state), c) for c in candidates]
@@ -960,6 +969,20 @@ class ScriptAgent:
             [f"{s:.3f}" for s, _ in scored],
             scored[0][0],
         )
+
+        self.last_best_of_n = {
+            "n": n,
+            "returned": len(candidates),
+            "errors": errors,
+            "candidates": [
+                {
+                    "text": c.dialogue,
+                    "score": round(s, 3),
+                    "picked": i == 0,
+                }
+                for i, (s, c) in enumerate(scored)
+            ],
+        }
 
         return scored[0][1]
 

@@ -68,6 +68,10 @@ class SessionStateModel(BaseModel):
     synthesis_child_story: str = Field(
         default="", description="Child's story attempt, stored for improvement/expansion"
     )
+    synthesis_story_attempts: int = Field(default=0, description="Times child attempted a story")
+    synthesis_declines: int = Field(default=0, description="Times child declined to make a story")
+    synthesis_silences: int = Field(default=0, description="Times child was silent during synthesis")
+    synthesis_unrelated: int = Field(default=0, description="Times child gave an unrelated response")
 
     # Deep link entry
     deep_linked: bool = False

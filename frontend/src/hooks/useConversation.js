@@ -17,6 +17,8 @@ export default function useConversation() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [errorExit, setErrorExit] = useState(false);
   const [lastWrongPhotoId, setLastWrongPhotoId] = useState(null);
+  const [debugData, setDebugData] = useState(null);
+  const [debugHistory, setDebugHistory] = useState([]);
   const photoUrlRef = useRef(null);
   const pendingPhotoIdRef = useRef(null);
   // Holds the audio stream from the latest /api/turn-speak response
@@ -32,6 +34,14 @@ export default function useConversation() {
 
   const applyTurnResponse = useCallback((data) => {
     setLatency(data.latency_ms || 0);
+
+    if (data.debug) {
+      setDebugData(data.debug);
+      setDebugHistory(prev => {
+        const next = [...prev, { turn: data.session_state?.turn_count, ts: Date.now(), ...data.debug }];
+        return next.length > 50 ? next.slice(-50) : next;
+      });
+    }
 
     if (data.session_state) {
       setSessionState(data.session_state);
@@ -263,6 +273,8 @@ export default function useConversation() {
     setTurnPending(false);
     setErrorExit(false);
     setLastWrongPhotoId(null);
+    setDebugData(null);
+    setDebugHistory([]);
     clearPhotoUrl();
     pendingPhotoIdRef.current = null;
     pendingAudioRef.current = null;
@@ -283,6 +295,8 @@ export default function useConversation() {
     photoUrl,
     errorExit,
     lastWrongPhotoId,
+    debugData,
+    debugHistory,
     pendingAudioRef,
     start,
     startDeepLink,

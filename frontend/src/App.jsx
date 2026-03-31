@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import TopBar from './components/TopBar';
 import ConversationPanel from './components/ConversationPanel';
+import DebugPanel from './components/DebugPanel';
 import DeviceScreen from './components/DeviceScreen';
 import PhotoSelector from './components/PhotoSelector';
 import PhotoGallery from './components/PhotoGallery';
@@ -46,11 +47,23 @@ function getFooterStatusLabel({ loading, turnPending, status }) {
 
 function App() {
   const [tier, setTier] = useState('T0');
+  const [debugOpen, setDebugOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        setDebugOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const {
     messages, sessionId, sessionState, screenFrame, loading, turnPending, error,
     latency, activityType, templateType, photoUrl, errorExit, lastWrongPhotoId,
-    retryCount, isActive, isEnded, isInputDisabled,
+    debugData, debugHistory, retryCount, isActive, isEnded, isInputDisabled,
     isSpeaking, audioInfo, ttsEnabled, toggleTts, silenceTimerOn, toggleSilenceTimer, isMicActive, sttMode, silenceTimer,
     startSession, startDeepLinkSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
   } = useSessionOrchestration(tier);
@@ -243,6 +256,24 @@ function App() {
           </div>
         </div>
       </footer>
+
+      <DebugPanel
+        debugData={debugData}
+        debugHistory={debugHistory}
+        sessionState={sessionState}
+        templateType={templateType}
+        isOpen={debugOpen}
+      />
+
+      {/* Debug toggle button — visible on all devices, replaces Ctrl+D on mobile */}
+      <button
+        onClick={() => setDebugOpen(prev => !prev)}
+        className="fixed bottom-3 right-3 z-[60] w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold opacity-30 hover:opacity-80 transition-opacity cursor-pointer"
+        style={{ backgroundColor: '#313244', color: '#89b4fa', border: '1px solid #45475a' }}
+        title="Toggle debug panel (Ctrl+D)"
+      >
+        {debugOpen ? '×' : 'D'}
+      </button>
     </div>
   );
 }

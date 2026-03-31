@@ -324,6 +324,13 @@ class TestTurnByTurnEndpoint:
         assert data["session_state"]["current_step"] == "STEP_2_RULES"
         assert data["session_state"]["current_round"] == 0
         assert data["turn"]["response_type"] == "rules"
+        # Debug payload is included in turn responses
+        assert "debug" in data
+        debug = data["debug"]
+        assert "step_flow" in debug
+        assert "retry_stats" in debug
+        assert "generation" in debug
+        assert debug["generation"]["final_verdict"] == "passed"
 
     def test_turn_advances_to_first_round_after_step_two_acceptance(self, client: TestClient) -> None:
         from server import _sessions  # noqa: PLC0415

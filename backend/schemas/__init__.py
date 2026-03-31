@@ -7,12 +7,13 @@ from .recipe import ActivityRecipe, InstructionRecipe, RecipeMetadata
 from .session_state import ConversationTurn, SessionStateModel
 from .step_instruction import RoundInstruction, StepGoal, StepInstruction
 from .turn_plan import TurnPlan
-from .turn_response import TurnResponse
+from .turn_response import CharacterSfxCue, TurnResponse
 from .visual_composition import ScreenFrame, VisualComposition
 from .voice_script import Round, VoiceScript
 
 __all__ = [
     "ActivityRecipe",
+    "CharacterSfxCue",
     "Cat1CreativeSlots",
     "Cat5CreativeSlots",
     "CompositionPlan",

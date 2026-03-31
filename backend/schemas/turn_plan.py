@@ -1,6 +1,8 @@
-"""Pydantic schema for the Planner LLM output — describes WHAT to say, not HOW."""
+"""Pydantic schema for the Planner LLM output - describes WHAT to say, not HOW."""
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from .turn_response import CharacterSfxCue
 
 
 class TurnPlan(BaseModel):
@@ -51,4 +53,8 @@ class TurnPlan(BaseModel):
     screen_widget_params: dict = Field(default_factory=dict)
     screen_animation: str | None = Field(default=None)
     sfx_cue: str | None = Field(default=None)
+    character_sfx: list[CharacterSfxCue] = Field(
+        default_factory=list,
+        description="Character/environment sound effects: [{cue, timing}]",
+    )
     child_intent: str | None = Field(default=None)

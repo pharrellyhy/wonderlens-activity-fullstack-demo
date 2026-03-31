@@ -20,9 +20,9 @@ def write_wav(filename: str, samples: list[float], sample_rate: int = SAMPLE_RAT
         wf.setsampwidth(2)
         wf.setframerate(sample_rate)
         data = b""
-        for s in samples:
-            s = max(-1.0, min(1.0, s))
-            data += struct.pack("<h", int(s * 32767))
+        for sample in samples:
+            clamped = max(-1.0, min(1.0, sample))
+            data += struct.pack("<h", int(clamped * 32767))
         wf.writeframes(data)
     print(f"  {filename} ({len(samples) / sample_rate:.2f}s)")
 
@@ -61,7 +61,6 @@ def bell_tone(freq: float, duration: float, volume: float = 0.4) -> list[float]:
 
 def pluck(freq: float, duration: float, volume: float = 0.4) -> list[float]:
     """Plucked string using Karplus-Strong-like synthesis."""
-    n = int(SAMPLE_RATE * duration)
     result = sine(freq, duration, volume)
     # Add harmonics with fast decay
     for h in [2, 3, 5]:
@@ -138,6 +137,7 @@ def vibrato(samples: list[float], rate: float = 5.0, depth: float = 0.02) -> lis
 
 # ── wonder_chime ──────────────────────────────────────────────
 
+
 def wonder_chime_v1() -> None:
     """Ascending C major chime with shimmer."""
     freqs = [523.25, 659.25, 783.99, 1046.50]
@@ -171,6 +171,7 @@ def wonder_chime_v3() -> None:
 
 
 # ── scene_woosh ───────────────────────────────────────────────
+
 
 def scene_woosh_v1() -> None:
     """Rising frequency sweep with noise."""
@@ -228,6 +229,7 @@ def scene_woosh_v3() -> None:
 
 # ── celebration_fanfare ───────────────────────────────────────
 
+
 def celebration_fanfare_v1() -> None:
     """C major chord then high C."""
     chord_c = fade_out(envelope_decay(sine(523.25, 0.4, 0.3), 1.5), 0.1)
@@ -246,12 +248,18 @@ def celebration_fanfare_v2() -> None:
     d5 = fade_out(envelope_decay(sine(587.33, 0.25, 0.25), 1.5), 0.06)
     g5 = fade_out(envelope_decay(sine(783.99, 0.5, 0.35), 1.0), 0.12)
     g5h = fade_out(envelope_decay(sine(1568.0, 0.3, 0.08), 2.0), 0.08)
-    write_wav("celebration_fanfare_v2.wav", fade_out(mix(
-        mix(g4, g4h),
-        pad_start(b4, 0.15),
-        pad_start(d5, 0.3),
-        pad_start(mix(g5, g5h), 0.45),
-    ), 0.12))
+    write_wav(
+        "celebration_fanfare_v2.wav",
+        fade_out(
+            mix(
+                mix(g4, g4h),
+                pad_start(b4, 0.15),
+                pad_start(d5, 0.3),
+                pad_start(mix(g5, g5h), 0.45),
+            ),
+            0.12,
+        ),
+    )
 
 
 def celebration_fanfare_v3() -> None:
@@ -260,15 +268,22 @@ def celebration_fanfare_v3() -> None:
     g4 = fade_out(envelope_decay(sine(392.0, 0.3, 0.28), 1.2), 0.08)
     bb4 = fade_out(envelope_decay(sine(466.16, 0.3, 0.28), 1.2), 0.08)
     eb5 = vibrato(fade_out(envelope_decay(sine(622.25, 0.6, 0.4), 0.8), 0.15), rate=4.5, depth=0.015)
-    write_wav("celebration_fanfare_v3.wav", fade_out(mix(
-        eb4,
-        pad_start(g4, 0.18),
-        pad_start(bb4, 0.36),
-        pad_start(eb5, 0.5),
-    ), 0.12))
+    write_wav(
+        "celebration_fanfare_v3.wav",
+        fade_out(
+            mix(
+                eb4,
+                pad_start(g4, 0.18),
+                pad_start(bb4, 0.36),
+                pad_start(eb5, 0.5),
+            ),
+            0.12,
+        ),
+    )
 
 
 # ── photo_shutter_click ──────────────────────────────────────
+
 
 def photo_shutter_click_v1() -> None:
     """Mechanical click with resonant tone."""
@@ -299,6 +314,7 @@ def photo_shutter_click_v3() -> None:
 
 # ── slot_fill_chime ───────────────────────────────────────────
 
+
 def slot_fill_chime_v1() -> None:
     """Two-note ascending ding (A5 → E6)."""
     note1 = fade_out(envelope_decay(sine(880, 0.15, 0.4), 3.0), 0.05)
@@ -321,6 +337,7 @@ def slot_fill_chime_v3() -> None:
 
 
 # ── mission_accepted ─────────────────────────────────────────
+
 
 def mission_accepted_v1() -> None:
     """Two-note ascending (A4 → E5) with harmonics."""
@@ -348,6 +365,7 @@ def mission_accepted_v3() -> None:
 
 
 # ── mission_complete_fanfare ─────────────────────────────────
+
 
 def mission_complete_fanfare_v1() -> None:
     """C major arpeggio into chord."""
@@ -394,13 +412,23 @@ def mission_complete_fanfare_v3() -> None:
         fade_out(envelope_decay(sine(523.25, 0.5, 0.2), 0.8), 0.12),
         fade_out(envelope_decay(sine(698.46, 0.5, 0.25), 0.8), 0.12),
     )
-    write_wav("mission_complete_fanfare_v3.wav", fade_out(mix(
-        f4, pad_start(a4, 0.1), pad_start(c5, 0.2), pad_start(f5, 0.3),
-        pad_start(chord, 0.4),
-    ), 0.15))
+    write_wav(
+        "mission_complete_fanfare_v3.wav",
+        fade_out(
+            mix(
+                f4,
+                pad_start(a4, 0.1),
+                pad_start(c5, 0.2),
+                pad_start(f5, 0.3),
+                pad_start(chord, 0.4),
+            ),
+            0.15,
+        ),
+    )
 
 
 # ── badge_awarded ─────────────────────────────────────────────
+
 
 def badge_awarded_v1() -> None:
     """Shimmering ascending sparkle (C major)."""
@@ -447,6 +475,7 @@ def badge_awarded_v3() -> None:
 
 # ── excitement_rising ─────────────────────────────────────────
 
+
 def excitement_rising_v1() -> None:
     """Rising pitch sweep with pulsing."""
     duration = 0.8
@@ -455,7 +484,7 @@ def excitement_rising_v1() -> None:
     for i in range(n):
         t = i / SAMPLE_RATE
         progress = t / duration
-        freq = 300 + 900 * (progress ** 1.5)
+        freq = 300 + 900 * (progress**1.5)
         vol = 0.15 + 0.3 * progress
         pulse = 0.7 + 0.3 * math.sin(2 * math.pi * 8 * t)
         samples.append(vol * pulse * math.sin(2 * math.pi * freq * t))
@@ -499,6 +528,7 @@ def excitement_rising_v3() -> None:
 
 # ── game_start_chime ──────────────────────────────────────────
 
+
 def game_start_chime_v1() -> None:
     """Three quick notes (G4 C5 E5) then chord."""
     g4 = fade_out(envelope_decay(sine(392.0, 0.12, 0.35), 4.0), 0.03)
@@ -509,9 +539,18 @@ def game_start_chime_v1() -> None:
         fade_out(envelope_decay(sine(659.25, 0.35, 0.25), 1.5), 0.1),
         fade_out(envelope_decay(sine(783.99, 0.35, 0.25), 1.5), 0.1),
     )
-    write_wav("game_start_chime_v1.wav", fade_out(mix(
-        g4, pad_start(c5, 0.1), pad_start(e5, 0.2), pad_start(chord, 0.3),
-    ), 0.1))
+    write_wav(
+        "game_start_chime_v1.wav",
+        fade_out(
+            mix(
+                g4,
+                pad_start(c5, 0.1),
+                pad_start(e5, 0.2),
+                pad_start(chord, 0.3),
+            ),
+            0.1,
+        ),
+    )
 
 
 def game_start_chime_v2() -> None:
@@ -520,9 +559,18 @@ def game_start_chime_v2() -> None:
     a4 = fade_out(pluck(440.0, 0.12, 0.35), 0.03)
     cs5 = fade_out(pluck(554.37, 0.12, 0.35), 0.03)
     e5 = fade_out(pluck(659.25, 0.3, 0.4), 0.08)
-    write_wav("game_start_chime_v2.wav", fade_out(mix(
-        e4, pad_start(a4, 0.08), pad_start(cs5, 0.16), pad_start(e5, 0.24),
-    ), 0.1))
+    write_wav(
+        "game_start_chime_v2.wav",
+        fade_out(
+            mix(
+                e4,
+                pad_start(a4, 0.08),
+                pad_start(cs5, 0.16),
+                pad_start(e5, 0.24),
+            ),
+            0.1,
+        ),
+    )
 
 
 def game_start_chime_v3() -> None:
@@ -535,24 +583,53 @@ def game_start_chime_v3() -> None:
         fade_out(envelope_decay(sine(1318.5, 0.25, 0.15), 2.5), 0.07),
         fade_out(envelope_decay(sine(1567.98, 0.2, 0.1), 3.0), 0.06),
     )
-    write_wav("game_start_chime_v3.wav", fade_out(mix(
-        b1, pad_start(b2, 0.15), pad_start(b3, 0.3), pad_start(sparkle, 0.42),
-    ), 0.1))
+    write_wav(
+        "game_start_chime_v3.wav",
+        fade_out(
+            mix(
+                b1,
+                pad_start(b2, 0.15),
+                pad_start(b3, 0.3),
+                pad_start(sparkle, 0.42),
+            ),
+            0.1,
+        ),
+    )
 
 
 # ── main ──────────────────────────────────────────────────────
 
 ALL_GENERATORS = [
-    wonder_chime_v1, wonder_chime_v2, wonder_chime_v3,
-    scene_woosh_v1, scene_woosh_v2, scene_woosh_v3,
-    celebration_fanfare_v1, celebration_fanfare_v2, celebration_fanfare_v3,
-    photo_shutter_click_v1, photo_shutter_click_v2, photo_shutter_click_v3,
-    slot_fill_chime_v1, slot_fill_chime_v2, slot_fill_chime_v3,
-    mission_accepted_v1, mission_accepted_v2, mission_accepted_v3,
-    mission_complete_fanfare_v1, mission_complete_fanfare_v2, mission_complete_fanfare_v3,
-    badge_awarded_v1, badge_awarded_v2, badge_awarded_v3,
-    excitement_rising_v1, excitement_rising_v2, excitement_rising_v3,
-    game_start_chime_v1, game_start_chime_v2, game_start_chime_v3,
+    wonder_chime_v1,
+    wonder_chime_v2,
+    wonder_chime_v3,
+    scene_woosh_v1,
+    scene_woosh_v2,
+    scene_woosh_v3,
+    celebration_fanfare_v1,
+    celebration_fanfare_v2,
+    celebration_fanfare_v3,
+    photo_shutter_click_v1,
+    photo_shutter_click_v2,
+    photo_shutter_click_v3,
+    slot_fill_chime_v1,
+    slot_fill_chime_v2,
+    slot_fill_chime_v3,
+    mission_accepted_v1,
+    mission_accepted_v2,
+    mission_accepted_v3,
+    mission_complete_fanfare_v1,
+    mission_complete_fanfare_v2,
+    mission_complete_fanfare_v3,
+    badge_awarded_v1,
+    badge_awarded_v2,
+    badge_awarded_v3,
+    excitement_rising_v1,
+    excitement_rising_v2,
+    excitement_rising_v3,
+    game_start_chime_v1,
+    game_start_chime_v2,
+    game_start_chime_v3,
 ]
 
 

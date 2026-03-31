@@ -69,9 +69,7 @@ CAMERA_PROMPTS: list[dict[str, str]] = [
         "prompt": (
             "A soft pastel-colored toy camera viewed from the BACK, showing the rear screen. "
             "Light pink body with lavender and mint green accents. Flower-shaped button on top. "
-            "Kawaii cute style — very rounded, bubbly shapes. "
-            + BACK_SCREEN_NOTE
-            + "Solid white background."
+            "Kawaii cute style — very rounded, bubbly shapes. " + BACK_SCREEN_NOTE + "Solid white background."
         ),
     },
     # --- Realistic / 3D rendered styles ---
@@ -151,11 +149,7 @@ def generate_image(client: genai.Client, prompt: str) -> Image.Image:
             )
             return extract_image(response)
         except (genai_errors.ClientError, genai_errors.APIError, httpx.ConnectError) as exc:
-            is_retryable = (
-                "RESOURCE_EXHAUSTED" in str(exc)
-                or "429" in str(exc)
-                or isinstance(exc, httpx.ConnectError)
-            )
+            is_retryable = "RESOURCE_EXHAUSTED" in str(exc) or "429" in str(exc) or isinstance(exc, httpx.ConnectError)
             if not is_retryable:
                 raise
             if attempt == MAX_RETRIES - 1:

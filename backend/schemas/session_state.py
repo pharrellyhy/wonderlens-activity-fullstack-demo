@@ -72,6 +72,12 @@ class SessionStateModel(BaseModel):
     synthesis_declines: int = Field(default=0, description="Times child declined to make a story")
     synthesis_silences: int = Field(default=0, description="Times child was silent during synthesis")
     synthesis_unrelated: int = Field(default=0, description="Times child gave an unrelated response")
+    synthesis_story_quality: str = Field(
+        default="", description="Last story classification quality: good, weak, or empty"
+    )
+    child_intent: str = Field(
+        default="", description="Pre-classified intent for the current turn: confirm, decline, substantive, off_topic"
+    )
 
     # Deep link entry
     deep_linked: bool = False

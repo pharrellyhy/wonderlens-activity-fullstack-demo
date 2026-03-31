@@ -30,7 +30,10 @@ def deep_link_client(monkeypatch: pytest.MonkeyPatch, tmp_path):
             screen_animation="appear",
         )
         debug_info = GenerationDebugInfo(
-            step="STEP_1_HOOK", attempt_count=1, final_verdict="passed", attempts=[],
+            step="STEP_1_HOOK",
+            attempt_count=1,
+            final_verdict="passed",
+            attempts=[],
         )
         return response, debug_info
 

@@ -69,6 +69,7 @@ _MIGRATIONS = [
     "ALTER TABLE turns ADD COLUMN photo_id TEXT",
     "ALTER TABLE turns ADD COLUMN step TEXT",
     "ALTER TABLE turns ADD COLUMN state_snapshot TEXT",
+    "ALTER TABLE turns ADD COLUMN debug_payload TEXT",
 ]
 
 
@@ -118,14 +119,16 @@ async def log_turn(
     photo_id: str | None = None,
     step: str | None = None,
     state_snapshot: str | None = None,
+    debug_payload: str | None = None,
 ) -> None:
     """Insert a turn record for a session."""
     async with aiosqlite.connect(db_path) as db:
         await db.execute(
             """INSERT INTO turns
             (session_id, turn_number, role, text, response_type, screen_widget, sfx_cue,
-             latency_ms, is_silent, consecutive_silence, photo_id, step, state_snapshot)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             latency_ms, is_silent, consecutive_silence, photo_id, step, state_snapshot,
+             debug_payload)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 session_id,
                 turn_number,
@@ -140,6 +143,7 @@ async def log_turn(
                 photo_id,
                 step,
                 state_snapshot,
+                debug_payload,
             ),
         )
         await db.commit()

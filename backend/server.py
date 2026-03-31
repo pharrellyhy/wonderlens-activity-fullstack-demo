@@ -463,7 +463,7 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
         completion_reason = "closing_delivered" if result.response_type == "closing" else "all_steps_done"
         await update_session_status(settings.db_path, req.session_id, "completed", completion_reason, state.turn_count)
 
-    await _log_ai_turn(req, state, result.turn_response.dialogue, response_type)
+    await _log_ai_turn(req, state, result.turn_response.dialogue, response_type, debug=result.debug)
 
     latency_ms = int((time.perf_counter() - start_time) * 1000)
     turn_data = _build_turn_response(
@@ -533,7 +533,7 @@ async def turn_and_speak(req: TurnRequest) -> Response:
                 settings.db_path, req.session_id, "completed", completion_reason, state.turn_count
             )
 
-        await _log_ai_turn(req, state, result.turn_response.dialogue, response_type)
+        await _log_ai_turn(req, state, result.turn_response.dialogue, response_type, debug=result.debug)
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
         turn_data = _build_turn_response(
@@ -682,6 +682,7 @@ async def _log_ai_turn(
     state: SessionStateModel,
     dialogue: str,
     response_type: str,
+    debug: dict | None = None,
 ) -> None:
     """Log the outgoing AI turn with the step that produced the dialogue."""
     settings = get_settings()
@@ -696,6 +697,7 @@ async def _log_ai_turn(
         consecutive_silence=state.consecutive_silence,
         step=_latest_ai_turn_step(state, dialogue),
         state_snapshot=_build_state_snapshot(state),
+        debug_payload=json.dumps(debug, separators=(",", ":")) if debug else None,
     )
 
 
@@ -719,6 +721,7 @@ def _build_state_snapshot(state: SessionStateModel) -> str:
         "collected_photos": state.collected_photos,
         "collected_names": state.collected_names,
         "turn_count": state.turn_count,
+        "child_intent": state.child_intent,
     }
     return json.dumps(snapshot, separators=(",", ":"))
 
@@ -736,6 +739,7 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         "turn_count": state.turn_count,
         "template_type": state.template_type,
         "auto_advance": _should_auto_advance(state),
+        "child_intent": state.child_intent,
     }
 
     # Expose Cat 5 collection context

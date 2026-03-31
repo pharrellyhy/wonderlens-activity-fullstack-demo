@@ -19,6 +19,6 @@
 - Early rounds: simple, familiar causes with obvious effects (sun comes out → warm).
 - Later rounds: more surprising or multi-step causes (what if TWO things happen at once?).
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

@@ -45,7 +45,6 @@ Output valid JSON with EXACTLY these fields (no extra fields):
   "screen_widget": "photo_display",
   "screen_widget_params": {},
   "screen_animation": "sparkle_highlight|celebration_burst|null",
-  "sfx_cue": "wonder_chime|celebration_fanfare|null",
-  "child_intent": "accepted|declined|off_topic|null"
+  "sfx_cue": "wonder_chime|celebration_fanfare|null"
 }
 ```

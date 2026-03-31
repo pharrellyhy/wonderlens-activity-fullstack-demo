@@ -71,8 +71,8 @@ tiers. Use these as reference when generating new scripts.
       "correct_responses": ["flower", "dots", "spots", "circles", "found one", "look", "this one", "here", "I see one", "a flower with dots"],
       "on_correct": "(excited) Patrol report received! Wow, what a find! Look at those little dots — they're like nature's polka-dots! That's 1 down, 2 more to go!",
       "on_incorrect": "(encouraging) That's a cool find! You know what, I can see something a little bit spotty about it if I look really closely. Let's count it! 1 down, 2 more to go!",
-      "on_silence": "(gentle, helpful) Hmm, sometimes the dots are hiding! Try looking at flowers up close — lots of them have tiny spots in the middle. Or check the ground near your feet!",
-      "hint": "Flowers often have dots in their centers. Try looking at one up close!",
+      "on_silence": "(gentle, helpful) Hmm, sometimes the dots are hiding! Would you like to look around for something with tiny spots on it?",
+      "hint": "Something with dots or circles might be closer than you think!",
       "sfx_cue": "photo_shutter_click"
     },
     {
@@ -80,8 +80,8 @@ tiers. Use these as reference when generating new scripts.
       "correct_responses": ["rock", "spots", "bark", "leaf", "found it", "this", "here", "another one", "I found", "look at this", "dots on it"],
       "on_correct": "(impressed) Another incredible find! Those spots are so cool — nature really does love making patterns! That's 2 down, just 1 more to go!",
       "on_incorrect": "(validating) Ooh, interesting choice! If I squint a little, I can see some roundish shapes on there. I'll count it — great eye! 2 down, 1 more!",
-      "on_silence": "(supportive) Taking your time is totally fine! Try looking at tree bark up close, or the underside of a leaf — you might be surprised what you find!",
-      "hint": "Tree bark sometimes has little round spots or circles. Try feeling a tree trunk and looking carefully!",
+      "on_silence": "(supportive) Taking your time is totally fine! Something with spots might be waiting right where you are!",
+      "hint": "Spots and circles show up in the most surprising places!",
       "sfx_cue": "photo_shutter_click"
     },
     {
@@ -90,7 +90,7 @@ tiers. Use these as reference when generating new scripts.
       "on_correct": "(triumphant) YOU DID IT! Collection COMPLETE! Three amazing spotted things plus your ladybug — FOUR polka-dot discoveries! Officer, you are incredible!",
       "on_incorrect": "(celebrating anyway) You know what? That absolutely counts! I can see the spots! Collection COMPLETE! Four polka-dot discoveries — you are an amazing officer!",
       "on_silence": "(warm, supportive) That's okay — finding spots takes patience! You already found TWO amazing dotty things, and that's pretty awesome. Want to try one more, or should we celebrate what we found?",
-      "hint": "For your last one, try looking at your own clothes — do you have any dots or circles on what you're wearing?",
+      "hint": "One more spotty thing — it could be anywhere around you!",
       "sfx_cue": "mission_complete_fanfare"
     }
   ],

@@ -19,6 +19,6 @@ The closing should feel like saying goodbye to a friend, not reading a report ca
 Bad: "Your friends share a special Connection! Keep exploring!"
 Good: "Mossy, Petal, and Woolly are all soft in different ways — that's a Connection you found all by yourself! I wonder what you'll find tomorrow?"
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

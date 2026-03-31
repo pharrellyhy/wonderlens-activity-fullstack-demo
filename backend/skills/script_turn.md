@@ -94,7 +94,6 @@ Rules:
 - 1-2 character sounds per turn woven into the text
 - Always put [short pause] after onomatopoeia to separate it from the regular speech
 
-- `child_intent`: (STEP_2 only) One of: "accepted", "declined", "off_topic", or null. Determine from the child's response whether they accepted the invitation to play.
 - `stay_on_step`: (Round steps only) Set to true if the child said "I don't know", is confused, or needs a hint before the round can advance. When true, you should offer a simpler choice or hint — do NOT move to celebration or the next step.
 
 ## SECTION 7: Conversation State

@@ -812,7 +812,6 @@ class ScriptAgent:
             turn.screen_widget_params = plan.screen_widget_params
             turn.screen_animation = plan.screen_animation
             turn.sfx_cue = plan.sfx_cue
-            turn.child_intent = plan.child_intent
             turn.stay_on_step = plan.stay_on_step
             if plan.character_sfx:
                 turn.character_sfx = list(plan.character_sfx)
@@ -1122,7 +1121,6 @@ class ScriptAgent:
             turn.screen_widget_params = plan.screen_widget_params
             turn.screen_animation = plan.screen_animation
             turn.sfx_cue = plan.sfx_cue
-            turn.child_intent = plan.child_intent
             turn.stay_on_step = plan.stay_on_step
             if plan.character_sfx:
                 turn.character_sfx = list(plan.character_sfx)
@@ -1335,10 +1333,9 @@ class ScriptAgent:
             if last.role == "child":
                 child_input = f'\n\nThe child just said: "{last.text}"'
 
-        # Include child_intent field for STEP_2 invitation handling
-        child_intent_field = ""
-        if state.current_step in ("STEP_2_RULES", "STEP_2_MISSION"):
-            child_intent_field = '  "child_intent": "accepted|declined|off_topic|null",\n'
+        intent_context = ""
+        if state.child_intent:
+            intent_context = f"\nChild's intent has been classified as: {state.child_intent}."
 
         # Include stay_on_step for round and synthesis steps where child might need help
         stay_on_step_field = ""
@@ -1374,9 +1371,10 @@ class ScriptAgent:
 
         return (
             f"Generate the next turn for step: {step_name}.\n"
-            f"This is turn {state.turn_count + 1} of the session.\n"
-            f"Round {state.current_round} of {state.total_rounds}."
+            f"This is turn {state.turn_count + 1} of the session."
+            f"{f' Round {state.current_round} of {state.total_rounds}.' if state.current_step.startswith(('STEP_3_ROUND_', 'STEP_3_COLLECT_')) else ''}"
             f"{child_input}"
+            f"{intent_context}"
             f"{variety_line}\n"
             f"Respond with EXACTLY this JSON structure (all fields required):\n"
             f"{{\n"
@@ -1386,7 +1384,6 @@ class ScriptAgent:
             f'  "screen_widget_params": {{}},\n'
             f'  "screen_animation": "sparkle_highlight|celebration_burst|appear|gentle_pulse|scene_transition|badge_reveal|null",\n'
             f'  "sfx_cue": "wonder_chime|celebration_fanfare|badge_awarded|game_start_chime|null",\n'
-            f"{child_intent_field}"
             f"{stay_on_step_field}"
             f"}}"
         )

@@ -12,6 +12,6 @@ Entity: {entity_name} | Observation detail: {observation_detail} | Observation a
 3. **Warm start** (deep-linked): child already knows the entity — shorten to one brief reference, then straight to invitation. **Cold start** (photo upload): use the full observation + wonder sequence.
 4. Screen widget: `photo_display`.
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

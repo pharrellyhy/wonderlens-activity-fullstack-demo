@@ -4,6 +4,56 @@ Last updated: 2026-03-31
 
 ---
 
+## Unified Intent Classifier + Phase Timeline Debug + Code-Controlled Transitions
+
+**Problem**: Multiple interconnected issues: (1) Fragmented intent classification — Script Agent `child_intent`, `_classify_story_response`, and a hardcoded frozenset all classified child responses differently, causing misrouted turns (e.g., "yes" treated as story content). (2) Debug panel lacked phase-level visibility for Cat5 collection/synthesis loops and Cat1 invitation. (3) LLM-generated transition prompts were unreliable — celebration responses leaked finding prompts, collection photo prompts said "you found something!" when nothing was found, synthesis invite phase narrated stories instead of asking questions. (4) Stories were too short and ignored collected details. (5) Debug data wasn't persisted to DB.
+
+**Solution**: Three major changes:
+
+*Unified Intent Classifier* — Replaced all three classification mechanisms with a single `_classify_child_intent` LLM pre-classifier that runs before the Script Agent. Common phrases (yes/no/sure/maybe) are detected in code via `_CONFIRM_WORDS`/`_DECLINE_WORDS` frozensets, bypassing the LLM entirely. Removed `child_intent` from `TurnResponse` and `TurnPlan`. Added `ChildIntentClassification` schema with optional synthesis extension (`story_quality`, `is_related_to_collection`). Script Agent receives classified intent as context instead of doing classification itself.
+
+*Code-Controlled Transitions* — Replaced unreliable LLM-generated responses with deterministic templates for critical transitions: invitation acceptance celebration (`_ACCEPTANCE_CELEBRATIONS`), collection photo prompt (`_collection_photo_prompt` with `_ANGLE_ADJECTIVES` mapping), synthesis invite (`_SYNTHESIS_INVITE_TEMPLATES`), and synthesis confirm detection (`_SYNTHESIS_CONFIRM_WORDS`). Combined celebration + finding prompt into a single response to eliminate auto-advance round trip. Added story length enforcement (`_MIN_STORY_SENTENCES`) with retry when below minimum.
+
+*Phase Timeline Debug* — Added `_build_phase_timeline(state)` returning sub-step phase lists (done/current/pending) for Cat5 collection, Cat5 synthesis, and Cat1 invitation. Rendered as compact horizontal badge row in the debug panel State tab. Added `debug_payload` column to DB turns table. Added `child_intent` to state snapshot and session state dict.
+
+**Edits**:
+- `backend/schemas/child_intent.py` — NEW: `ChildIntentClassification` Pydantic model
+- `backend/schemas/story_classification.py` — DELETED: replaced by `child_intent.py`
+- `backend/schemas/session_state.py` — added `synthesis_story_quality`, `child_intent` fields
+- `backend/schemas/turn_response.py` — removed `child_intent` field
+- `backend/schemas/turn_plan.py` — removed `child_intent` field
+- `backend/turn_handler.py` — added `_classify_child_intent`, `_CONFIRM_WORDS`/`_DECLINE_WORDS`, `_collection_photo_prompt`, `_ACCEPTANCE_CELEBRATIONS`, `_synthesis_invite_prompt`, `_SYNTHESIS_CONFIRM_WORDS`, `_build_phase_timeline`, story length enforcement; removed `_classify_story_response`, `_AFFIRMATIVE_PATTERNS`, `_is_affirmative_or_continuation`; rewrote invitation/synthesis handlers; fixed name extraction patterns; disabled `_validate_response`
+- `backend/agents/script_agent.py` — removed `child_intent` from output; added intent context to prompt; removed round number from synthesis/celebrate/closing prompts
+- `backend/server.py` — added `child_intent` to `_session_state_dict` and `_build_state_snapshot`; added `debug_payload` to AI turn logging
+- `backend/db.py` — added `debug_payload TEXT` migration and param to `log_turn`
+- `backend/config.py` — added `ali_classifier_model` (defaults to `qwen3.5-flash`)
+- `backend/skills/step_instructions/cat5_step2_mission.md` — removed `child_intent` classification rules; added acceptance celebration rule
+- `backend/skills/step_instructions/cat1_step2_rules.md` — same
+- `backend/skills/step_instructions/cat5_step3_collect.md` — added Phase A opening rule, no-location rule, Phase B celebrate-only rule, anti-repetition rules
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — hardened invite phase; moved quality standard + examples inside GENERATE phase section
+- `backend/skills/step_instructions/cat5_step4_synthesis__story_generation.md` — 5-beat story framework (opening→surprise→try-and-fail→breakthrough→warm ending); increased length requirements; added context usage rules
+- `backend/skills/planner_system.md` — removed `child_intent` from output
+- `backend/skills/script_turn.md` — removed `child_intent` output instruction
+- `backend/skills/few_shot.md` — cleaned location-specific hints
+- All 15 step instruction files — updated example headers to prevent LLM copying
+- `frontend/src/components/DebugPanel.jsx` — added `PhaseBadge`/`PhaseTimeline` components; added `child_intent` to State tab; removed `child_intent` from LLM Output; added phase badge to History tab
+- `tests/test_intent_classifier.py` — NEW: 9 tests for classifier
+- `tests/test_debug_payload.py` — 19 new tests for phase timeline
+- `tests/test_turn_handler.py` — updated invitation/synthesis tests for new classifier flow
+- `tests/test_api.py`, `tests/test_server_visual.py`, `tests/test_turn_plan.py`, `tests/test_planner.py` — removed `child_intent` references
+
+**NOT Changed**:
+- `backend/agents/director.py`, `backend/agents/visual_agent.py`, `backend/agents/recipe_assembler.py` — untouched
+- Frontend conversation flow, TTS/STT pipeline — unchanged
+- `backend/state_machine.py` — step transitions unchanged
+
+**Verification**:
+- `uv run pytest tests/ --ignore=tests/test_character_sound_frontend_contracts.py -q` — 423 passed, 12 skipped (1 pre-existing failure excluded)
+- `uv run ruff check backend/ tests/` — PASS
+- `grep -r "StoryClassification\|_classify_story_response\|_AFFIRMATIVE_PATTERNS" backend/ tests/` — zero matches
+
+---
+
 ## Review Follow-Up: Immersive Character Sounds Frontend Contract + Schema Tightening
 
 **Problem**: Reviewing the in-progress `feat/immersive-character-sounds` worktree against `docs/plans/2026-03-28-immersive-character-sounds.md` surfaced three concrete issues. First, the frontend only preserved `character_sfx` for normal `/api/turn` responses; hook turns from `/api/start` and `/api/start-deep-link` dropped that field, so first-turn ambient or character sounds would never play. Second, the muted TTS path in `useSessionOrchestration.js` triggered `playOutros()` inside the timeout callback and then called `handleSpeakingDone()`, which played the same outro cues a second time. Third, `TurnPlan.character_sfx` was still typed as raw `list[dict]` even though the branch had already introduced a dedicated `CharacterSfxCue` schema, which kept planner parsing looser than necessary and forced redundant dict-to-model conversion in `ScriptAgent`.
@@ -289,58 +339,5 @@ Last updated: 2026-03-31
 - Manual: start 3 dandelion sessions — Phase A openers varied each time, no "Touch it gently" repetition
 - Manual: synthesis stories used different adventure types across sessions
 - Manual: no `[AUDIO]` markers in spoken dialogue
-
----
-
-## Review Follow-Up: Final Phase-B Guidance Loop Now Works
-
-**Problem**: Reviewing the newest prompt/turn-flow commit (`afdc03c`, `fix(prompts): simplify T0 naming flow, allow Phase B guidance loops`) exposed one concrete control-flow mismatch in `backend/turn_handler.py`. The commit message and updated prompt assets both say Cat5 Phase B can stay in detail mode for up to three guidance exchanges when the AI sets `stay_on_step=true`, but the runtime still auto-advanced immediately on the final collected item because the `remaining_count == 0` branch ran before the new guidance-loop check. That meant the final naming/synthesis bridge ignored the newly added T0 guidance path on the very case the prompt change was trying to improve. The local ignored turn-handler tests also had no regression covering this new final-item loop behavior.
-
-**Solution**: Kept the new prompt direction intact, but fixed the runtime ordering so final-item Phase B honors `stay_on_step` before auto-advancing into synthesis. `resolve_turn()` now checks the guidance-loop branch first and only sets `round_advance_pending` for the last item once the child no longer needs another detail exchange or the 3-exchange cap is reached. I also added a focused local regression proving that the final Phase B exchange stays in detail mode when the AI explicitly asks for another texture-guidance turn.
-
-**Edits**:
-- `backend/turn_handler.py` — reordered the final-item Phase B logic so `stay_on_step` is respected before the `remaining_count == 0` auto-advance path; the existing 3-exchange cap is preserved
-- local `tests/test_turn_handler.py` — added a regression for the final-item guidance-loop case so the new Cat5 Phase B behavior is locked in during local review runs
-- `HANDOFF.md` — added this review follow-up entry and refreshed the header date
-
-**NOT Changed**:
-- `backend/skills/planner_system.md` and the Cat5 collection prompt fragments updated by `afdc03c` — reviewed and left unchanged in this follow-up
-- `backend/schemas/session_state.py` `detail_exchange_count` field — reviewed and left unchanged; only the consuming control flow needed correction
-- Frontend code — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py -q -k 'final_detail_guidance_loop_stays_on_detail_before_synthesis'` — PASS (`1 passed, 22 deselected`)
-- `uv run pytest tests/test_turn_handler.py -q` — PASS (`23 passed`)
-- `uv run ruff check backend/turn_handler.py tests/test_turn_handler.py` — PASS
-- `uv run ruff format --check backend/turn_handler.py tests/test_turn_handler.py` — PASS
-
----
-
-## Review Follow-Up: Enforce Plan-Aware Retry Paths
-
-**Problem**: Reviewing the last two-pass generation commits against `docs/plans/2026-03-26-two-pass-generation.md` exposed a concrete gap in the new validation path. `backend/turn_handler.py` added `_validate_plan()` and logged `speaker_violation` / `planner_failure`, but `_generate_with_retry()` still accepted the turn whenever the older `_validate_response()` checks passed. That meant the new two-pass flow could keep a response that violated `do_not_suggest_items`, and it could also keep a detail-phase plan with no `sensory_observation` instead of forcing a re-plan. While tightening local coverage around that path, the new `last_plan` / `retry_speaker_turn` accesses also revealed that the local ignored `tests/test_turn_handler.py` was using overly-generic `AsyncMock()` agents that emitted unawaited-coroutine warnings during pytest cleanup.
-
-**Solution**: Turned the new plan-aware verdicts into real retry decisions. `_generate_with_retry()` now treats `speaker_violation` as a speaker-only retry that reuses the same `TurnPlan` with a corrective hint, and treats `planner_failure` as a full retry that pushes a correction back through the normal planner path. I also simplified the speaker-side prompt assembly by extracting shared prompt/user-prompt helpers and added a `retry_speaker_turn()` entrypoint on `ScriptAgent` so the speaker-only retry path is explicit instead of reaching into private methods. Local review tests now cover both retry branches and use ScriptAgent-shaped mocks so the verification run stays warning-free.
-
-**Edits**:
-- `backend/turn_handler.py` — added `_plan_retry_hint()` and changed `_generate_with_retry()` so `_validate_plan()` failures no longer act as diagnostics only; `speaker_violation` now retries the speaker with the same plan, while `planner_failure` forces a full regenerate with a corrective hint
-- `backend/agents/script_agent.py` — extracted shared speaker prompt builders, added `_format_words_per_sentence()`, and introduced `retry_speaker_turn()` to support plan-preserving speaker retries without duplicating prompt-building logic
-- local `tests/test_turn_handler.py` — added regressions for speaker-only retry vs full re-plan behavior and replaced loose `AsyncMock()` agents with ScriptAgent-shaped mocks to eliminate unawaited-coroutine warnings after the new plan-aware accesses
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/agents/planner.py`, `backend/schemas/turn_plan.py`, and the two-pass prompt markdown files — reviewed and left unchanged in this follow-up
-- `backend/turn_handler.py` step transition/state machine behavior outside retry validation — unchanged
-- Frontend code — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py -q -k 'correct_photo_enters_detail_phase_and_holds_the_round or synthesis_first_visit_generates_prompt'` — PASS (`2 passed, 20 deselected`) and the previous unawaited-coroutine warnings are gone
-- `uv run pytest tests/test_turn_handler.py tests/test_planner.py tests/test_turn_plan.py -q` — PASS (`62 passed`)
-- `uv run ruff check backend/agents/script_agent.py backend/turn_handler.py tests/test_turn_handler.py` — PASS
-- `uv run ruff format --check backend/agents/script_agent.py backend/turn_handler.py tests/test_turn_handler.py` — PASS
-
----
-
-- `uv run pytest tests/ -q --ignore=tests/test_ai_quality.py` — 288 passed, 29 failed (all failures pre-existing)
 
 ---

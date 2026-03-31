@@ -11,9 +11,9 @@ BACKEND_DIR = REPO_ROOT / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+from schemas.child_intent import ChildIntentClassification
 from schemas.creative_slots import Cat5CreativeSlots
 from schemas.session_state import ConversationTurn, SessionStateModel
-from schemas.story_classification import StoryClassification
 from schemas.turn_plan import TurnPlan
 from schemas.turn_response import TurnResponse
 from state_machine import EARLY_EXIT
@@ -40,7 +40,6 @@ def _mock_turn(**overrides: object) -> TurnResponse:
         "tone_marker": "playful",
         "screen_widget": "character_display",
         "screen_widget_params": {},
-        "child_intent": None,
         "stay_on_step": False,
     }
     defaults.update(overrides)
@@ -114,6 +113,21 @@ def _make_round_items() -> list[list[dict[str, object]]]:
 
 
 # ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _mock_intent_classifier(monkeypatch):
+    """Default mock: classify all child input as substantive."""
+
+    async def _mock_classify(state, text):
+        return ChildIntentClassification(intent="substantive")
+
+    monkeypatch.setattr("turn_handler._classify_child_intent", _mock_classify)
+
+
+# ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
@@ -146,10 +160,10 @@ async def test_hook_second_visit_advances_to_mission() -> None:
 
 @pytest.mark.asyncio
 async def test_invitation_first_delivery_stays_on_step2() -> None:
-    """child_intent=null on STEP_2: stays on STEP_2, no auto-advance."""
+    """child_intent=substantive on STEP_2: stays on STEP_2, no auto-advance."""
     state = _make_state()
     agent = _make_agent_mock()
-    agent.generate_turn = AsyncMock(return_value=_mock_turn(child_intent=None))
+    agent.generate_turn = AsyncMock(return_value=_mock_turn())
 
     result = await resolve_turn(state, _make_input(), agent)
 
@@ -159,25 +173,41 @@ async def test_invitation_first_delivery_stays_on_step2() -> None:
 
 
 @pytest.mark.asyncio
-async def test_invitation_acceptance_advances_immediately() -> None:
-    """child_intent=accepted: advances immediately to STEP_3_COLLECT_1."""
+async def test_invitation_acceptance_advances_immediately(monkeypatch) -> None:
+    """child_intent=confirm: delivers celebration, auto-advances to STEP_3_COLLECT_1."""
     state = _make_state()
     agent = _make_agent_mock()
-    agent.generate_turn = AsyncMock(return_value=_mock_turn(child_intent="accepted"))
+    agent.generate_turn = AsyncMock(return_value=_mock_turn())
+
+    async def _confirm_classify(s, t):
+        return ChildIntentClassification(intent="confirm")
+
+    monkeypatch.setattr("turn_handler._classify_child_intent", _confirm_classify)
 
     result = await resolve_turn(state, _make_input(text="yes!"), agent)
 
     assert state.current_step == "STEP_3_COLLECT_1"
+    assert state.invitation_accepted is True
+    assert state.child_intent == "confirm"
+    # Combined celebration + finding prompt — no auto-advance needed
     assert result.auto_advance is False
     assert result.response_type == "round"
+    # Deterministic templates — no LLM call
+    assert agent.generate_turn.call_count == 0
+    assert "celebrating" in result.turn_response.dialogue or "excited" in result.turn_response.dialogue
 
 
 @pytest.mark.asyncio
-async def test_invitation_decline_increments_count() -> None:
+async def test_invitation_decline_increments_count(monkeypatch) -> None:
     """First decline: stays on STEP_2, decline_count incremented."""
     state = _make_state()
     agent = _make_agent_mock()
-    agent.generate_turn = AsyncMock(return_value=_mock_turn(child_intent="declined"))
+    agent.generate_turn = AsyncMock(return_value=_mock_turn())
+
+    async def _decline_classify(s, t):
+        return ChildIntentClassification(intent="decline")
+
+    monkeypatch.setattr("turn_handler._classify_child_intent", _decline_classify)
 
     result = await resolve_turn(state, _make_input(text="no thanks"), agent)
 
@@ -187,24 +217,22 @@ async def test_invitation_decline_increments_count() -> None:
 
 
 @pytest.mark.asyncio
-async def test_second_decline_exits_gracefully() -> None:
-    """Second decline: EARLY_EXIT, status=exited."""
+async def test_second_decline_exits_gracefully(monkeypatch) -> None:
+    """Two declines → graceful exit."""
     state = _make_state(invitation_decline_count=1)
     agent = _make_agent_mock()
-    # First call returns decline, second call generates exit dialogue
-    agent.generate_turn = AsyncMock(
-        side_effect=[
-            _mock_turn(child_intent="declined"),
-            _mock_turn(dialogue="Okay, see you next time!"),
-        ]
-    )
+    agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="Okay, see you next time!"))
+
+    async def _decline_classify(s, t):
+        return ChildIntentClassification(intent="decline")
+
+    monkeypatch.setattr("turn_handler._classify_child_intent", _decline_classify)
 
     result = await resolve_turn(state, _make_input(text="no"), agent)
 
     assert state.current_step == EARLY_EXIT
     assert state.status == "exited"
     assert result.response_type == "graceful_exit"
-    assert result.auto_advance is False
 
 
 @pytest.mark.asyncio
@@ -356,7 +384,7 @@ async def test_synthesis_first_visit_generates_prompt() -> None:
 
 
 @pytest.mark.asyncio
-async def test_synthesis_can_finish_after_first_child_reply() -> None:
+async def test_synthesis_can_finish_after_first_child_reply(monkeypatch) -> None:
     """A single child synthesis reply should be enough to finish the activity prompt."""
     state = _make_state(
         current_step="STEP_4_SYNTHESIS",
@@ -374,13 +402,11 @@ async def test_synthesis_can_finish_after_first_child_reply() -> None:
         return_value=_mock_turn(dialogue="They rolled into a fluffy pile and laughed together.")
     )
 
-    mock_classification = AsyncMock(
-        return_value=StoryClassification(
-            classification="story_attempt", is_related_to_collection=True, story_quality="good"
-        )
-    )
-    with patch("turn_handler._classify_story_response", mock_classification):
-        result = await resolve_turn(state, _make_input(text="they giggled"), agent)
+    async def _good_story(s, t):
+        return ChildIntentClassification(intent="substantive", story_quality="good", is_related_to_collection=True)
+
+    monkeypatch.setattr("turn_handler._classify_child_intent", _good_story)
+    result = await resolve_turn(state, _make_input(text="they giggled"), agent)
 
     assert state.current_step == "STEP_5_CELEBRATE"
     assert result.turn_response.dialogue == "They rolled into a fluffy pile and laughed together."
@@ -389,7 +415,7 @@ async def test_synthesis_can_finish_after_first_child_reply() -> None:
 
 
 @pytest.mark.asyncio
-async def test_synthesis_second_visit_advances_to_celebrate() -> None:
+async def test_synthesis_second_visit_advances_to_celebrate(monkeypatch) -> None:
     """Synthesis completion returns the synthesis reply, then advances to celebrate."""
     state = _make_state(
         current_step="STEP_4_SYNTHESIS",
@@ -404,13 +430,11 @@ async def test_synthesis_second_visit_advances_to_celebrate() -> None:
     agent = _make_agent_mock()
     agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="Great name!"))
 
-    mock_classification = AsyncMock(
-        return_value=StoryClassification(
-            classification="story_attempt", is_related_to_collection=True, story_quality="good"
-        )
-    )
-    with patch("turn_handler._classify_story_response", mock_classification):
-        result = await resolve_turn(state, _make_input(text="I call it Sunny"), agent)
+    async def _good_story(s, t):
+        return ChildIntentClassification(intent="substantive", story_quality="good", is_related_to_collection=True)
+
+    monkeypatch.setattr("turn_handler._classify_child_intent", _good_story)
+    result = await resolve_turn(state, _make_input(text="I call it Sunny"), agent)
 
     assert state.current_step == "STEP_5_CELEBRATE"
     assert result.turn_response.dialogue == "Great name!"
@@ -430,10 +454,8 @@ async def test_synthesis_evaluate_silence_skips_classification_and_generates() -
     agent = _make_agent_mock()
     agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="The friends curled up under the stars."))
 
-    with patch("turn_handler._classify_story_response", new=AsyncMock()) as mock_classification:
-        result = await resolve_turn(state, _make_input(is_silent=True), agent)
+    result = await resolve_turn(state, _make_input(is_silent=True), agent)
 
-    mock_classification.assert_not_called()
     assert state.synthesis_phase == "generate"
     assert state.current_step == "STEP_5_CELEBRATE"
     assert result.turn_response.dialogue == "The friends curled up under the stars."
@@ -441,8 +463,41 @@ async def test_synthesis_evaluate_silence_skips_classification_and_generates() -
 
 
 @pytest.mark.asyncio
-async def test_synthesis_t0_skips_classification_and_expands_seed() -> None:
-    """T0 synthesis should skip LLM classification and treat any response as a story seed."""
+async def test_synthesis_confirm_generates_full_story(monkeypatch) -> None:
+    """Confirm during synthesis: AI generates full story, no child seed."""
+    state = _make_state(
+        current_step="STEP_4_SYNTHESIS",
+        current_round=3,
+        synthesis_phase="evaluate",
+        synthesis_prompt_count=1,
+        collected_names=["Cloud Puff", "Mossy Dot"],
+        conversation_history=[
+            ConversationTurn(role="ai", text="Would you like to make up a story?", step="STEP_4_SYNTHESIS"),
+        ],
+    )
+    agent = _make_agent_mock()
+    agent.generate_turn = AsyncMock(
+        return_value=_mock_turn(dialogue="Cloud Puff and Mossy Dot went on a big adventure!")
+    )
+
+    async def _confirm(s, t):
+        return ChildIntentClassification(intent="confirm")
+
+    monkeypatch.setattr("turn_handler._classify_child_intent", _confirm)
+    result = await resolve_turn(state, _make_input(text="yes"), agent)
+
+    # confirm should NOT set synthesis_child_story to "yes"
+    assert state.synthesis_child_story == ""
+    # confirm is not a decline — counter should not increment
+    assert state.synthesis_declines == 0
+    assert state.current_step == "STEP_5_CELEBRATE"
+    assert result.turn_response.dialogue == "Cloud Puff and Mossy Dot went on a big adventure!"
+    assert result.auto_advance is True
+
+
+@pytest.mark.asyncio
+async def test_synthesis_t0_substantive_generates_from_seed(monkeypatch) -> None:
+    """T0 substantive response: use as story seed, generate."""
     state = _make_state(
         current_step="STEP_4_SYNTHESIS",
         current_round=3,
@@ -459,12 +514,13 @@ async def test_synthesis_t0_skips_classification_and_expands_seed() -> None:
         return_value=_mock_turn(dialogue="Cloud Puff bounced over to Mossy Dot and they snuggled up.")
     )
 
-    with patch("turn_handler._classify_story_response", new=AsyncMock()) as mock_classify:
-        result = await resolve_turn(state, _make_input(text="moss go sleep"), agent)
+    async def _substantive(s, t):
+        return ChildIntentClassification(intent="substantive", story_quality="weak")
 
-    # LLM classification should NOT be called for T0
-    mock_classify.assert_not_called()
-    # Should route to generate phase (AI expands the seed)
+    monkeypatch.setattr("turn_handler._classify_child_intent", _substantive)
+    result = await resolve_turn(state, _make_input(text="moss go sleep"), agent)
+
+    # T0 substantive with weak quality: routes to generate phase (AI expands the seed)
     assert state.synthesis_phase == "generate"
     assert state.synthesis_child_story == "moss go sleep"
     assert state.current_step == "STEP_5_CELEBRATE"
@@ -473,7 +529,7 @@ async def test_synthesis_t0_skips_classification_and_expands_seed() -> None:
 
 @pytest.mark.asyncio
 async def test_synthesis_classification_failure_defaults_to_story_attempt() -> None:
-    """If the classification LLM fails, default to story_attempt(weak) not unrelated."""
+    """If the classification LLM fails, default to substantive (weak) not off_topic."""
     state = _make_state(
         current_step="STEP_4_SYNTHESIS",
         current_round=3,
@@ -488,13 +544,14 @@ async def test_synthesis_classification_failure_defaults_to_story_attempt() -> N
     agent = _make_agent_mock()
     agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="What happened next?"))
 
-    # Force the LLM call inside _classify_story_response to fail so the
+    # Force the LLM call inside _classify_child_intent to fail so the
     # internal except branch runs (patching get_settings triggers the error
-    # inside the try block, not outside the function).
+    # inside the try block). Fallback returns intent="substantive" with
+    # story_quality=None, which the evaluate phase treats as weak.
     with patch("turn_handler.get_settings", side_effect=RuntimeError("LLM timeout")):
         result = await resolve_turn(state, _make_input(text="cloud puff danced"), agent)
 
-    # Should treat as weak story (T1 → improve phase), NOT as unrelated
+    # Should treat as weak story (T1 → improve phase), NOT as off_topic
     assert state.synthesis_phase == "improve"
     assert state.synthesis_child_story == "cloud puff danced"
     assert result.auto_advance is False
@@ -512,10 +569,8 @@ async def test_synthesis_improve_silence_skips_classification_and_generates() ->
     agent = _make_agent_mock()
     agent.generate_turn = AsyncMock(return_value=_mock_turn(dialogue="Cloud Puff met Mossy Dot and they became brave."))
 
-    with patch("turn_handler._classify_story_response", new=AsyncMock()) as mock_classification:
-        result = await resolve_turn(state, _make_input(is_silent=True), agent)
+    result = await resolve_turn(state, _make_input(is_silent=True), agent)
 
-    mock_classification.assert_not_called()
     assert state.synthesis_phase == "generate"
     assert state.synthesis_child_story == "Cloud Puff met Mossy Dot."
     assert state.current_step == "STEP_5_CELEBRATE"

@@ -16,6 +16,6 @@
 - Offer a binary choice: "Would your {entity_name} say 'WOW!' or 'Uh oh!'?"
 - Or suggest an emotion to start from: "What if your {entity_name} felt really surprised? What might it say?"
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

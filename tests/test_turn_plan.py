@@ -47,7 +47,6 @@ class TestTurnPlanDefaults:
         assert plan.screen_animation is None
         assert plan.sfx_cue is None
         assert plan.character_sfx == []
-        assert plan.child_intent is None
 
 
 class TestTurnPlanFull:
@@ -77,7 +76,6 @@ class TestTurnPlanFull:
             screen_animation="sparkle_burst",
             sfx_cue="collect_chime",
             character_sfx=[CharacterSfxCue(cue="dog_bark_happy", timing="intro")],
-            child_intent="accepted",
         )
         assert plan.celebrate_item == "spotty leaf"
         assert plan.sensory_observation == "It has tiny bumps all over — feels like braille dots"
@@ -92,7 +90,6 @@ class TestTurnPlanFull:
         assert plan.screen_animation == "sparkle_burst"
         assert plan.sfx_cue == "collect_chime"
         assert plan.character_sfx == [CharacterSfxCue(cue="dog_bark_happy", timing="intro")]
-        assert plan.child_intent == "accepted"
 
     def test_character_sfx_dicts_coerce_to_models(self) -> None:
         plan = TurnPlan(
@@ -188,7 +185,6 @@ class TestTurnPlanSerialization:
             screen_widget_params={"count": 2},
             screen_animation="sparkle",
             sfx_cue="chime",
-            child_intent="accepted",
         )
         json_str = original.model_dump_json()
         restored = TurnPlan.model_validate_json(json_str)
@@ -220,7 +216,6 @@ class TestTurnPlanSerialization:
             "screen_animation",
             "sfx_cue",
             "character_sfx",
-            "child_intent",
         }
         assert set(dumped.keys()) == expected_fields
 

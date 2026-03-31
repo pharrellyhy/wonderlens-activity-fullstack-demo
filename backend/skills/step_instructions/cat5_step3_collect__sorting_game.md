@@ -34,6 +34,6 @@
 
 **Goal:** By synthesis time, each find already has a simple sound label, so the child only needs to sort or group the sounds.
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

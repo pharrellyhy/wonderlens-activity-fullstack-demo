@@ -63,11 +63,9 @@ function deriveStepFlow(sessionState) {
     steps.push('STEP_4_CELEBRATE', 'STEP_5_CLOSING');
   }
 
-  const normalizedCurrent = currentStep;
-
   let passedCurrent = false;
   return steps.map((s) => {
-    if (s === normalizedCurrent) {
+    if (s === currentStep) {
       passedCurrent = true;
       return { step: s, status: 'current' };
     }
@@ -99,6 +97,49 @@ function StepBadge({ step }) {
   );
 }
 
+const PHASE_STYLES = {
+  done:    { color: C.green,    borderColor: C.green },
+  current: { color: C.blue,     borderColor: C.blue, backgroundColor: `${C.blue}15` },
+  pending: { color: C.surface2, borderColor: C.surface2 },
+};
+
+function PhaseBadge({ entry }) {
+  const s = PHASE_STYLES[entry.status] || PHASE_STYLES.pending;
+  return (
+    <span
+      className="px-1.5 py-0.5 rounded text-[8px] font-semibold whitespace-nowrap border"
+      style={{ color: s.color, borderColor: s.borderColor, backgroundColor: s.backgroundColor }}
+    >
+      {entry.status === 'done' && <>&zwj;&#10003; </>}{entry.label}
+    </span>
+  );
+}
+
+function PhaseTimeline({ timeline }) {
+  if (!timeline || timeline.length === 0) return null;
+
+  return (
+    <div className="mt-2 pl-2" style={{ borderLeft: `2px solid ${C.surface0}` }}>
+      <SectionTitle>Phase Detail</SectionTitle>
+      <div className="flex items-center gap-1 flex-wrap">
+        {timeline.map((entry, i) => (
+          <span key={i} className="flex items-center gap-1">
+            {i > 0 && <span className="text-[8px]" style={{ color: C.surface2 }}>&rarr;</span>}
+            <span className="inline-flex flex-col items-center">
+              <PhaseBadge entry={entry} />
+              {entry.meta && (
+                <span className="text-[7px] mt-0.5" style={{ color: C.overlay0 }}>
+                  {Object.entries(entry.meta).map(([k, v]) => `${k}: ${String(v)}`).join(', ')}
+                </span>
+              )}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StateMachineTab({ debugData, sessionState, templateType }) {
   const stepFlow = debugData?.step_flow || deriveStepFlow(sessionState);
   const isCat5 = templateType === 'cat5';
@@ -115,11 +156,7 @@ function StateMachineTab({ debugData, sessionState, templateType }) {
             <StepBadge key={i} step={step} />
           ))}
         </div>
-        {isCat5 && collectionPhase && (
-          <div className="mt-2">
-            <Badge color={C.blue}>{collectionPhase}</Badge>
-          </div>
-        )}
+        <PhaseTimeline timeline={debugData?.phase_timeline} />
       </div>
 
       {/* Column 2 - Session State */}
@@ -136,15 +173,13 @@ function StateMachineTab({ debugData, sessionState, templateType }) {
                 : <span style={{ color: C.surface2 }}>--</span>}
             </KV>
           )}
-          {synthesisPhase ? (
+          {(synthesisPhase || isCat5) && (
             <KV label="synthesis_phase">
-              <Badge color={C.yellow}>{synthesisPhase}</Badge>
+              {synthesisPhase
+                ? <Badge color={C.yellow}>{synthesisPhase}</Badge>
+                : <span style={{ color: C.surface2 }}>--</span>}
             </KV>
-          ) : isCat5 ? (
-            <KV label="synthesis_phase">
-              <span style={{ color: C.surface2 }}>--</span>
-            </KV>
-          ) : null}
+          )}
           <KV label="silence">{sessionState?.consecutive_silence ?? 0}</KV>
           <KV label="wrong_photos">{sessionState?.consecutive_wrong ?? 0}</KV>
           <KV label="auto_advance">
@@ -152,6 +187,11 @@ function StateMachineTab({ debugData, sessionState, templateType }) {
               {sessionState?.auto_advance ? 'true' : 'false'}
             </span>
           </KV>
+          {sessionState?.child_intent && (
+            <KV label="intent">
+              <Badge color={C.peach}>{sessionState.child_intent}</Badge>
+            </KV>
+          )}
         </div>
       </div>
 
@@ -279,7 +319,6 @@ function GenerationTab({ debugData }) {
                 {llm.stay_on_step ? 'true' : 'false'}
               </span>
             </KV>
-            {llm.child_intent && <KV label="intent"><Badge color={C.peach}>{llm.child_intent}</Badge></KV>}
             <KV label="widget">{llm.screen_widget ?? '--'}</KV>
             {llm.sfx_cue && <KV label="sfx">{llm.sfx_cue}</KV>}
           </div>
@@ -388,8 +427,8 @@ function HistoryTab({ debugHistory }) {
       {[...debugHistory].reverse().map((entry, i) => {
         const gen = entry.generation;
         const synth = entry.synthesis;
-        const stepFlow = entry.step_flow || [];
-        const currentStep = stepFlow.find(s => s.status === 'current');
+        const currentStep = (entry.step_flow || []).find(s => s.status === 'current');
+        const currentPhase = entry.phase_timeline?.find(p => p.status === 'current');
 
         return (
           <div
@@ -412,6 +451,9 @@ function HistoryTab({ debugHistory }) {
               )}
               {entry.llm_output?.tone_marker && (
                 <span style={{ color: C.overlay0 }}>[{entry.llm_output.tone_marker}]</span>
+              )}
+              {currentPhase && (
+                <Badge color={C.yellow}>{currentPhase.label}</Badge>
               )}
             </div>
             {synth && (

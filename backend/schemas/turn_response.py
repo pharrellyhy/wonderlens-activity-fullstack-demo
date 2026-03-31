@@ -26,9 +26,6 @@ class TurnResponse(BaseModel):
         default_factory=list,
         description="Character/environment sound effects for this turn (0-2 cues)",
     )
-    child_intent: str | None = Field(
-        default=None, description="STEP_2 only: 'accepted', 'declined', 'off_topic', or null"
-    )
     stay_on_step: bool = Field(
         default=False,
         description="If true, the child needs more help — do not advance to the next step",

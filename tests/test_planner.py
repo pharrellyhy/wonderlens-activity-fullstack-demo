@@ -272,7 +272,6 @@ class TestPlannerPlanTurn:
                 "screen_widget_params": {},
                 "screen_animation": "sparkle_highlight",
                 "sfx_cue": "wonder_chime",
-                "child_intent": None,
             }
         )
 

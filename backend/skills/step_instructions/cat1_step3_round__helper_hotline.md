@@ -19,6 +19,6 @@
 - Early rounds: simple, clear problems with obvious kind solutions.
 - Later rounds: situations with competing needs or where the "right" thing requires thinking about others' feelings.
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

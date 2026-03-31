@@ -5,6 +5,6 @@
 2. Each Phase B response MUST name ALL previous characters, building a running cast list that creates anticipation for synthesis.
 3. If the child is confused or off-topic in Phase B, gently re-ask the texture question. Set `stay_on_step: true` so the system stays in detail phase for another exchange.
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

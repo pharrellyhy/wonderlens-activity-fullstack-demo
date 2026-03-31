@@ -16,6 +16,6 @@
 - Offer two possible directions: "Maybe the {entity_name} found a treasure... or maybe it met a new friend? Which one do you like?"
 - Or narrow the scope: "What sound did the {entity_name} hear? Was it loud or quiet?"
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

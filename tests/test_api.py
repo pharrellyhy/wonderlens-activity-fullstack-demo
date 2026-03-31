@@ -12,9 +12,9 @@ import pytest
 from agents.script_agent import ScriptAgentError
 from fastapi.testclient import TestClient
 from schemas import ConversationTurn
+from schemas.child_intent import ChildIntentClassification
 from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from schemas.session_state import SessionStateModel
-from schemas.story_classification import StoryClassification
 from schemas.turn_response import TurnResponse
 from server import app
 
@@ -376,26 +376,21 @@ class TestTurnByTurnEndpoint:
 
         _sessions["test-sess"] = _step_2_state()
 
-        classifier_turn = TurnResponse(
+        celebration_turn = TurnResponse(
             dialogue="[playful] Yay!",
             tone_marker="excited",
             screen_widget="character_display",
             screen_widget_params={"description": "Rules"},
             screen_animation="appear",
             sfx_cue="wonder_chime",
-            child_intent="accepted",
-        )
-        round_turn = TurnResponse(
-            dialogue="[warm] I think the dog feels sleepy in warm sunshine! Would it feel sleepy or playful?",
-            tone_marker="curious",
-            screen_widget="character_display",
-            screen_widget_params={"description": "Round 1"},
-            screen_animation="gentle_pulse",
-            sfx_cue="wonder_chime",
         )
 
-        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(side_effect=[classifier_turn, round_turn])):
-            # Single turn: acceptance advances immediately to STEP_3_ROUND_1
+        confirm_intent = ChildIntentClassification(intent="confirm")
+
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=celebration_turn)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=confirm_intent)),
+        ):
             response = client.post(
                 "/api/turn",
                 json={"session_id": "test-sess", "text": "yes!", "is_silent": False},
@@ -406,10 +401,7 @@ class TestTurnByTurnEndpoint:
         assert data["session_state"]["current_step"] == "STEP_3_ROUND_1"
         assert data["session_state"]["current_round"] == 1
         assert data["turn"]["response_type"] == "round"
-        assert (
-            data["turn"]["dialogue"]
-            == "[warm] I think the dog feels sleepy in warm sunshine! Would it feel sleepy or playful?"
-        )
+        assert data["turn"]["dialogue"] == "[playful] Yay!"
         assert data["session_state"]["invitation_decline_count"] == 0
 
     def test_turn_stays_on_step_two_after_first_decline(self, client: TestClient) -> None:
@@ -424,10 +416,14 @@ class TestTurnByTurnEndpoint:
             screen_widget_params={"description": "Rules"},
             screen_animation="appear",
             sfx_cue="wonder_chime",
-            child_intent="declined",
         )
 
-        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=reinvitation_turn)):
+        decline_intent = ChildIntentClassification(intent="decline")
+
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=reinvitation_turn)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
+        ):
             response = client.post(
                 "/api/turn",
                 json={"session_id": "test-sess", "text": "no thanks", "is_silent": False},
@@ -447,15 +443,6 @@ class TestTurnByTurnEndpoint:
         state.invitation_decline_count = 1
         _sessions["test-sess"] = state
 
-        reinvitation_turn = TurnResponse(
-            dialogue="[gentle] That's okay. Would you like to try together?",
-            tone_marker="gentle",
-            screen_widget="character_display",
-            screen_widget_params={"description": "Rules"},
-            screen_animation="appear",
-            sfx_cue="wonder_chime",
-            child_intent="declined",
-        )
         exit_turn = TurnResponse(
             dialogue="[gentle] We can play another time.",
             tone_marker="gentle",
@@ -465,7 +452,12 @@ class TestTurnByTurnEndpoint:
             sfx_cue="badge_awarded",
         )
 
-        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(side_effect=[reinvitation_turn, exit_turn])):
+        decline_intent = ChildIntentClassification(intent="decline")
+
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=exit_turn)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
+        ):
             response = client.post(
                 "/api/turn",
                 json={"session_id": "test-sess", "text": "still no", "is_silent": False},
@@ -761,15 +753,6 @@ class TestTurnSpeakEndpoint:
         state.invitation_decline_count = 1
         _sessions["test-sess"] = state
 
-        reinvitation_turn = TurnResponse(
-            dialogue="[gentle] That's okay. Would you like to try together?",
-            tone_marker="gentle",
-            screen_widget="character_display",
-            screen_widget_params={"description": "Rules"},
-            screen_animation="appear",
-            sfx_cue="wonder_chime",
-            child_intent="declined",
-        )
         exit_turn = TurnResponse(
             dialogue="[gentle] We can play another time.",
             tone_marker="gentle",
@@ -779,18 +762,23 @@ class TestTurnSpeakEndpoint:
             sfx_cue="badge_awarded",
         )
 
+        decline_intent = ChildIntentClassification(intent="decline")
+
         spoken_texts: list[str] = []
 
         async def _fake_tts_ogg_stream(text, tier, max_retries=2):
             spoken_texts.append(text)
             yield b"OggS\x00\x01"
 
-        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(side_effect=[reinvitation_turn, exit_turn])):
-            with patch("server.synthesize_speech_ogg_stream_async", new=_fake_tts_ogg_stream):
-                response = client.post(
-                    "/api/turn-speak",
-                    json={"session_id": "test-sess", "text": "still no", "is_silent": False},
-                )
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=exit_turn)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
+            patch("server.synthesize_speech_ogg_stream_async", new=_fake_tts_ogg_stream),
+        ):
+            response = client.post(
+                "/api/turn-speak",
+                json={"session_id": "test-sess", "text": "still no", "is_silent": False},
+            )
 
         assert response.status_code == 200
         payload = response.content
@@ -1076,15 +1064,15 @@ class TestTurnLogging:
             screen_widget="explorer_map",
             screen_widget_params={},
         )
-        classification = StoryClassification(
-            classification="story_attempt",
+        classification = ChildIntentClassification(
+            intent="substantive",
             is_related_to_collection=True,
             story_quality="good",
         )
 
         with (
             patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=turn)),
-            patch("turn_handler._classify_story_response", new=AsyncMock(return_value=classification)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=classification)),
         ):
             resp = client.post(
                 "/api/turn",

@@ -57,4 +57,3 @@ class TurnPlan(BaseModel):
         default_factory=list,
         description="Character/environment sound effects: [{cue, timing}]",
     )
-    child_intent: str | None = Field(default=None)

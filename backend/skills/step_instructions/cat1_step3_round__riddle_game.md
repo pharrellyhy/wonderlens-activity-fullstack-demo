@@ -19,6 +19,6 @@
 - Early rounds: 2 easy clues, very concrete (color, shape).
 - Later rounds: 3 clues, more abstract or playful (what it does, how it feels, where it lives).
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

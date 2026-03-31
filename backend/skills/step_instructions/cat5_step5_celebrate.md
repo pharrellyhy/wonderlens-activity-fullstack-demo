@@ -19,6 +19,6 @@ The child should feel like YOU remember THEIR specific adventure — not a gener
 Bad: "You found fluffy things! Mission accomplished!"
 Good: "Remember when you said the moss felt like a pillow? That was my favorite part!"
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

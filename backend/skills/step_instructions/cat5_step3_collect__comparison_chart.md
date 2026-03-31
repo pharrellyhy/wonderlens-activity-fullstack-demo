@@ -34,6 +34,6 @@
 
 **Goal:** By synthesis time, all observations are captured AND compared as a running thread. Synthesis asks "can you put them in order?" — not "tell me how they're different" (the child already did that).
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+### EXAMPLES (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns from these examples. Generate completely original wording every time.)
 
 {sampled_examples}

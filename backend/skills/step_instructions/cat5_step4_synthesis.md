@@ -10,7 +10,7 @@ Child's story attempt (if any): {child_story_attempt}
 
 ### PHASE: INVITE (synthesis_phase == "invite")
 
-Ask the child if they would like to make up a story about their collected characters.
+**CRITICAL: Do NOT tell a story. Do NOT narrate. Do NOT generate story content.** Your ONLY job in this phase is to ASK the child if they want to make up a story. Then STOP and wait for their response.
 
 **Rules:**
 1. Do NOT re-celebrate or recap the collection. One brief transition sentence (max 8 words), then invite.
@@ -18,8 +18,9 @@ Ask the child if they would like to make up a story about their collected charac
 3. Name the characters to spark the child's imagination.
 4. For T0: offer a simple starter — "Would you like to tell a little story about {collected_names}?"
 5. For T1/T2: can be slightly more open — "Would you like to make up a story about what {collected_names} do together?"
-6. Set `stay_on_step: true` — we need the child's response.
+6. **MUST set `stay_on_step: true`** — we MUST wait for the child's response before proceeding.
 7. Screen widget: `photo_grid`. Set sfx_cue to null.
+8. **Your response must END with a question mark.** If it doesn't end with "?", you've done it wrong.
 
 ### PHASE: IMPROVE (synthesis_phase == "improve")
 
@@ -39,8 +40,6 @@ The child told a short or weak story. Ask ONE guiding question to help them add 
 
 Generate a complete story. See `cat5_step4_synthesis__story_generation.md` for detailed story generation rules. This phase is handled by a separate instruction file.
 
-### QUALITY STANDARD
-
 The story MUST read like a real bedtime story — not a list of events. Include:
 - What happened (action)
 - How someone felt (real emotion, not just "happy")
@@ -50,6 +49,6 @@ The story MUST read like a real bedtime story — not a list of events. Include:
 Bad: "They all giggled and snuggled together. The end!"
 Good: "'I'm here,' Woolly whispered. Mossy felt warm all over. They closed their eyes and the dark didn't feel scary anymore."
 
-### EXAMPLES (sampled for this session — do NOT memorize or reuse these exact words)
+**Examples (for tone/structure reference ONLY — do NOT copy phrases, sentences, or patterns. Generate completely original wording every time.):**
 
 {sampled_examples}

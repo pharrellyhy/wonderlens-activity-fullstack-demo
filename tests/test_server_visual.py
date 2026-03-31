@@ -7,6 +7,7 @@ import pytest
 from config import get_settings
 from fastapi.testclient import TestClient
 from schemas import ScreenFrame
+from schemas.child_intent import ChildIntentClassification
 from schemas.creative_slots import Cat1CreativeSlots
 from schemas.session_state import SessionStateModel
 from schemas.turn_response import TurnResponse
@@ -96,26 +97,21 @@ class TestVisualFramesInTurnResponse:
         """When visual_frames are present, screen_frame should come from Visual Agent."""
         _sessions["test-sess"] = _state_with_visual_frames("STEP_2_RULES")
 
-        classifier_turn = TurnResponse(
+        celebration_turn = TurnResponse(
             dialogue="That sounds fun!",
             tone_marker="excited",
             screen_widget="character_display",
             screen_widget_params={"description": "Rules"},
             screen_animation="appear",
             sfx_cue="wonder_chime",
-            child_intent="accepted",
-        )
-        round_turn = TurnResponse(
-            dialogue="Let's play a game!",
-            tone_marker="excited",
-            screen_widget="character_display",
-            screen_widget_params={"description": "Round 1"},
-            screen_animation="appear",
-            sfx_cue="wonder_chime",
         )
 
-        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(side_effect=[classifier_turn, round_turn])):
-            # Single turn: acceptance advances immediately to STEP_3_ROUND_1
+        confirm_intent = ChildIntentClassification(intent="confirm")
+
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=celebration_turn)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=confirm_intent)),
+        ):
             resp = client.post(
                 "/api/turn",
                 json={"session_id": "test-sess", "text": "ready", "is_silent": False},
@@ -135,26 +131,21 @@ class TestVisualFramesInTurnResponse:
         """The audio dict should include sfx_label from the screen frame."""
         _sessions["test-sess"] = _state_with_visual_frames("STEP_2_RULES")
 
-        classifier_turn = TurnResponse(
+        celebration_turn = TurnResponse(
             dialogue="That sounds fun!",
             tone_marker="excited",
             screen_widget="character_display",
             screen_widget_params={"description": "Rules"},
             screen_animation="appear",
             sfx_cue="wonder_chime",
-            child_intent="accepted",
-        )
-        round_turn = TurnResponse(
-            dialogue="Let's play a game!",
-            tone_marker="excited",
-            screen_widget="character_display",
-            screen_widget_params={"description": "Round 1"},
-            screen_animation="appear",
-            sfx_cue="wonder_chime",
         )
 
-        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(side_effect=[classifier_turn, round_turn])):
-            # Single turn: acceptance advances immediately to STEP_3_ROUND_1
+        confirm_intent = ChildIntentClassification(intent="confirm")
+
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=celebration_turn)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=confirm_intent)),
+        ):
             resp = client.post(
                 "/api/turn",
                 json={"session_id": "test-sess", "text": "ready", "is_silent": False},
@@ -170,17 +161,8 @@ class TestVisualFramesInTurnResponse:
         """The screen_frame in the response should include all label fields."""
         _sessions["test-sess"] = _state_with_visual_frames("STEP_2_RULES")
 
-        classifier_turn = TurnResponse(
+        celebration_turn = TurnResponse(
             dialogue="That sounds fun!",
-            tone_marker="excited",
-            screen_widget="character_display",
-            screen_widget_params={},
-            screen_animation="appear",
-            sfx_cue="wonder_chime",
-            child_intent="accepted",
-        )
-        round_turn = TurnResponse(
-            dialogue="Let's play!",
             tone_marker="excited",
             screen_widget="character_display",
             screen_widget_params={},
@@ -188,8 +170,12 @@ class TestVisualFramesInTurnResponse:
             sfx_cue="wonder_chime",
         )
 
-        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(side_effect=[classifier_turn, round_turn])):
-            # Single turn: acceptance advances immediately, screen frame from new step
+        confirm_intent = ChildIntentClassification(intent="confirm")
+
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=celebration_turn)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=confirm_intent)),
+        ):
             resp = client.post(
                 "/api/turn",
                 json={"session_id": "test-sess", "text": "ready", "is_silent": False},
@@ -219,17 +205,8 @@ class TestVisualFramesInTurnResponse:
         )
         _sessions["test-sess"] = state
 
-        classifier_turn = TurnResponse(
+        celebration_turn = TurnResponse(
             dialogue="That sounds fun!",
-            tone_marker="excited",
-            screen_widget="character_display",
-            screen_widget_params={},
-            screen_animation="appear",
-            sfx_cue="wonder_chime",
-            child_intent="accepted",
-        )
-        round_turn = TurnResponse(
-            dialogue="Let's play!",
             tone_marker="excited",
             screen_widget="character_display",
             screen_widget_params={},
@@ -237,8 +214,12 @@ class TestVisualFramesInTurnResponse:
             sfx_cue="wonder_chime",
         )
 
-        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(side_effect=[classifier_turn, round_turn])):
-            # Single turn: acceptance advances immediately
+        confirm_intent = ChildIntentClassification(intent="confirm")
+
+        with (
+            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=celebration_turn)),
+            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=confirm_intent)),
+        ):
             resp = client.post(
                 "/api/turn",
                 json={"session_id": "test-sess", "text": "ready", "is_silent": False},

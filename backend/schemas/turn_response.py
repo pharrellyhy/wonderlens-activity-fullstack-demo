@@ -30,3 +30,7 @@ class TurnResponse(BaseModel):
         default=False,
         description="If true, the child needs more help — do not advance to the next step",
     )
+    character_state: str = Field(
+        default="idle",
+        description="Character animation state: idle, listening, thinking, speaking, excited, encouraging, surprised, waving",
+    )

@@ -44,7 +44,7 @@ function getFrameKey(screenFrame) {
   ].join('|');
 }
 
-export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
+export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clipUrl, isOneShot, onClipEnded, animationState, isSpeaking }) {
   const { play: playSfx } = useSfxPlayer();
   const lastSfxFrameRef = useRef(null);
 
@@ -71,6 +71,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
 
   const frameKey = getFrameKey(screenFrame);
   const WidgetComponent = WIDGET_MAP[screenFrame.widget];
+  const isVideoMode = screenFrame.widget === 'character_display' && !!clipUrl;
   const params = screenFrame.widget_params || {};
 
   // character_display has its own gentle-float; suppress all overlay animations
@@ -85,14 +86,14 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
       key={frameKey}
       className="h-full flex flex-col transition-opacity duration-300 ease-in-out"
     >
-      {/* Widget label header */}
-      {screenFrame.widget_label && (
+      {/* Widget label header (hidden in full-panel video mode — info moves to bottom overlay) */}
+      {screenFrame.widget_label && !(screenFrame.widget === 'character_display' && clipUrl) && (
         <div className="px-2.5 pt-1.5 pb-1 max-[380px]:px-2 max-[380px]:pt-1">
           <p className="text-[11px] max-[380px]:text-[10px] font-medium text-[var(--color-forest)] text-center">{screenFrame.widget_label}</p>
         </div>
       )}
 
-      <div className="flex-1 min-h-0 grid place-items-center px-2 pb-1 max-[380px]:px-1.5 max-[380px]:pb-0.5">
+      <div className={`flex-1 min-h-0 grid place-items-center ${isVideoMode ? '' : 'px-2 pb-1 max-[380px]:px-1.5 max-[380px]:pb-0.5'}`}>
         {screenFrame.widget === 'explorer_map' && WidgetComponent ? (
           <div className="w-full h-full">
             <WidgetComponent {...params} />
@@ -100,8 +101,14 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState }) {
         ) : (
           <AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">
             {WidgetComponent ? (
-              <div className="w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center">
-                <WidgetComponent {...params} photoUrl={asset(params.photoUrl) || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
+              <div className={`relative ${screenFrame.widget === 'character_display' && clipUrl ? 'w-full h-full' : 'w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center'}`}>
+                <WidgetComponent
+                  {...params}
+                  photoUrl={asset(params.photoUrl) || photoUrl}
+                  animation={screenFrame.animation}
+                  sessionState={sessionState}
+                  {...(screenFrame.widget === 'character_display' ? { clipUrl, isOneShot, onClipEnded, isSpeaking } : {})}
+                />
               </div>
             ) : (
               <div className="text-center p-8 surface-card rounded-2xl">

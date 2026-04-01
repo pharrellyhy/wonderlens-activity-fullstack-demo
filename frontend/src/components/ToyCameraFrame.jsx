@@ -1,4 +1,15 @@
-export default function ToyCameraFrame({ children }) {
+export default function ToyCameraFrame({ children, videoMode = false }) {
+  if (videoMode) {
+    // Minimal frame for video mode — thin border, rounded corners, no camera chrome
+    return (
+      <div className="relative w-full h-full">
+        <div className="relative h-full rounded-2xl max-[380px]:rounded-xl overflow-hidden shadow-lg border border-gray-200/30">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-full flex flex-col">
       {/* Camera body */}
@@ -21,7 +32,7 @@ export default function ToyCameraFrame({ children }) {
           </div>
         </div>
 
-        {/* Viewport — where content renders */}
+        {/* Viewport */}
         <div className="flex-1 min-h-0 flex flex-col justify-center bg-white rounded-2xl max-[380px]:rounded-[1rem] overflow-hidden overflow-y-auto mx-0.5 mb-0.5">
           {children}
         </div>

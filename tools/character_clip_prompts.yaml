@@ -1,0 +1,205 @@
+# Veo 3.1 prompt templates for character animation clips.
+# Each character has a base visual description + per-state action prompts.
+# Resolution: 480x480, Format: MP4 (H.264)
+
+defaults:
+  resolution: "480x480"
+  style: >
+    3D rendered toy aesthetic, Pixar-inspired, warm lighting. No text or UI elements.
+    IMPORTANT: The character must be centered in the frame, medium close-up shot,
+    facing slightly toward camera. Same size, position, and camera angle in every clip.
+    TIMING: The first 2 seconds the character sits completely still in its resting pose.
+    Then the action happens for 4 seconds. Then the last 2 seconds the character returns
+    to and holds the exact same still resting pose. This ensures seamless looping and
+    smooth transitions between clips.
+  loop_duration: "4s"
+  oneshot_duration: "3s"
+
+characters:
+  mood_changer_dog:
+    prefix: dog
+    base: >
+      A cute, friendly stuffed dog toy with soft blue fur, floppy ears, and a round nose.
+      Centered in frame, sitting upright, facing slightly toward camera.
+      In a cozy, bright children's bedroom with soft pastel walls, plush rugs, and toys on shelves.
+    states:
+      idle:
+        type: loop
+        action: >
+          The dog breathes gently, with a slight rhythmic chest rise and fall.
+          Ears occasionally twitch softly. Calm and content expression.
+      listening:
+        type: loop
+        action: >
+          The dog leans forward attentively, both ears perked up high, head tilted
+          slightly to one side. Eyes wide and focused as if carefully listening to something.
+      thinking:
+        type: loop
+        action: >
+          The plush toy slowly tilts to one side, then the other, with a puzzled
+          but adorable expression. Ears gently swaying with each tilt.
+      speaking:
+        type: loop
+        action: >
+          The stuffed dog toy nods its head rhythmically, body swaying gently
+          side to side with warm energy. Ears flopping, tail wagging softly.
+      excited:
+        type: oneshot
+        action: >
+          The dog bounces up and down happily, tail wagging rapidly, ears flopping
+          with joy. A big open-mouth smile. Pure delight and celebration.
+      encouraging:
+        type: oneshot
+        action: >
+          The dog gives a warm, gentle nod. Soft kind eyes, mouth in a reassuring
+          half-smile. One paw reaches forward slightly as if to comfort.
+      surprised:
+        type: oneshot
+        action: >
+          The stuffed dog toy suddenly perks up with wide eyes, ears shooting
+          straight up, body leaning back slightly in delighted amazement.
+      waving:
+        type: oneshot
+        action: >
+          The dog raises one paw and waves hello/goodbye with a friendly smile.
+          Gentle side-to-side paw motion. Warm, welcoming expression.
+
+  dream_whisperer_cat:
+    prefix: cat
+    base: >
+      A chubby, round stuffed orange tabby cat toy with dark stripes, half-lidded lazy eyes,
+      a smug little grin, and a big round belly. Centered in frame, sitting lazily,
+      facing slightly toward camera.
+      In a warm, cozy nursery with a cushioned window seat, fairy lights, and soft blankets.
+    states:
+      idle:
+        type: loop
+        action: >
+          The cat breathes softly, tail slowly curling and uncurling. Occasional slow
+          blink with a serene expression. Whiskers gently twitching.
+      listening:
+        type: loop
+        action: >
+          The cat's ears rotate forward, body leaning in slightly. Eyes wide and
+          attentive, whiskers pointing forward. Alert but calm.
+      thinking:
+        type: loop
+        action: >
+          The cat tilts its head thoughtfully, one paw tucked under its chin.
+          Eyes half-closed in a contemplative expression. Tail tip twitching slowly.
+      speaking:
+        type: loop
+        action: >
+          The cat nods and sways gently with expressive body language, head
+          bobbing softly, tail swishing. Engaged and animated energy.
+      excited:
+        type: oneshot
+        action: >
+          The cat springs up with delight, paws in the air, tail puffed with joy.
+          Eyes sparkling, mouth in a wide happy grin. Prancing motion.
+      encouraging:
+        type: oneshot
+        action: >
+          The cat gives a slow, warm blink (cat kiss) and a gentle head nod.
+          Soft purring posture, body relaxed and welcoming. Reassuring.
+      surprised:
+        type: oneshot
+        action: >
+          The cat's eyes go perfectly round, ears flatten slightly then pop up,
+          body arches in surprise. Whiskers spread wide. Amazed expression.
+      waving:
+        type: oneshot
+        action: >
+          The cat raises one paw gracefully and waves with a gentle, dreamy smile.
+          Slow, elegant wave motion. Tail curls in greeting.
+
+  time_machine_dinosaur:
+    prefix: dinosaur
+    base: >
+      A cute, friendly stuffed dinosaur toy (brontosaurus-style) with soft amber/golden fur,
+      a long neck, big round eyes, and a gentle smile. Centered in frame, standing upright,
+      facing slightly toward camera.
+      In a colorful children's playroom with wooden toy blocks, picture books, and a small tent.
+    states:
+      idle:
+        type: loop
+        action: >
+          The dinosaur sways gently, long neck moving in a slow figure-eight.
+          Tail swishes lazily side to side. Peaceful, contented expression.
+      listening:
+        type: loop
+        action: >
+          The dinosaur stretches its long neck forward and downward, head turned
+          to listen. Eyes focused, body still with attention. Ears (small bumps) perked.
+      thinking:
+        type: loop
+        action: >
+          The plush dinosaur toy slowly tilts its long neck to one side, then
+          the other, with a puzzled but adorable expression. Gentle swaying.
+      speaking:
+        type: loop
+        action: >
+          The dinosaur bobs its long neck rhythmically, body rocking gently
+          with enthusiasm. Tail swinging, eyes bright and engaged.
+      excited:
+        type: oneshot
+        action: >
+          The dinosaur stomps its feet happily, neck swinging side to side with joy.
+          Big toothy grin, tail sweeping in celebration. Earthquake of happiness.
+      encouraging:
+        type: oneshot
+        action: >
+          The dinosaur lowers its long neck to eye level and gives a gentle,
+          warm nod. Soft eyes, reassuring expression. A comforting giant.
+      surprised:
+        type: oneshot
+        action: >
+          The dinosaur's head shoots up on its long neck, eyes go wide, mouth
+          drops open in amazement. Body leans back slightly. Impressed.
+      waving:
+        type: oneshot
+        action: >
+          The plush dinosaur toy lifts one front foot and rocks it side to side
+          in a playful greeting gesture. Long neck swaying, big happy expression.
+
+# Scenario illustration clips — pre-generated from fixed round_scenarios.
+# These loop as the "world" for each round in the device panel.
+scenarios:
+  mood_changer_dog:
+    style: >
+      Warm, child-friendly scene. Soft lighting.
+    clips:
+      1: "Basking in warm sunshine, lying on its belly with a content expression, golden light beams across soft grass."
+      2: "Just tripped and went bump, sitting with a surprised expression, looking up with big eyes."
+      3: "Seeing its favorite treat arriving on a plate, eyes wide with excitement, tail wagging."
+      4: "Watching a colorful butterfly flying by, head following it with wonder, butterfly leaving a sparkle trail."
+      5: "Hearing thunder outside, ears flat, looking at a rain-streaked window with a nervous but brave expression."
+      6: "Its best friend (another stuffed toy) coming to visit, both toys face to face with happy expressions."
+      7: "In a bath with bubbles floating around, looking surprised but playful, rubber duck nearby."
+      8: "Standing at the edge of a muddy puddle, paws getting splashed, looking delighted and messy."
+
+  dream_whisperer_cat:
+    style: >
+      Dreamy, ethereal scene with soft violet tones. Whimsical atmosphere.
+    clips:
+      1: "Floating peacefully on a fluffy white cloud in a pastel sky, paws dangling, serene expression."
+      2: "Swimming playfully in a gentle ocean of milk, small waves lapping, whiskers wet, dreamy atmosphere."
+      3: "Exploring a magical garden filled with glowing flowers, yarn balls, and fish-shaped leaves."
+      4: "Chasing a softly glowing star through a dark but friendly night, star leaving a golden trail."
+      5: "Riding on the back of a giant friendly bird soaring through cotton-candy clouds."
+      6: "Inside a whimsical castle made entirely of colorful yarn balls, batting at dangling strings."
+      7: "Bouncing along a vibrant rainbow bridge arcing across a starry sky, each bounce leaving sparkles."
+      8: "Curled up in a cozy cave made of soft pillows and blankets, warm glow, completely content."
+
+  time_machine_dinosaur:
+    style: >
+      Epic but child-friendly prehistoric scene. Warm amber tones.
+    clips:
+      1: "Standing in a lush prehistoric jungle, giant ferns and palm trees, dappled sunlight, curious expression."
+      2: "Near a rumbling volcano with orange lava glow, looking up in awe, safe distance, dramatic sky."
+      3: "Sitting peacefully by a calm lake at sunset, warm golden reflections, gentle ripples, serene mood."
+      4: "On a snowy mountain top, snowflakes falling gently, breath visible, amazed by the view below."
+      5: "Peeking into a dark spooky cave, eyes wide, faint mysterious glow from deep inside."
+      6: "Walking through a field of giant colorful flowers, each flower taller than the dinosaur, magical atmosphere."
+      7: "On a stormy ocean beach, waves crashing, wind blowing, looking brave and adventurous."
+      8: "Meeting another friendly dinosaur face to face, both smiling, touching noses, warm friendship moment."

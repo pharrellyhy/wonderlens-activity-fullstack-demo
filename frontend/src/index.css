@@ -259,6 +259,60 @@
   animation-delay: 0.4s;
 }
 
+/* ── Particle field animations ── */
+
+@keyframes particle-float {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
+  50% { transform: translateY(-6px) scale(1.05); opacity: 0.7; }
+}
+
+@keyframes particle-focus {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  50% { transform: translate(calc(50% - var(--x, 50%)), calc(50% - var(--y, 50%))) scale(0.9); opacity: 0.8; }
+}
+
+@keyframes particle-orbit {
+  0% { transform: rotate(0deg) translateX(8px) rotate(0deg); opacity: 0.5; }
+  100% { transform: rotate(360deg) translateX(8px) rotate(-360deg); opacity: 0.5; }
+}
+
+@keyframes particle-burst {
+  0% { transform: scale(1) translate(0, 0); opacity: 1; }
+  40% { transform: scale(1.4) translate(calc(var(--burst-x, 10px)), calc(var(--burst-y, -10px))); opacity: 1; }
+  100% { transform: scale(0.8) translate(0, 0); opacity: 0.4; }
+}
+
+@keyframes particle-drift-in {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(calc((50% - var(--x, 50%)) * 0.3), calc((50% - var(--y, 50%)) * 0.3)) scale(1.1); opacity: 0.7; }
+}
+
+@keyframes particle-jump {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
+  30% { transform: translateY(-12px) scale(1.2); opacity: 1; }
+  60% { transform: translateY(-4px) scale(0.95); opacity: 0.8; }
+}
+
+@keyframes particle-sway {
+  0%, 100% { transform: translateX(0); opacity: 0.45; }
+  50% { transform: translateX(4px); opacity: 0.6; }
+}
+
+@keyframes particle-fan {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  50% { transform: translate(calc(var(--fan-x, 8px)), calc(var(--fan-y, -8px))) scale(1.1); opacity: 0.8; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+}
+
+.particle-idle { animation: particle-float ease-in-out infinite; }
+.particle-listening { animation: particle-focus ease-in-out infinite; }
+.particle-thinking { animation: particle-orbit linear infinite; }
+.particle-excited { animation: particle-burst ease-out forwards; }
+.particle-encouraging { animation: particle-drift-in ease-in-out infinite; }
+.particle-surprised { animation: particle-jump ease-out forwards; }
+.particle-speaking { animation: particle-sway ease-in-out infinite; }
+.particle-waving { animation: particle-fan ease-out forwards; }
+
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,

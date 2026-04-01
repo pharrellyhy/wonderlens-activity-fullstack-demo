@@ -40,7 +40,7 @@ try:
     from .recipe_loader import load_instruction_recipe, recipe_to_session_state
     from .scenarios import load_scenario, match_scenario
     from .schemas import ScreenFrame
-    from .schemas.creative_slots import Cat5CreativeSlots
+    from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
     from .schemas.session_state import ConversationTurn, SessionStateModel, UpstreamConversationTurn
     from .schemas.turn_response import TurnResponse
     from .state_machine import get_screen_frame
@@ -74,7 +74,7 @@ except ImportError:
     from recipe_loader import load_instruction_recipe, recipe_to_session_state
     from scenarios import load_scenario, match_scenario
     from schemas import ScreenFrame
-    from schemas.creative_slots import Cat5CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel, UpstreamConversationTurn
     from schemas.turn_response import TurnResponse
     from state_machine import get_screen_frame
@@ -599,6 +599,31 @@ async def text_to_speech_stream(text: str, tier: str = "T0") -> Response:
 # --- Helpers ---
 
 
+_EMOTION_TO_CHARACTER_STATE: dict[str, str] = {
+    "excited": "excited",
+    "celebrating": "excited",
+    "impressed": "excited",
+    "gentle": "encouraging",
+    "encouraging": "encouraging",
+    "curious": "surprised",
+    "mysterious": "surprised",
+}
+
+_RESPONSE_TYPE_TO_CHARACTER_STATE: dict[str, str] = {
+    "hook": "waving",
+    "celebration": "excited",
+    "closing": "waving",
+    "graceful_exit": "waving",
+}
+
+
+def _map_character_state(tone_marker: str, response_type: str) -> str:
+    """Map emotion tag and response type to a character animation state."""
+    if response_type in _RESPONSE_TYPE_TO_CHARACTER_STATE:
+        return _RESPONSE_TYPE_TO_CHARACTER_STATE[response_type]
+    return _EMOTION_TO_CHARACTER_STATE.get(tone_marker, "speaking")
+
+
 def _build_turn_response(
     turn: TurnResponse,
     screen_frame: ScreenFrame,
@@ -629,6 +654,7 @@ def _build_turn_response(
     return {
         "dialogue": turn.dialogue,
         "tone_marker": turn.tone_marker,
+        "character_state": _map_character_state(turn.tone_marker, response_type),
         "screen_frame": frame_dict,
         "audio": audio,
         "character_sfx": character_sfx,
@@ -741,6 +767,12 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         "auto_advance": _should_auto_advance(state),
         "child_intent": state.child_intent,
     }
+
+    # Expose Cat1 current round scenario for video clip selection
+    if state.template_type == "cat1" and isinstance(state.creative_slots, Cat1CreativeSlots):
+        round_idx = max(0, state.current_round - 1)
+        if round_idx < len(state.creative_slots.round_scenarios):
+            result["current_scenario"] = state.creative_slots.round_scenarios[round_idx]
 
     # Expose Cat 5 collection context
     if state.template_type == "cat5" and isinstance(state.creative_slots, Cat5CreativeSlots):

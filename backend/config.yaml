@@ -9,6 +9,7 @@ script_timeout_ms: 60000
 script_max_tokens: 4096
 script_turn_timeout_ms: 5000
 script_turn_max_tokens: 2048
+turn_director_enabled: true
 best_of_n: 1
 max_retries: 3
 db_path: "data/demo.db"

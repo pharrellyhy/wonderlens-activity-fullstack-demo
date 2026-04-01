@@ -63,6 +63,11 @@ characters:
         action: >
           The dog raises one paw and waves hello/goodbye with a friendly smile.
           Gentle side-to-side paw motion. Warm, welcoming expression.
+      celebrating:
+        type: loop
+        action: >
+          The plush toy dances happily, rocking side to side with a big smile,
+          ears bouncing with each movement. Radiating warmth and pride.
 
   dream_whisperer_cat:
     prefix: cat
@@ -112,6 +117,11 @@ characters:
         action: >
           The cat raises one paw gracefully and waves with a gentle, dreamy smile.
           Slow, elegant wave motion. Tail curls in greeting.
+      celebrating:
+        type: loop
+        action: >
+          The cat prances proudly in place, tail held high, eyes sparkling
+          with satisfaction. Graceful, celebratory body language.
 
   time_machine_dinosaur:
     prefix: dinosaur
@@ -161,6 +171,11 @@ characters:
         action: >
           The plush dinosaur toy lifts one front foot and rocks it side to side
           in a playful greeting gesture. Long neck swaying, big happy expression.
+      celebrating:
+        type: loop
+        action: >
+          The stuffed dinosaur toy stomps its feet triumphantly, long neck
+          swinging with pride. Big toothy grin, tail sweeping in celebration.
 
 # Scenario illustration clips — pre-generated from fixed round_scenarios.
 # These loop as the "world" for each round in the device panel.

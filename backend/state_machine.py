@@ -214,10 +214,15 @@ def _build_explorer_map_frame(
     total = creative_slots.collection_count if isinstance(creative_slots, Cat5CreativeSlots) else 3
     role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
 
-    # Build character list from collected data
+    # Build character list from collected data.
+    # For naming games, collected_names has child-chosen names.
+    # For observation games, collected_names is empty — fall back to
+    # a display label derived from the photo_id (e.g. "spotted_mushroom" → "Spotted mushroom").
     characters: list[ExplorerMapCharacter] = []
     for i, photo_id in enumerate(collected_photos):
         name = collected_names[i] if i < len(collected_names) else ""
+        if not name:
+            name = photo_id.replace("_", " ").capitalize()
         image = _resolve_cat5_detail_photo_url(context, i + 1, photo_id)
         characters.append(ExplorerMapCharacter(id=photo_id, name=name, image=image, zone_index=i))
 

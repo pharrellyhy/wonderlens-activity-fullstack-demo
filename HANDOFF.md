@@ -4,6 +4,41 @@ Last updated: 2026-03-31
 
 ---
 
+## Turn Director + Story Scaffold (Feature-Flagged)
+
+**Problem**: Three interconnected issues: (1) Intent classification outputs content-type (confirm/decline/substantive/off_topic) requiring ~300 lines of if/elif routing to map to actions. (2) Fixed response templates (`_ACCEPTANCE_CELEBRATIONS`, `_PHOTO_FIND_PROMPTS`) feel robotic. (3) Cat5 collection detail questions repeat ("how does it feel?" every round) and gathered details are ignored in synthesis stories.
+
+**Solution**: Merged classifier + planner into a single **Turn Director** LLM call behind `turn_director_enabled` feature flag. Outputs action-based intents (advance/stay/need_help/redirect/exit) + reasoning + response_direction. Added **Story Scaffold** to game definitions so collection rounds harvest story ingredients for synthesis.
+
+**Edits**:
+- `backend/schemas/turn_directive.py` — NEW: `TurnDirective` and `StoryElement` schemas
+- `backend/schemas/creative_slots.py` — Added `StoryScaffold` model, `story_scaffold` optional field on `Cat5CreativeSlots`
+- `backend/schemas/session_state.py` — Added `story_elements: list[StoryElement]`, `last_directive_action: str`
+- `backend/schemas/__init__.py` — Added exports for new schemas
+- `backend/agents/turn_director.py` — NEW: `TurnDirector` agent with step phase rules, state context builder, LLM call
+- `backend/skills/turn_director_system.md` — NEW: Turn Director prompt template
+- `backend/skills/speaker_directive_system.md` — NEW: Speaker prompt for directive path
+- `backend/agents/script_agent.py` — Added `generate_turn_from_directive()`, `_build_directive_speaker_prompt()`
+- `backend/turn_handler.py` — Added `_fast_path_directive()`, `_get_turn_directive()`, `_resolve_turn_with_directive()`, feature flag branch in `resolve_turn()`
+- `backend/config.py` — Added `turn_director_enabled` setting
+- `backend/config.yaml` — Added `turn_director_enabled: false`
+- `backend/games/fluffy_expedition_dandelion.md` — Added `story_scaffold` section
+- `backend/games/polka_dot_patrol.md` — Added `story_scaffold` section
+- `docs/plans/2026-03-31-turn-director-story-scaffold.md` — Design plan
+
+**NOT Changed**: Legacy intent classification path (fully intact behind feature flag), frontend, remaining 7 Cat5 game definitions (story_scaffold is optional — games without it use legacy path)
+
+**Verification**:
+```bash
+cd backend
+uv run pytest tests/ -x -q --timeout=30 --ignore=tests/test_ai_quality.py --ignore=tests/test_session_runner.py --ignore=tests/test_eval.py  # 19 passed
+uv run ruff check .          # All passed
+uv run ruff format --check .  # All formatted
+# Enable: set turn_director_enabled: true in config.yaml, restart server
+```
+
+---
+
 ## Unified Intent Classifier + Phase Timeline Debug + Code-Controlled Transitions
 
 **Problem**: Multiple interconnected issues: (1) Fragmented intent classification — Script Agent `child_intent`, `_classify_story_response`, and a hardcoded frozenset all classified child responses differently, causing misrouted turns (e.g., "yes" treated as story content). (2) Debug panel lacked phase-level visibility for Cat5 collection/synthesis loops and Cat1 invitation. (3) LLM-generated transition prompts were unreliable — celebration responses leaked finding prompts, collection photo prompts said "you found something!" when nothing was found, synthesis invite phase narrated stories instead of asking questions. (4) Stories were too short and ignored collected details. (5) Debug data wasn't persisted to DB.

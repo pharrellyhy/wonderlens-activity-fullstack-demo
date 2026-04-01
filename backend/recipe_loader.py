@@ -83,27 +83,22 @@ def recipe_to_session_state(
     creative_slots = get_creative_slots(activity_type)
     entity_name = entity_name_for_filename(filename)
 
-    # Randomize rounds for Cat1 — when the game defines more round instructions
-    # than round_count, randomly pick a subset so each session gets different
-    # scenarios. Both creative_slots.round_scenarios and the instruction recipe's
-    # round list must stay in sync.
+    # Use the first N rounds in order — the game definition lists scenarios in
+    # escalation order (e.g., comfortable → surprised → excited), and the frontend
+    # game details page shows these same first N. Random selection would break both
+    # the escalation axis and the frontend display.
     round_count = recipe.metadata.round_count
     all_rounds = recipe.step_instructions.rounds
     if len(all_rounds) > round_count:
-        indices = list(range(len(all_rounds)))
-        random.shuffle(indices)
-        selected_indices = sorted(indices[:round_count])
-        selected_rounds = [all_rounds[i] for i in selected_indices]
-        # Renumber rounds 1..N
+        selected_rounds = all_rounds[:round_count]
+        # Renumber rounds 1..N (they should already be, but ensure consistency)
         selected_rounds = [r.model_copy(update={"round_number": idx + 1}) for idx, r in enumerate(selected_rounds)]
         new_instructions = recipe.step_instructions.model_copy(update={"rounds": selected_rounds})
         recipe = recipe.model_copy(update={"step_instructions": new_instructions})
 
         # Sync creative_slots.round_scenarios if present
         if hasattr(creative_slots, "round_scenarios"):
-            selected_scenarios = [
-                creative_slots.round_scenarios[i] for i in selected_indices if i < len(creative_slots.round_scenarios)
-            ]
+            selected_scenarios = creative_slots.round_scenarios[:round_count]
             creative_slots = creative_slots.model_copy(update={"round_scenarios": selected_scenarios})
 
     state = SessionStateModel(

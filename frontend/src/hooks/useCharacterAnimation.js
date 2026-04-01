@@ -28,7 +28,7 @@ export default function useCharacterAnimation({
   currentScenario,
   activityType,
 }) {
-  const [animationState, setAnimationState] = useState('idle');
+  const [animationState, setAnimationState] = useState('waving');
   const oneShotFollowUpRef = useRef(null);
   const lastProcessedMsgRef = useRef(0);
 
@@ -36,10 +36,12 @@ export default function useCharacterAnimation({
   const theme = entity ? getThemeForEntity(entity) : null;
   const hasVideo = !!(theme?.videoPrefix);
 
-  // Determine the "resting" state — what to return to after reactions finish
-  const restingState = currentStep?.startsWith('STEP_3_') && currentRound >= 1 && currentScenario
-    ? 'scenario'
-    : 'idle';
+  // Determine the "resting" state — what to show after TTS/reactions finish
+  const restingState =
+    currentStep === 'STEP_4_CELEBRATE' ? 'celebrating' :
+    currentStep === 'STEP_5_CLOSING' || currentStep === 'ENDED' ? 'waving' :
+    currentStep?.startsWith('STEP_3_') && currentRound >= 1 && currentScenario ? 'scenario' :
+    'idle';
 
   // Resolve clip URL from animation state
   const resolveClipUrl = useCallback((state) => {
@@ -47,59 +49,50 @@ export default function useCharacterAnimation({
 
     if (state === 'scenario') {
       if (!theme?.scenarioBasePath || !currentScenario) {
-        // Fallback to character idle if scenario can't be resolved
         return `${theme.videoBasePath}/${theme.videoPrefix}_idle.mp4`;
       }
       const slug = getScenarioSlug(activityType, currentScenario);
-      if (!slug) return `${theme.videoBasePath}/${theme.videoPrefix}_idle.mp4`;
+      if (!slug) {
+        return `${theme.videoBasePath}/${theme.videoPrefix}_idle.mp4`;
+      }
       return `${theme.scenarioBasePath}/scenario_${slug}.mp4`;
     }
 
     return `${theme.videoBasePath}/${theme.videoPrefix}_${state}.mp4`;
   }, [hasVideo, theme?.videoBasePath, theme?.videoPrefix, theme?.scenarioBasePath, currentScenario, activityType]);
 
-  // 1. Session lifecycle — waving at start/end
+  // 1. Session start — waving immediately (no TTS playing yet)
   useEffect(() => {
     if (!hasVideo) return;
-    if (currentStep === 'STEP_1_HOOK' || currentStep === 'STEP_5_CLOSING' || currentStep === 'ENDED') {
+    if (currentStep === 'STEP_1_HOOK') {
       setAnimationState('waving');
-      oneShotFollowUpRef.current = restingState;
     }
-  }, [currentStep, hasVideo, restingState]);
+  }, [currentStep, hasVideo]);
 
-  // 2. AI response — set character emotion, triggered by new messages
+  // 2. AI response — set character emotion clip. TTS audio plays on top (overlapped).
   useEffect(() => {
     if (!hasVideo || !characterState || messageCount <= lastProcessedMsgRef.current) return;
     lastProcessedMsgRef.current = messageCount;
 
-    if (ONE_SHOT_STATES.has(characterState)) {
-      setAnimationState(characterState);
-      oneShotFollowUpRef.current = 'speaking';
-    } else {
-      setAnimationState(characterState);
-      oneShotFollowUpRef.current = null;
-    }
-  }, [characterState, messageCount, hasVideo]);
+    setAnimationState(characterState);
+    // One-shot clips return to resting state after playing; loops keep going
+    oneShotFollowUpRef.current = ONE_SHOT_STATES.has(characterState) ? restingState : null;
+  }, [characterState, messageCount, hasVideo, restingState]);
 
-  // 3. TTS state — when TTS ends, return to resting state
+  // 3. When TTS ends (true→false), return to resting state (scenario or idle).
+  const wasSpeakingRef = useRef(false);
   useEffect(() => {
     if (!hasVideo) return;
-    if (!isSpeaking) {
-      // TTS finished — return to resting state (scenario or idle)
+    if (isSpeaking) {
+      wasSpeakingRef.current = true;
+    } else if (wasSpeakingRef.current) {
+      wasSpeakingRef.current = false;
       setAnimationState(prev => {
-        if (prev === 'waving') return prev;
+        if (prev === 'waving' || prev === 'celebrating') return prev;
         return restingState;
       });
     }
   }, [isSpeaking, hasVideo, restingState]);
-
-  // 4. Round/scenario change — update resting state clip
-  useEffect(() => {
-    if (!hasVideo) return;
-    if (restingState === 'scenario' && !isSpeaking) {
-      setAnimationState('scenario');
-    }
-  }, [currentScenario, currentRound, hasVideo, restingState, isSpeaking]);
 
   // Callback for when a one-shot video clip ends
   const onClipEnded = useCallback(() => {
@@ -111,7 +104,6 @@ export default function useCharacterAnimation({
 
   const isOneShot = ONE_SHOT_STATES.has(animationState);
   const currentClipUrl = resolveClipUrl(animationState);
-
   return {
     animationState,
     currentClipUrl,

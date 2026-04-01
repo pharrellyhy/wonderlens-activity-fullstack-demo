@@ -8,7 +8,7 @@ import ExplorerMap from '../canvas/ExplorerMap';
 import AnimationOverlay from '../widgets/AnimationOverlay';
 import SfxIndicator from './SfxIndicator';
 import useSfxPlayer from '../hooks/useSfxPlayer';
-import { CameraIcon } from '../icons';
+import { BadgeIcon, CameraIcon } from '../icons';
 import { asset } from '../utils/basePath';
 
 const WIDGET_MAP = {
@@ -70,14 +70,16 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
   }
 
   const frameKey = getFrameKey(screenFrame);
-  const WidgetComponent = WIDGET_MAP[screenFrame.widget];
-  const isVideoMode = screenFrame.widget === 'character_display' && !!clipUrl;
+  // In video mode, always render CharacterDisplay regardless of backend widget
+  // (celebrate/closing steps use badge_award, but we want the video to play)
+  const isVideoMode = !!clipUrl;
+  const WidgetComponent = isVideoMode ? CharacterDisplay : WIDGET_MAP[screenFrame.widget];
   const params = screenFrame.widget_params || {};
 
   // character_display has its own gentle-float; suppress all overlay animations
   // except scene_transition (crossfade between rounds)
   let overlayAnimation = screenFrame.animation;
-  if (screenFrame.widget === 'character_display' && overlayAnimation !== 'scene_transition') {
+  if (isVideoMode && overlayAnimation !== 'scene_transition') {
     overlayAnimation = 'appear';
   }
 
@@ -87,7 +89,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
       className="h-full flex flex-col transition-opacity duration-300 ease-in-out"
     >
       {/* Widget label header (hidden in full-panel video mode — info moves to bottom overlay) */}
-      {screenFrame.widget_label && !(screenFrame.widget === 'character_display' && clipUrl) && (
+      {screenFrame.widget_label && !isVideoMode && (
         <div className="px-2.5 pt-1.5 pb-1 max-[380px]:px-2 max-[380px]:pt-1">
           <p className="text-[11px] max-[380px]:text-[10px] font-medium text-[var(--color-forest)] text-center">{screenFrame.widget_label}</p>
         </div>
@@ -101,14 +103,27 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
         ) : (
           <AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">
             {WidgetComponent ? (
-              <div className={`relative ${screenFrame.widget === 'character_display' && clipUrl ? 'w-full h-full' : 'w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center'}`}>
+              <div className={`relative ${isVideoMode ? 'w-full h-full' : 'w-full max-w-[17rem] sm:max-w-[18.5rem] max-h-full flex items-center justify-center'}`}>
                 <WidgetComponent
                   {...params}
                   photoUrl={asset(params.photoUrl) || photoUrl}
                   animation={screenFrame.animation}
                   sessionState={sessionState}
-                  {...(screenFrame.widget === 'character_display' ? { clipUrl, isOneShot, onClipEnded, isSpeaking } : {})}
+                  {...(isVideoMode ? { clipUrl, isOneShot, onClipEnded, isSpeaking } : {})}
                 />
+                {/* Badge overlay — show badge on top of video during celebrate/closing */}
+                {isVideoMode && screenFrame.widget === 'badge_award' && (
+                  <div className="absolute bottom-3 left-3 z-10 animate-badge-pop">
+                    <div className="flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-full pl-1.5 pr-3 py-1.5 shadow-lg">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-sunflower)] to-[var(--color-forest)] flex items-center justify-center border-2 border-white/60">
+                        <BadgeIcon className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-white text-xs font-semibold truncate max-w-[8rem]">
+                        {params.title || 'Explorer'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center p-8 surface-card rounded-2xl">

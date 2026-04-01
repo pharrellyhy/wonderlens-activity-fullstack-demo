@@ -13,11 +13,14 @@ class TestMapCharacterState:
             ("excited", "excited"),
             ("celebrating", "excited"),
             ("impressed", "excited"),
+            ("joyful", "excited"),
+            ("proud", "excited"),
             ("gentle", "encouraging"),
             ("encouraging", "encouraging"),
+            ("warm", "encouraging"),
             ("curious", "surprised"),
             ("mysterious", "surprised"),
-            ("adventurous", "speaking"),
+            ("adventurous", "surprised"),
             ("neutral", "speaking"),
             ("", "speaking"),
         ],
@@ -26,10 +29,22 @@ class TestMapCharacterState:
         assert _map_character_state(tone_marker, "round") == expected
 
     @pytest.mark.parametrize(
+        "tone_marker,expected",
+        [
+            ("excited and warm", "excited"),
+            ("gentle and curious", "encouraging"),
+            ("very impressed", "excited"),
+            ("mysteriously curious", "surprised"),
+        ],
+    )
+    def test_compound_tone_markers(self, tone_marker: str, expected: str) -> None:
+        assert _map_character_state(tone_marker, "round") == expected
+
+    @pytest.mark.parametrize(
         "response_type,expected",
         [
             ("hook", "waving"),
-            ("celebration", "excited"),
+            ("celebration", "celebrating"),
             ("closing", "waving"),
             ("graceful_exit", "waving"),
         ],

@@ -603,15 +603,20 @@ _EMOTION_TO_CHARACTER_STATE: dict[str, str] = {
     "excited": "excited",
     "celebrating": "excited",
     "impressed": "excited",
+    "joyful": "excited",
+    "proud": "excited",
     "gentle": "encouraging",
     "encouraging": "encouraging",
+    "warm": "encouraging",
     "curious": "surprised",
     "mysterious": "surprised",
+    "adventurous": "surprised",
 }
 
 _RESPONSE_TYPE_TO_CHARACTER_STATE: dict[str, str] = {
     "hook": "waving",
-    "celebration": "excited",
+    "celebration": "celebrating",
+    "celebrate": "celebrating",
     "closing": "waving",
     "graceful_exit": "waving",
 }
@@ -621,7 +626,15 @@ def _map_character_state(tone_marker: str, response_type: str) -> str:
     """Map emotion tag and response type to a character animation state."""
     if response_type in _RESPONSE_TYPE_TO_CHARACTER_STATE:
         return _RESPONSE_TYPE_TO_CHARACTER_STATE[response_type]
-    return _EMOTION_TO_CHARACTER_STATE.get(tone_marker, "speaking")
+    # Exact match
+    if tone_marker in _EMOTION_TO_CHARACTER_STATE:
+        return _EMOTION_TO_CHARACTER_STATE[tone_marker]
+    # Partial match — LLM returns compound markers like "excited and warm"
+    marker_lower = tone_marker.lower()
+    for emotion, state in _EMOTION_TO_CHARACTER_STATE.items():
+        if emotion in marker_lower:
+            return state
+    return "speaking"
 
 
 def _build_turn_response(
@@ -766,6 +779,7 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         "template_type": state.template_type,
         "auto_advance": _should_auto_advance(state),
         "child_intent": state.child_intent,
+        "last_directive_action": state.last_directive_action,
     }
 
     # Expose Cat1 current round scenario for video clip selection
@@ -780,6 +794,19 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         result["collection_phase"] = state.collection_phase
         result["collected_names"] = state.collected_names
         result["collected_details"] = state.collected_details
+        result["detail_exchange_count"] = state.detail_exchange_count
+
+        # Story elements (Turn Director path)
+        if state.story_elements:
+            result["story_elements"] = [
+                {
+                    "round_number": el.round_number,
+                    "character_name": el.character_name,
+                    "trait_or_detail": el.trait_or_detail,
+                    "child_words": el.child_words,
+                }
+                for el in state.story_elements
+            ]
 
     # Expose synthesis loop state
     if state.current_step == "STEP_4_SYNTHESIS":

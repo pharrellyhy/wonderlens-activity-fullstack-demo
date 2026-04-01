@@ -16,6 +16,7 @@ export default function CharacterDisplay({
 }) {
   const theme = getThemeForEntity(entity);
   const hasVideo = !!clipUrl;
+  const expectsVideo = !!theme?.videoPrefix;
   const [videoMuted, setVideoMuted] = useState(false);
 
   // Dual video crossfade state
@@ -90,12 +91,6 @@ export default function CharacterDisplay({
             playsInline
             aria-hidden="true"
           />
-          {/* Fallback PNG while video loads */}
-          {!readyToShow && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-100 to-gray-200">
-              <img src={theme.characterPng} alt={entity || 'character'} className="w-20 h-20 object-contain animate-gentle-float" />
-            </div>
-          )}
           {/* Mute/unmute button */}
           <button
             onClick={() => setVideoMuted(prev => !prev)}
@@ -116,8 +111,11 @@ export default function CharacterDisplay({
             )}
           </button>
         </>
+      ) : expectsVideo ? (
+        /* Video expected but not loaded yet — show nothing */
+        null
       ) : (
-        /* Static PNG fallback for non-video games */
+        /* Static PNG fallback for non-video games (Cat5) */
         <div className="h-full flex flex-col items-center justify-center gap-2.5 p-3">
           <div className={`w-[clamp(2.8rem,12vw,3.25rem)] h-[clamp(2.8rem,12vw,3.25rem)] rounded-full ${theme.iconBg} ring-2 flex items-center justify-center shadow-sm animate-gentle-float`}>
             <img src={theme.characterPng} alt={entity || 'character'} className="w-[clamp(1.9rem,8vw,2.2rem)] h-[clamp(1.9rem,8vw,2.2rem)] object-contain" />

@@ -21,8 +21,9 @@ try:
     from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
     from ..schemas.session_state import SessionStateModel
     from ..schemas.step_instruction import RoundInstruction, StepGoal
+    from ..schemas.turn_directive import TurnDirective
     from ..schemas.turn_plan import TurnPlan
-    from ..schemas.turn_response import CharacterSfxCue, TurnResponse
+    from ..schemas.turn_response import TurnResponse
     from ..state_machine import get_step_name
 except ImportError:
     from character_sounds import get_sound_list_for_prompt
@@ -32,18 +33,23 @@ except ImportError:
     from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import SessionStateModel
     from schemas.step_instruction import RoundInstruction, StepGoal
+    from schemas.turn_directive import TurnDirective
     from schemas.turn_plan import TurnPlan
-    from schemas.turn_response import CharacterSfxCue, TurnResponse
+    from schemas.turn_response import TurnResponse
     from state_machine import get_step_name
 
 logger = setup_logger(__name__)
 
 _SKILL_PATH = Path(__file__).parent.parent / "skills" / "script_turn.md"
 _SPEAKER_PROMPT_PATH = Path(__file__).parent.parent / "skills" / "speaker_system.md"
+_SPEAKER_DIRECTIVE_PROMPT_PATH = Path(__file__).parent.parent / "skills" / "speaker_directive_system.md"
 _STEP_INSTRUCTIONS_DIR = Path(__file__).parent.parent / "skills" / "step_instructions"
 _TIER_RULES_PATH = Path(__file__).parent.parent / "tier_rules.yaml"
 _FRAGMENTABLE_STEP_PREFIXES = {"STEP_2_RULES", "STEP_3_ROUND", "STEP_3_COLLECT", "STEP_4_SYNTHESIS"}
 _EXAMPLES_DIR = Path(__file__).parent.parent / "skills" / "examples"
+
+# Synthesis stories need more sentences than normal turns; shared by both speaker paths.
+_STORY_SENTENCES: dict[str, int] = {"T0": 8, "T1": 11, "T2": 14}
 
 # --- Dynamic example library ---
 
@@ -319,9 +325,6 @@ def _build_speaker_prompt(state: SessionStateModel, plan: TurnPlan) -> str:
     tier_rules = _load_tier_rules_raw(state.tier)
     template = _SPEAKER_PROMPT_PATH.read_text() if _SPEAKER_PROMPT_PATH.exists() else ""
 
-    # Override max_sentences for synthesis story generation — stories need
-    # many more sentences than normal turns.
-    _STORY_SENTENCES = {"T0": 8, "T1": 11, "T2": 14}
     max_sentences = tier_rules.get("max_sentences", 2)
     if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase == "generate":
         max_sentences = _STORY_SENTENCES.get(state.tier, 11)
@@ -351,6 +354,58 @@ def _build_speaker_user_prompt(corrective_hint: str | None = None) -> str:
     if corrective_hint:
         prompt += f"\n\n{corrective_hint}"
     return prompt
+
+
+def _build_directive_speaker_prompt(state: SessionStateModel, directive: TurnDirective) -> str:
+    """Build the speaker system prompt from a TurnDirective (directive path)."""
+    tier_rules = _load_tier_rules_raw(state.tier)
+    template = _SPEAKER_DIRECTIVE_PROMPT_PATH.read_text() if _SPEAKER_DIRECTIVE_PROMPT_PATH.exists() else ""
+
+    max_sentences = directive.max_sentences
+    words_per_sentence = _format_words_per_sentence(tier_rules.get("words_per_sentence", [5, 10]))
+    is_story = "tell a complete" in directive.response_direction.lower() or (
+        state.current_step == "STEP_4_SYNTHESIS" and directive.action == "advance"
+    )
+    # Stories need more sentences and longer sentences than normal turns
+    if is_story:
+        max_sentences = _STORY_SENTENCES.get(state.tier, 11)
+        words_per_sentence = {"T0": "8-12", "T1": "10-15", "T2": "12-18"}.get(state.tier, "10-15")
+
+    # Build constraints list from directive flags — only include rules
+    # when the flag is active so the LLM doesn't see inapplicable examples
+    constraints: list[str] = []
+    if directive.do_not_suggest_items:
+        constraints.append("- NEVER name specific objects to find or locations to look.")
+    if directive.must_model_first:
+        constraints.append(
+            "- Model a SOUND or ACTION first (e.g., 'Woof!', 'Splash!'), then ask. "
+            "NEVER model an emotion word (never say 'I think it feels happy/surprised')."
+        )
+    if directive.offer_binary_choice:
+        constraints.append(
+            "- Ask a simple A-or-B question about SENSORY QUALITIES only "
+            "(e.g., 'Is it squishy or smooth?'). Never name specific items."
+        )
+    if not directive.offer_binary_choice:
+        constraints.append(
+            "- Do NOT ask binary choice questions (like 'X or Y?') unless the direction explicitly asks for one."
+        )
+
+    replacements = {
+        "{tier}": state.tier,
+        "{tier_label}": str(tier_rules.get("label", "")),
+        "{tier_ages}": str(tier_rules.get("ages", "")),
+        "{max_sentences}": str(max_sentences),
+        "{words_per_sentence}": words_per_sentence,
+        "{response_direction}": directive.response_direction,
+        "{emotion_tag}": directive.emotion_tag,
+        "{constraints}": "\n".join(constraints) if constraints else "(none)",
+    }
+
+    for key, value in replacements.items():
+        template = template.replace(key, value)
+
+    return template
 
 
 _PHASE_SECTION_RE = re.compile(
@@ -854,6 +909,144 @@ class ScriptAgent:
         self.last_plan = plan
         return await self._speak_turn(state, plan, corrective_hint=corrective_hint)
 
+    async def generate_turn_from_directive(
+        self,
+        state: SessionStateModel,
+        directive: TurnDirective,
+    ) -> TurnResponse:
+        """Generate dialogue using a TurnDirective from the Turn Director.
+
+        This is the speaker pass in the directive pipeline (2-call architecture).
+        The Turn Director has already decided WHAT to do; the speaker converts
+        the response_direction into child-facing dialogue.
+
+        Args:
+            state: Full session state.
+            directive: TurnDirective with action, reasoning, and response direction.
+
+        Returns:
+            TurnResponse with dialogue, tone, and screen instructions.
+
+        Raises:
+            ScriptAgentError: If the speaker LLM call fails.
+        """
+        settings = get_settings()
+        start = time.perf_counter()
+
+        system_prompt = _build_directive_speaker_prompt(state, directive)
+
+        # Include conversation context and step instructions for the speaker
+        conversation = _build_conversation_context(state)
+
+        # Skip step instructions when the direction is self-contained.
+        # This includes: (1) advance actions — the response_direction IS the
+        # authoritative instruction, step instructions for the current step add
+        # competing context that confuses the LLM; (2) story generation and
+        # closing directions that conflict with step instruction goals.
+        rd_lower = directive.response_direction.lower()
+        is_self_contained = (
+            directive.action == "advance"
+            or "tell a complete" in rd_lower
+            or "generate a complete" in rd_lower
+            or "name the ib concept" in rd_lower
+        )
+
+        if is_self_contained:
+            # For story generation, load the dedicated story generation instructions
+            # which have 5-beat framework, examples, and quality rules.
+            story_instructions = ""
+            if "tell a complete" in rd_lower:
+                story_gen_path = _STEP_INSTRUCTIONS_DIR / "cat5_step4_synthesis__story_generation.md"
+                if story_gen_path.exists():
+                    raw = story_gen_path.read_text()
+                    # Fill in template variables
+                    names_str = ", ".join(state.collected_names) if state.collected_names else ""
+                    details_str = "; ".join(state.collected_details) if state.collected_details else ""
+                    replacements = {
+                        "{collected_names}": names_str,
+                        "{collected_details}": details_str,
+                        "{tier}": state.tier,
+                        "{story_theme}": directive.response_direction,
+                        "{child_story_attempt}": state.synthesis_child_story or "(none)",
+                        "{sampled_examples}": "",
+                    }
+                    for k, v in replacements.items():
+                        raw = raw.replace(k, v)
+                    story_instructions = f"\n\n## Story Generation Guide\n{raw}"
+
+            user_prompt = (
+                f"## Conversation History\n{conversation}\n\n"
+                f"IMPORTANT: Follow the Direction in the system prompt exactly. "
+                f"Generate the content described — do NOT ask questions or re-invite. "
+                f"{story_instructions}\n\n"
+                f'Output valid JSON: {{"dialogue": "[{directive.emotion_tag}] Your text here", "tone_marker": "..."}}'
+            )
+        else:
+            step_instructions = _load_step_instructions(state)
+            user_prompt = (
+                f"## Conversation History\n{conversation}\n\n"
+                f"## Step Instructions\n{step_instructions}\n\n"
+                f"Generate the dialogue for this direction. "
+                f'Output valid JSON: {{"dialogue": "[{directive.emotion_tag}] Your text here", "tone_marker": "..."}}'
+            )
+
+        try:
+            client = _get_client()
+
+            response = await client.chat.completions.create(
+                model=settings.ali_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=settings.speaker_temperature,
+                max_tokens=settings.script_turn_max_tokens,
+                response_format={"type": "json_object"},
+                extra_body={"enable_thinking": False},
+            )
+
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            text = response.choices[0].message.content or ""
+
+            logger.info(
+                "Directive Speaker response: step=%s, action=%s\n--- SPEAKER RAW ---\n%s\n--- END ---",
+                state.current_step,
+                directive.action,
+                text,
+            )
+
+            data = json.loads(text)
+            dialogue = data.get("dialogue", "")
+            tone = data.get("tone_marker", directive.emotion_tag)
+
+            turn = TurnResponse(
+                dialogue=dialogue,
+                tone_marker=tone,
+                screen_widget=directive.screen_widget,
+                screen_widget_params=directive.screen_widget_params,
+                screen_animation=directive.screen_animation,
+                sfx_cue=directive.sfx_cue,
+                stay_on_step=directive.stay_on_step,
+            )
+            if directive.character_sfx:
+                turn.character_sfx = list(directive.character_sfx)
+            _clean_dialogue(turn, state)
+
+            logger.info(
+                "Directive Speaker: step=%s action=%s latency=%dms",
+                state.current_step,
+                directive.action,
+                latency_ms,
+            )
+            await log_agent_call(state.session_id, "directive_speaker", latency_ms, True)
+            return turn
+
+        except Exception as e:
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.error("Directive Speaker failed (%dms): %s", latency_ms, e)
+            await log_agent_call(state.session_id, "directive_speaker", latency_ms, False, error_message=str(e))
+            raise ScriptAgentError(f"Directive speaker generation failed: {e}") from e
+
     async def _speak_turn(
         self,
         state: SessionStateModel,
@@ -1322,6 +1515,13 @@ class ScriptAgent:
             await log_agent_call(state.session_id, "script_turn", latency_ms, False, error_message=str(e))
             raise ScriptAgentError(f"Turn generation failed: {e}") from e
 
+    @staticmethod
+    def _round_label(state: SessionStateModel) -> str:
+        """Short round label for the user prompt (empty if not a round step)."""
+        if state.current_step.startswith(("STEP_3_ROUND_", "STEP_3_COLLECT_")):
+            return f" Round {state.current_round}/{state.total_rounds}."
+        return ""
+
     def _build_user_prompt(self, state: SessionStateModel) -> str:
         """Build the user message that triggers the LLM to generate this turn."""
         step_name = get_step_name(state.current_step)
@@ -1372,7 +1572,7 @@ class ScriptAgent:
         return (
             f"Generate the next turn for step: {step_name}.\n"
             f"This is turn {state.turn_count + 1} of the session."
-            f"{f' Round {state.current_round} of {state.total_rounds}.' if state.current_step.startswith(('STEP_3_ROUND_', 'STEP_3_COLLECT_')) else ''}"
+            f"{self._round_label(state)}"
             f"{child_input}"
             f"{intent_context}"
             f"{variety_line}\n"
@@ -1382,7 +1582,7 @@ class ScriptAgent:
             f'  "tone_marker": "excited|curious|mysterious|encouraging|impressed|gentle|celebrating|adventurous",\n'
             f'  "screen_widget": "photo_display|character_display|progress_tracker|badge_award|photo_grid",\n'
             f'  "screen_widget_params": {{}},\n'
-            f'  "screen_animation": "sparkle_highlight|celebration_burst|appear|gentle_pulse|scene_transition|badge_reveal|null",\n'
+            f'  "screen_animation": "sparkle_highlight|celebration_burst|appear|gentle_pulse|null",\n'
             f'  "sfx_cue": "wonder_chime|celebration_fanfare|badge_awarded|game_start_chime|null",\n'
             f"{stay_on_step_field}"
             f"}}"

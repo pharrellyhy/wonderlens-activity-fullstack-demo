@@ -44,6 +44,28 @@ function SectionTitle({ children }) {
   );
 }
 
+function ExpandableBlock({ label, color, children }) {
+  const [expanded, setExpanded] = useState(false);
+  const text = String(children || '');
+  const truncated = text.length > 120 ? text.slice(0, 120) + '...' : text;
+
+  return (
+    <div
+      className="mt-1 rounded p-2 text-[10px] cursor-pointer select-none"
+      style={{ backgroundColor: C.surface0, borderLeft: `3px solid ${color}` }}
+      onClick={() => setExpanded(e => !e)}
+    >
+      <span style={{ color: C.overlay0 }}>{label}: </span>
+      <span style={{ color: C.text }}>{expanded ? text : truncated}</span>
+      {text.length > 120 && (
+        <span className="ml-1 text-[8px]" style={{ color: C.overlay0 }}>
+          {expanded ? '[less]' : '[more]'}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // Derive step flow from sessionState when debugData.step_flow is unavailable
 function deriveStepFlow(sessionState) {
   if (!sessionState) return [];
@@ -169,7 +191,15 @@ function StateMachineTab({ debugData, sessionState, templateType }) {
           {isCat5 && (
             <KV label="collection_phase">
               {collectionPhase
-                ? <Badge color={C.blue}>{collectionPhase}</Badge>
+                ? <>
+                    <Badge color={C.blue}>{collectionPhase}</Badge>
+                    {collectionPhase === 'detail' && sessionState?.detail_exchange_count != null && (
+                      <span className="ml-1 text-[9px]" style={{ color: C.overlay0 }}>
+                        ex:{sessionState.detail_exchange_count}
+                        {sessionState.detail_exchange_count === 0 ? ' (harvest)' : sessionState.detail_exchange_count === 1 ? ' (naming)' : ' (done)'}
+                      </span>
+                    )}
+                  </>
                 : <span style={{ color: C.surface2 }}>--</span>}
             </KV>
           )}
@@ -187,11 +217,15 @@ function StateMachineTab({ debugData, sessionState, templateType }) {
               {sessionState?.auto_advance ? 'true' : 'false'}
             </span>
           </KV>
-          {sessionState?.child_intent && (
+          {sessionState?.last_directive_action ? (
+            <KV label="directive">
+              <Badge color={C.peach}>{sessionState.last_directive_action}</Badge>
+            </KV>
+          ) : sessionState?.child_intent ? (
             <KV label="intent">
               <Badge color={C.peach}>{sessionState.child_intent}</Badge>
             </KV>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -209,11 +243,23 @@ function StateMachineTab({ debugData, sessionState, templateType }) {
               <KV label="names">
                 {sessionState?.collected_names?.join(', ') || '--'}
               </KV>
-              {sessionState?.collected_details?.length > 0 && (
+              {sessionState?.story_elements?.length > 0 ? (
+                <div className="mt-1 space-y-1">
+                  <span className="text-[9px] font-semibold uppercase" style={{ color: C.overlay0 }}>Story Elements</span>
+                  {sessionState.story_elements.map((el, i) => (
+                    <div key={i} className="text-[10px] rounded p-1" style={{ backgroundColor: C.surface0 }}>
+                      <span style={{ color: C.green }}>R{el.round_number}</span>
+                      {el.character_name && <span style={{ color: C.blue }}> {el.character_name}</span>}
+                      {el.trait_or_detail && <span style={{ color: C.subtext0 }}> — {el.trait_or_detail}</span>}
+                      {el.child_words && <div style={{ color: C.overlay0, fontStyle: 'italic' }}>"{el.child_words}"</div>}
+                    </div>
+                  ))}
+                </div>
+              ) : sessionState?.collected_details?.length > 0 ? (
                 <div className="text-[10px]" style={{ color: C.subtext0 }}>
                   {sessionState.collected_details.join('; ')}
                 </div>
-              )}
+              ) : null}
             </div>
           </>
         ) : (
@@ -227,14 +273,72 @@ function StateMachineTab({ debugData, sessionState, templateType }) {
   );
 }
 
+function TurnDirectorSection({ data }) {
+  if (!data) return null;
+
+  const actionColors = {
+    advance: C.green,
+    stay: C.yellow,
+    need_help: C.peach,
+    redirect: C.blue,
+    exit: C.red,
+  };
+
+  return (
+    <div>
+      <SectionTitle>Turn Director</SectionTitle>
+      <div className="space-y-1.5">
+        <KV label="action">
+          <Badge color={actionColors[data.action] || C.text}>{data.action}</Badge>
+        </KV>
+        <KV label="emotion"><Badge color={C.blue}>{data.emotion_tag}</Badge></KV>
+      </div>
+      {data.reasoning && (
+        <div
+          className="mt-2 rounded p-2 text-[10px]"
+          style={{ backgroundColor: C.surface0, borderLeft: `3px solid ${actionColors[data.action] || C.blue}` }}
+        >
+          <span style={{ color: C.overlay0 }}>Reasoning: </span>
+          <span style={{ color: C.subtext0 }}>{data.reasoning}</span>
+        </div>
+      )}
+      {data.response_direction && (
+        <ExpandableBlock label="Direction" color={C.blue}>
+          {data.response_direction}
+        </ExpandableBlock>
+      )}
+      {data.story_element && (
+        <div className="mt-1 rounded p-1.5 text-[10px]" style={{ backgroundColor: `${C.green}10` }}>
+          <span style={{ color: C.green }}>Harvested: </span>
+          {data.story_element.character_name && <span style={{ color: C.blue }}>{data.story_element.character_name}</span>}
+          {data.story_element.trait_or_detail && <span style={{ color: C.subtext0 }}> — {data.story_element.trait_or_detail}</span>}
+          {data.story_element.child_words && <span style={{ color: C.overlay0 }}> ("{data.story_element.child_words}")</span>}
+        </div>
+      )}
+      {data.speaker_errors?.length > 0 && (
+        <div
+          className="mt-2 rounded p-2 text-[10px]"
+          style={{ backgroundColor: `${C.red}15`, borderLeft: `3px solid ${C.red}` }}
+        >
+          <span style={{ color: C.red, fontWeight: 600 }}>Speaker errors (fell back to legacy): </span>
+          {data.speaker_errors.map((err, i) => (
+            <div key={i} style={{ color: C.subtext0 }}>{err}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GenerationTab({ debugData }) {
   const gen = debugData?.generation;
   const planner = debugData?.planner;
+  const director = debugData?.turn_director;
   const llm = debugData?.llm_output;
   const bestOfN = debugData?.best_of_n;
   const retryStats = debugData?.retry_stats;
 
-  if (!gen && !planner && !retryStats) {
+  if (!gen && !planner && !director && !retryStats) {
     return (
       <div className="p-3 text-xs" style={{ color: C.surface2 }}>
         No generation data available.
@@ -326,7 +430,9 @@ function GenerationTab({ debugData }) {
           <p className="text-[10px]" style={{ color: C.surface2 }}>--</p>
         )}
 
-        {planner && (
+        {director ? (
+          <TurnDirectorSection data={director} />
+        ) : planner ? (
           <>
             <SectionTitle>Planner</SectionTitle>
             <div className="space-y-1.5">
@@ -352,7 +458,7 @@ function GenerationTab({ debugData }) {
               </KV>
             </div>
           </>
-        )}
+        ) : null}
       </div>
 
       {/* Column 3 - Best-of-N */}
@@ -422,11 +528,16 @@ function HistoryTab({ debugHistory }) {
     );
   }
 
+  const actionColors = {
+    advance: C.green, stay: C.yellow, need_help: C.peach, redirect: C.blue, exit: C.red,
+  };
+
   return (
     <div className="p-3 space-y-2">
       {[...debugHistory].reverse().map((entry, i) => {
         const gen = entry.generation;
         const synth = entry.synthesis;
+        const td = entry.turn_director;
         const currentStep = (entry.step_flow || []).find(s => s.status === 'current');
         const currentPhase = entry.phase_timeline?.find(p => p.status === 'current');
 
@@ -434,11 +545,14 @@ function HistoryTab({ debugHistory }) {
           <div
             key={i}
             className="rounded p-2 text-[10px]"
-            style={{ backgroundColor: C.surface0, borderLeft: `2px solid ${C.blue}` }}
+            style={{ backgroundColor: C.surface0, borderLeft: `2px solid ${td ? actionColors[td.action] || C.blue : C.blue}` }}
           >
             <div className="flex items-center gap-2 mb-1">
               <Badge color={C.blue}>T{entry.turn ?? '?'}</Badge>
               <span style={{ color: C.text, fontWeight: 600 }}>{currentStep?.step || '--'}</span>
+              {td && (
+                <Badge color={actionColors[td.action] || C.peach}>{td.action}</Badge>
+              )}
               {gen && (
                 <>
                   <Badge color={gen.final_verdict === 'passed' ? C.green : C.red}>
@@ -456,6 +570,21 @@ function HistoryTab({ debugHistory }) {
                 <Badge color={C.yellow}>{currentPhase.label}</Badge>
               )}
             </div>
+            {td?.reasoning && (
+              <div className="mb-1" style={{ color: C.subtext0 }}>{td.reasoning}</div>
+            )}
+            {td?.response_direction && (
+              <div className="mb-1 text-[9px]" style={{ color: C.overlay0 }}>
+                dir: {td.response_direction.length > 100 ? td.response_direction.slice(0, 100) + '...' : td.response_direction}
+              </div>
+            )}
+            {td?.story_element && (
+              <div className="mb-1">
+                <span style={{ color: C.green }}>harvested: </span>
+                {td.story_element.character_name && <span style={{ color: C.blue }}>{td.story_element.character_name} </span>}
+                {td.story_element.trait_or_detail && <span style={{ color: C.subtext0 }}>({td.story_element.trait_or_detail})</span>}
+              </div>
+            )}
             {synth && (
               <div className="flex gap-2 mt-1">
                 <span style={{ color: C.yellow }}>synthesis:{synth.phase}</span>
@@ -468,6 +597,11 @@ function HistoryTab({ debugHistory }) {
             {gen?.attempts?.filter(a => a.verdict !== 'passed').map((a, j) => (
               <div key={j} className="mt-0.5" style={{ color: C.peach }}>
                 #{a.attempt} {a.call_type} failed: {a.hint}
+              </div>
+            ))}
+            {td?.speaker_errors?.map((err, j) => (
+              <div key={`se-${j}`} className="mt-0.5" style={{ color: C.red }}>
+                speaker timeout: {err}
               </div>
             ))}
           </div>

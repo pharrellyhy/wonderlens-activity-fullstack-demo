@@ -29,6 +29,20 @@ creative_slots:
   detail_question_template: "Touch it gently — how does it feel?"
   sorting_criterion: ""
 
+story_scaffold:
+  premise: "Each fluffy find becomes a character with a special talent based on how it feels"
+  harvest_per_round: character_talent
+  harvest_question_strategy: >
+    R1: Ask what the texture reminds them of or what talent this character might have.
+    R2: Compare to the previous character — what makes this one's talent different?
+    R3: How would this character help the others? What's their role in the group?
+  synthesis_goal: "Characters combine their unique talents to go on a shared adventure"
+  synthesis_format: collaborative_story
+  story_themes:
+    - "One friend can't sleep, the others use their talents to help"
+    - "They discover a hidden place and each talent helps them explore it"
+    - "A big wind comes and each friend uses their talent to stay safe"
+
 collection_catalog:
   correct:
     - id: fuzzy_moss

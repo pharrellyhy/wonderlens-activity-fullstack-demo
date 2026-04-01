@@ -112,9 +112,9 @@ function App() {
       />
 
       <h1 className="sr-only">WonderLens Activity Demo</h1>
-      <main className="app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-3xl mx-auto w-full">
+      <main className="app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-4xl mx-auto w-full">
         {/* TOP — Device Screen in Toy Camera (flex ratio ~4:6 with conversation) */}
-        <section className="app-top-panel h-[42%] max-h-[22rem] shrink min-h-0" aria-label="Device screen">
+        <section className="app-top-panel h-[50%] max-h-[28rem] shrink min-h-0" aria-label="Device screen">
           <ToyCameraFrame videoMode={!!currentClipUrl}>
             {showPhotoGallery ? (
               <PhotoGallery
@@ -196,7 +196,7 @@ function App() {
       )}
 
       <footer
-        className="app-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-2.5 mx-auto mb-3 w-full max-w-3xl max-[380px]:mb-2 max-[380px]:px-3 max-[380px]:py-2 surface-card rounded-2xl text-gray-500 text-xs max-[380px]:text-[11px]"
+        className="app-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-5 sm:px-6 py-3 sm:py-3.5 mx-auto mb-3 w-full max-w-4xl max-[380px]:mb-2 max-[380px]:px-3 max-[380px]:py-2 surface-card rounded-2xl text-gray-500 text-sm max-[380px]:text-[11px]"
         aria-label="Session status"
       >
         <div className="flex items-center gap-3 max-[380px]:gap-2">

@@ -34,6 +34,9 @@ def _build_entity_config(data: dict) -> EntityConfig:
     slots_data = data["creative_slots"]
 
     if category == "category_5":
+        # Inject story_scaffold from top-level YAML into creative_slots
+        if "story_scaffold" in data:
+            slots_data["story_scaffold"] = data["story_scaffold"]
         creative_slots = Cat5CreativeSlots(**slots_data)
     else:
         creative_slots = Cat1CreativeSlots(**slots_data)

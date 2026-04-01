@@ -8,6 +8,7 @@ CollectionPhase = Literal["photo", "detail"]
 
 from .creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from .recipe import InstructionRecipe
+from .turn_directive import StoryElement
 from .visual_composition import ScreenFrame
 
 
@@ -78,6 +79,13 @@ class SessionStateModel(BaseModel):
     child_intent: str = Field(
         default="", description="Pre-classified intent for the current turn: confirm, decline, substantive, off_topic"
     )
+
+    # Turn Director state (used when turn_director_enabled=True)
+    story_elements: list[StoryElement] = Field(
+        default_factory=list,
+        description="Structured story ingredients harvested during Cat5 collection rounds",
+    )
+    last_directive_action: str = Field(default="", description="Most recent Turn Director action for debugging/logging")
 
     # Deep link entry
     deep_linked: bool = False

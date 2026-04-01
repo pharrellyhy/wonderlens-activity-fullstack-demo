@@ -29,6 +29,19 @@ creative_slots:
   detail_question_template: "How are the dots on this one different from the ones you found before?"
   sorting_criterion: "dot size (big splotches vs tiny speckles vs perfect circles)"
 
+story_scaffold:
+  premise: "Each find has a completely different kind of dots — the child becomes a dot detective"
+  harvest_per_round: comparison_observation
+  harvest_question_strategy: >
+    R1: Anchor the first pattern — what do these dots look like? Big, small, round, splashy?
+    R2: Compare to first find — are these dots bigger, smaller, a different shape?
+    R3: Which dot pattern is the most surprising or different from the others?
+  synthesis_goal: "Reveal how the same thing (dots) looks completely different on each item"
+  synthesis_format: comparison_reveal
+  story_themes:
+    - "Arrange the dot patterns from biggest to smallest"
+    - "Which dots would make the best polka-dot dance floor?"
+
 collection_catalog:
   correct:
     - id: spotted_mushroom

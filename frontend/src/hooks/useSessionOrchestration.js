@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import useCharacterAnimation from './useCharacterAnimation';
 import useCharacterSfx from './useCharacterSfx';
 import useConversation from './useConversation';
 import useSfxPlayer from './useSfxPlayer';
@@ -42,7 +43,7 @@ export default function useSessionOrchestration(tier) {
   } = useConversation();
 
   const { unlock: unlockSfx } = useSfxPlayer();
-  const { preload: preloadCharacterSfx, playForTurn, stop: stopCharacterSfx, unlock: unlockCharacterSfx } = useCharacterSfx();
+  const { preload: preloadCharacterSfx, playForTurn, playMicro, stop: stopCharacterSfx, unlock: unlockCharacterSfx } = useCharacterSfx();
   const characterSfxControlsRef = useRef(null);
 
   const isActive = sessionState?.status === 'active';
@@ -124,6 +125,51 @@ export default function useSessionOrchestration(tier) {
   }, [silenceTimer]);
 
   const speech = useSpeechRecognition();
+
+  // Extract character_state from the latest AI message
+  const latestAiMsg = messages.length > 0 && messages[messages.length - 1].role === 'ai'
+    ? messages[messages.length - 1]
+    : null;
+
+  const { animationState, currentClipUrl, isOneShot, onClipEnded } = useCharacterAnimation({
+    isSpeaking,
+    characterState: latestAiMsg?.characterState || null,
+    messageCount: messages.length,
+    currentStep: sessionState?.current_step || null,
+    currentRound: sessionState?.current_round || 0,
+    currentScenario: sessionState?.current_scenario || null,
+    activityType,
+  });
+
+  // Play micro-sounds on user input and animation state changes
+  const prevListeningRef = useRef(false);
+  const prevAnimStateRef = useRef(null);
+
+  useEffect(() => {
+    // Mic activation → attention micro-sound
+    if (speech.isListening && !prevListeningRef.current) {
+      playMicro('attention');
+    }
+    prevListeningRef.current = speech.isListening;
+  }, [speech.isListening, playMicro]);
+
+  useEffect(() => {
+    // Transcript received → acknowledge micro-sound
+    if (!speech.resultId) return;
+    playMicro('acknowledge');
+  }, [speech.resultId, playMicro]);
+
+  useEffect(() => {
+    // Animation state transitions → reaction micro-sounds
+    if (!animationState || animationState === prevAnimStateRef.current) return;
+    const prev = prevAnimStateRef.current;
+    prevAnimStateRef.current = animationState;
+    if (!prev) return; // Skip initial mount
+
+    const microMap = { excited: 'react_happy', encouraging: 'react_gentle', surprised: 'react_amazed' };
+    const cue = microMap[animationState];
+    if (cue) playMicro(cue);
+  }, [animationState, playMicro]);
 
   // Auto-send transcript when speech recognition produces a result
   useEffect(() => {
@@ -327,6 +373,10 @@ export default function useSessionOrchestration(tier) {
     toggleTts,
     silenceTimerOn,
     toggleSilenceTimer,
+    animationState,
+    currentClipUrl,
+    isOneShot,
+    onClipEnded,
     isMicActive: speech.isListening,
     sttMode: speech.mode,
     silenceTimer,

@@ -3,6 +3,14 @@ import BASE from '../utils/basePath';
 const GAME_THEMES = {
   dog: {
     characterPng: `${BASE}/icons/dog.png`,
+    videoBasePath: `${BASE}/video/character/mood_changer_dog`,
+    videoPrefix: 'dog',
+    scenarioBasePath: `${BASE}/video/scenario/mood_changer_dog`,
+    particles: [
+      { emoji: '🦴', count: 2, baseSize: 16 },
+      { emoji: '🐾', count: 2, baseSize: 14 },
+      { emoji: '💙', count: 1, baseSize: 12 },
+    ],
     gradient: 'from-blue-100 to-blue-300',
     border: 'border-blue-300/40',
     accent: 'text-blue-800',
@@ -12,6 +20,15 @@ const GAME_THEMES = {
   },
   cat: {
     characterPng: `${BASE}/icons/cat.png`,
+    videoBasePath: `${BASE}/video/character/dream_whisperer_cat`,
+    videoPrefix: 'cat',
+    scenarioBasePath: `${BASE}/video/scenario/dream_whisperer_cat`,
+    particles: [
+      { emoji: '⭐', count: 1, baseSize: 14 },
+      { emoji: '🌙', count: 1, baseSize: 16 },
+      { emoji: '✨', count: 2, baseSize: 12 },
+      { emoji: '💜', count: 1, baseSize: 14 },
+    ],
     gradient: 'from-violet-100 to-violet-300',
     border: 'border-violet-300/40',
     accent: 'text-violet-800',
@@ -21,6 +38,15 @@ const GAME_THEMES = {
   },
   dinosaur: {
     characterPng: `${BASE}/icons/dinosaur.png`,
+    videoBasePath: `${BASE}/video/character/time_machine_dinosaur`,
+    videoPrefix: 'dinosaur',
+    scenarioBasePath: `${BASE}/video/scenario/time_machine_dinosaur`,
+    particles: [
+      { emoji: '🌿', count: 1, baseSize: 14 },
+      { emoji: '🌋', count: 1, baseSize: 16 },
+      { emoji: '🦶', count: 1, baseSize: 14 },
+      { emoji: '🧡', count: 1, baseSize: 12 },
+    ],
     gradient: 'from-amber-50 to-amber-300',
     border: 'border-amber-300/40',
     accent: 'text-amber-800',
@@ -164,6 +190,46 @@ const GAME_THEMES = {
     decorations: ['🎹', '🎵'],
   },
 };
+
+// Maps round_scenario text → video filename slug for scenario clips
+const SCENARIO_SLUGS = {
+  mood_changer_dog: {
+    'warm sunshine on belly': 'warm_sunshine',
+    'tripped and went bump': 'tripped_bump',
+    'favorite treat arrives': 'favorite_treat',
+    'sees a butterfly flying by': 'butterfly',
+    'hears thunder outside': 'thunder',
+    'best friend comes to visit': 'best_friend',
+    'bath time surprise': 'bath_time',
+    'found a muddy puddle': 'muddy_puddle',
+  },
+  dream_whisperer_cat: {
+    'floating on a cloud in the sky': 'floating_cloud',
+    'swimming in a milk ocean': 'milk_ocean',
+    'magical garden of favorites': 'magical_garden',
+    'chasing a glowing star through the dark': 'glowing_star',
+    'riding on a giant friendly bird': 'giant_bird',
+    'exploring a castle made of yarn balls': 'yarn_castle',
+    'bouncing on a rainbow bridge': 'rainbow_bridge',
+    'hiding in a cozy cave of pillows': 'pillow_cave',
+  },
+  time_machine_dinosaur: {
+    'prehistoric jungle': 'prehistoric_jungle',
+    'rumbling volcano': 'rumbling_volcano',
+    'peaceful lake at sunset': 'lake_sunset',
+    'a snowy mountain top': 'snowy_mountain',
+    'a dark spooky cave': 'spooky_cave',
+    'a field of giant flowers': 'giant_flowers',
+    'a stormy ocean beach': 'stormy_beach',
+    'meeting another friendly dinosaur': 'friendly_dinosaur',
+  },
+};
+
+export function getScenarioSlug(activityType, scenarioText) {
+  const slugs = SCENARIO_SLUGS[activityType];
+  if (!slugs || !scenarioText) return null;
+  return slugs[scenarioText] || null;
+}
 
 const DEFAULT_THEME = GAME_THEMES.dog;
 

@@ -3,6 +3,7 @@ import BASE from '../utils/basePath';
 
 const VARIATIONS = 3;
 const VOLUME = 0.7;
+const MICRO_VOLUME = 0.3;
 const FADE_OUT_MS = 400;
 const INTRO_DELAY_MS = 500;
 const OVERLAY_DELAY_MS = 300;
@@ -56,13 +57,18 @@ export default function useCharacterSfx() {
     return audioBuffer;
   }, [getAudioCtx]);
 
+  /** Resolve a cue ID to its asset URL. Returns null if activity is unknown. */
+  const resolveCueUrl = useCallback((cueId, prefix = '') => {
+    const activityType = activityTypeRef.current;
+    if (!activityType || !cueId) return null;
+    const variant = Math.floor(Math.random() * VARIATIONS) + 1;
+    return `${BASE}/sfx/character/${activityType}/${prefix}${cueId}_v${variant}.wav`;
+  }, []);
+
   /** Play a cue with automatic fade-out at the end. */
   const playCue = useCallback((cueId) => {
-    const activityType = activityTypeRef.current;
-    if (!activityType || !cueId) return;
-
-    const variant = Math.floor(Math.random() * VARIATIONS) + 1;
-    const url = `${BASE}/sfx/character/${activityType}/${cueId}_v${variant}.wav`;
+    const url = resolveCueUrl(cueId);
+    if (!url) return;
 
     loadBuffer(url).then((buffer) => {
       const ctx = getAudioCtx();
@@ -88,7 +94,7 @@ export default function useCharacterSfx() {
     }).catch((err) => {
       console.warn(`[CharacterSfx] Failed to play ${cueId}:`, err.message);
     });
-  }, [getAudioCtx, loadBuffer]);
+  }, [getAudioCtx, loadBuffer, resolveCueUrl]);
 
   /** Clear any pending overlay/intro timeouts. */
   const clearTimers = useCallback(() => {
@@ -164,5 +170,28 @@ export default function useCharacterSfx() {
     activeSourcesRef.current = [];
   }, [clearTimers]);
 
-  return { preload, playForTurn, stop, unlock };
+  /** Play a short micro-sound instantly (no timing orchestration). */
+  const playMicro = useCallback((cueId) => {
+    const url = resolveCueUrl(cueId, 'micro_');
+    if (!url) return;
+
+    loadBuffer(url).then((buffer) => {
+      const ctx = getAudioCtx();
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+
+      source.buffer = buffer;
+      gain.gain.setValueAtTime(MICRO_VOLUME, ctx.currentTime);
+      source.connect(gain).connect(ctx.destination);
+      source.start();
+
+      source.onended = () => {
+        try { source.disconnect(); } catch {}
+      };
+    }).catch(() => {
+      // Silently ignore missing micro-sound assets
+    });
+  }, [getAudioCtx, loadBuffer, resolveCueUrl]);
+
+  return { preload, playForTurn, playMicro, stop, unlock };
 }

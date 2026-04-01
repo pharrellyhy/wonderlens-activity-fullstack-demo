@@ -71,6 +71,7 @@ export default function useConversation() {
           text: data.turn.dialogue,
           responseType: data.turn.response_type,
           toneMarker: data.turn.tone_marker,
+          characterState: data.turn.character_state || 'speaking',
           sfx: data.turn.audio?.sfx,
           characterSfx: data.turn.character_sfx || [],
           errorExit: data.turn.error_exit || false,
@@ -129,6 +130,7 @@ export default function useConversation() {
           text: data.first_turn.dialogue,
           responseType: data.first_turn.response_type || 'hook',
           toneMarker: data.first_turn.tone_marker,
+          characterState: data.first_turn.character_state || 'waving',
           sfx: data.first_turn.audio?.sfx,
           characterSfx: data.first_turn.character_sfx || [],
         }]);
@@ -188,6 +190,7 @@ export default function useConversation() {
           text: data.first_turn.dialogue,
           responseType: data.first_turn.response_type || 'hook',
           toneMarker: data.first_turn.tone_marker,
+          characterState: data.first_turn.character_state || 'waving',
           sfx: data.first_turn.audio?.sfx,
           characterSfx: data.first_turn.character_sfx || [],
         }]);

@@ -65,6 +65,7 @@ function App() {
     latency, activityType, templateType, photoUrl, errorExit, lastWrongPhotoId,
     debugData, debugHistory, retryCount, isActive, isEnded, isInputDisabled,
     isSpeaking, audioInfo, ttsEnabled, toggleTts, silenceTimerOn, toggleSilenceTimer, isMicActive, sttMode, silenceTimer,
+    animationState, currentClipUrl, isOneShot, onClipEnded,
     startSession, startDeepLinkSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
   } = useSessionOrchestration(tier);
 
@@ -114,7 +115,7 @@ function App() {
       <main className="app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-3xl mx-auto w-full">
         {/* TOP — Device Screen in Toy Camera (flex ratio ~4:6 with conversation) */}
         <section className="app-top-panel h-[42%] max-h-[22rem] shrink min-h-0" aria-label="Device screen">
-          <ToyCameraFrame>
+          <ToyCameraFrame videoMode={!!currentClipUrl}>
             {showPhotoGallery ? (
               <PhotoGallery
                 onPhotoSelect={sendPhotoCollection}
@@ -129,6 +130,11 @@ function App() {
                 screenFrame={screenFrame}
                 photoUrl={photoUrl}
                 sessionState={sessionState}
+                clipUrl={currentClipUrl}
+                isOneShot={isOneShot}
+                onClipEnded={onClipEnded}
+                animationState={animationState}
+                isSpeaking={isSpeaking}
               />
             )}
           </ToyCameraFrame>

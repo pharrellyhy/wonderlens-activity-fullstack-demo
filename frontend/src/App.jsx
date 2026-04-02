@@ -65,7 +65,7 @@ function App() {
     latency, activityType, templateType, photoUrl, errorExit, lastWrongPhotoId,
     debugData, debugHistory, retryCount, isActive, isEnded, isInputDisabled,
     isSpeaking, audioInfo, ttsEnabled, toggleTts, silenceTimerOn, toggleSilenceTimer, isMicActive, sttMode, silenceTimer,
-    animationState, currentClipUrl, isOneShot, onClipEnded,
+    animationState, currentScenario, currentClipUrl, isOneShot, onClipEnded,
     startSession, startDeepLinkSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
   } = useSessionOrchestration(tier);
 
@@ -134,7 +134,9 @@ function App() {
                 isOneShot={isOneShot}
                 onClipEnded={onClipEnded}
                 animationState={animationState}
+                currentScenario={currentScenario}
                 isSpeaking={isSpeaking}
+                activityType={activityType}
               />
             )}
           </ToyCameraFrame>

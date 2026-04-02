@@ -126,19 +126,24 @@ export default function useSessionOrchestration(tier) {
 
   const speech = useSpeechRecognition();
 
-  // Extract character_state from the latest AI message
-  const latestAiMsg = messages.length > 0 && messages[messages.length - 1].role === 'ai'
-    ? messages[messages.length - 1]
-    : null;
+  // Find the last AI message (not just the very last message — child messages may follow)
+  const lastAiMsg = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'ai') return messages[i];
+    }
+    return null;
+  })();
 
+  const currentScenario = lastAiMsg?.currentScenario || sessionState?.current_scenario || null;
   const { animationState, currentClipUrl, isOneShot, onClipEnded } = useCharacterAnimation({
     isSpeaking,
-    characterState: latestAiMsg?.characterState || null,
-    messageCount: messages.length,
+    characterState: lastAiMsg?.characterState || null,
+    messageCount: messages.filter(m => m.role === 'ai').length,
     currentStep: sessionState?.current_step || null,
     currentRound: sessionState?.current_round || 0,
-    currentScenario: sessionState?.current_scenario || null,
+    currentScenario,
     activityType,
+    templateType,
   });
 
   // Play micro-sounds on user input and animation state changes
@@ -374,6 +379,7 @@ export default function useSessionOrchestration(tier) {
     silenceTimerOn,
     toggleSilenceTimer,
     animationState,
+    currentScenario,
     currentClipUrl,
     isOneShot,
     onClipEnded,

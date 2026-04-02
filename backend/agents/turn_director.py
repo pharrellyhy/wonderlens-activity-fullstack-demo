@@ -87,9 +87,16 @@ _SYNTHESIS_RULES = """\
 ### Synthesis (STEP_4_SYNTHESIS)
 - First visit (synthesis_phase=invite):
   action=stay, direction="Invite child to make up a story about the collected characters using the story scaffold premise. For T0: model the START of a story and ask the child what happens next."
-- Child gave a story contribution (even one word like 'fly' or 'hug'):
+- Child confirms/agrees (synthesis_phase=invite — yes, good, cool, sure, ok, etc.):
+  action=stay, direction="The child wants a story! Encourage THEM to try making one up first. Ask: what happens to {characters}? Keep it simple and inviting — they can say anything."
+  DO NOT generate the story yet. Give the child a chance to try first.
+- Child gave a story contribution (synthesis_phase=child_try — even one word like 'fly' or 'hug'):
   action=advance, direction="Weave a COMPLETE short story (4-8 sentences for T0, 6-11 for T1, 8-14 for T2) using the child's contribution and ALL harvested story elements. Each character should appear by name with their trait. The story must have a beginning, middle, and end."
-- Child confirms/declines/is silent:
+- Child declines to try (synthesis_phase=child_try — no, you do it, etc.):
+  action=stay, direction="Offer two story theme choices for the child to pick from."
+- Child chose a theme (synthesis_phase=theme_choice):
+  action=advance, direction="Generate a COMPLETE short story using the chosen theme and ALL harvested story elements."
+- Child is silent:
   action=advance, direction="Generate a COMPLETE short story using ALL harvested story elements. Each character appears by name with their trait. The story must have a beginning, middle, and end. Then celebrate."\
 """
 

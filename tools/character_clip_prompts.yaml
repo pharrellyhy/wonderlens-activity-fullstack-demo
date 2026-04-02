@@ -8,10 +8,12 @@ defaults:
     3D rendered toy aesthetic, Pixar-inspired, warm lighting. No text or UI elements.
     IMPORTANT: The character must be centered in the frame, medium close-up shot,
     facing slightly toward camera. Same size, position, and camera angle in every clip.
-    TIMING: The first 2 seconds the character sits completely still in its resting pose.
-    Then the action happens for 4 seconds. Then the last 2 seconds the character returns
-    to and holds the exact same still resting pose. This ensures seamless looping and
-    smooth transitions between clips.
+    CRITICAL TIMING RULE: The first 2 seconds the character sits COMPLETELY STILL in its
+    resting pose — no movement at all. Then the action happens for 4 seconds. Then the
+    last 2 seconds the character MUST return to and hold the EXACT same still resting pose
+    as the opening frame — same position, same posture, same expression, completely
+    motionless. The first and last frames must be visually identical. This is essential
+    for seamless looping. No camera pans or zoom changes throughout the clip.
   loop_duration: "4s"
   oneshot_duration: "3s"
 
@@ -127,8 +129,9 @@ characters:
     prefix: dinosaur
     base: >
       A cute, friendly stuffed dinosaur toy (brontosaurus-style) with soft amber/golden fur,
-      a long neck, big round eyes, and a gentle smile. Centered in frame, standing upright,
-      facing slightly toward camera.
+      a long neck, big round eyes, and a gentle smile. Centered in frame, standing upright on
+      all four legs, facing slightly toward camera. The character must stay in the same spot —
+      no walking, no drifting, no repositioning.
       In a colorful children's playroom with wooden toy blocks, picture books, and a small tent.
     states:
       idle:
@@ -164,13 +167,13 @@ characters:
       surprised:
         type: oneshot
         action: >
-          The dinosaur's head shoots up on its long neck, eyes go wide, mouth
-          drops open in amazement. Body leans back slightly. Impressed.
+          The plush toy gently tilts its head with big curious round eyes, neck
+          swaying slowly with delight, discovering something wonderful nearby.
       waving:
         type: oneshot
         action: >
-          The plush dinosaur toy lifts one front foot and rocks it side to side
-          in a playful greeting gesture. Long neck swaying, big happy expression.
+          The stuffed dinosaur toy gently raises one front paw and sways it in a
+          friendly hello gesture. Long neck bobbing happily, warm cheerful smile.
       celebrating:
         type: loop
         action: >
@@ -184,37 +187,40 @@ scenarios:
     style: >
       Warm, child-friendly scene. Soft lighting.
     clips:
-      1: "Basking in warm sunshine, lying on its belly with a content expression, golden light beams across soft grass."
-      2: "Just tripped and went bump, sitting with a surprised expression, looking up with big eyes."
-      3: "Seeing its favorite treat arriving on a plate, eyes wide with excitement, tail wagging."
-      4: "Watching a colorful butterfly flying by, head following it with wonder, butterfly leaving a sparkle trail."
-      5: "Hearing thunder outside, ears flat, looking at a rain-streaked window with a nervous but brave expression."
-      6: "Its best friend (another stuffed toy) coming to visit, both toys face to face with happy expressions."
-      7: "In a bath with bubbles floating around, looking surprised but playful, rubber duck nearby."
-      8: "Standing at the edge of a muddy puddle, paws getting splashed, looking delighted and messy."
+      warm_sunshine: "Basking in warm sunshine, lying on its belly with a content expression, golden light beams across soft grass."
+      tripped_bump: "Just tripped and went bump, sitting with a surprised expression, looking up with big eyes."
+      favorite_treat: "Seeing its favorite treat arriving on a plate, eyes wide with excitement, tail wagging."
+      butterfly: "Watching a colorful butterfly flying by, head following it with wonder, butterfly leaving a sparkle trail."
+      thunder: "Hearing thunder outside, ears flat, looking at a rain-streaked window with a nervous but brave expression."
+      best_friend: "Its best friend (another stuffed toy) coming to visit, both toys face to face with happy expressions."
+      bath_time: "In a bath with bubbles floating around, looking surprised but playful, rubber duck nearby."
+      muddy_puddle: "Standing at the edge of a muddy puddle, paws getting splashed, looking delighted and messy."
 
   dream_whisperer_cat:
     style: >
       Dreamy, ethereal scene with soft violet tones. Whimsical atmosphere.
     clips:
-      1: "Floating peacefully on a fluffy white cloud in a pastel sky, paws dangling, serene expression."
-      2: "Swimming playfully in a gentle ocean of milk, small waves lapping, whiskers wet, dreamy atmosphere."
-      3: "Exploring a magical garden filled with glowing flowers, yarn balls, and fish-shaped leaves."
-      4: "Chasing a softly glowing star through a dark but friendly night, star leaving a golden trail."
-      5: "Riding on the back of a giant friendly bird soaring through cotton-candy clouds."
-      6: "Inside a whimsical castle made entirely of colorful yarn balls, batting at dangling strings."
-      7: "Bouncing along a vibrant rainbow bridge arcing across a starry sky, each bounce leaving sparkles."
-      8: "Curled up in a cozy cave made of soft pillows and blankets, warm glow, completely content."
+      floating_cloud: "Floating peacefully on a fluffy white cloud in a pastel sky, paws dangling, serene expression."
+      milk_ocean: "Swimming playfully in a gentle ocean of milk, small waves lapping, whiskers wet, dreamy atmosphere."
+      magical_garden: "Exploring a magical garden filled with glowing flowers, yarn balls, and fish-shaped leaves."
+      glowing_star: "Chasing a softly glowing star through a dark but friendly night, star leaving a golden trail."
+      giant_bird: "Riding on the back of a giant friendly bird soaring through cotton-candy clouds."
+      yarn_castle: "Inside a whimsical castle made entirely of colorful yarn balls, batting at dangling strings."
+      rainbow_bridge: "Bouncing along a vibrant rainbow bridge arcing across a starry sky, each bounce leaving sparkles."
+      pillow_cave: "Curled up in a cozy cave made of soft pillows and blankets, warm glow, completely content."
 
   time_machine_dinosaur:
     style: >
-      Epic but child-friendly prehistoric scene. Warm amber tones.
+      Epic but child-friendly prehistoric scene. Warm amber tones. The background
+      environment must be alive and animated throughout — water rippling, lava
+      flowing, leaves rustling, snow drifting, clouds moving. The world is dynamic
+      and immersive. Only the CHARACTER follows the resting pose timing rule.
     clips:
-      1: "Standing in a lush prehistoric jungle, giant ferns and palm trees, dappled sunlight, curious expression."
-      2: "Near a rumbling volcano with orange lava glow, looking up in awe, safe distance, dramatic sky."
-      3: "Sitting peacefully by a calm lake at sunset, warm golden reflections, gentle ripples, serene mood."
-      4: "On a snowy mountain top, snowflakes falling gently, breath visible, amazed by the view below."
-      5: "Peeking into a dark spooky cave, eyes wide, faint mysterious glow from deep inside."
-      6: "Walking through a field of giant colorful flowers, each flower taller than the dinosaur, magical atmosphere."
-      7: "On a stormy ocean beach, waves crashing, wind blowing, looking brave and adventurous."
-      8: "Meeting another friendly dinosaur face to face, both smiling, touching noses, warm friendship moment."
+      prehistoric_jungle: "Standing in a lush prehistoric jungle with giant ferns swaying in the breeze, palm trees rustling, insects flying, sunlight beams shifting through the moving canopy. The dinosaur looks around curiously for a few seconds, then slowly returns to standing perfectly still facing the camera with a calm neutral expression."
+      rumbling_volcano: "Near a rumbling volcano with glowing orange lava actively flowing down the sides, smoke billowing, ash drifting in the air, dramatic fiery sky with shifting clouds. Looking up in awe."
+      lake_sunset: "By a calm lake at sunset with water gently rippling and shimmering with golden reflections, fireflies appearing, clouds drifting across the warm orange-pink sky. Serene mood."
+      snowy_mountain: "On a snowy mountain top with snowflakes actively falling and swirling in the wind, breath visible as puffs, clouds rolling past the peaks below. Amazed by the view."
+      spooky_cave: "Near a dark spooky cave with eerie glowing light pulsing from deep inside, mist creeping along the ground, shadows flickering on the rocky walls. The dinosaur peeks curiously for a few seconds, then slowly returns to standing perfectly still facing the camera with a calm neutral expression."
+      giant_flowers: "Walking through a field of giant colorful flowers, each flower taller than the dinosaur, magical atmosphere."
+      stormy_beach: "On a stormy ocean beach, waves crashing, wind blowing, looking brave and adventurous."
+      friendly_dinosaur: "Meeting another friendly dinosaur face to face, both smiling, touching noses, warm friendship moment."

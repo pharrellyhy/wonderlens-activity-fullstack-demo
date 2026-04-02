@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { getThemeForEntity, getScenarioSlug } from '../widgets/gameThemes';
 
-const ONE_SHOT_STATES = new Set(['excited', 'encouraging', 'surprised', 'waving']);
+const ONE_SHOT_STATES = new Set(['excited', 'encouraging', 'surprised']);
 
 function entityFromActivity(activityType) {
   if (!activityType) return null;
@@ -27,14 +27,15 @@ export default function useCharacterAnimation({
   currentRound,
   currentScenario,
   activityType,
+  templateType,
 }) {
-  const [animationState, setAnimationState] = useState('waving');
+  const [animationState, setAnimationState] = useState(null);
   const oneShotFollowUpRef = useRef(null);
   const lastProcessedMsgRef = useRef(0);
 
   const entity = entityFromActivity(activityType);
   const theme = entity ? getThemeForEntity(entity) : null;
-  const hasVideo = !!(theme?.videoPrefix);
+  const hasVideo = !!(templateType === 'cat1' && theme?.videoPrefix);
 
   // Determine the "resting" state — what to show after TTS/reactions finish
   const restingState =
@@ -45,7 +46,7 @@ export default function useCharacterAnimation({
 
   // Resolve clip URL from animation state
   const resolveClipUrl = useCallback((state) => {
-    if (!hasVideo || !theme?.videoBasePath || !theme?.videoPrefix) return null;
+    if (!state || !hasVideo || !theme?.videoBasePath || !theme?.videoPrefix) return null;
 
     if (state === 'scenario') {
       if (!theme?.scenarioBasePath || !currentScenario) {
@@ -61,12 +62,15 @@ export default function useCharacterAnimation({
     return `${theme.videoBasePath}/${theme.videoPrefix}_${state}.mp4`;
   }, [hasVideo, theme?.videoBasePath, theme?.videoPrefix, theme?.scenarioBasePath, currentScenario, activityType]);
 
-  // 1. Session start — waving immediately (no TTS playing yet)
+  // 1. Game intro — waving once (8s) then idle, triggered at STEP_2
+  const hasPlayedWavingRef = useRef(false);
   useEffect(() => {
     if (!hasVideo) return;
-    if (currentStep === 'STEP_1_HOOK') {
-      setAnimationState('waving');
-    }
+    if (!currentStep?.startsWith('STEP_2_') || hasPlayedWavingRef.current) return;
+    hasPlayedWavingRef.current = true;
+    setAnimationState('waving');
+    const timer = setTimeout(() => setAnimationState('idle'), 8000);
+    return () => clearTimeout(timer);
   }, [currentStep, hasVideo]);
 
   // 2. AI response — set character emotion clip. TTS audio plays on top (overlapped).
@@ -78,6 +82,19 @@ export default function useCharacterAnimation({
     // One-shot clips return to resting state after playing; loops keep going
     oneShotFollowUpRef.current = ONE_SHOT_STATES.has(characterState) ? restingState : null;
   }, [characterState, messageCount, hasVideo, restingState]);
+
+  // 2b. New scenario introduced — override emotion clip with scenario world.
+  //     Only fires when we're actually in a round step (STEP_3_*), not during
+  //     hook/invitation where session_state already has scenario preloaded.
+  const prevScenarioRef = useRef(null);
+  useEffect(() => {
+    if (!hasVideo || !currentScenario) return;
+    if (!currentStep?.startsWith('STEP_3_') || currentRound < 1) return;
+    if (currentScenario === prevScenarioRef.current) return;
+    prevScenarioRef.current = currentScenario;
+    setAnimationState('scenario');
+    oneShotFollowUpRef.current = null;
+  }, [hasVideo, currentScenario, currentStep, currentRound]);
 
   // 3. When TTS ends (true→false), return to resting state (scenario or idle).
   const wasSpeakingRef = useRef(false);

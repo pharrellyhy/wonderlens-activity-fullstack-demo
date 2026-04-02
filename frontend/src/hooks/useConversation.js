@@ -72,6 +72,7 @@ export default function useConversation() {
           responseType: data.turn.response_type,
           toneMarker: data.turn.tone_marker,
           characterState: data.turn.character_state || 'speaking',
+          currentScenario: data.turn.current_scenario || null,
           sfx: data.turn.audio?.sfx,
           characterSfx: data.turn.character_sfx || [],
           errorExit: data.turn.error_exit || false,

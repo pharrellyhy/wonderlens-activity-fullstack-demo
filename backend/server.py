@@ -474,6 +474,11 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
         activity_type=state.activity_type,
     )
     turn_data["auto_advance"] = result.auto_advance
+    # Use POST-turn scenario — after an advance, the state holds the scenario
+    # that the response dialogue is presenting (not the previous round's).
+    post_turn_scenario = _current_scenario(state)
+    if post_turn_scenario:
+        turn_data["current_scenario"] = post_turn_scenario
 
     response_payload: dict = {
         "turn": turn_data,
@@ -544,6 +549,9 @@ async def turn_and_speak(req: TurnRequest) -> Response:
             activity_type=state.activity_type,
         )
         turn_data["auto_advance"] = result.auto_advance
+        post_turn_scenario = _current_scenario(state)
+        if post_turn_scenario:
+            turn_data["current_scenario"] = post_turn_scenario
 
         # Yield JSON header (4-byte length prefix + JSON)
         stream_payload: dict = {
@@ -620,6 +628,16 @@ _RESPONSE_TYPE_TO_CHARACTER_STATE: dict[str, str] = {
     "closing": "waving",
     "graceful_exit": "waving",
 }
+
+
+def _current_scenario(state: SessionStateModel) -> str | None:
+    """Return the current round scenario text, or None."""
+    if state.template_type != "cat1" or not isinstance(state.creative_slots, Cat1CreativeSlots):
+        return None
+    round_idx = max(0, state.current_round - 1)
+    if round_idx < len(state.creative_slots.round_scenarios):
+        return state.creative_slots.round_scenarios[round_idx]
+    return None
 
 
 def _map_character_state(tone_marker: str, response_type: str) -> str:

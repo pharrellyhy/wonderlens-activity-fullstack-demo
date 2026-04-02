@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getThemeForEntity } from './gameThemes';
 
 const VIDEO_VOLUME = 0.4;
@@ -25,11 +25,10 @@ export default function CharacterDisplay({
   const activeSlotRef = useRef('a');
   const [activeSlot, setActiveSlot] = useState('a');
   const [readyToShow, setReadyToShow] = useState(false);
-  const currentUrlRef = useRef(null);
 
   useEffect(() => {
-    if (!clipUrl || clipUrl === currentUrlRef.current) return;
-    currentUrlRef.current = clipUrl;
+    if (!clipUrl) return;
+    console.log('[CharacterDisplay] loading clip:', clipUrl, 'isOneShot:', isOneShot);
 
     const nextSlot = activeSlotRef.current === 'a' ? 'b' : 'a';
     const nextVideo = nextSlot === 'a' ? videoARef.current : videoBRef.current;
@@ -37,27 +36,71 @@ export default function CharacterDisplay({
 
     if (!nextVideo) return;
 
+    let activated = false;
+    let fallbackTimer;
+
+    const activate = (source) => {
+      if (activated) return;
+      activated = true;
+      console.log('[CharacterDisplay] activated via', source, clipUrl);
+      clearTimeout(fallbackTimer);
+      if (oldVideo) oldVideo.pause();
+      nextVideo.play().catch(e => {
+        console.warn('[CharacterDisplay] play failed, retrying muted:', e.message);
+        nextVideo.muted = true;
+        nextVideo.play().catch(() => {});
+      });
+      activeSlotRef.current = nextSlot;
+      setActiveSlot(nextSlot);
+      setReadyToShow(true);
+    };
+
+    const onCanPlay = () => activate('canplay');
+    const onLoadedData = () => activate('loadeddata');
+    const onError = () => {
+      console.error('[CharacterDisplay] video error:', nextVideo.error?.message, clipUrl);
+    };
+
+    nextVideo.addEventListener('canplay', onCanPlay);
+    nextVideo.addEventListener('loadeddata', onLoadedData);
+    nextVideo.addEventListener('error', onError);
     nextVideo.src = clipUrl;
     nextVideo.loop = !isOneShot;
     nextVideo.load();
 
-    const handleCanPlay = () => {
-      if (oldVideo) oldVideo.pause();
-      nextVideo.play().catch(() => {});
-      activeSlotRef.current = nextSlot;
-      setActiveSlot(nextSlot);
-      setReadyToShow(true);
-      nextVideo.removeEventListener('canplay', handleCanPlay);
-    };
-
-    nextVideo.addEventListener('canplay', handleCanPlay);
+    fallbackTimer = setTimeout(() => activate('timeout'), 2000);
 
     return () => {
-      nextVideo.removeEventListener('canplay', handleCanPlay);
+      nextVideo.removeEventListener('canplay', onCanPlay);
+      nextVideo.removeEventListener('loadeddata', onLoadedData);
+      nextVideo.removeEventListener('error', onError);
+      clearTimeout(fallbackTimer);
     };
   }, [clipUrl, isOneShot]);
 
-  // Control video volume: muted, ducked (during TTS), or normal
+  // Unmute videos after first user gesture (browser autoplay requires muted start)
+  const unlockedRef = useRef(false);
+  useLayoutEffect(() => {
+    const unlock = () => {
+      if (unlockedRef.current) return;
+      unlockedRef.current = true;
+      if (videoARef.current) videoARef.current.muted = false;
+      if (videoBRef.current) videoBRef.current.muted = false;
+      for (const evt of ['click', 'touchstart', 'keydown']) {
+        document.removeEventListener(evt, unlock, true);
+      }
+    };
+    for (const evt of ['click', 'touchstart', 'keydown']) {
+      document.addEventListener(evt, unlock, { capture: true });
+    }
+    return () => {
+      for (const evt of ['click', 'touchstart', 'keydown']) {
+        document.removeEventListener(evt, unlock, true);
+      }
+    };
+  }, []);
+
+  // Control video volume: user-muted, ducked (during TTS), or normal
   useEffect(() => {
     const volume = videoMuted ? 0 : isSpeaking ? VIDEO_VOLUME_DUCKED : VIDEO_VOLUME;
     if (videoARef.current) videoARef.current.volume = volume;
@@ -75,7 +118,7 @@ export default function CharacterDisplay({
   }, [activeSlot, isOneShot, onClipEnded]);
 
   return (
-    <div className={`relative w-full h-full overflow-hidden transition-all duration-500 ${animation === 'scene_transition' ? 'animate-fade-in' : ''}`}>
+    <div className={`relative ${hasVideo ? 'w-full h-full' : 'flex flex-col items-center gap-2.5 max-[380px]:gap-2 p-3 max-[380px]:p-2.5 w-full max-w-md'} overflow-hidden transition-all duration-500 ${animation === 'scene_transition' ? 'animate-fade-in' : ''}`}>
       {hasVideo ? (
         <>
           {/* Full-panel video */}
@@ -83,14 +126,22 @@ export default function CharacterDisplay({
             ref={videoARef}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ease-in-out ${activeSlot === 'a' ? 'opacity-100' : 'opacity-0'}`}
             playsInline
+            muted
             aria-hidden="true"
           />
           <video
             ref={videoBRef}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ease-in-out ${activeSlot === 'b' ? 'opacity-100' : 'opacity-0'}`}
             playsInline
+            muted
             aria-hidden="true"
           />
+          {/* Show character icon while video loads */}
+          {!readyToShow && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
+              <img src={theme.characterPng} alt="" className="w-28 h-28 sm:w-32 sm:h-32 object-contain animate-gentle-float" />
+            </div>
+          )}
           {/* Mute/unmute button */}
           <button
             onClick={() => setVideoMuted(prev => !prev)}
@@ -111,24 +162,21 @@ export default function CharacterDisplay({
             )}
           </button>
         </>
-      ) : expectsVideo ? (
-        /* Video expected but not loaded yet — show nothing */
-        null
       ) : (
-        /* Static PNG fallback for non-video games (Cat5) */
-        <div className="h-full flex flex-col items-center justify-center gap-2.5 p-3">
+        /* Static PNG — shown before game starts (Cat1) and for non-video games (Cat5) */
+        <>
           <div className={`w-[clamp(2.8rem,12vw,3.25rem)] h-[clamp(2.8rem,12vw,3.25rem)] rounded-full ${theme.iconBg} ring-2 flex items-center justify-center shadow-sm animate-gentle-float`}>
             <img src={theme.characterPng} alt={entity || 'character'} className="w-[clamp(1.9rem,8vw,2.2rem)] h-[clamp(1.9rem,8vw,2.2rem)] object-contain" />
           </div>
-          <div className="bg-white/80 rounded-xl p-2.5 w-full max-w-md text-center shadow-sm">
+          <div className="bg-white/80 rounded-xl max-[380px]:rounded-lg p-2.5 max-[380px]:p-2 w-full text-center shadow-sm">
             <p className="text-gray-700 font-medium text-xs">{description || `Scene ${roundNumber}`}</p>
           </div>
           {roundNumber > 0 && (
-            <div className={`text-xs ${theme.accent} ${theme.accentBg} px-3 py-1 rounded-full font-medium`}>
+            <div className={`text-xs max-[380px]:text-[11px] ${theme.accent} ${theme.accentBg} px-3 max-[380px]:px-2 py-1 max-[380px]:py-0.5 rounded-full font-medium`}>
               Round {roundNumber}
             </div>
           )}
-        </div>
+        </>
       )}
 
     </div>

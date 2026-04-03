@@ -1553,10 +1553,17 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
                         scenario = rounds[0].scenario
                 if not scenario and state.creative_slots.round_scenarios:
                     scenario = state.creative_slots.round_scenarios[0]
+                if state.creative_slots.game_mechanic == "storytelling_chain":
+                    question_guidance = (
+                        f"Ask ONE question about what the {state.entity_name} "
+                        f"sees, finds, or does in the scene — NOT about how it feels."
+                    )
+                else:
+                    question_guidance = f"Ask ONE question about how the {state.entity_name} feels or reacts."
                 direction = (
                     f"Celebrate acceptance briefly. This is a verbal/imagination game — the child "
                     f'stays with the photo on screen. Present the first scenario: "{scenario}". '
-                    f"Ask ONE question about how the {state.entity_name} feels or reacts."
+                    f"{question_guidance}"
                 )
             else:
                 direction = "Celebrate acceptance and introduce the first round of the activity."

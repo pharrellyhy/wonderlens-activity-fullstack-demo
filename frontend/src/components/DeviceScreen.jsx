@@ -171,7 +171,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
           {screenFrame.animation_label && (
             <p className="text-[9px] max-[380px]:text-[8px] text-gray-400 italic truncate">{screenFrame.animation_label}</p>
           )}
-          {animationState && (
+          {isVideoMode && animationState && (
             <>
               <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono text-white shrink-0 ${ANIM_STATE_COLORS[animationState] || 'bg-gray-400'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${animationState === 'scenario' ? 'bg-white animate-pulse' : 'bg-white/60'}`} />

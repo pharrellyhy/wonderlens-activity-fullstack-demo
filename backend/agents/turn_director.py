@@ -100,12 +100,14 @@ _SYNTHESIS_RULES = """\
   action=advance, direction="Generate a COMPLETE short story using ALL harvested story elements. Each character appears by name with their trait. The story must have a beginning, middle, and end. Then celebrate."\
 """
 
-_CAT1_ROUND_RULES = """\
-### Cat1 Round
+_CAT1_ROUND_RULES_VOICE_ACTING = """\
+### Cat1 Round (Voice Acting)
 - First turn on this round (no child answer yet):
   action=stay, direction="Present THIS ROUND'S SCENARIO (from the context above) vividly. Set the scene with sounds and actions, then ask ONE question about how the {entity_name} feels or reacts."
-- Child gave a good/creative answer:
+- Child gave a good/creative answer AND this is NOT the last round:
   action=advance, max_sentences=3, direction="Celebrate the child's answer warmly in one sentence. Then use a brief, natural transition before presenting the NEXT round's scenario vividly. End with ONE question about the emotion. Use the EXACT next scenario from the round list — do NOT invent one."
+- Child gave a good/creative answer AND this IS the last round (current round = total rounds):
+  action=advance, max_sentences=2, direction="Celebrate this answer warmly. Do NOT wrap up, recap, award a title, or say the game is done — the celebration step handles all of that."
 - Child gave a wrong/unexpected answer:
   action=stay, direction="Warmly acknowledge. Model a SOUND or ACTION (e.g., 'Woof!', 'Yawn!', tremble), then offer a binary choice between two emotions."
 - Child is silent:
@@ -115,6 +117,25 @@ CRITICAL Cat1 RULES:
 - NEVER say 'I think the {entity_name} feels [emotion]' or tell the child what the answer is. The child must GUESS the feeling — that is the whole game.
 - When modeling, only model SOUNDS or ACTIONS (woof!, yawn, splash, tremble, tail wagging) — NEVER model emotion words (happy, sad, surprised, excited).
 - Binary choices must be between TWO EMOTIONS (e.g., 'happy or sleepy?', 'brave or scared?'), never actions.\
+"""
+
+_CAT1_ROUND_RULES_STORYTELLING = """\
+### Cat1 Round (Storytelling Chain)
+- First turn on this round (no child answer yet):
+  action=stay, direction="Present THIS ROUND'S SCENARIO (from the context above) vividly. Paint the scene with sensory details, then ask ONE question about what the {entity_name} sees, finds, or does in the scene — NOT about how it feels."
+- Child gave a good/creative answer AND this is NOT the last round:
+  action=advance, max_sentences=3, direction="Celebrate the child's answer warmly in one sentence. Then use a brief, natural transition before presenting the NEXT round's scenario vividly. End with ONE question about what happens in the scene (what the {entity_name} sees, finds, or discovers). Use the EXACT next scenario from the round list — do NOT invent one."
+- Child gave a good/creative answer AND this IS the last round (current round = total rounds):
+  action=advance, max_sentences=2, direction="Celebrate this answer warmly. Do NOT wrap up, recap dreams, award a title, or say the game/story is done — the celebration step handles all of that."
+- Child gave a wrong/unexpected answer:
+  action=stay, direction="Warmly acknowledge. Then offer a binary choice between two concrete things the {entity_name} might see, find, or do in the scene."
+- Child is silent:
+  action=need_help, direction="Model what the {entity_name} might find in the scene, then offer a binary choice between two concrete discoveries or actions."
+
+CRITICAL Cat1 Storytelling RULES:
+- Ask about what the {entity_name} SEES, FINDS, or DOES — never about how it FEELS.
+- Binary choices must be between TWO CONCRETE THINGS (objects, actions, discoveries), never emotions.
+- Do NOT ask about emotions or feelings (e.g., 'happy or scared?'). Ask about the scene content (e.g., 'a rainbow or some butterflies?').\
 """
 
 _HOOK_RULES = """\
@@ -157,9 +178,14 @@ def _select_step_phase_rules(state: SessionStateModel) -> str:
     if step == "STEP_6_CLOSING":
         return _CLOSING_RULES
 
-    # Cat1 rounds (STEP_3_ROUND_*)
+    # Cat1 rounds (STEP_3_ROUND_*) — mechanic-specific rules
     if step.startswith("STEP_3_ROUND_"):
-        return _CAT1_ROUND_RULES
+        if (
+            isinstance(state.creative_slots, Cat1CreativeSlots)
+            and state.creative_slots.game_mechanic == "storytelling_chain"
+        ):
+            return _CAT1_ROUND_RULES_STORYTELLING
+        return _CAT1_ROUND_RULES_VOICE_ACTING
 
     return ""
 

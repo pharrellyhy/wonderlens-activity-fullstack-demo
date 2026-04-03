@@ -17,7 +17,7 @@ export default function CharacterDisplay({
   const theme = getThemeForEntity(entity);
   const hasVideo = !!clipUrl;
   const expectsVideo = !!theme?.videoPrefix;
-  const [videoMuted, setVideoMuted] = useState(false);
+  const [videoMuted, setVideoMuted] = useState(true);
 
   // Dual video crossfade state
   const videoARef = useRef(null);
@@ -37,14 +37,13 @@ export default function CharacterDisplay({
     if (!nextVideo) return;
 
     let activated = false;
-    let fallbackTimer;
 
     const activate = (source) => {
       if (activated) return;
       activated = true;
-      console.log('[CharacterDisplay] activated via', source, clipUrl);
-      clearTimeout(fallbackTimer);
       if (oldVideo) oldVideo.pause();
+      // Unmute before playing — user has already interacted (clicked Start)
+      if (unlockedRef.current) nextVideo.muted = false;
       nextVideo.play().catch(e => {
         console.warn('[CharacterDisplay] play failed, retrying muted:', e.message);
         nextVideo.muted = true;
@@ -68,13 +67,14 @@ export default function CharacterDisplay({
     nextVideo.loop = !isOneShot;
     nextVideo.load();
 
-    fallbackTimer = setTimeout(() => activate('timeout'), 2000);
+    // No timeout fallback — in production, clips may take several seconds
+    // to load over the network. The crossfade keeps the old video visible
+    // until the new one is ready; forcing a switch early shows a blank frame.
 
     return () => {
       nextVideo.removeEventListener('canplay', onCanPlay);
       nextVideo.removeEventListener('loadeddata', onLoadedData);
       nextVideo.removeEventListener('error', onError);
-      clearTimeout(fallbackTimer);
     };
   }, [clipUrl, isOneShot]);
 
@@ -121,25 +121,32 @@ export default function CharacterDisplay({
     <div className={`relative ${hasVideo ? 'w-full h-full' : 'flex flex-col items-center gap-2.5 max-[380px]:gap-2 p-3 max-[380px]:p-2.5 w-full max-w-md'} overflow-hidden transition-all duration-500 ${animation === 'scene_transition' ? 'animate-fade-in' : ''}`}>
       {hasVideo ? (
         <>
-          {/* Full-panel video */}
+          {/* Full-panel video — preload=auto for faster start in production */}
           <video
             ref={videoARef}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ease-in-out ${activeSlot === 'a' ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ease-in-out ${activeSlot === 'a' ? 'opacity-100' : 'opacity-0'}`}
             playsInline
             muted
+            preload="auto"
             aria-hidden="true"
           />
           <video
             ref={videoBRef}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ease-in-out ${activeSlot === 'b' ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ease-in-out ${activeSlot === 'b' ? 'opacity-100' : 'opacity-0'}`}
             playsInline
             muted
+            preload="auto"
             aria-hidden="true"
           />
-          {/* Show character icon while video loads */}
+          {/* Show character icon + loading spinner while first video loads */}
           {!readyToShow && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 gap-3">
               <img src={theme.characterPng} alt="" className="w-28 h-28 sm:w-32 sm:h-32 object-contain animate-gentle-float" />
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-forest)]/40 animate-bounce [animation-delay:0ms]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-forest)]/40 animate-bounce [animation-delay:150ms]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-forest)]/40 animate-bounce [animation-delay:300ms]" />
+              </div>
             </div>
           )}
           {/* Mute/unmute button */}

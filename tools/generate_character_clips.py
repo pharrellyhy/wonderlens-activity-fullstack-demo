@@ -127,6 +127,7 @@ def main() -> None:
     parser.add_argument("--character", help="Generate only for this character (e.g., mood_changer_dog)")
     parser.add_argument("--state", help="Generate only this state (e.g., excited)")
     parser.add_argument("--scenarios", action="store_true", help="Generate scenario illustration clips instead of character clips")
+    parser.add_argument("--ref", help="Path to a video file to use as style reference instead of idle clip")
     parser.add_argument("--dry-run", action="store_true", help="Print prompts without calling API")
     args = parser.parse_args()
 
@@ -170,13 +171,21 @@ def _generate_character_clips(config: dict, args: argparse.Namespace) -> None:
         states = _get_states(char_config)
         print(f"Character: {char_key} (prefix: {prefix})")
 
-        # Load existing idle frame as style reference if available
+        # Load style reference: custom --ref path, or existing idle clip
         ref_image = None
         if not args.dry_run and client is not None:
-            idle_path = OUTPUT_DIR / char_key / f"{prefix}_{REFERENCE_STATE}.mp4"
-            if idle_path.exists() and REFERENCE_STATE not in states:
-                print(f"  Loading style reference from existing {prefix}_{REFERENCE_STATE}.mp4...")
-                ref_image = extract_frame(idle_path)
+            if args.ref:
+                ref_path = Path(args.ref)
+                if ref_path.exists():
+                    print(f"  Loading style reference from {ref_path.name}...")
+                    ref_image = extract_frame(ref_path)
+                else:
+                    print(f"  Warning: --ref path not found: {ref_path}")
+            else:
+                idle_path = OUTPUT_DIR / char_key / f"{prefix}_{REFERENCE_STATE}.mp4"
+                if idle_path.exists() and REFERENCE_STATE not in states:
+                    print(f"  Loading style reference from existing {prefix}_{REFERENCE_STATE}.mp4...")
+                    ref_image = extract_frame(idle_path)
 
         ordered_states = []
         if REFERENCE_STATE in states:

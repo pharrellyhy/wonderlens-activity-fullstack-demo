@@ -275,6 +275,9 @@ refs
 data
 scripts/output
 images
+docs/weekly-report
+
+*.mp4
 
 # Database files
 *.db

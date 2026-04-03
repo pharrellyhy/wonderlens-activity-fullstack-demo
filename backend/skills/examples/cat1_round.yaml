@@ -219,7 +219,26 @@ examples:
     style: storytelling_chain
     text: |
       **Silence / stuck:**
-      AI: "[gentle] I think it found a tiny frog! Was the frog happy or grumpy?"
+      AI: "[gentle] I think it found a tiny frog! Did the frog hop away or stay and say hello?"
+
+  - tier: T0
+    scenario: wrong_photo
+    style: storytelling_chain
+    text: |
+      **Wrong/unexpected answer:**
+      Child: "a monster!"
+      AI: "[warm] Ooh, a monster — how surprising! Was it a monster that stomped around, or one that tripped over its own feet?"
+
+  - tier: T0
+    scenario: correct_photo
+    style: storytelling_chain
+    text: |
+      **Presenting the round:**
+      AI: "[dreamy] Your {entity_name} peeked inside a sparkly cave! Did it find a pile of treasure or a tiny glowing door?"
+
+      **Good answer:**
+      Child: "treasure!"
+      AI: "[excited] Sparkly treasure everywhere! Your {entity_name} is the luckiest explorer!"
 
   - tier: T1
     scenario: correct_photo

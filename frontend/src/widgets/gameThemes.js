@@ -3,9 +3,9 @@ import BASE from '../utils/basePath';
 const GAME_THEMES = {
   dog: {
     characterPng: `${BASE}/icons/dog.png`,
-    videoBasePath: `${BASE}/video/character/mood_changer_dog`,
+    videoBasePath: `${BASE}/videos/character/mood_changer_dog`,
     videoPrefix: 'dog',
-    scenarioBasePath: `${BASE}/video/scenario/mood_changer_dog`,
+    scenarioBasePath: `${BASE}/videos/scenario/mood_changer_dog`,
     particles: [
       { emoji: '🦴', count: 2, baseSize: 16 },
       { emoji: '🐾', count: 2, baseSize: 14 },
@@ -20,9 +20,9 @@ const GAME_THEMES = {
   },
   cat: {
     characterPng: `${BASE}/icons/cat.png`,
-    videoBasePath: `${BASE}/video/character/dream_whisperer_cat`,
+    videoBasePath: `${BASE}/videos/character/dream_whisperer_cat`,
     videoPrefix: 'cat',
-    scenarioBasePath: `${BASE}/video/scenario/dream_whisperer_cat`,
+    scenarioBasePath: `${BASE}/videos/scenario/dream_whisperer_cat`,
     particles: [
       { emoji: '⭐', count: 1, baseSize: 14 },
       { emoji: '🌙', count: 1, baseSize: 16 },
@@ -38,9 +38,9 @@ const GAME_THEMES = {
   },
   dinosaur: {
     characterPng: `${BASE}/icons/dinosaur.png`,
-    videoBasePath: `${BASE}/video/character/time_machine_dinosaur`,
+    videoBasePath: `${BASE}/videos/character/time_machine_dinosaur`,
     videoPrefix: 'dinosaur',
-    scenarioBasePath: `${BASE}/video/scenario/time_machine_dinosaur`,
+    scenarioBasePath: `${BASE}/videos/scenario/time_machine_dinosaur`,
     particles: [
       { emoji: '🌿', count: 1, baseSize: 14 },
       { emoji: '🌋', count: 1, baseSize: 16 },

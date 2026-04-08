@@ -126,7 +126,7 @@ Session start/end use character `waving` clip (no scenario).
 ### Character Emotion Clips (24)
 
 ```
-frontend/public/video/character/
+frontend/public/videos/character/
 ├── mood_changer_dog/
 │   ├── dog_idle.mp4, dog_listening.mp4, dog_thinking.mp4, dog_speaking.mp4
 │   ├── dog_excited.mp4, dog_encouraging.mp4, dog_surprised.mp4, dog_waving.mp4
@@ -141,7 +141,7 @@ frontend/public/video/character/
 Pre-generated from the fixed round_scenarios in `backend/games/*.md`:
 
 ```
-frontend/public/video/scenario/
+frontend/public/videos/scenario/
 ├── mood_changer_dog/
 │   ├── scenario_1.mp4  (warm sunshine on belly)
 │   ├── scenario_2.mp4  (tripped and went bump)
@@ -159,7 +159,7 @@ CLI script: `tools/generate_character_clips.py`
 - Reads prompt templates from `tools/character_clip_prompts.yaml`
 - Each character has a base description (consistent across states) + state-specific action/emotion
 - Calls Veo 3.1 for each character × state combination
-- Saves output to `frontend/public/video/character/`
+- Saves output to `frontend/public/videos/character/`
 - Run once at build time, not at runtime
 
 **Prompt structure:**
@@ -251,7 +251,7 @@ Extend `useCharacterSfx.js` with `playMicro(cueId)`:
 | `frontend/src/widgets/ParticleField.jsx` | CSS particle overlay component. Receives characterState + theme props. |
 | `tools/generate_character_clips.py` | CLI script to generate Veo 3.1 clips via Vertex AI. |
 | `tools/character_clip_prompts.yaml` | Prompt templates per character × state. |
-| `frontend/public/video/character/` | 24 MP4 video clips (8 states × 3 characters). |
+| `frontend/public/videos/character/` | 24 MP4 video clips (8 states × 3 characters). |
 | `frontend/public/sfx/character/*/micro_*.wav` | 45 micro-sound WAV files (5 cues × 3 variants × 3 characters). |
 
 ### Modified Files
@@ -280,7 +280,7 @@ Extend `useCharacterSfx.js` with `playMicro(cueId)`:
 
 ## 6. Verification
 
-1. **Veo clip generation:** Run `tools/generate_character_clips.py` and verify 24 MP4 files are created in `frontend/public/video/character/`
+1. **Veo clip generation:** Run `tools/generate_character_clips.py` and verify 24 MP4 files are created in `frontend/public/videos/character/`
 2. **State machine:** Start a Cat1 session and verify state transitions:
    - Session start → WAVING clip plays
    - Activate mic → LISTENING clip

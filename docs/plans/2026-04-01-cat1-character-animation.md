@@ -45,7 +45,7 @@ Cat1 games feel like a plain conversation with random SFX. The character is a st
 - Outputs: currentClipUrl, animationState, isOneShot, onClipEnded
 - Transitions: mic active→listening, child sends→thinking, AI responds→emotion-matched, TTS plays→speaking, TTS ends→idle, session start/end→waving
 - One-shot clips auto-transition to speaking (via video ended event) then idle
-- Clip URL: `${BASE}/video/character/${activityType}/${prefix}_${state}.mp4`
+- Clip URL: `${BASE}/videos/character/${activityType}/${prefix}_${state}.mp4`
 - Preload all 8 clips on session start
 - Follow ref-heavy pattern from useCharacterSfx.js
 
@@ -162,12 +162,12 @@ Cat1 games feel like a plain conversation with random SFX. The character is a st
 ### Step 6.2: Create generation CLI script
 **File:** Create `tools/generate_character_clips.py`
 - Reads prompts from YAML, calls Veo 3.1 via Vertex AI SDK
-- Outputs MP4 to `frontend/public/video/character/{activity}/{prefix}_{state}.mp4`
+- Outputs MP4 to `frontend/public/videos/character/{activity}/{prefix}_{state}.mp4`
 - Flags: --character, --state (selective regen), --dry-run
 - Uses same Vertex AI credentials as existing Gemini calls
 
 ### Step 6.3: Create video asset directory structure
-- `frontend/public/video/character/{mood_changer_dog,dream_whisperer_cat,time_machine_dinosaur}/`
+- `frontend/public/videos/character/{mood_changer_dog,dream_whisperer_cat,time_machine_dinosaur}/`
 
 **Verification:** `--dry-run` prints 24 prompts. Full run generates 24 MP4 files.
 

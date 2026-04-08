@@ -1,6 +1,6 @@
 ## Content Design Rules
 
-These rules apply to ALL child-facing dialogue generation. The Script Agent, Turn Director, and Speaker must follow them.
+> **Reference document** — these principles are enforced individually in the Turn Director system prompt, step instructions, tier rules, and game definitions. This file is the canonical source of truth; the specific enforcement points implement these rules.
 
 ### P1 — Accept Creative Answers
 Any child answer that engages with the scenario is valid, even if it doesn't match the expected theme list. Only classify as off-topic when the child is clearly not engaging with the current scenario at all. "Hungry" is a valid answer to "how does the tummy feel?" even if expected themes were cozy and sleepy.

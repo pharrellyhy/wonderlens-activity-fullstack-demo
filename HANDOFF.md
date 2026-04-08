@@ -1,6 +1,42 @@
 # Session Handoff
 
-Last updated: 2026-04-04
+Last updated: 2026-04-08
+
+---
+
+## Edu Team Content Feedback (5 Issues)
+
+**Problem**: Edu team reviewed demo sessions (feedback in `edu_team_feedback_0406.txt`) and identified five content quality issues: (1) narrow answer acceptance treating creative responses as wrong, (2) directive language in templates, (3) story activities lacking follow-through after naming, (4) scavenger hunt instructions too complex for T0, (5) closing summaries too long with no visual recall.
+
+**Solution**: Created content design principles doc (`P1-P5`), then systematically applied across Turn Director rules, step instructions, game definitions, tier rules, and frontend. Approach B from spec — shared principles + systematic pass, no architecture changes.
+
+**Edits**:
+- `backend/skills/content_design_rules.md` — NEW: 5 content design principles (accept creative answers, invitational framing, concrete before abstract, story continuity, show don't summarize)
+- `backend/agents/turn_director.py` — Split `wrong/unexpected` into `unexpected-but-on-topic` (advance) and `off-topic` (stay) in both `_CAT1_ROUND_RULES_VOICE_ACTING` and `_CAT1_ROUND_RULES_STORYTELLING`
+- `backend/skills/turn_director_system.md` — Added `## Answer Acceptance` section
+- `backend/agents/script_agent.py:644` — Reframed `acceptable_themes` label to "Theme examples (for inspiration — any on-topic answer is valid)"
+- `backend/skills/step_instructions/cat1_step3_round.md` — Renamed "Wrong/unexpected" to "Off-topic", expanded "Good/creative" to include unexpected-but-on-topic
+- `backend/tier_rules.yaml` — Expanded `forbidden_directives` in all 3 tiers with `Touch.../Describe.../Show me.../Try to.../Find...`
+- `backend/games/fluffy_expedition_dandelion.md` — Rewrote `detail_question_template` to invitational; dropped "Find" from `collection_criterion`
+- 8 more game `.md` files — Dropped "Find" imperative from `collection_criterion`
+- `backend/skills/step_instructions/cat5_step3_collect.md` — Added story bridge to last-round rule 6; added T0 entity anchoring + stuck scaffolding sub-rules to rule 2
+- `backend/skills/step_instructions/cat5_step4_synthesis.md` — Reworked INVITE phase: T0 gets story starter, T1/T2 gets character bridge
+- `backend/skills/step_instructions/cat5_step5_celebrate.md` — Changed screen widget to `photo_recall_grid`
+- `backend/skills/step_instructions/cat5_step6_closing.md` — Full rewrite with tier-specific density limits (T0: 2 elements/20 words, T1: 3/35, T2: 4/50)
+- `frontend/src/widgets/PhotoRecallGrid.jsx` — NEW: Photo grid with character name labels for celebrate/closing steps
+- `frontend/src/components/DeviceScreen.jsx` — Registered `photo_recall_grid` widget
+
+**NOT Changed**:
+- Turn Director architecture (LLM pipeline, TurnDirective schema, state machine)
+- `acceptable_themes` field name in schema (only prompt label changed)
+- Scoring/evaluation (follows separately)
+- Frontend conversation flow, TTS/STT
+- `backend/turn_handling/` package
+
+**Verification**:
+- `uv run ruff check agents/script_agent.py agents/turn_director.py` — PASS
+- `uv run pytest -x -q --ignore=tests/test_ai_quality.py` — 19 passed
+- `npx vite build` — clean (79 modules)
 
 ---
 
@@ -287,30 +323,5 @@ uv run ruff format --check .  # All formatted
 - `uv run pytest tests/ backend/tests/ --ignore=backend/tests/test_ai_quality.py -q` — PASS (361 passed, 12 skipped)
 - `uv run ruff check backend/db.py backend/server.py tests/test_api.py tests/test_deep_link.py` — PASS
 - `uv run ruff format --check backend/db.py backend/server.py tests/test_api.py tests/test_deep_link.py` — PASS
-
----
-
-## Review Follow-Up: Synthesis Regression Coverage and Summary Slice Guardrails
-
-**Problem**: Picking up the in-progress handoff entry for synthesis phase filtering, item suggestion validation, and synthesis silence handling showed that the main code changes were reasonable, but the regression coverage was still thin in three places. There was no direct test proving inactive synthesis phase sections are stripped from `cat5_step4_synthesis.md`, no unit coverage for the new silence shortcuts in synthesis `evaluate` and `improve`, and no assertion that Cat1 API summaries now trim `round_scenarios` down to `play_rounds`.
-
-**Solution**: Kept the reviewed backend behavior unchanged and hardened the changed test surface instead. Added direct regressions for phase filtering, both synthesis silence bypass paths, and the Cat1 summary slice. Also removed a now-unnecessary `type: ignore` in `script_agent.py` by using a concrete `re.Match[str]` annotation.
-
-**Edits**:
-- `tests/test_entity_registry.py` — added coverage that Cat1 summaries expose exactly `round_count` scenarios and that `STEP_4_SYNTHESIS` keeps only the active `GENERATE` phase instructions
-- `tests/test_turn_handler.py` — added regressions proving silence in synthesis `evaluate` and `improve` skips `_classify_story_response()` and goes straight to AI generation
-- `backend/agents/script_agent.py` — replaced the local regex callback annotation with `re.Match[str]` and removed the `type: ignore`
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/turn_handler.py` synthesis silence logic — reviewed and kept as-is
-- `backend/entity_registry.py` Cat1 summary slicing — reviewed and kept as-is
-- `tests/test_state_machine.py` and `tests/test_visual_agent.py` — reviewed current assertion updates and left unchanged
-- Frontend code — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py -q` — PASS (`114 passed, 1 skipped`)
-- `uv run ruff check backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
-- `uv run ruff format --check backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
 
 ---

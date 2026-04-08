@@ -3,6 +3,7 @@ import PhotoDisplay from '../widgets/PhotoDisplay';
 import ProgressTracker from '../widgets/ProgressTracker';
 import CharacterDisplay from '../widgets/CharacterDisplay';
 import PhotoGrid from '../widgets/PhotoGrid';
+import PhotoRecallGrid from '../widgets/PhotoRecallGrid';
 import BadgeAward from '../widgets/BadgeAward';
 import ExplorerMap from '../canvas/ExplorerMap';
 import AnimationOverlay from '../widgets/AnimationOverlay';
@@ -16,6 +17,7 @@ const WIDGET_MAP = {
   progress_tracker: ProgressTracker,
   character_display: CharacterDisplay,
   photo_grid: PhotoGrid,
+  photo_recall_grid: PhotoRecallGrid,
   badge_award: BadgeAward,
   explorer_map: ExplorerMap,
 };

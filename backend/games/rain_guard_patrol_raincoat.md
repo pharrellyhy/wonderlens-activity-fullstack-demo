@@ -18,7 +18,7 @@ steps_summary:
   - "Earn the Rain Guard badge!"
 creative_slots:
   observation_angle: function
-  collection_criterion: Find things that cover, shelter, or protect from rain
+  collection_criterion: Things that cover, shelter, or protect from rain
   collection_count: 2
   mission_metaphor: You are a Rain Guard!
   role_title: Rain Guard

@@ -18,7 +18,7 @@ steps_summary:
   - "Earn the Circle Pattern Reporter badge!"
 creative_slots:
   observation_angle: pattern
-  collection_criterion: 'Find things outside that have eye-like shapes: circles, rings, dots, or concentric patterns.'
+  collection_criterion: "Things outside that have eye-like shapes: circles, rings, dots, or concentric patterns"
   collection_count: 3
   mission_metaphor: You are a Circle Pattern Reporter on a mission to find circular patterns in the world!
   role_title: Circle Pattern Reporter

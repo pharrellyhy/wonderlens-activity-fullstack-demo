@@ -18,7 +18,7 @@ steps_summary:
   - "Earn the Shimmer Spotter badge!"
 creative_slots:
   observation_angle: form
-  collection_criterion: Find water creatures or shimmery things nearby
+  collection_criterion: Water creatures or shimmery things nearby
   collection_count: 3
   mission_metaphor: You are a Shimmer Spotter on a safari!
   role_title: Shimmer Spotter

@@ -18,7 +18,7 @@ steps_summary:
   - "Earn the Sound Detective badge!"
 creative_slots:
   observation_angle: form
-  collection_criterion: Find things outside that make interesting sounds when you tap, shake, or blow on them
+  collection_criterion: Things outside that make interesting sounds when you tap, shake, or blow on them
   collection_count: 3
   mission_metaphor: You are a Sound Detective on an acoustic investigation!
   role_title: Sound Detective

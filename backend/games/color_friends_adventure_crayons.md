@@ -18,7 +18,7 @@ steps_summary:
   - "Earn the Color Scout badge!"
 creative_slots:
   observation_angle: color
-  collection_criterion: Find things that match your favorite crayon color
+  collection_criterion: Things that match your favorite crayon color
   collection_count: 2
   mission_metaphor: You are a Color Scout!
   role_title: Color Scout

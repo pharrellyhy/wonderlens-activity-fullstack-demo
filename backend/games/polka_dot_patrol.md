@@ -19,7 +19,7 @@ steps_summary:
 
 creative_slots:
   observation_angle: pattern
-  collection_criterion: "Find things with dots, spots, or circles"
+  collection_criterion: "Things with dots, spots, or circles"
   collection_count: 3
   mission_metaphor: "You are a Polka-Dot Patrol Officer!"
   role_title: Polka-Dot Patrol Officer

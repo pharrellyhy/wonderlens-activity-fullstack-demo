@@ -18,7 +18,7 @@ steps_summary:
   - "Earn the Brave Things Scout badge!"
 creative_slots:
   observation_angle: form
-  collection_criterion: Find things that look big, strong, or tough
+  collection_criterion: Things that look big, strong, or tough
   collection_count: 2
   mission_metaphor: You are a Brave Things Scout building a Brave Parade!
   role_title: Brave Things Scout

@@ -19,14 +19,14 @@ steps_summary:
 
 creative_slots:
   observation_angle: texture
-  collection_criterion: "Find things that are fluffy, fuzzy, or soft"
+  collection_criterion: "Things that are fluffy, fuzzy, or soft"
   collection_count: 3
   mission_metaphor: "You are a Fluffy Expedition Explorer!"
   role_title: Fluffy Expedition Explorer
   synthesis_type: naming_story
   stuck_hint: "Would you like to feel things nearby? Something soft might be waiting for you!"
   naming_prompt: "What would you name this fluffy friend?"
-  detail_question_template: "Touch it gently — how does it feel?"
+  detail_question_template: "I wonder how it feels..."
   sorting_criterion: ""
 
 story_scaffold:

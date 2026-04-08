@@ -27,7 +27,7 @@ steps_summary:
   - "Earn the Safety Inspector badge!"
 creative_slots:
   observation_angle: function
-  collection_criterion: Find things in the neighborhood that help keep people safe (warn, protect, or guide)
+  collection_criterion: Things in the neighborhood that help keep people safe (warn, protect, or guide)
   collection_count: 3
   mission_metaphor: You are a Safety Inspector on a mission to find safety helpers!
   role_title: Safety Inspector

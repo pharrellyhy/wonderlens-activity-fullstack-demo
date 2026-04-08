@@ -1,5 +1,4 @@
 import BASE from '../utils/basePath';
-import { PhotoFrameIcon } from '../icons';
 
 export default function PhotoRecallGrid({ animation, sessionState }) {
   const collectedIds = sessionState?.collected_photos || [];

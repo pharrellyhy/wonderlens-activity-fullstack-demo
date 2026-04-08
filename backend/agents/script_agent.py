@@ -641,7 +641,9 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
     if isinstance(goal_source, RoundInstruction):
         lines.append(f"Scenario: {goal_source.scenario}")
         if goal_source.acceptable_themes:
-            lines.append(f"Acceptable themes: {', '.join(goal_source.acceptable_themes)}")
+            lines.append(
+                f"Theme examples (for inspiration — any on-topic answer is valid): {', '.join(goal_source.acceptable_themes)}"
+            )
         if goal_source.escalation_note:
             lines.append(f"Escalation: {goal_source.escalation_note}")
 

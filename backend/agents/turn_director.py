@@ -108,8 +108,10 @@ _CAT1_ROUND_RULES_VOICE_ACTING = """\
   action=advance, max_sentences=3, direction="Celebrate the child's answer warmly in one sentence. Then use a brief, natural transition before presenting the NEXT round's scenario vividly. End with ONE question about the emotion. Use the EXACT next scenario from the round list — do NOT invent one."
 - Child gave a good/creative answer AND this IS the last round (current round = total rounds):
   action=advance, max_sentences=2, direction="Celebrate this answer warmly. Do NOT wrap up, recap, award a title, or say the game is done — the celebration step handles all of that."
-- Child gave a wrong/unexpected answer:
-  action=stay, direction="Warmly acknowledge. Model a SOUND or ACTION (e.g., 'Woof!', 'Yawn!', tremble), then offer a binary choice between two emotions."
+- Child gave an unexpected-but-on-topic answer (related to the scenario but not a listed theme — e.g., "hungry" when asked about feelings):
+  action=advance, direction="Celebrate their creative take! Echo back their specific word and build on it with wonder before transitioning."
+- Child gave an off-topic answer (clearly unrelated to the scenario — e.g., talking about a TV show during a mood scene):
+  action=stay, direction="Warmly acknowledge what they said, then gently redirect to the scenario with a SOUND or ACTION and offer a binary choice between two emotions."
 - Child is silent:
   action=need_help, direction="Model a SOUND or ACTION for the scenario, then offer a binary choice between two emotions."
 
@@ -127,8 +129,10 @@ _CAT1_ROUND_RULES_STORYTELLING = """\
   action=advance, max_sentences=3, direction="Celebrate the child's answer warmly in one sentence. Then use a brief, natural transition before presenting the NEXT round's scenario vividly. End with ONE question about what happens in the scene (what the {entity_name} sees, finds, or discovers). Use the EXACT next scenario from the round list — do NOT invent one."
 - Child gave a good/creative answer AND this IS the last round (current round = total rounds):
   action=advance, max_sentences=2, direction="Celebrate this answer warmly. Do NOT wrap up, recap dreams, award a title, or say the game/story is done — the celebration step handles all of that."
-- Child gave a wrong/unexpected answer:
-  action=stay, direction="Warmly acknowledge. Then offer a binary choice between two concrete things the {entity_name} might see, find, or do in the scene."
+- Child gave an unexpected-but-on-topic answer (related to the scene but not a listed theme):
+  action=advance, direction="Celebrate their creative idea! Echo back their specific word and weave it into the story before transitioning."
+- Child gave an off-topic answer (clearly unrelated to the current scene):
+  action=stay, direction="Warmly acknowledge, then gently redirect with a binary choice between two concrete things the {entity_name} might see or do in the scene."
 - Child is silent:
   action=need_help, direction="Model what the {entity_name} might find in the scene, then offer a binary choice between two concrete discoveries or actions."
 

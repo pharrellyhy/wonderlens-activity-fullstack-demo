@@ -1,6 +1,100 @@
 # Session Handoff
 
-Last updated: 2026-03-31
+Last updated: 2026-04-04
+
+---
+
+## Review Follow-Up: Production Simplification Inside turn_handling/
+
+**Problem**: After stabilizing the decomposition test surface, the production `backend/turn_handling/` package still had a couple of extraction-era duplications that made the code noisier than necessary. In `invitation.py`, the “generate a re-invite and return it” path was duplicated for both first-decline and substantive/off-topic cases. In `rounds.py`, the deterministic Cat5 photo-prompt return block appeared twice with the same append/result wiring. These were not correctness bugs, but they were exactly the kind of low-signal repetition that makes later changes riskier.
+
+**Solution**: Kept behavior unchanged and simplified only the duplicated local paths. `invitation.py` now uses one local helper for the shared re-invite generation/result flow, and `rounds.py` now uses one local helper for deterministic collection photo-prompt responses. No branching rules, state transitions, or response semantics changed.
+
+**Edits**:
+- `backend/turn_handling/invitation.py` — extracted `_generate_reinvite_result()` to collapse the duplicated non-terminal STEP_2 re-invite path
+- `backend/turn_handling/rounds.py` — extracted `_photo_prompt_result()` to collapse the duplicated deterministic Cat5 photo-phase response path
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `backend/turn_handling/core.py`, `backend/turn_handling/collection.py`, `backend/turn_handling/synthesis.py`, `backend/turn_handling/directive.py` — reviewed again and left unchanged in this pass
+- State-machine behavior, turn advancement order, and deterministic acceptance/photo prompt content — unchanged
+- Test fixtures from the previous review follow-up — kept as-is
+- Frontend code — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py -q` — PASS (`77 passed`)
+- `uv run pytest tests/test_turn_handler.py tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py tests/test_api.py tests/test_server_visual.py -q` — PASS (`116 passed`)
+- `uv run ruff check backend/turn_handling/invitation.py backend/turn_handling/rounds.py tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py` — PASS
+- `uv run ruff format --check backend/turn_handling/invitation.py backend/turn_handling/rounds.py tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py` — PASS
+
+---
+
+## Review Follow-Up: Stabilize Legacy turn_handling Tests
+
+**Problem**: Picking up the `turn_handler.py` decomposition work showed that the newly updated legacy-path tests no longer matched the repo's runtime defaults. `backend/config.yaml` currently enables `turn_director_enabled`, so focused tests that were meant to exercise the classic `turn_handling.core.resolve_turn()` path were accidentally entering the directive path, making real Turn Director calls and even trying to log to the demo DB. Two other test expectations had also drifted: the synthesis-failure regression patched the wrong `get_settings()` function after the module split, and the Step 2 acceptance API/visual tests still mocked `ScriptAgent.generate_turn()` even though invitation acceptance now uses deterministic celebration templates instead of the speaker path.
+
+**Solution**: Kept production turn-handling code unchanged and fixed the review surface instead. The touched legacy tests now explicitly disable `turn_director_enabled` in their local fixtures so they exercise the decomposed classic path they are written for. I also updated the synthesis regression to patch `turn_handling.generation.get_settings()`, aligned the Step 2 acceptance API assertion with deterministic `_ACCEPTANCE_CELEBRATIONS`, removed no-op `generate_turn()` mocks from the visual-frame acceptance tests, and fixed the stale `turn_handler` wording in `scripts/scoring.py`.
+
+**Edits**:
+- `tests/test_turn_handler.py` — added an autouse legacy-path settings stub (`turn_director_enabled=False`) and corrected the synthesis classifier-failure patch target to `turn_handling.generation.get_settings`
+- `tests/test_api.py` — disabled Turn Director in the temp-client fixture; aligned the invitation-acceptance assertion with `_ACCEPTANCE_CELEBRATIONS` instead of an unused speaker mock
+- `tests/test_server_visual.py` — disabled Turn Director in the temp-client fixture and removed unused `ScriptAgent.generate_turn()` mocks from Step 2 acceptance visual tests
+- `scripts/scoring.py` — updated the stale comment to refer to `turn_handling` validators
+- `HANDOFF.md` — added this review follow-up entry
+
+**NOT Changed**:
+- `backend/turn_handling/` production modules — reviewed and left unchanged in this follow-up
+- `backend/server.py` import changes — reviewed and kept as-is
+- `backend/config.yaml` — still enables Turn Director for normal runtime; the isolation is test-scoped only
+- Frontend code — unchanged
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py tests/test_api.py tests/test_server_visual.py -q` — PASS (`116 passed`)
+- `uv run ruff check backend/turn_handling backend/server.py scripts/scoring.py tests/test_turn_handler.py tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py tests/test_api.py tests/test_server_visual.py` — PASS
+- `uv run ruff format --check tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py scripts/scoring.py` — PASS
+
+---
+
+## Decompose turn_handler.py into turn_handling/ package
+
+**Problem**: `backend/turn_handler.py` was 2,936 lines with a 619-line god-method (`resolve_turn`) containing 60+ branches and 29 return paths. Debugging any single code path required reading the entire function and mentally filtering out irrelevant branches.
+
+**Solution**: Replaced the monolithic file with a `backend/turn_handling/` package of 11 focused modules. Pure refactoring — no behavioral changes. Each module maps to a debuggable concern (e.g., Cat5 collection bugs → open `collection.py` at ~180 lines).
+
+**Edits**:
+- `backend/turn_handler.py` — DELETED (replaced by package)
+- `backend/turn_handling/__init__.py` — NEW: Re-exports public API + backward-compatible internal symbols
+- `backend/turn_handling/types.py` — NEW: TurnInput, TurnResult, GenerationDebugInfo dataclasses (~40 lines)
+- `backend/turn_handling/helpers.py` — NEW: Predicates, state mutation, response builders, constants (~370 lines)
+- `backend/turn_handling/generation.py` — NEW: LLM generation retry, validation, intent classification (~550 lines)
+- `backend/turn_handling/invitation.py` — NEW: STEP_2 invitation routing (~130 lines)
+- `backend/turn_handling/collection.py` — NEW: Cat5 photo validation, detail phase (~240 lines)
+- `backend/turn_handling/rounds.py` — NEW: Round generation, deferred advance, guardrails (~240 lines)
+- `backend/turn_handling/synthesis.py` — NEW: Synthesis phases (invite/evaluate/improve/generate) (~300 lines)
+- `backend/turn_handling/directive.py` — NEW: Turn Director feature-flagged bypass (~960 lines)
+- `backend/turn_handling/debug.py` — NEW: Debug payload, step flow, phase timelines (~190 lines)
+- `backend/turn_handling/core.py` — NEW: Slim resolve_turn dispatcher (~290 lines)
+- `backend/server.py` — Updated imports: `turn_handler` → `turn_handling`
+- `tests/test_turn_handler.py` — Updated imports + monkeypatch targets
+- `tests/test_debug_payload.py` — Updated imports
+- `tests/test_intent_classifier.py` — Updated imports + patch targets
+- `tests/test_deep_link.py` — Updated imports
+- `tests/test_api.py` — Updated patch targets
+- `tests/test_server_visual.py` — Updated patch targets
+- `scripts/scoring.py` — Updated imports
+
+**NOT Changed**:
+- `backend/state_machine.py` — Step transition logic stays where it is
+- `backend/agents/script_agent.py` — Called by generation.py but not modified
+- `backend/schemas/` — No schema changes
+- Frontend — Backend API contract is identical
+- Behavioral semantics — Same branches, same order, same outputs
+
+**Verification**:
+- `uv run pytest tests/test_turn_handler.py` — 18 failed / 21 passed (identical to pre-refactor baseline on main)
+- `uv run pytest tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py` — 39/39 passed
+- `uv run ruff check backend/turn_handling/` — all clean
+- `uv run ruff format --check backend/turn_handling/` — all formatted
 
 ---
 
@@ -218,161 +312,5 @@ uv run ruff format --check .  # All formatted
 - `uv run pytest tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py -q` — PASS (`114 passed, 1 skipped`)
 - `uv run ruff check backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
 - `uv run ruff format --check backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
-
----
-
-## Fix: Synthesis Phase Filtering, Item Suggestion Regex, and Pre-Existing Test Failures
-
-**Problem**: Session logging (session `a6425e09`, T2 fluffy_expedition_dandelion) showed three issues: (1) The story synthesis loop never produced an actual story — the LLM saw all three phase sections (INVITE, IMPROVE, GENERATE) in the prompt simultaneously and kept following the INVITE pattern even when `synthesis_phase` was set to `"generate"`, so turns 14-16 were all questions instead of a 12-14 sentence bedtime story. (2) The item suggestion regex (`_ITEM_SUGGESTION_RE`) only caught verbs like `find|look for|grab` but missed `touch|peek|try|feel`, allowing "Try touching a cozy blanket or a fuzzy rug nearby" to slip through validation. (3) Silence during synthesis was classified as "unrelated" via an LLM call, triggering 2 re-invites before the AI would generate — a poor UX for a silent child. Additionally, 11 pre-existing test failures from the merged `feat/opus-tts` and `feat/synthesis` branches needed fixing.
-
-**Solution**: Three code fixes plus test alignment:
-- Script agent now strips inactive phase sections from synthesis instructions before sending to the LLM, so only the active phase (INVITE, IMPROVE, or GENERATE) is visible
-- Expanded the item suggestion regex with more verbs (`touch|touching|try|feel|peek|check|reach for`) and nouns (`rug|carpet|towel|cloth|cushion|teddy|doll|stuffed`)
-- Silence during synthesis evaluate/improve phases now skips classification and goes straight to AI story generation
-- Fixed 11 pre-existing test failures: Cat5 widget assertions updated from `photo_display`/`character_display`/`progress_tracker` to `explorer_map`, synthesis tests now mock `_classify_story_response` and set `synthesis_phase="evaluate"`, visual agent widget count updated from 5 to 6, entity registry synthesis fragment test updated for unified `__story_generation.md`
-- Also fixed Cat1 `round_scenarios` display bug in `entity_registry.py` — summary was showing all tier scenarios instead of slicing to `play_rounds`
-
-**Edits**:
-- `backend/agents/script_agent.py` — added `_PHASE_SECTION_RE` regex and `_filter_synthesis_phase()` function; called in `_load_step_instructions()` to strip inactive phase sections before template variable substitution
-- `backend/turn_handler.py` — expanded `_ITEM_SUGGESTION_RE` verb/noun lists; added early silence handling in `_resolve_synthesis_turn()` evaluate and improve phases to skip classification and go straight to AI story generation
-- `backend/entity_registry.py` — sliced `round_scenarios` to `play_rounds` in Cat1 game summary so frontend shows correct tier-specific round count
-- `tests/test_entity_registry.py` — updated `test_cat5_fragments_exist_for_registered_synthesis_types` for unified `__story_generation.md`; renamed `test_cat5_synthesis_uses_naming_story_fragment` to `test_cat5_synthesis_uses_story_generation_fragment` with updated assertions and `synthesis_phase="generate"`
-- `tests/test_state_machine.py` — updated Cat5 visual frame tests to expect `explorer_map` widget
-- `tests/test_turn_handler.py` — added `StoryClassification` import + `patch`; synthesis tests now set `synthesis_phase="evaluate"` and mock `_classify_story_response`; widget assertions updated to `explorer_map`; renamed `test_maybe_record_generated_name_skips_comparison_chart` to `test_maybe_record_generated_name_records_for_all_synthesis_types`
-- `tests/test_visual_agent.py` — updated `ALLOWED_WIDGETS` count from 5 to 6
-
-**NOT Changed**:
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — markdown structure unchanged; phase filtering is done in code
-- `backend/skills/step_instructions/cat5_step4_synthesis__story_generation.md` — story generation prompt unchanged
-- `backend/skills/speaker_system.md` — reviewed, no changes needed
-- Frontend code — no changes
-- `backend/tests/test_ai_quality.py` — integration tests that require a running server; 19 failures are all `502 Bad Gateway` (server not running), not code issues
-
-**Verification**:
-- `uv run pytest tests/ backend/tests/ --ignore=backend/tests/test_ai_quality.py -q` — PASS (354 passed, 12 skipped)
-- `uv run ruff check backend/agents/script_agent.py backend/turn_handler.py backend/entity_registry.py` — PASS
-- `uv run ruff format --check backend/agents/script_agent.py backend/turn_handler.py backend/entity_registry.py` — PASS
-- Phase filter unit test: verified INVITE-only, IMPROVE-only, GENERATE-only output from `_filter_synthesis_phase()`
-
----
-
-## Review Follow-Up: Streaming Opus Cleanup + Coverage Alignment
-
-**Problem**: Reviewing the in-progress `feat/opus-tts` worktree against `docs/plans/2026-03-27-streaming-ogg-opus.md` surfaced three concrete issues. First, the new incremental OGG encoder in `backend/tts.py` was repeatedly `np.concatenate()`-ing growing PCM arrays and duplicated its OGG stream setup between batch and streaming paths, which was heavier and harder to follow than necessary. Second, the frontend threaded `pcmSize` through the `/api/turn-speak` path even though that binary protocol never actually provides `pcm_size` in its JSON header, so the extra state was dead and misleading. Third, local API/TTS coverage had drifted: `tests/test_api.py` still expected the old Cat 5 `photo_display` detail frame, and there was no endpoint-level test for the new streaming `GET /api/tts` contract.
-
-**Solution**: Kept the new OGG/Opus architecture, but simplified the touched paths and tightened local coverage around the real contract. The backend now uses a small shared OGG stream factory and a byte-buffered streaming encoder instead of repeated numpy concatenation. The frontend no longer carries the unused `pcmSize` field through the `turn-speak` playback path, and stopping TTS now also clears the audio indicator state. I also updated the stale Cat 5 API assertion to the current `explorer_map` behavior and added focused coverage for the streaming `GET /api/tts` endpoint.
-
-**Edits**:
-- `backend/tts.py` — added a shared `_open_ogg_opus_output()` helper and replaced the streaming encoder’s repeated `np.concatenate()` path with byte-buffer accumulation and fixed-size frame extraction
-- `backend/server.py` — updated the `/api/turn-speak` docstring/comments to match the current OGG/Opus binary protocol wording
-- `frontend/src/utils/api.js` — removed dead `pcmSize` return data from `sendTurnSpeak()` and deleted the unused `synthesizeSpeechStream()` helper
-- `frontend/src/hooks/useConversation.js` — stopped storing nonexistent `pcmSize` metadata with pending `turn-speak` audio
-- `frontend/src/hooks/useSessionOrchestration.js` — simplified `speakFromStream()` calls to pass only the audio stream
-- `frontend/src/hooks/useTTS.js` — cleared `audioInfo` on stop and removed the unused `pcmSize` parameter from the streamed-turn playback path
-- `tests/test_api.py` — updated the Cat 5 detail-frame expectation to the current `explorer_map` contract and added a focused test for `GET /api/tts` streaming OGG output
-- `tests/test_tts_encoding.py` — moved imports to the module top so the new encoder tests comply with repo import rules
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- The public TTS endpoint split itself — `POST /api/tts` still returns a complete encoded file with `X-PCM-Size`, and `GET /api/tts` still serves the streaming Chrome-first playback path
-- Turn resolution and Script Agent logic — unchanged in this review follow-up
-- Frontend conversation/session flow outside the TTS metadata cleanup — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_tts_encoding.py tests/test_api.py -q` — PASS (`35 passed`)
-- `uv run ruff check backend/server.py backend/tts.py tests/test_api.py tests/test_tts_encoding.py` — PASS
-- `uv run ruff format --check backend/server.py backend/tts.py tests/test_api.py tests/test_tts_encoding.py` — PASS
-- `cd frontend && npx eslint src/App.jsx src/hooks/useConversation.js src/hooks/useSessionOrchestration.js src/hooks/useTTS.js src/utils/api.js` — PASS
-
----
-
-## Switch TTS Output from PCM/WAV to OGG/Opus via PyAV
-
-**Problem**: The TTS pipeline streamed raw PCM 16-bit mono at 24kHz (~384 kbps) to the frontend, which manually wrapped it in WAV headers. This was unnecessarily large for speech audio and added frontend complexity.
-
-**Solution**: Added OGG/Opus encoding on the backend using PyAV. Collected PCM from Gemini TTS is batch-encoded to OGG/Opus at 32kbps (~12x compression). The `/api/tts` endpoint now returns a complete `audio/ogg` response (or `audio/wav` on encoding fallback) instead of streaming raw PCM. The `/api/turn-speak` endpoint yields OGG/Opus bytes in the binary protocol. The frontend was simplified — removed `pcmToWavBlob()`/`writeString()` WAV construction, removed `sampleRate` threading, and browsers natively decode OGG/Opus. Design plan in `docs/plans/2026-03-27-streaming-ogg-opus.md`.
-
-**Edits**:
-- `pyproject.toml` — added `av>=13.0.0` and `numpy>=1.26.0` dependencies
-- `backend/tts.py` — added `import av, numpy`; added `OPUS_BITRATE_BPS` constant; added `_pcm_to_ogg_opus()` encoder and `synthesize_speech_ogg_async()` that collects PCM chunks and encodes to OGG/Opus with WAV fallback
-- `backend/server.py` — `/api/tts` now returns `Response` with `audio/ogg` content type (or `audio/wav` fallback) via `synthesize_speech_ogg_async()`; `/api/turn-speak` yields OGG/Opus bytes; removed `X-Sample-Rate` header and `SAMPLE_RATE` import; removed `X-Sample-Rate` from CORS exposed headers
-- `frontend/src/hooks/useTTS.js` — deleted `pcmToWavBlob()`/`writeString()`, renamed `playWavBlob` → `playAudioBlob`, simplified `playFromStream` to collect OGG chunks directly, simplified `fetchAndPlayAudio` to use server `Content-Type`, removed `sampleRate` parameter from `speakFromStream`
-- `frontend/src/utils/api.js` — removed `sampleRate` from `sendTurnSpeak()` and `synthesizeSpeechStream()` returns; updated JSDoc
-- `frontend/src/hooks/useConversation.js` — dropped `sampleRate` from destructuring and `pendingAudioRef`
-- `frontend/src/hooks/useSessionOrchestration.js` — dropped `sampleRate` from `speakFromStream` call
-- `tests/test_api.py` — updated TTS endpoint tests to patch `synthesize_speech_ogg_async`, assert `audio/ogg` content type, no `x-sample-rate` header; updated turn-speak mocks from async generators to async functions returning bytes
-- `tests/test_tts_encoding.py` — **NEW**: 4 encoder unit tests (OggS magic, compression ratio, empty input, longer audio)
-
-**NOT Changed**:
-- `backend/tts.py` existing functions (`synthesize_speech_stream_async`, `synthesize_speech`, `_pcm_to_wav`) — preserved as internal/fallback
-- Turn resolution logic, state machine, Script Agent — unchanged
-- Frontend conversation panel, silence timer, SFX — unchanged
-
-**Verification**:
-- `uv run ruff check .` — PASS
-- `uv run ruff format --check .` — PASS
-- `uv run pytest tests/test_tts_encoding.py tests/test_api.py -v` — 31 passed, 1 pre-existing failure
-- `uv run pytest tests/ -m "not e2e"` — 305 passed, 9 pre-existing failures, 0 new failures
-
----
-
-## Review Follow-Up: Keep TurnPlan Strict While Tolerating Planner Omissions
-
-**Problem**: Reviewing the latest two-pass commits (`afdc03c`, `3eed090`, `b86a16b`, `b7c1d97`, `e156bb3`) plus the in-progress follow-up diff showed one concrete schema/testing mismatch. The new `TurnPlan` defaults for `child_said` and `child_emotion` were intentional for planner resilience, but the schema still accepted arbitrary extra keys. That let junk planner JSON like `{"not_a_valid_plan": true}` validate successfully, so `Planner.plan_turn()` would treat malformed output as a valid plan. The local planner/schema tests had also drifted: they still asserted the old planner prompt wording and the old "child fields are required" behavior.
-
-**Solution**: Kept the new planner-resilience defaults, but made the schema strict again by forbidding unknown fields. That preserves the intended fallback behavior for omitted child-summary fields without allowing arbitrary planner output through. I also simplified the affected tests so they assert the current planner contract: phase-aware anti-suggestion rules, injected step instructions, defaulted child-summary fields, and rejection of unexpected planner keys.
-
-**Edits**:
-- `backend/schemas/turn_plan.py` — added `ConfigDict(extra="forbid")` while keeping the new `child_said=""` and `child_emotion="neutral"` defaults
-- `tests/test_planner.py` — updated the planner-prompt assertions to match the current phase-aware prompt rules and verify step instructions are included in planner context
-- `tests/test_turn_plan.py` — replaced outdated "required field" expectations with default-value coverage and added a regression that rejects unexpected planner keys
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/agents/planner.py`, `backend/agents/script_agent.py`, `backend/turn_handler.py`, and the prompt markdown files touched in the latest two-pass commits — reviewed and left unchanged in this follow-up
-- Frontend code — unchanged
-- The broader prompt-variety / `[AUDIO]` cleanup work already in progress — reviewed, not modified here
-
-**Verification**:
-- `uv run pytest tests/test_planner.py tests/test_turn_plan.py tests/test_turn_handler.py -q` — PASS (`64 passed`)
-- `uv run ruff check backend/schemas/turn_plan.py tests/test_planner.py tests/test_turn_plan.py tests/test_turn_handler.py` — PASS
-- `uv run ruff format --check backend/schemas/turn_plan.py tests/test_planner.py tests/test_turn_plan.py tests/test_turn_handler.py` — PASS
-
----
-
-## Prompt Quality: Fix Repetition, [AUDIO] Leak, Two-Pass Disabled
-
-**Problem**: Three quality issues discovered during testing: (1) Cat5 T0 collection Phase A responses all used identical "Touch it gently — is it X or Y?" structure across every round and session, because the few-shot examples all shared the same sentence pattern. (2) Cat5 synthesis stories always followed the same "X floated softly when BUMP — Y bounced right in!" template — the single T0 example was copied verbatim every session. (3) `[AUDIO] sfx: slot_fill_chime` markers in step instructions were copied literally into dialogue text by the LLM, causing the child to hear "slot fill chime" spoken aloud. Additionally, the two-pass (planner + speaker) generation was producing worse quality than single-pass — the planner stripped too much context and the speaker generated bland, empty responses — so it was disabled behind a config flag.
-
-**Solution**: Rewrote all T0 examples with structurally diverse patterns so the LLM has multiple templates to draw from. Added explicit "Do NOT reuse the same structure across sessions" instruction to synthesis prompts. Replaced `[AUDIO] sfx:` prose directives with `Set sfx_cue to "..."` JSON field instructions across 6 step instruction files. Added `_clean_dialogue()` post-processing to strip any leaked `[AUDIO]` markers as a safety net. Added random variety hints to the user prompt for hook/mission/first-collect steps to break identical-prompt repetition. Added `two_pass_enabled` config flag (default `false`) to gate two-pass generation.
-
-**Edits**:
-- `backend/skills/step_instructions/cat5_step3_collect.md` — rewrote T0 Phase A examples with 3 distinct opener styles ("Give it a little poke", "This one looks different!", "Quick, does it..."); replaced `[AUDIO]` directives with `sfx_cue` instructions
-- `backend/skills/step_instructions/cat5_step3_collect__naming_story.md` — matching T0 Phase A variety; updated Phase B examples with diverse confirmation styles
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — replaced single T0 example with 2 structurally different story types (chase adventure, rain surprise); added "vary between" instruction; replaced `[AUDIO]` directives
-- `backend/skills/step_instructions/cat5_step4_synthesis__naming_story.md` — replaced single T0 example with 3 different story structures (chase, weather, hide-and-seek); added explicit variety instruction
-- `backend/skills/step_instructions/cat1_step3_round.md` — replaced `[AUDIO]` directive with `sfx_cue` instruction
-- `backend/skills/step_instructions/cat1_step4_celebrate.md` — replaced `[AUDIO]` directive
-- `backend/skills/step_instructions/cat5_step5_celebrate.md` — replaced `[AUDIO]` directive
-- `backend/skills/step_instructions/cat5_step3_collect__sorting_game.md` — replaced `[AUDIO]` directives
-- `backend/skills/step_instructions/cat5_step3_collect__comparison_chart.md` — replaced `[AUDIO]` directives
-- `backend/agents/script_agent.py` — renamed `_ensure_emotion_tag()` to `_clean_dialogue()` which also strips `[AUDIO]` markers from dialogue; added `_VARIETY_HINTS` list and `_VARIETY_STEPS` set; `_build_user_prompt()` injects a random style hint for hook/mission/first-collect steps; added `import random`
-- `backend/config.py` — added `two_pass_enabled` setting (default `false`)
-- `backend/agents/script_agent.py` — `generate_turn()` and `generate_turn_streaming()` check `two_pass_enabled` flag before attempting planner/speaker path
-- `backend/schemas/turn_plan.py` — made `child_said` and `child_emotion` optional with defaults (prevents Pydantic validation crash when planner omits them)
-- `backend/skills/planner_system.md` — added full JSON output schema; updated T0 rules for phase-aware binary choice; added collection_phase guidance
-
-**NOT Changed**:
-- `backend/turn_handler.py` — turn resolution flow, Phase B guidance loops, validation logic all unchanged in this pass
-- `backend/state_machine.py` — unchanged
-- Frontend code — unchanged (auto-advance timing issue noted but not fixed here)
-- Cat1 step instruction content — unchanged beyond `[AUDIO]` directive replacement
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py -q -k "not (correct_photo_enters_detail or detail_response_advances or final_detail_response or retries_speaker_only or replans_after)"` — 17 passed (5 pre-existing failures excluded)
-- `uv run ruff check backend/ && uv run ruff format --check backend/agents/script_agent.py` — clean
-- Manual: start 3 dandelion sessions — Phase A openers varied each time, no "Touch it gently" repetition
-- Manual: synthesis stories used different adventure types across sessions
-- Manual: no `[AUDIO]` markers in spoken dialogue
 
 ---

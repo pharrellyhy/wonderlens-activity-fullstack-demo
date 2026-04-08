@@ -938,11 +938,14 @@ class ScriptAgent:
         # Include conversation context and step instructions for the speaker
         conversation = _build_conversation_context(state)
 
-        # Skip step instructions when the direction is self-contained.
-        # This includes: (1) advance actions — the response_direction IS the
-        # authoritative instruction, step instructions for the current step add
-        # competing context that confuses the LLM; (2) story generation and
-        # closing directions that conflict with step instruction goals.
+        # The directive's response_direction is the authoritative instruction.
+        # For advance actions, skip step instructions entirely — the direction
+        # IS the complete instruction and step instructions add competing context.
+        # For stay/need_help actions, include step instructions as background
+        # reference (tier rules, scaffolding behavior) but make the directive
+        # take explicit priority to prevent the LLM from following step examples
+        # instead of the directive (e.g., treating a detail response as a
+        # completed naming instead of asking for the name as directed).
         rd_lower = directive.response_direction.lower()
         is_self_contained = (
             directive.action == "advance"
@@ -952,14 +955,13 @@ class ScriptAgent:
         )
 
         if is_self_contained:
-            # For story generation, load the dedicated story generation instructions
-            # which have 5-beat framework, examples, and quality rules.
+            # For story generation, load the dedicated story generation guide
+            # which has 5-beat framework, examples, and quality rules.
             story_instructions = ""
             if "tell a complete" in rd_lower:
                 story_gen_path = _STEP_INSTRUCTIONS_DIR / "cat5_step4_synthesis__story_generation.md"
                 if story_gen_path.exists():
                     raw = story_gen_path.read_text()
-                    # Fill in template variables
                     names_str = ", ".join(state.collected_names) if state.collected_names else ""
                     details_str = "; ".join(state.collected_details) if state.collected_details else ""
                     replacements = {
@@ -976,8 +978,8 @@ class ScriptAgent:
 
             user_prompt = (
                 f"## Conversation History\n{conversation}\n\n"
-                f"IMPORTANT: Follow the Direction in the system prompt exactly. "
-                f"Generate the content described — do NOT ask questions or re-invite. "
+                f"IMPORTANT: Follow the Direction in the system prompt EXACTLY and COMPLETELY. "
+                f"Include ALL parts of the Direction — do not stop early or skip any part. "
                 f"{story_instructions}\n\n"
                 f'Output valid JSON: {{"dialogue": "[{directive.emotion_tag}] Your text here", "tone_marker": "..."}}'
             )
@@ -985,8 +987,13 @@ class ScriptAgent:
             step_instructions = _load_step_instructions(state)
             user_prompt = (
                 f"## Conversation History\n{conversation}\n\n"
-                f"## Step Instructions\n{step_instructions}\n\n"
-                f"Generate the dialogue for this direction. "
+                f"## Step Instructions (background reference for tone and tier rules)\n"
+                f"{step_instructions}\n\n"
+                f"## OVERRIDE — Follow This Direction Exactly\n"
+                f"The Direction in the system prompt takes ABSOLUTE PRIORITY over the "
+                f"step instructions above. Do exactly what the Direction says — do NOT "
+                f"skip ahead, do NOT follow examples from step instructions that show a "
+                f"different flow. Generate ONLY the response described in the Direction.\n\n"
                 f'Output valid JSON: {{"dialogue": "[{directive.emotion_tag}] Your text here", "tone_marker": "..."}}'
             )
 

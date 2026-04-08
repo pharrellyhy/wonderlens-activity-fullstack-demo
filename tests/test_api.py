@@ -17,6 +17,7 @@ from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from schemas.session_state import SessionStateModel
 from schemas.turn_response import TurnResponse
 from server import app
+from turn_handling.helpers import _ACCEPTANCE_CELEBRATIONS
 
 
 @pytest.fixture(autouse=True)
@@ -35,12 +36,15 @@ def client(tmp_path: Path) -> TestClient:
     get_settings.cache_clear()
     settings = get_settings()
     original_db_path = settings.db_path
+    original_turn_director_enabled = settings.turn_director_enabled
     settings.db_path = str(tmp_path / "test.db")
+    settings.turn_director_enabled = False
 
     with TestClient(app) as c:
         yield c
 
     settings.db_path = original_db_path
+    settings.turn_director_enabled = original_turn_director_enabled
     get_settings.cache_clear()
 
 
@@ -376,21 +380,9 @@ class TestTurnByTurnEndpoint:
 
         _sessions["test-sess"] = _step_2_state()
 
-        celebration_turn = TurnResponse(
-            dialogue="[playful] Yay!",
-            tone_marker="excited",
-            screen_widget="character_display",
-            screen_widget_params={"description": "Rules"},
-            screen_animation="appear",
-            sfx_cue="wonder_chime",
-        )
-
         confirm_intent = ChildIntentClassification(intent="confirm")
 
-        with (
-            patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=celebration_turn)),
-            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=confirm_intent)),
-        ):
+        with patch("turn_handling.core._classify_child_intent", new=AsyncMock(return_value=confirm_intent)):
             response = client.post(
                 "/api/turn",
                 json={"session_id": "test-sess", "text": "yes!", "is_silent": False},
@@ -401,7 +393,7 @@ class TestTurnByTurnEndpoint:
         assert data["session_state"]["current_step"] == "STEP_3_ROUND_1"
         assert data["session_state"]["current_round"] == 1
         assert data["turn"]["response_type"] == "round"
-        assert data["turn"]["dialogue"] == "[playful] Yay!"
+        assert data["turn"]["dialogue"] in _ACCEPTANCE_CELEBRATIONS
         assert data["session_state"]["invitation_decline_count"] == 0
 
     def test_turn_stays_on_step_two_after_first_decline(self, client: TestClient) -> None:
@@ -422,7 +414,7 @@ class TestTurnByTurnEndpoint:
 
         with (
             patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=reinvitation_turn)),
-            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
+            patch("turn_handling.core._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
         ):
             response = client.post(
                 "/api/turn",
@@ -456,7 +448,7 @@ class TestTurnByTurnEndpoint:
 
         with (
             patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=exit_turn)),
-            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
+            patch("turn_handling.core._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
         ):
             response = client.post(
                 "/api/turn",
@@ -772,7 +764,7 @@ class TestTurnSpeakEndpoint:
 
         with (
             patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=exit_turn)),
-            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
+            patch("turn_handling.core._classify_child_intent", new=AsyncMock(return_value=decline_intent)),
             patch("server.synthesize_speech_ogg_stream_async", new=_fake_tts_ogg_stream),
         ):
             response = client.post(
@@ -1072,7 +1064,7 @@ class TestTurnLogging:
 
         with (
             patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=turn)),
-            patch("turn_handler._classify_child_intent", new=AsyncMock(return_value=classification)),
+            patch("turn_handling.core._classify_child_intent", new=AsyncMock(return_value=classification)),
         ):
             resp = client.post(
                 "/api/turn",

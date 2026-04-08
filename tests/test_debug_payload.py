@@ -14,7 +14,7 @@ if str(BACKEND_DIR) not in sys.path:
 from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from schemas.session_state import SessionStateModel
 from schemas.turn_response import TurnResponse
-from turn_handler import (
+from turn_handling import (
     GenerationDebugInfo,
     _build_debug_payload,
     _build_phase_timeline,

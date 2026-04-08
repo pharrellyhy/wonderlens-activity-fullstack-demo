@@ -7,7 +7,7 @@ import server
 from entity_registry import lookup_by_entity_name
 from fastapi.testclient import TestClient
 from schemas.turn_response import TurnResponse
-from turn_handler import GenerationDebugInfo
+from turn_handling import GenerationDebugInfo
 
 
 @pytest.fixture()

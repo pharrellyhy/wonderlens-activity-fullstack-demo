@@ -46,7 +46,7 @@ try:
     from .state_machine import get_screen_frame
     from .stt import transcribe_audio
     from .tts import synthesize_speech_ogg_async, synthesize_speech_ogg_stream_async
-    from .turn_handler import (
+    from .turn_handling import (
         TurnInput,
         _generate_with_retry,
         _should_auto_advance,
@@ -80,7 +80,7 @@ except ImportError:
     from state_machine import get_screen_frame
     from stt import transcribe_audio
     from tts import synthesize_speech_ogg_async, synthesize_speech_ogg_stream_async
-    from turn_handler import (
+    from turn_handling import (
         TurnInput,
         _generate_with_retry,
         _should_auto_advance,

@@ -14,7 +14,7 @@ if str(BACKEND_DIR) not in sys.path:
 from schemas.child_intent import ChildIntentClassification
 from schemas.creative_slots import Cat5CreativeSlots
 from schemas.session_state import SessionStateModel
-from turn_handler import _classify_child_intent
+from turn_handling import _classify_child_intent
 
 
 class TestChildIntentClassification:
@@ -80,7 +80,7 @@ class TestClassifyChildIntent:
     @pytest.mark.asyncio
     async def test_confirm_intent(self) -> None:
         state = _make_cat5_state(current_step="STEP_2_MISSION")
-        with patch("turn_handler.AsyncOpenAI") as mock_client_cls:
+        with patch("turn_handling.generation.AsyncOpenAI") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(return_value=_mock_llm_response('{"intent": "confirm"}'))
@@ -91,7 +91,7 @@ class TestClassifyChildIntent:
     @pytest.mark.asyncio
     async def test_decline_intent(self) -> None:
         state = _make_cat5_state(current_step="STEP_2_MISSION")
-        with patch("turn_handler.AsyncOpenAI") as mock_client_cls:
+        with patch("turn_handling.generation.AsyncOpenAI") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(return_value=_mock_llm_response('{"intent": "decline"}'))
@@ -101,7 +101,7 @@ class TestClassifyChildIntent:
     @pytest.mark.asyncio
     async def test_substantive_intent(self) -> None:
         state = _make_cat5_state(current_step="STEP_3_COLLECT_1")
-        with patch("turn_handler.AsyncOpenAI") as mock_client_cls:
+        with patch("turn_handling.generation.AsyncOpenAI") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(
@@ -116,7 +116,7 @@ class TestClassifyChildIntent:
             current_step="STEP_4_SYNTHESIS",
             collected_names=["Mr. Fluff", "Petal"],
         )
-        with patch("turn_handler.AsyncOpenAI") as mock_client_cls:
+        with patch("turn_handling.generation.AsyncOpenAI") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(
@@ -135,7 +135,7 @@ class TestClassifyChildIntent:
             current_step="STEP_4_SYNTHESIS",
             collected_names=["Mr. Fluff"],
         )
-        with patch("turn_handler.AsyncOpenAI") as mock_client_cls:
+        with patch("turn_handling.generation.AsyncOpenAI") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(return_value=_mock_llm_response('{"intent": "confirm"}'))
@@ -146,7 +146,7 @@ class TestClassifyChildIntent:
     @pytest.mark.asyncio
     async def test_fallback_on_llm_failure(self) -> None:
         state = _make_cat5_state(current_step="STEP_3_COLLECT_1")
-        with patch("turn_handler.AsyncOpenAI") as mock_client_cls:
+        with patch("turn_handling.generation.AsyncOpenAI") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(side_effect=Exception("LLM down"))

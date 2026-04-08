@@ -8,12 +8,12 @@ import re
 import sys
 from pathlib import Path
 
-# Add backend to path so we can import turn_handler validators
+# Add backend to path so we can import turn_handling validators
 _BACKEND_DIR = str(Path(__file__).resolve().parents[1] / "backend")
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
 
-from turn_handler import (
+from turn_handling import (
     _ITEM_SUGGESTION_RE,
     _ends_with_open_question,
     _has_completion_language,

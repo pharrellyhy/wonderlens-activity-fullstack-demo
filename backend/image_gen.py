@@ -51,7 +51,7 @@ def _get_client() -> genai.Client:
 def _extract_image_bytes(response: types.GenerateContentResponse) -> bytes:
     """Extract PNG image bytes from a Gemini/Imagen response."""
     parts = getattr(response, "parts", None)
-    if parts is None and getattr(response, "candidates", None):
+    if parts is None and response.candidates:
         candidate = response.candidates[0]
         parts = getattr(getattr(candidate, "content", None), "parts", None)
     for part in parts or []:

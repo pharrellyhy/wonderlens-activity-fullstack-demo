@@ -7,6 +7,8 @@ import json
 import random
 import re
 
+from pydantic import ValidationError
+
 try:
     from ..agents.script_agent import ScriptAgent
     from ..image_gen import generate_scene_images
@@ -119,7 +121,7 @@ async def _generate_structured_story(
             scenes=[StoryScene(**s) for s in raw["scenes"]],
             achievement_description=raw.get("achievement_description", ""),
         )
-    except (KeyError, ValueError, json.JSONDecodeError) as exc:
+    except (KeyError, ValueError, json.JSONDecodeError, ValidationError) as exc:
         logger.error("Failed to parse structured story JSON: %s — dialogue: %s", exc, dialogue[:200])
         return None
 
@@ -142,6 +144,7 @@ async def _generate_structured_story(
 def _deliver_scene(state: SessionStateModel, scene_number: int) -> TurnResult:
     """Deliver a pre-generated scene as a deterministic auto-advance turn."""
     story = state.structured_story
+    assert story is not None, "_deliver_scene called without structured_story"
     scene = story.scenes[scene_number - 1]
     is_last = scene_number == len(story.scenes)
 
@@ -356,6 +359,8 @@ async def _resolve_synthesis_turn(
         state.synthesis_story_quality = intent_result.story_quality or "" if intent_result else ""
 
         if intent_result and intent_result.story_quality == "good":
+            # Child's story is strong — AI expands it monolithically (not scene-by-scene).
+            # Structured scene delivery is reserved for AI-generated stories.
             turn_response, gen_debug = await _generate_with_retry(script_agent, state)
             return _synthesis_result(
                 state,

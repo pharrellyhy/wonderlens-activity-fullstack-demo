@@ -595,12 +595,15 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
     # so the LLM Turn Director at the bottom of the function classifies them —
     # a fixed list can't anticipate every way a child asks the AI to answer.
     _detail_text = child_text.strip().lower().rstrip("!.?") if child_text else ""
-    _is_detail_delegation = bool(
-        re.match(
-            r"^(?:you |can you |could you |will you |would you |please )",
-            _detail_text,
+    _is_detail_delegation = (
+        bool(
+            re.match(
+                r"^(?:you |can you |could you |will you |would you |please )",
+                _detail_text,
+            )
         )
-    ) and len(_detail_text.split()) <= 6
+        and len(_detail_text.split()) <= 6
+    )
     if (
         child_text
         and not turn_input.is_silent

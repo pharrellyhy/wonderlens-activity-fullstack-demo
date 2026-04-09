@@ -6,6 +6,7 @@ from .explorer_map import ExplorerMapCharacter, ExplorerMapState
 from .recipe import ActivityRecipe, InstructionRecipe, RecipeMetadata
 from .session_state import ConversationTurn, SessionStateModel
 from .step_instruction import RoundInstruction, StepGoal, StepInstruction
+from .structured_story import StoryScene, StructuredStory
 from .turn_directive import StoryElement, TurnDirective
 from .turn_plan import TurnPlan
 from .turn_response import CharacterSfxCue, TurnResponse
@@ -32,6 +33,8 @@ __all__ = [
     "StepInstruction",
     "StoryElement",
     "StoryScaffold",
+    "StoryScene",
+    "StructuredStory",
     "TurnDirective",
     "TurnPlan",
     "TurnResponse",

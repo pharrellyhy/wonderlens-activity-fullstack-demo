@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     max_retries: int = int(_yaml_config.get("max_retries", 3))
     db_path: str = str(_yaml_config.get("db_path", "data/demo.db"))
     log_level: str = str(_yaml_config.get("log_level", "INFO"))
+    imagen_model: str = str(_yaml_config.get("imagen_model", "imagen-3.0-generate-002"))
+    imagen_enabled: bool = bool(_yaml_config.get("imagen_enabled", True))
 
 
 @functools.lru_cache(maxsize=1)

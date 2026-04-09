@@ -5,6 +5,9 @@ import CharacterDisplay from '../widgets/CharacterDisplay';
 import PhotoGrid from '../widgets/PhotoGrid';
 import PhotoRecallGrid from '../widgets/PhotoRecallGrid';
 import BadgeAward from '../widgets/BadgeAward';
+import StoryScene from '../widgets/StoryScene';
+import StoryLoading from '../widgets/StoryLoading';
+import AchievementImage from '../widgets/AchievementImage';
 import ExplorerMap from '../canvas/ExplorerMap';
 import AnimationOverlay from '../widgets/AnimationOverlay';
 import SfxIndicator from './SfxIndicator';
@@ -19,6 +22,9 @@ const WIDGET_MAP = {
   photo_grid: PhotoGrid,
   photo_recall_grid: PhotoRecallGrid,
   badge_award: BadgeAward,
+  story_scene: StoryScene,
+  story_loading: StoryLoading,
+  achievement_image: AchievementImage,
   explorer_map: ExplorerMap,
 };
 
@@ -43,6 +49,8 @@ function getFrameKey(screenFrame) {
     screenFrame.widget_params?.photo_id,
     screenFrame.widget_params?.game_phase,
     screenFrame.widget_params?.collected_count,
+    screenFrame.widget_params?.image_data_url?.slice(0, 50),
+    screenFrame.widget_params?.scene_number,
   ].join('|');
 }
 

@@ -321,6 +321,23 @@ def get_screen_frame(
             trigger="on_correct",
         )
 
+    # Cat5 celebrate: use achievement_image widget when structured story has an achievement image
+    if template_type == "cat5" and step == "STEP_5_CELEBRATE":
+        structured = context.get("structured_story")
+        if structured and structured.achievement_image_data_url:
+            role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
+            return ScreenFrame(
+                widget="achievement_image",
+                widget_params={
+                    "image_data_url": structured.achievement_image_data_url,
+                    "title": role_title,
+                    "concepts": key_concepts,
+                },
+                animation="badge_reveal",
+                trigger="on_correct",
+                sfx_cue="badge_awarded",
+            )
+
     # Cat 5: use Explorer's Map for the primary activity flow.
     if template_type == "cat5":
         return _build_explorer_map_frame(step, context, creative_slots, entity, key_concepts)

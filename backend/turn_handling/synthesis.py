@@ -125,11 +125,16 @@ def _loading_result(state: SessionStateModel) -> TurnResult:
     _append_ai_turn(state, turn_response.dialogue)
     state.turn_count += 1
     state.synthesis_phase = "generate"
+    # Emit a debug payload so the loading turn appears in the History tab
+    # at STEP_4_SYNTHESIS with the current synthesis phase.
+    debug = _build_debug_payload(state, None, None, turn_response)
+    debug["source"] = "synthesis_loading"
     return TurnResult(
         turn_response=turn_response,
         screen_frame=screen_frame,
         auto_advance=True,
         response_type=_get_response_type(state.current_step),
+        debug=debug,
     )
 
 
@@ -395,15 +400,15 @@ def _deliver_scene(state: SessionStateModel, scene_number: int) -> TurnResult:
         state.synthesis_phase = f"scene_{scene_number + 1}"
         auto_advance = True
 
-    # Minimal debug payload so scene delivery turns appear in the History tab
-    # (both Cat5 formats — dandelion's 3 scenes and ladybug's 1 — are tracked).
-    debug = {
-        "generation": {
-            "source": "structured_scene_delivery",
-            "scene_number": scene_number,
-            "total_scenes": len(story.scenes),
-            "is_last": is_last,
-        }
+    # Full debug payload with step_flow + phase_timeline so scene delivery
+    # turns show up correctly in the History tab for both Cat5 formats
+    # (dandelion's 3 scenes and ladybug's 1 reveal scene).
+    debug = _build_debug_payload(state, None, None, turn_response)
+    debug["source"] = "structured_scene_delivery"
+    debug["scene"] = {
+        "scene_number": scene_number,
+        "total_scenes": len(story.scenes),
+        "is_last": is_last,
     }
 
     return TurnResult(
@@ -493,11 +498,14 @@ async def _resolve_synthesis_turn(
         turn_response = _synthesis_invite_prompt(state)
         state.synthesis_phase = "evaluate"
         state.synthesis_prompt_count += 1
+        # Emit a debug payload so the invite turn shows in the History tab.
+        invite_debug = _build_debug_payload(state, None, None, turn_response)
+        invite_debug["source"] = "synthesis_invite"
         return _synthesis_result(
             state,
             turn_response,
             advance=False,
-            debug=None,
+            debug=invite_debug,
         )
 
     # Shared helper: generate a story and advance past synthesis.

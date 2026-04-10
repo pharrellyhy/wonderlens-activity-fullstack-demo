@@ -135,25 +135,34 @@ def _phase_timeline_cat1_invitation(state: SessionStateModel) -> list[dict]:
 def _build_debug_payload(
     state: SessionStateModel,
     gen_debug: GenerationDebugInfo | None,
-    script_agent: ScriptAgent,
+    script_agent: ScriptAgent | None = None,
     turn_response: TurnResponse | None = None,
 ) -> dict:
-    """Assemble the debug payload dict for a turn response."""
+    """Assemble the debug payload dict for a turn response.
+
+    script_agent is optional: deterministic turn paths (loading screens,
+    scene delivery, deterministic invites) don't run the ScriptAgent but
+    still need to emit a debug payload so the turn shows up in the History
+    tab with correct step_flow / phase_timeline / synthesis state.
+    """
     debug: dict = {}
 
     if gen_debug:
         debug["generation"] = asdict(gen_debug)
 
-    plan = script_agent.last_plan
-    if plan:
-        debug["planner"] = {
-            "do_not_suggest_items": plan.do_not_suggest_items,
-            "offer_binary_choice": plan.offer_binary_choice,
-            "must_model_first": plan.must_model_first,
-            "do_not_ask_question": plan.do_not_ask_question,
-            "emotion_tag": plan.emotion_tag,
-            "question_type": plan.question_type,
-        }
+    if script_agent is not None:
+        plan = script_agent.last_plan
+        if plan:
+            debug["planner"] = {
+                "do_not_suggest_items": plan.do_not_suggest_items,
+                "offer_binary_choice": plan.offer_binary_choice,
+                "must_model_first": plan.must_model_first,
+                "do_not_ask_question": plan.do_not_ask_question,
+                "emotion_tag": plan.emotion_tag,
+                "question_type": plan.question_type,
+            }
+        if script_agent.last_best_of_n:
+            debug["best_of_n"] = script_agent.last_best_of_n
 
     if turn_response:
         debug["llm_output"] = {
@@ -174,9 +183,6 @@ def _build_debug_payload(
             "unrelated": state.synthesis_unrelated,
             "child_story": state.synthesis_child_story[:100] if state.synthesis_child_story else None,
         }
-
-    if script_agent.last_best_of_n:
-        debug["best_of_n"] = script_agent.last_best_of_n
 
     debug["retry_stats"] = get_retry_stats()
     debug["step_flow"] = _build_step_flow(state)

@@ -177,7 +177,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
         )}
       </div>
 
-      {/* Animation label + SFX + emotion/scenario indicators */}
+      {/* Animation label + scene progress dots + SFX indicators */}
       <div className="flex items-center justify-between px-2.5 py-1 max-[380px]:px-2 max-[380px]:py-0.5 gap-1.5 max-[380px]:gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
           {screenFrame.animation_label && (
@@ -195,6 +195,23 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
             </>
           )}
         </div>
+        {/* Scene progress dots for story_scene widget — rendered here (not
+         * inside StoryScene) so they stay visible even when the image fills
+         * the widget area in stage mode. */}
+        {screenFrame.widget === 'story_scene' && params.total_scenes > 0 && (
+          <div className="flex justify-center gap-1.5 shrink-0" aria-label="Scene progress">
+            {Array.from({ length: params.total_scenes }, (_, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                  i + 1 <= params.scene_number
+                    ? 'bg-[var(--color-sunflower)]'
+                    : 'bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        )}
         <SfxIndicator key={`sfx-${frameKey}`} sfxCue={screenFrame.sfx_cue} sfxLabel={screenFrame.sfx_label} />
       </div>
     </div>

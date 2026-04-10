@@ -241,10 +241,12 @@ async def generate_scene_images(
             logger.error("Scene %d image generation failed", i + 1)
             scene_urls.append(None)
 
-    # Achievement image: use the anchor + the last scene as references
+    # Achievement image: use the anchor + the last scene as references.
+    # 16:9 matches the landscape device panel — a 1:1 square would leave
+    # large empty bands on the sides after object-contain scaling.
     achievement_bytes = await generate_image(
         achievement_description,
-        aspect_ratio="1:1",
+        aspect_ratio="16:9",
         reference=previous_bytes,
         anchor=anchor_bytes,
     )

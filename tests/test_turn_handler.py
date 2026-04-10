@@ -1519,6 +1519,12 @@ async def test_cat5_celebrate_handler_returns_achievement_image_frame() -> None:
     )
     assert state.current_step == "STEP_6_CLOSING"
     assert result.response_type == "celebrate"
+    # Force-advance to closing: without this, _should_auto_advance returns False
+    # at STEP_6_CLOSING and the frontend never triggers a closing turn →
+    # concept_reveal (the closing widget) would never render.
+    assert result.auto_advance is True, (
+        "celebrate must auto-advance so the closing turn actually runs"
+    )
 
 
 @pytest.mark.asyncio

@@ -395,11 +395,23 @@ def _deliver_scene(state: SessionStateModel, scene_number: int) -> TurnResult:
         state.synthesis_phase = f"scene_{scene_number + 1}"
         auto_advance = True
 
+    # Minimal debug payload so scene delivery turns appear in the History tab
+    # (both Cat5 formats — dandelion's 3 scenes and ladybug's 1 — are tracked).
+    debug = {
+        "generation": {
+            "source": "structured_scene_delivery",
+            "scene_number": scene_number,
+            "total_scenes": len(story.scenes),
+            "is_last": is_last,
+        }
+    }
+
     return TurnResult(
         turn_response=turn_response,
         screen_frame=screen_frame,
         auto_advance=auto_advance,
         response_type=response_type,
+        debug=debug,
     )
 
 

@@ -959,10 +959,15 @@ async def _resolve_turn_with_directive(
             # Advance to closing now, so the next auto-advance turn
             # arrives at STEP_6_CLOSING instead of looping at celebrate.
             _advance_state(state)
+
+            # Force auto_advance=True here: we explicitly want a closing turn
+            # to follow so concept_reveal actually renders. _should_auto_advance
+            # would return False because state is now at closing, which would
+            # leave the frontend stuck on the celebrate frame forever.
             return TurnResult(
                 turn_response=turn_response,
                 screen_frame=celebrate_screen_frame,
-                auto_advance=_should_auto_advance(state),
+                auto_advance=True,
                 response_type="celebrate",
                 error_exit=False,
                 debug=_debug(None, turn_response),

@@ -8,6 +8,7 @@ import BadgeAward from '../widgets/BadgeAward';
 import StoryScene from '../widgets/StoryScene';
 import StoryLoading from '../widgets/StoryLoading';
 import AchievementImage from '../widgets/AchievementImage';
+import ConceptReveal from '../widgets/ConceptReveal';
 import ExplorerMap from '../canvas/ExplorerMap';
 import AnimationOverlay from '../widgets/AnimationOverlay';
 import SfxIndicator from './SfxIndicator';
@@ -25,6 +26,7 @@ const WIDGET_MAP = {
   story_scene: StoryScene,
   story_loading: StoryLoading,
   achievement_image: AchievementImage,
+  concept_reveal: ConceptReveal,
   explorer_map: ExplorerMap,
 };
 
@@ -128,7 +130,7 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
       )}
 
       <div className={`flex-1 min-h-0 grid place-items-center ${isVideoMode ? '' : 'px-2 pb-1 max-[380px]:px-1.5 max-[380px]:pb-0.5'}`}>
-        {(screenFrame.widget === 'explorer_map' || screenFrame.widget === 'story_scene' || screenFrame.widget === 'story_loading' || screenFrame.widget === 'achievement_image') && WidgetComponent ? (
+        {(screenFrame.widget === 'explorer_map' || screenFrame.widget === 'story_scene' || screenFrame.widget === 'story_loading' || screenFrame.widget === 'achievement_image' || screenFrame.widget === 'concept_reveal') && WidgetComponent ? (
           <div className="w-full h-full">
             <WidgetComponent {...params} photoUrl={asset(params.photoUrl) || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
           </div>

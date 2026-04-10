@@ -35,6 +35,7 @@ from turn_handling import (
 )
 from turn_handling.directive import _resolve_turn_with_directive
 from turn_handling.helpers import _HISTORY_LIMIT, _append_ai_turn, _should_auto_advance
+from turn_handling.types import TurnResult
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -107,7 +108,7 @@ async def _run_directive_advance(
     turn_response: TurnResponse,
     *,
     emotion_tag: str = "gentle",
-):
+) -> TurnResult:
     """Run _resolve_turn_with_directive with a canned advance directive.
 
     Wraps the boilerplate shared by tests that exercise the directive handler:

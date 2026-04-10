@@ -957,7 +957,7 @@ async def _resolve_turn_with_directive(
             celebrate_screen_frame = _get_screen_frame(state)
 
             # Advance to closing now, so the next auto-advance turn
-            # arrives at STEP_5_CLOSING instead of looping at celebrate.
+            # arrives at STEP_6_CLOSING instead of looping at celebrate.
             _advance_state(state)
             return TurnResult(
                 turn_response=turn_response,

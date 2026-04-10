@@ -325,20 +325,21 @@
   }
 }
 
-/* Stage mode — celebrate/closing expand the device panel to full viewport.
- * Only flex-basis is transitioned: browsers don't animate max-height/height
- * between fixed values and auto/none. The top panel grows because the bottom
- * panel's flex-basis shrinks, letting flex-grow reclaim the space smoothly. */
+/* Stage mode — celebrate/closing grow the device panel while keeping the
+ * conversation panel fully usable (just smaller). The conversation still
+ * shows messages and the input bar so the user can always type or scroll. */
+.app-top-panel,
 .app-main > section[aria-label="Conversation panel"] {
-  transition: flex-basis 500ms ease-out;
+  transition: flex-basis 500ms ease-out, max-height 500ms ease-out, height 500ms ease-out;
 }
 
 .stage-mode .app-top-panel {
-  flex: 1 1 auto;
-  max-height: none;
+  flex: 1 1 72%;
+  height: 72%;
+  max-height: 48rem;
 }
 
 .stage-mode > section[aria-label="Conversation panel"] {
-  flex: 0 0 3rem;
-  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 9rem;
 }

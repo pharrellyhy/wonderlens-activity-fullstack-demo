@@ -3,6 +3,12 @@
 Follows the same dual-auth pattern as tts.py:
 - If google_cloud_project set → Vertex AI client
 - Otherwise → API key client (gemini_api_key)
+
+Scene images are generated SEQUENTIALLY with the first successful image
+used as a reference anchor for subsequent images. This keeps character
+designs, colors, and art style visually consistent across scenes — the
+previous parallel batching produced noticeably different characters per
+scene because each call was independent.
 """
 
 import asyncio
@@ -29,9 +35,13 @@ _STYLE_PREFIX = (
     "Gentle pastel tones, warm lighting, no text or words in the image."
 )
 
+_CONSISTENCY_SUFFIX = (
+    " Keep the character designs, proportions, colors, and art style "
+    "visually consistent with the reference image(s)."
+)
+
 _MAX_RETRIES = 2
 _RETRY_DELAY = 3.0
-_BATCH_SIZE = 2
 
 
 @lru_cache(maxsize=1)
@@ -62,12 +72,22 @@ def _extract_image_bytes(response: types.GenerateContentResponse) -> bytes:
     raise RuntimeError("Imagen returned no inline image data")
 
 
-async def generate_image(prompt: str, aspect_ratio: str = "16:9") -> bytes | None:
-    """Generate a single image from a text prompt.
+async def generate_image(
+    prompt: str,
+    aspect_ratio: str = "16:9",
+    reference: bytes | None = None,
+    anchor: bytes | None = None,
+) -> bytes | None:
+    """Generate a single image, optionally threaded with reference images.
 
     Args:
         prompt: Scene description (style prefix is added automatically).
         aspect_ratio: Image aspect ratio (default 16:9 for story scenes).
+        reference: Previous scene's image bytes for immediate style continuity.
+        anchor: First successful scene's image bytes — the character-design
+                canon that should stay stable across all scenes. Passed as
+                an additional reference part alongside ``reference`` (unless
+                they're the same image).
 
     Returns:
         PNG image bytes, or None if generation fails.
@@ -78,6 +98,15 @@ async def generate_image(prompt: str, aspect_ratio: str = "16:9") -> bytes | Non
         return None
 
     full_prompt = f"{_STYLE_PREFIX} {prompt}"
+    if reference or anchor:
+        full_prompt += _CONSISTENCY_SUFFIX
+
+    contents: list = [full_prompt]
+    if anchor:
+        contents.append(types.Part.from_bytes(data=anchor, mime_type="image/png"))
+    if reference and reference is not anchor:
+        contents.append(types.Part.from_bytes(data=reference, mime_type="image/png"))
+
     client = _get_client()
 
     for attempt in range(_MAX_RETRIES):
@@ -86,7 +115,7 @@ async def generate_image(prompt: str, aspect_ratio: str = "16:9") -> bytes | Non
             response = await asyncio.to_thread(
                 client.models.generate_content,
                 model=settings.imagen_model,
-                contents=full_prompt,
+                contents=contents,
                 config=types.GenerateContentConfig(
                     response_modalities=["IMAGE"],
                     image_config=types.ImageConfig(aspect_ratio=aspect_ratio),
@@ -94,7 +123,13 @@ async def generate_image(prompt: str, aspect_ratio: str = "16:9") -> bytes | Non
             )
             latency_ms = int((time.perf_counter() - start) * 1000)
             image_bytes = _extract_image_bytes(response)
-            logger.info("Imagen generated image (%d bytes, %dms)", len(image_bytes), latency_ms)
+            has_refs = bool(anchor or reference)
+            logger.info(
+                "Imagen generated image (%d bytes, %dms, refs=%s)",
+                len(image_bytes),
+                latency_ms,
+                "yes" if has_refs else "no",
+            )
             return image_bytes
 
         except (genai_errors.ClientError, genai_errors.APIError) as exc:
@@ -108,6 +143,8 @@ async def generate_image(prompt: str, aspect_ratio: str = "16:9") -> bytes | Non
         except Exception as exc:
             logger.error("Imagen unexpected error: %s", exc)
             return None
+
+    return None
 
 
 def image_to_base64(image_bytes: bytes) -> str:
@@ -129,56 +166,62 @@ def _save_image(image_bytes: bytes, session_id: str, filename: str) -> Path:
     return path
 
 
-def _result_to_data_url(result: bytes | BaseException | None, label: str, session_id: str, filename: str) -> str | None:
-    """Convert a gather result to a base64 data URL, saving to disk. Logs failures."""
-    if isinstance(result, bytes):
-        _save_image(result, session_id, filename)
-        return image_to_base64(result)
-    if isinstance(result, BaseException):
-        logger.error("%s image generation failed: %s", label, result)
-    return None
-
-
 async def generate_scene_images(
     scene_descriptions: list[str],
     achievement_description: str,
     session_id: str = "",
 ) -> tuple[list[str | None], str | None]:
-    """Generate scene images + achievement image with staggered concurrency.
+    """Generate scene images sequentially for character consistency.
 
-    Generates in two batches (2 + 2) with a short delay between batches to
-    avoid Imagen rate-limit (429) errors from firing all 4 requests at once.
-    Saves each generated image to backend/data/images/{session_id}/.
+    Each scene after the first receives the first-scene image as an
+    "anchor" (character canon) plus the immediately previous scene as a
+    "reference" (style continuity). The achievement image is generated
+    last, also using the anchor.
 
     Args:
-        scene_descriptions: List of scene image descriptions (typically 3).
-        achievement_description: Description for the achievement summary image.
+        scene_descriptions: List of scene image descriptions (1 for
+            comparison_reveal, 3 for collaborative_story).
+        achievement_description: Description for the achievement image.
         session_id: Session identifier for organizing saved images on disk.
 
     Returns:
         Tuple of (scene_image_data_urls, achievement_image_data_url).
-        Each entry is a base64 data URL string or None if generation failed.
+        Each scene entry is a base64 data URL or None if that scene failed.
     """
-    all_prompts = list(scene_descriptions) + [achievement_description]
-    all_ratios = ["16:9"] * len(scene_descriptions) + ["1:1"]
-
-    # Batch 1
-    batch1 = [generate_image(p, r) for p, r in zip(all_prompts[:_BATCH_SIZE], all_ratios[:_BATCH_SIZE])]
-    results1 = await asyncio.gather(*batch1, return_exceptions=True)
-
-    # Short delay to avoid rate-limit
-    await asyncio.sleep(1.0)
-
-    # Batch 2: remaining images
-    batch2 = [generate_image(p, r) for p, r in zip(all_prompts[_BATCH_SIZE:], all_ratios[_BATCH_SIZE:])]
-    results2 = await asyncio.gather(*batch2, return_exceptions=True)
-
-    results = list(results1) + list(results2)
-
     sid = session_id or "unknown"
-    scene_images = [
-        _result_to_data_url(r, f"Scene {i + 1}", sid, f"scene_{i + 1}.png") for i, r in enumerate(results[:-1])
-    ]
-    achievement_image = _result_to_data_url(results[-1], "Achievement", sid, "achievement.png")
+    scene_urls: list[str | None] = []
+    anchor_bytes: bytes | None = None  # first successful scene — character canon
+    previous_bytes: bytes | None = None  # immediately preceding scene — style continuity
 
-    return scene_images, achievement_image
+    for i, desc in enumerate(scene_descriptions):
+        img_bytes = await generate_image(
+            desc,
+            aspect_ratio="16:9",
+            reference=previous_bytes,
+            anchor=anchor_bytes,
+        )
+        if img_bytes:
+            _save_image(img_bytes, sid, f"scene_{i + 1}.png")
+            scene_urls.append(image_to_base64(img_bytes))
+            if anchor_bytes is None:
+                anchor_bytes = img_bytes
+            previous_bytes = img_bytes
+        else:
+            logger.error("Scene %d image generation failed", i + 1)
+            scene_urls.append(None)
+
+    # Achievement image: use the anchor + the last scene as references
+    achievement_bytes = await generate_image(
+        achievement_description,
+        aspect_ratio="1:1",
+        reference=previous_bytes,
+        anchor=anchor_bytes,
+    )
+    achievement_url: str | None = None
+    if achievement_bytes:
+        _save_image(achievement_bytes, sid, "achievement.png")
+        achievement_url = image_to_base64(achievement_bytes)
+    else:
+        logger.error("Achievement image generation failed")
+
+    return scene_urls, achievement_url

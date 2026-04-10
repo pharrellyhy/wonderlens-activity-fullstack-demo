@@ -325,19 +325,17 @@
   }
 }
 
-/* Stage mode — celebrate/closing expand the device panel to full viewport */
-.app-top-panel,
+/* Stage mode — celebrate/closing expand the device panel to full viewport.
+ * Only flex-basis is transitioned: browsers don't animate max-height/height
+ * between fixed values and auto/none. The top panel grows because the bottom
+ * panel's flex-basis shrinks, letting flex-grow reclaim the space smoothly. */
 .app-main > section[aria-label="Conversation panel"] {
-  transition:
-    flex-basis 500ms ease-out,
-    max-height 500ms ease-out,
-    height 500ms ease-out;
+  transition: flex-basis 500ms ease-out;
 }
 
 .stage-mode .app-top-panel {
   flex: 1 1 auto;
   max-height: none;
-  height: auto;
 }
 
 .stage-mode > section[aria-label="Conversation panel"] {

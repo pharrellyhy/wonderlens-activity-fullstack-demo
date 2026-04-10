@@ -27,7 +27,7 @@ export default function ConceptMedallion({ concept, delayMs = 0 }) {
         </div>
 
         {/* Star accent top-right, mirrors ZoneSlot's checkmark accent */}
-        <div className="absolute -top-1 -right-1 animate-sparkle-large" style={{ animationDelay: `${delayMs + 800}ms` }}>
+        <div className="absolute -top-1 -right-1 animate-sparkle-large" style={{ animationDelay: `${delayMs + 800}ms` }} aria-hidden="true">
           <StarIcon className="w-6 h-6 text-[var(--color-sunflower)] drop-shadow" />
         </div>
       </div>

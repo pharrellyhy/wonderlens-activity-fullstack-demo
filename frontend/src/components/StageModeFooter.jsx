@@ -1,9 +1,17 @@
 import { SpeakerIcon } from '../icons';
 
+function findLatestAi(messages) {
+  if (!messages) return null;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i].role === 'ai') return messages[i];
+  }
+  return null;
+}
+
 export default function StageModeFooter({ messages, isSpeaking }) {
-  const latestAi = [...(messages || [])].reverse().find((m) => m.role === 'ai');
+  const latestAi = findLatestAi(messages);
   if (!latestAi) {
-    return <div className="h-12" aria-hidden="true" />;
+    return null;
   }
 
   return (

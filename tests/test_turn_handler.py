@@ -1511,3 +1511,78 @@ async def test_cat5_celebrate_handler_returns_achievement_image_frame() -> None:
     )
     assert state.current_step == "STEP_6_CLOSING"
     assert result.response_type == "celebrate"
+
+
+@pytest.mark.asyncio
+async def test_cat5_closing_handler_sets_concept_reveal_widget() -> None:
+    """Cat5 closing handler should set turn_response.screen_widget to 'concept_reveal'."""
+    state = _make_state(
+        current_step="STEP_6_CLOSING",
+        status="active",
+        template_type="cat5",
+    )
+    script_agent = _make_agent_mock()
+    script_agent.generate_turn_from_directive = AsyncMock(
+        return_value=_mock_turn(dialogue="[gentle] You learned about Form and Connection.")
+    )
+
+    directive = TurnDirective(
+        action="advance",
+        reasoning="Closing",
+        response_direction="Wrap up warmly.",
+        emotion_tag="gentle",
+    )
+
+    result = await _resolve_turn_with_directive(
+        state,
+        _make_input(),
+        script_agent,
+        directive,
+    )
+
+    assert result.turn_response.screen_widget == "concept_reveal", (
+        f"Cat5 closing should set screen_widget to concept_reveal, "
+        f"got {result.turn_response.screen_widget}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_cat1_closing_handler_keeps_achievement_image_widget() -> None:
+    """Cat1 closing must continue to use achievement_image — the Cat5 change is scoped."""
+    state = _make_state(
+        template_type="cat1",
+        activity_type="mood_changer_dog",
+        creative_slots=Cat1CreativeSlots(
+            game_mechanic="voice_acting",
+            metaphor="A fluffy friend",
+            role_title="Dog Whisperer",
+            round_scenarios=["sunny day", "rainy day", "snowy day"],
+            escalation_axis="weather",
+            observation_detail="fluffy ears",
+        ),
+        current_step="STEP_5_CLOSING",
+        status="active",
+    )
+    script_agent = _make_agent_mock()
+    script_agent.generate_turn_from_directive = AsyncMock(
+        return_value=_mock_turn(dialogue="[gentle] You discovered so much.")
+    )
+
+    directive = TurnDirective(
+        action="advance",
+        reasoning="Closing",
+        response_direction="Wrap up warmly.",
+        emotion_tag="gentle",
+    )
+
+    result = await _resolve_turn_with_directive(
+        state,
+        _make_input(),
+        script_agent,
+        directive,
+    )
+
+    assert result.turn_response.screen_widget == "achievement_image", (
+        f"Cat1 closing should stay on achievement_image, "
+        f"got {result.turn_response.screen_widget}"
+    )

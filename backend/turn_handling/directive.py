@@ -981,9 +981,12 @@ async def _resolve_turn_with_directive(
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
 
-        # For closing, keep the achievement/badge visible
+        # For closing: Cat5 uses concept_reveal, Cat1 keeps achievement_image
         if is_closing:
-            turn_response.screen_widget = "achievement_image"
+            if state.template_type == "cat5":
+                turn_response.screen_widget = "concept_reveal"
+            else:
+                turn_response.screen_widget = "achievement_image"
 
         # Snapshot screen frame BEFORE advancing — closing advances to ENDED
         # which has no matching widget and would fall through to ExplorerMap.

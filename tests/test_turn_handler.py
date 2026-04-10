@@ -16,6 +16,7 @@ from agents.script_agent import ScriptAgentError
 from schemas.child_intent import ChildIntentClassification
 from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from schemas.session_state import ConversationTurn, SessionStateModel
+from schemas.turn_directive import TurnDirective
 from schemas.turn_plan import TurnPlan
 from schemas.turn_response import TurnResponse
 from state_machine import EARLY_EXIT
@@ -32,6 +33,7 @@ from turn_handling import (
     _record_collection_detail,
     resolve_turn,
 )
+from turn_handling.directive import _resolve_turn_with_directive
 from turn_handling.helpers import _HISTORY_LIMIT, _append_ai_turn, _should_auto_advance
 
 # ---------------------------------------------------------------------------
@@ -1463,3 +1465,49 @@ async def test_closing_marks_session_completed() -> None:
     assert state.status == "completed"
     assert result.response_type == "closing"
     assert result.auto_advance is False
+
+
+@pytest.mark.asyncio
+async def test_cat5_celebrate_handler_returns_achievement_image_frame() -> None:
+    """Celebrate turn must return an achievement_image frame even though state
+    advances to STEP_6_CLOSING.
+
+    Regression test for the pre-advance snapshot bug: if _get_screen_frame is
+    called after _advance_state, it returns the closing concept_reveal frame
+    instead and the achievement image never renders.
+    """
+    state = _make_state(
+        current_step="STEP_5_CELEBRATE",
+        current_round=3,
+    )
+
+    script_agent = _make_agent_mock()
+    script_agent.generate_turn_from_directive = AsyncMock(
+        return_value=_mock_turn(
+            dialogue="[celebrating] You did it!",
+            tone_marker="celebrating",
+            screen_widget="achievement_image",
+        )
+    )
+
+    directive = TurnDirective(
+        action="advance",
+        reasoning="Celebrate acceptance",
+        response_direction="Celebrate the child's find.",
+        emotion_tag="celebrating",
+    )
+
+    result = await _resolve_turn_with_directive(
+        state,
+        _make_input(),
+        script_agent,
+        directive,
+    )
+
+    # Critical: the screen frame returned for celebrate must be achievement_image,
+    # NOT concept_reveal (even though state has now advanced to STEP_6_CLOSING).
+    assert result.screen_frame.widget == "achievement_image", (
+        f"celebrate should render achievement_image, got {result.screen_frame.widget}"
+    )
+    assert state.current_step == "STEP_6_CLOSING"
+    assert result.response_type == "celebrate"

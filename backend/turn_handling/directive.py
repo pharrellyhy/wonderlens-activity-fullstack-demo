@@ -951,12 +951,17 @@ async def _resolve_turn_with_directive(
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
 
+            # Snapshot the celebrate screen frame BEFORE advancing — otherwise
+            # _get_screen_frame(state) would return the STEP_6_CLOSING frame
+            # (concept_reveal) and the achievement image would never render.
+            celebrate_screen_frame = _get_screen_frame(state)
+
             # Advance to closing now, so the next auto-advance turn
             # arrives at STEP_5_CLOSING instead of looping at celebrate.
             _advance_state(state)
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=_get_screen_frame(state),
+                screen_frame=celebrate_screen_frame,
                 auto_advance=_should_auto_advance(state),
                 response_type="celebrate",
                 error_exit=False,

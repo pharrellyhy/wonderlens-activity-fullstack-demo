@@ -1022,6 +1022,19 @@ async def _resolve_turn_with_directive(
         if _is_celebrate_step(state.current_step):
             directive.screen_widget = "achievement_image"
             directive.sfx_cue = "badge_awarded"
+            # Celebrate auto-advances to closing. The speaker LLM tends to end
+            # with a conversational question ("Would you like to wear your
+            # badge?") which creates an unnatural UX when we auto-advance
+            # without waiting for an answer. Append a hard no-question
+            # constraint to the direction before generating.
+            no_question_suffix = (
+                " End with a warm celebratory statement. Do NOT ask the child "
+                "a question at the end — do not say 'would you like...', "
+                "'shall we...', 'ready for...', or anything similar. "
+                "The celebration is a statement, not an invitation."
+            )
+            if no_question_suffix not in (directive.response_direction or ""):
+                directive.response_direction = (directive.response_direction or "") + no_question_suffix
             try:
                 turn_response = await script_agent.generate_turn_from_directive(state, directive)
             except Exception as e:

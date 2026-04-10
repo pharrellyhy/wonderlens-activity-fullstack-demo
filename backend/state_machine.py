@@ -327,7 +327,9 @@ def get_screen_frame(
         structured = context.get("structured_story")
         achievement_url = structured.achievement_image_data_url if structured else None
         role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
-        widget_params: dict = {"title": role_title}
+        # entity is passed through so the FallbackTrophy widget can render
+        # a per-game icon (e.g. /icons/ladybug.png) instead of a generic trophy.
+        widget_params: dict = {"title": role_title, "entity": entity}
         if achievement_url:
             widget_params["image_data_url"] = achievement_url
         return ScreenFrame(

@@ -1,6 +1,6 @@
 import FallbackTrophy from './FallbackTrophy';
 
-export default function AchievementImage({ image_data_url, title, animation }) {
+export default function AchievementImage({ image_data_url, title, animation, entity }) {
   return (
     <div className={`relative flex flex-col h-full w-full p-4 ${animation === 'badge_reveal' ? 'animate-celebration-large' : ''}`}>
       {/* Role title — top, centered, generous */}
@@ -17,7 +17,7 @@ export default function AchievementImage({ image_data_url, title, animation }) {
             className="max-w-full max-h-full rounded-3xl shadow-2xl object-contain animate-fade-in"
           />
         ) : (
-          <FallbackTrophy title={title} />
+          <FallbackTrophy entity={entity} />
         )}
       </div>
     </div>

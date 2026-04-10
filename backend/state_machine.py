@@ -321,15 +321,13 @@ def get_screen_frame(
             trigger="on_correct",
         )
 
-    # Cat5 celebrate/closing: always use achievement_image widget (with or without generated image)
-    if template_type == "cat5" and step in ("STEP_5_CELEBRATE", "STEP_6_CLOSING"):
+    # Cat5 celebrate: achievement image only — no concepts, no character names.
+    # Concepts live on the closing step so each step has a single focus.
+    if template_type == "cat5" and step == "STEP_5_CELEBRATE":
         structured = context.get("structured_story")
         achievement_url = structured.achievement_image_data_url if structured else None
         role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
         widget_params: dict = {"title": role_title}
-        # Show IB concepts only at closing — celebrate just shows the badge/image
-        if step == "STEP_6_CLOSING":
-            widget_params["concepts"] = key_concepts
         if achievement_url:
             widget_params["image_data_url"] = achievement_url
         return ScreenFrame(
@@ -338,6 +336,17 @@ def get_screen_frame(
             animation="badge_reveal",
             trigger="on_correct",
             sfx_cue="badge_awarded",
+        )
+
+    # Cat5 closing: concept reveal — large IB concept medallions, no image.
+    if template_type == "cat5" and step == "STEP_6_CLOSING":
+        role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
+        return ScreenFrame(
+            widget="concept_reveal",
+            widget_params={"title": role_title, "concepts": key_concepts},
+            animation="badge_reveal",
+            trigger="on_enter",
+            sfx_cue="celebration_fanfare",
         )
 
     # Cat 5: use Explorer's Map for the primary activity flow.

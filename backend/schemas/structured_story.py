@@ -12,8 +12,13 @@ class StoryScene(BaseModel):
 
 
 class StructuredStory(BaseModel):
-    """A complete structured story with scenes and achievement image."""
+    """A complete structured story with scenes and achievement image.
 
-    scenes: list[StoryScene] = Field(description="Exactly 3 story scenes")
+    Scene count varies by synthesis format:
+    - collaborative_story: 3 story scenes (beginning, middle, end)
+    - comparison_reveal: 1 reveal scene (items shown side by side)
+    """
+
+    scenes: list[StoryScene] = Field(description="Story scenes (3 for story, 1 for comparison reveal)")
     achievement_description: str = Field(description="Visual description for achievement summary image")
     achievement_image_data_url: str | None = Field(default=None, description="Base64 data URL of achievement image")

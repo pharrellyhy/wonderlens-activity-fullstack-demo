@@ -273,8 +273,8 @@ class TestStyleFragments:
         text = _load_step_instructions(state)
 
         assert "### Story Generation" in text
-        assert "### STORY REQUIREMENTS" in text
-        assert "STORY THEMES" in text
+        assert "### OUTPUT FORMAT" in text
+        assert "### SCENE STRUCTURE" in text
 
     def test_cat5_synthesis_filters_inactive_phase_sections(self) -> None:
         state = self._build_state(

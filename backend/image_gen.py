@@ -9,6 +9,7 @@ import asyncio
 import base64
 import time
 from functools import lru_cache
+from pathlib import Path
 
 from google import genai
 from google.genai import errors as genai_errors
@@ -30,21 +31,22 @@ _STYLE_PREFIX = (
 
 _MAX_RETRIES = 2
 _RETRY_DELAY = 3.0
+_BATCH_SIZE = 2
 
 
 @lru_cache(maxsize=1)
 def _get_client() -> genai.Client:
-    """Get or create the Imagen client (same auth pattern as TTS)."""
+    """Get or create the image generation client (same auth pattern as TTS)."""
     settings = get_settings()
     if settings.google_cloud_project:
         client = genai.Client(
             vertexai=True,
             project=settings.google_cloud_project,
-            location=settings.google_cloud_location,
+            location="global",
         )
     else:
         client = genai.Client(api_key=settings.gemini_api_key)
-    logger.info("Initialized Imagen client")
+    logger.info("Initialized image generation client")
     return client
 
 
@@ -107,8 +109,6 @@ async def generate_image(prompt: str, aspect_ratio: str = "16:9") -> bytes | Non
             logger.error("Imagen unexpected error: %s", exc)
             return None
 
-    return None
-
 
 def image_to_base64(image_bytes: bytes) -> str:
     """Convert raw image bytes to a base64-encoded data URL string."""
@@ -116,39 +116,69 @@ def image_to_base64(image_bytes: bytes) -> str:
     return f"data:image/png;base64,{encoded}"
 
 
+_IMAGES_DIR = Path(__file__).parent / "data" / "images"
+
+
+def _save_image(image_bytes: bytes, session_id: str, filename: str) -> Path:
+    """Save image bytes to disk and return the file path."""
+    session_dir = _IMAGES_DIR / session_id
+    session_dir.mkdir(parents=True, exist_ok=True)
+    path = session_dir / filename
+    path.write_bytes(image_bytes)
+    logger.info("Saved image: %s (%d bytes)", path, len(image_bytes))
+    return path
+
+
+def _result_to_data_url(result: bytes | BaseException | None, label: str, session_id: str, filename: str) -> str | None:
+    """Convert a gather result to a base64 data URL, saving to disk. Logs failures."""
+    if isinstance(result, bytes):
+        _save_image(result, session_id, filename)
+        return image_to_base64(result)
+    if isinstance(result, BaseException):
+        logger.error("%s image generation failed: %s", label, result)
+    return None
+
+
 async def generate_scene_images(
     scene_descriptions: list[str],
     achievement_description: str,
+    session_id: str = "",
 ) -> tuple[list[str | None], str | None]:
-    """Generate all scene images + achievement image in parallel.
+    """Generate scene images + achievement image with staggered concurrency.
+
+    Generates in two batches (2 + 2) with a short delay between batches to
+    avoid Imagen rate-limit (429) errors from firing all 4 requests at once.
+    Saves each generated image to backend/data/images/{session_id}/.
 
     Args:
         scene_descriptions: List of scene image descriptions (typically 3).
         achievement_description: Description for the achievement summary image.
+        session_id: Session identifier for organizing saved images on disk.
 
     Returns:
         Tuple of (scene_image_data_urls, achievement_image_data_url).
         Each entry is a base64 data URL string or None if generation failed.
     """
-    tasks = [generate_image(desc) for desc in scene_descriptions]
-    tasks.append(generate_image(achievement_description, aspect_ratio="1:1"))
+    all_prompts = list(scene_descriptions) + [achievement_description]
+    all_ratios = ["16:9"] * len(scene_descriptions) + ["1:1"]
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    # Batch 1
+    batch1 = [generate_image(p, r) for p, r in zip(all_prompts[:_BATCH_SIZE], all_ratios[:_BATCH_SIZE])]
+    results1 = await asyncio.gather(*batch1, return_exceptions=True)
 
-    scene_images: list[str | None] = []
-    for i, result in enumerate(results[:-1]):
-        if isinstance(result, bytes):
-            scene_images.append(image_to_base64(result))
-        else:
-            if isinstance(result, Exception):
-                logger.error("Scene %d image generation failed: %s", i + 1, result)
-            scene_images.append(None)
+    # Short delay to avoid rate-limit
+    await asyncio.sleep(1.0)
 
-    achievement_result = results[-1]
-    achievement_image: str | None = None
-    if isinstance(achievement_result, bytes):
-        achievement_image = image_to_base64(achievement_result)
-    elif isinstance(achievement_result, Exception):
-        logger.error("Achievement image generation failed: %s", achievement_result)
+    # Batch 2: remaining images
+    batch2 = [generate_image(p, r) for p, r in zip(all_prompts[_BATCH_SIZE:], all_ratios[_BATCH_SIZE:])]
+    results2 = await asyncio.gather(*batch2, return_exceptions=True)
+
+    results = list(results1) + list(results2)
+
+    sid = session_id or "unknown"
+    scene_images = [
+        _result_to_data_url(r, f"Scene {i + 1}", sid, f"scene_{i + 1}.png") for i, r in enumerate(results[:-1])
+    ]
+    achievement_image = _result_to_data_url(results[-1], "Achievement", sid, "achievement.png")
 
     return scene_images, achievement_image

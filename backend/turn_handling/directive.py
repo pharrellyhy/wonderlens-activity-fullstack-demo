@@ -43,7 +43,6 @@ from .helpers import (
     _DECLINE_WORDS,
     _advance_state,
     _append_ai_turn,
-    _badge_screen_frame,
     _get_response_type,
     _get_screen_frame,
     _is_celebrate_step,
@@ -51,6 +50,7 @@ from .helpers import (
     _is_invitation_step,
     _should_auto_advance,
 )
+from .synthesis import _loading_result
 from .types import GenerationDebugInfo, TurnInput, TurnResult
 
 logger = setup_logger(__name__)
@@ -215,6 +215,19 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
     Context-dependent: "yes" means different things at different steps.
     Returns None when LLM classification is needed.
     """
+    # Synthesis: detect delegation phrases ("you tell me", "you do it") → generate story directly
+    if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase not in ("invite",):
+        if "you tell" in normalized_text or "you do" in normalized_text or "tell me a story" in normalized_text:
+            story_dir, max_s = _build_story_direction(state)
+            state.synthesis_phase = "generate"
+            return TurnDirective(
+                action="advance",
+                reasoning="Child asked AI to generate story.",
+                response_direction=story_dir,
+                emotion_tag="playful",
+                max_sentences=max_s,
+            )
+
     if normalized_text in _DECLINE_WORDS:
         if _is_invitation_step(state.current_step):
             count = state.invitation_decline_count + 1
@@ -915,38 +928,17 @@ async def _resolve_turn_with_directive(
             state.collection_phase = "photo"
             state.detail_exchange_count = 0
 
-        # Synthesis: generate the story at STEP_4_SYNTHESIS BEFORE advancing
-        # to CELEBRATE. Otherwise the speaker runs at CELEBRATE and ignores
-        # the story direction.
-        if state.current_step == "STEP_4_SYNTHESIS" and "story" in directive.response_direction.lower():
-            try:
-                turn_response = await script_agent.generate_turn_from_directive(state, directive)
-            except Exception as e:
-                speaker_errors.append(f"synthesis: {e}")
-                logger.warning("Directive speaker failed at synthesis, falling back: %s", e)
-                turn_response, _ = await _generate_with_retry(script_agent, state)
-            _append_ai_turn(state, turn_response.dialogue)
-            state.turn_count += 1
-            _advance_state(state)  # STEP_4_SYNTHESIS → STEP_5_CELEBRATE
-
-            # Now auto-generate celebrate + closing inline
-            if _is_celebrate_step(state.current_step):
-                turn_response.screen_widget = "badge_award"
-                turn_response.sfx_cue = "badge_awarded"
-            return TurnResult(
-                turn_response=turn_response,
-                screen_frame=_get_screen_frame(state),
-                auto_advance=_should_auto_advance(state),
-                response_type=_get_response_type(state.current_step),
-                error_exit=False,
-                debug=_debug(None, turn_response),
-            )
+        # Synthesis: show loading screen then generate companion images.
+        # collaborative_story → 3 story scenes. comparison_reveal → 1 reveal
+        # scene showing items side by side. Both end with an achievement image.
+        if state.current_step == "STEP_4_SYNTHESIS":
+            return _loading_result(state)
 
         # Celebrate: generate celebrate dialogue, show badge, then auto-advance
         # to closing on the NEXT turn. This keeps celebrate and closing as
         # separate turns so the badge stays visible long enough.
         if _is_celebrate_step(state.current_step):
-            directive.screen_widget = "badge_award"
+            directive.screen_widget = "achievement_image"
             directive.sfx_cue = "badge_awarded"
             try:
                 turn_response = await script_agent.generate_turn_from_directive(state, directive)
@@ -954,7 +946,7 @@ async def _resolve_turn_with_directive(
                 speaker_errors.append(f"celebrate: {e}")
                 logger.warning("Directive speaker failed at celebrate, falling back: %s", e)
                 turn_response, _ = await _generate_with_retry(script_agent, state)
-            turn_response.screen_widget = "badge_award"
+            turn_response.screen_widget = "achievement_image"
             turn_response.sfx_cue = "badge_awarded"
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
@@ -964,7 +956,7 @@ async def _resolve_turn_with_directive(
             _advance_state(state)
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=_badge_screen_frame(state),
+                screen_frame=_get_screen_frame(state),
                 auto_advance=_should_auto_advance(state),
                 response_type="celebrate",
                 error_exit=False,
@@ -984,19 +976,29 @@ async def _resolve_turn_with_directive(
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
 
-        # For closing, keep the badge visible — use badge_award frame
+        # For closing, keep the achievement/badge visible
         if is_closing:
-            turn_response.screen_widget = "badge_award"
+            turn_response.screen_widget = "achievement_image"
+
+        # Snapshot screen frame BEFORE advancing — closing advances to ENDED
+        # which has no matching widget and would fall through to ExplorerMap.
+        pre_advance_frame = _get_screen_frame(state) if is_closing else None
 
         _advance_state(state)
+
+        # When the last collection round advances into STEP_4_SYNTHESIS,
+        # the advance response already teases the synthesis (e.g. "let's
+        # compare all your finds!"), so skip the invite phase — treat the
+        # child's next reply as a response to that built-in invitation.
+        if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase == "invite":
+            state.synthesis_phase = "evaluate"
+            state.synthesis_prompt_count = 1
+
         if is_terminal(state.current_step):
             state.status = "completed"
-            # Return the closing turn_response (with badge) instead of
-            # the generic ended result, so the closing dialogue + badge
-            # are delivered to the frontend.
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=_badge_screen_frame(state),
+                screen_frame=pre_advance_frame or _get_screen_frame(state),
                 auto_advance=False,
                 response_type="closing",
                 error_exit=False,

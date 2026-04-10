@@ -1,6 +1,43 @@
 # Session Handoff
 
-Last updated: 2026-04-08
+Last updated: 2026-04-09
+
+---
+
+## Scene-by-Scene Story Images + Achievement Image
+
+**Problem**: Cat5 story synthesis delivered a single monolithic text story with no visual accompaniment. The story felt disconnected from the collection experience — no illustrations, no scene-by-scene pacing, and the celebrate step used a generic explorer map instead of showing the characters together.
+
+**Solution**: Added Imagen 3 watercolor illustration generation (3 scene images + 1 achievement image) to the Cat5 synthesis flow. Stories are now structured as 3 scenes delivered turn-by-turn with auto-advance, each with a narration + generated illustration. The celebrate step shows a generated achievement image of all characters together. Graceful fallback: if structured generation or Imagen fails, the monolithic story path is preserved.
+
+**Edits**:
+- `backend/image_gen.py` — NEW: Imagen 3 module with dual-auth (Vertex AI / API key), parallel generation, base64 data URL output, retry on rate-limit
+- `backend/config.py` — Added `imagen_model` and `imagen_enabled` settings
+- `backend/.env.example` — Added Imagen 3 comment block
+- `backend/schemas/structured_story.py` — NEW: `StoryScene` and `StructuredStory` Pydantic models
+- `backend/schemas/__init__.py` — Exported new schemas
+- `backend/schemas/session_state.py` — Added `structured_story` and `current_scene` fields
+- `backend/skills/step_instructions/cat5_step4_synthesis__story_generation.md` — Restructured from monolithic prose to 3-scene JSON output with image descriptions
+- `backend/turn_handling/synthesis.py` — Added `_generate_structured_story()` (LLM → JSON parse → parallel Imagen), `_deliver_scene()` (deterministic auto-advance), modified `_generate_and_advance()` with structured-first fallback
+- `backend/turn_handling/helpers.py` — Added `structured_story` to `_state_context`
+- `backend/state_machine.py` — Added Cat5 celebrate step achievement_image widget override before explorer map return
+- `backend/skills/step_instructions/cat5_step5_celebrate.md` — Updated widget reference to achievement_image
+- `frontend/src/widgets/StoryScene.jsx` — NEW: Scene progress dots + watercolor illustration
+- `frontend/src/widgets/StoryLoading.jsx` — NEW: Animated loading state during generation
+- `frontend/src/widgets/AchievementImage.jsx` — NEW: Achievement illustration with character names + IB concepts
+- `frontend/src/components/DeviceScreen.jsx` — Registered 3 new widgets in WIDGET_MAP + getFrameKey
+
+**NOT Changed**:
+- Existing monolithic story path (fully preserved as fallback)
+- Cat1 activities (no scene images)
+- Turn Director, intent classification, state machine transitions
+- Frontend conversation flow, TTS/STT pipeline
+- Agent pipeline (Director → Script → Visual → Assembler)
+
+**Verification**:
+- `uv run ruff check . && uv run ruff format --check .` — PASS
+- `uv run pytest -x -q --ignore=tests/test_ai_quality.py` — 36 passed (2 pre-existing failures excluded: `test_muted_tts_path_does_not_play_outros_twice`, `test_device_screen_keeps_widget_area_centered_on_tall_viewports`)
+- `npx vite build` — clean (82 modules)
 
 ---
 
@@ -299,29 +336,3 @@ uv run ruff format --check .  # All formatted
 - `uv run ruff check backend/db.py backend/server.py backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_api.py tests/test_deep_link.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
 - `uv run ruff format --check backend/db.py backend/server.py backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_api.py tests/test_deep_link.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
 
----
-
-## Comprehensive Turn Logging: User Turns + State Snapshots
-
-**Problem**: The `turns` table only logged AI responses (`role = "ai"`). User input (child speech, silence, photo picks) and internal state machine context (`current_step`, `collection_phase`, `synthesis_phase`, etc.) were not captured. This made post-session debugging extremely difficult — the synthesis gap analysis for session `a6425e09` required cross-referencing agent logs, timestamps, and code to reconstruct what the child did and what state transitions occurred. Design plan in `docs/plans/2026-03-28-comprehensive-turn-logging.md`.
-
-**Solution**: Extended the `turns` table with 3 new nullable columns (`photo_id`, `step`, `state_snapshot`), added user turn logging before `resolve_turn()` in both `/api/turn` and `/api/turn-speak`, enhanced existing AI turn logging with state context, and logged the first hook turn from all 3 start endpoints.
-
-**Edits**:
-- `backend/db.py` — added `photo_id TEXT`, `step TEXT`, `state_snapshot TEXT` columns to `turns` table schema; added `_MIGRATIONS` list with `ALTER TABLE` statements for existing DBs; updated `log_turn()` signature and INSERT to include new columns
-- `backend/server.py` — added `_build_state_snapshot()` helper; added `_log_hook_turn()` helper called from all 3 start endpoints; added user turn `log_turn()` call before `resolve_turn()` in `/api/turn` and `/api/turn-speak`; enhanced AI turn `log_turn()` calls with `step` and `state_snapshot`
-- `tests/test_api.py` — added `TestTurnLogging` class with 3 tests: user+AI turn pair with state snapshots, photo_id capture for collection turns, silence logging
-- `tests/test_deep_link.py` — added `fake_log_turn` mock to match the new hook turn logging in start-deep-link endpoint
-
-**NOT Changed**:
-- `backend/turn_handler.py` — no changes to turn resolution logic
-- `agent_logs` table — unchanged; agent-level timing/token logging is separate from turn logging
-- Frontend code — no changes
-- Existing turn data — migration uses `ALTER TABLE ADD COLUMN` with NULL defaults, preserving all existing rows
-
-**Verification**:
-- `uv run pytest tests/ backend/tests/ --ignore=backend/tests/test_ai_quality.py -q` — PASS (361 passed, 12 skipped)
-- `uv run ruff check backend/db.py backend/server.py tests/test_api.py tests/test_deep_link.py` — PASS
-- `uv run ruff format --check backend/db.py backend/server.py tests/test_api.py tests/test_deep_link.py` — PASS
-
----

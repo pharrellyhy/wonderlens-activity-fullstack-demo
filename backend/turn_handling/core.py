@@ -44,7 +44,7 @@ from .helpers import (
 )
 from .invitation import resolve_invitation
 from .rounds import resolve_round
-from .synthesis import _resolve_synthesis_turn
+from .synthesis import _deliver_scene, _resolve_synthesis_turn
 from .types import TurnInput, TurnResult
 
 logger = setup_logger(__name__)
@@ -172,6 +172,17 @@ async def resolve_turn(
             _advance_state(state)
             if is_terminal(state.current_step):
                 return _ended_result(state)
+
+        # Scene delivery and generate phase bypass the Turn Director entirely
+        if (
+            state.current_step == "STEP_4_SYNTHESIS"
+            and state.synthesis_phase.startswith("scene_")
+            and state.structured_story
+        ):
+            scene_num = int(state.synthesis_phase.split("_")[1])
+            return _deliver_scene(state, scene_num)
+        if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase == "generate":
+            return await _resolve_synthesis_turn(state, turn_input, script_agent)
 
         directive = await _get_turn_directive(state, turn_input)
         return await _resolve_turn_with_directive(state, turn_input, script_agent, directive)

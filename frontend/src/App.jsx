@@ -114,7 +114,7 @@ function App() {
       <h1 className="sr-only">WonderLens Activity Demo</h1>
       <main className="app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-4xl mx-auto w-full">
         {/* TOP — Device Screen in Toy Camera (flex ratio ~4:6 with conversation) */}
-        <section className="app-top-panel h-[50%] max-h-[28rem] shrink min-h-0" aria-label="Device screen">
+        <section className="app-top-panel h-[55%] max-h-[34rem] shrink min-h-0" aria-label="Device screen">
           <ToyCameraFrame videoMode={!!currentClipUrl}>
             {showPhotoGallery ? (
               <PhotoGallery

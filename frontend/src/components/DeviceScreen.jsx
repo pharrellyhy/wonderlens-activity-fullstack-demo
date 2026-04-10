@@ -128,9 +128,9 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
       )}
 
       <div className={`flex-1 min-h-0 grid place-items-center ${isVideoMode ? '' : 'px-2 pb-1 max-[380px]:px-1.5 max-[380px]:pb-0.5'}`}>
-        {screenFrame.widget === 'explorer_map' && WidgetComponent ? (
+        {(screenFrame.widget === 'explorer_map' || screenFrame.widget === 'story_scene' || screenFrame.widget === 'story_loading' || screenFrame.widget === 'achievement_image') && WidgetComponent ? (
           <div className="w-full h-full">
-            <WidgetComponent {...params} />
+            <WidgetComponent {...params} photoUrl={asset(params.photoUrl) || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
           </div>
         ) : (
           <AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">

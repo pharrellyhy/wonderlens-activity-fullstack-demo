@@ -7,29 +7,15 @@ Characters: {collected_names} | Sensory details: {collected_details}
 Tier: {tier} | Theme: {story_theme}
 Child's story attempt to expand (if any): {child_story_attempt}
 
-### OUTPUT FORMAT — STRUCTURED JSON
+### OUTPUT FORMAT — STRUCTURED JSON IN DIALOGUE
 
-You MUST output a JSON object with this exact structure:
+**CRITICAL:** Your `dialogue` field must contain ONLY a raw JSON object (no emotion tag, no prose, no markdown fences). The system will parse your dialogue as JSON.
 
-```json
-{
-  "scenes": [
-    {
-      "narration": "Scene 1 narration text here...",
-      "image_description": "Visual description for illustration: ..."
-    },
-    {
-      "narration": "Scene 2 narration text here...",
-      "image_description": "Visual description for illustration: ..."
-    },
-    {
-      "narration": "Scene 3 narration text here...",
-      "image_description": "Visual description for illustration: ..."
-    }
-  ],
-  "achievement_description": "Visual description of all characters together in a warm scene"
-}
-```
+Put this exact JSON structure as the value of your `dialogue` field:
+
+{"scenes": [{"narration": "Scene 1 text...", "image_description": "Visual description..."}, {"narration": "Scene 2 text...", "image_description": "Visual description..."}, {"narration": "Scene 3 text...", "image_description": "Visual description..."}], "achievement_description": "Visual description of all characters together"}
+
+Set `tone_marker` to `"gentle"`. Set `stay_on_step` to `false`.
 
 ### SCENE STRUCTURE (exactly 3 scenes)
 

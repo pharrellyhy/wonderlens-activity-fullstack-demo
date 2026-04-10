@@ -464,9 +464,10 @@ async def test_synthesis_evaluate_silence_skips_classification_and_generates() -
 
     result = await resolve_turn(state, _make_input(is_silent=True), agent)
 
+    # Silence triggers the loading screen first (auto-advance to generate phase)
     assert state.synthesis_phase == "generate"
-    assert state.current_step == "STEP_5_CELEBRATE"
-    assert result.turn_response.dialogue == "The friends curled up under the stars."
+    assert state.current_step == "STEP_4_SYNTHESIS"
+    assert "story" in result.turn_response.dialogue.lower() or result.turn_response.screen_widget == "story_loading"
     assert result.auto_advance is True
 
 
@@ -498,8 +499,9 @@ async def test_synthesis_confirm_generates_full_story(monkeypatch) -> None:
     assert state.synthesis_child_story == ""
     # confirm is not a decline — counter should not increment
     assert state.synthesis_declines == 0
-    assert state.current_step == "STEP_5_CELEBRATE"
-    assert result.turn_response.dialogue == "Cloud Puff and Mossy Dot went on a big adventure!"
+    # Confirm triggers loading screen first (auto-advance to generate phase)
+    assert state.synthesis_phase == "generate"
+    assert state.current_step == "STEP_4_SYNTHESIS"
     assert result.auto_advance is True
 
 
@@ -528,10 +530,10 @@ async def test_synthesis_t0_substantive_generates_from_seed(monkeypatch) -> None
     monkeypatch.setattr("turn_handling.core._classify_child_intent", _substantive)
     result = await resolve_turn(state, _make_input(text="moss go sleep"), agent)
 
-    # T0 substantive with weak quality: routes to generate phase (AI expands the seed)
+    # T0 substantive with weak quality: routes to loading → generate phase
     assert state.synthesis_phase == "generate"
     assert state.synthesis_child_story == "moss go sleep"
-    assert state.current_step == "STEP_5_CELEBRATE"
+    assert state.current_step == "STEP_4_SYNTHESIS"
     assert result.auto_advance is True
 
 
@@ -578,10 +580,10 @@ async def test_synthesis_improve_silence_skips_classification_and_generates() ->
 
     result = await resolve_turn(state, _make_input(is_silent=True), agent)
 
+    # Silence in improve triggers loading → generate (doesn't advance immediately)
     assert state.synthesis_phase == "generate"
     assert state.synthesis_child_story == "Cloud Puff met Mossy Dot."
-    assert state.current_step == "STEP_5_CELEBRATE"
-    assert result.turn_response.dialogue == "Cloud Puff met Mossy Dot and they became brave."
+    assert state.current_step == "STEP_4_SYNTHESIS"
     assert result.auto_advance is True
 
 
@@ -1247,9 +1249,10 @@ async def test_synthesis_decline_in_evaluate_generates_story(monkeypatch) -> Non
     result = await resolve_turn(state, _make_input(text="no thanks"), agent)
 
     assert state.synthesis_declines == 1
-    assert state.current_step == "STEP_5_CELEBRATE"
+    # Decline triggers loading → generate (doesn't advance immediately)
+    assert state.current_step == "STEP_4_SYNTHESIS"
+    assert state.synthesis_phase == "generate"
     assert result.auto_advance is True
-    assert result.response_type == "synthesis"
 
 
 @pytest.mark.asyncio
@@ -1310,9 +1313,9 @@ async def test_synthesis_off_topic_at_limit_generates(monkeypatch) -> None:
     result = await resolve_turn(state, _make_input(text="I want a puppy"), agent)
 
     assert state.synthesis_unrelated == 1
-    assert state.current_step == "STEP_5_CELEBRATE"
+    assert state.current_step == "STEP_4_SYNTHESIS"
+    assert state.synthesis_phase == "generate"
     assert result.auto_advance is True
-    assert result.response_type == "synthesis"
 
 
 @pytest.mark.asyncio
@@ -1377,9 +1380,9 @@ async def test_synthesis_improve_substantive_weak_generates(monkeypatch) -> None
     result = await resolve_turn(state, _make_input(text="and looked up"), agent)
 
     assert state.synthesis_child_story == "Cloud Puff sat. and looked up"
-    assert state.current_step == "STEP_5_CELEBRATE"
+    assert state.current_step == "STEP_4_SYNTHESIS"
+    assert state.synthesis_phase == "generate"
     assert result.auto_advance is True
-    assert result.response_type == "synthesis"
 
 
 @pytest.mark.asyncio

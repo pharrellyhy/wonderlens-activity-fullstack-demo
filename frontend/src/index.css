@@ -324,3 +324,23 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Stage mode — celebrate/closing expand the device panel to full viewport */
+.app-top-panel,
+.app-main > section[aria-label="Conversation panel"] {
+  transition:
+    flex-basis 500ms ease-out,
+    max-height 500ms ease-out,
+    height 500ms ease-out;
+}
+
+.stage-mode .app-top-panel {
+  flex: 1 1 auto;
+  max-height: none;
+  height: auto;
+}
+
+.stage-mode > section[aria-label="Conversation panel"] {
+  flex: 0 0 3rem;
+  overflow: hidden;
+}

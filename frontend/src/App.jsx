@@ -6,6 +6,7 @@ import DeviceScreen from './components/DeviceScreen';
 import PhotoSelector from './components/PhotoSelector';
 import PhotoGallery from './components/PhotoGallery';
 import RetryButton from './components/RetryButton';
+import StageModeFooter from './components/StageModeFooter';
 import ToyCameraFrame from './components/ToyCameraFrame';
 import useSessionOrchestration from './hooks/useSessionOrchestration';
 
@@ -101,6 +102,10 @@ function App() {
     && sessionState?.collection_phase !== 'detail'
     && isActive;
 
+  const stageMode = ['STEP_5_CELEBRATE', 'STEP_6_CLOSING'].includes(
+    sessionState?.current_step
+  );
+
   return (
     <div className="app-shell flex flex-col bg-nature text-gray-800 font-sans">
       <TopBar
@@ -112,7 +117,7 @@ function App() {
       />
 
       <h1 className="sr-only">WonderLens Activity Demo</h1>
-      <main className="app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-4xl mx-auto w-full">
+      <main className={`app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-4xl mx-auto w-full ${stageMode ? 'stage-mode' : ''}`}>
         {/* TOP — Device Screen in Toy Camera (flex ratio ~4:6 with conversation) */}
         <section className="app-top-panel h-[55%] max-h-[34rem] shrink min-h-0" aria-label="Device screen">
           <ToyCameraFrame videoMode={!!currentClipUrl}>
@@ -144,7 +149,9 @@ function App() {
 
         {/* BOTTOM — Conversation (takes all remaining space) */}
         <section className="flex-1 min-h-0 flex flex-col surface-primary overflow-hidden" aria-label="Conversation panel">
-          {showRetry ? (
+          {stageMode ? (
+            <StageModeFooter messages={messages} isSpeaking={isSpeaking} />
+          ) : showRetry ? (
             <div className="flex-1 flex items-center justify-center">
               <RetryButton onRetry={handleRetry} retryCount={retryCount} maxRetries={3} />
             </div>

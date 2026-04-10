@@ -49,6 +49,11 @@ class SessionStateModel(BaseModel):
     consecutive_wrong: int = 0
     consecutive_silence: int = 0
     detail_exchange_count: int = Field(default=0, description="Cat 5 Phase B exchange counter — reset on phase change")
+    detail_stuck_count: int = Field(
+        default=0,
+        description="Count of consecutive non-answers ('i dont know') in Cat 5 detail phase; "
+        "reset on any successful harvest or on round advance",
+    )
     turn_count: int = 0
     status: Literal["active", "completed", "exited", "error"] = "active"
 

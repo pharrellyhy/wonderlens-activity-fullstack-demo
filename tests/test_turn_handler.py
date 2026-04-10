@@ -1568,3 +1568,54 @@ async def test_cat1_closing_handler_keeps_achievement_image_widget() -> None:
     assert result.turn_response.screen_widget == "achievement_image", (
         f"Cat1 closing should stay on achievement_image, got {result.turn_response.screen_widget}"
     )
+
+
+@pytest.mark.asyncio
+async def test_detail_phase_non_answer_scaffolds_first_then_force_advances() -> None:
+    """Two consecutive 'i dont know' non-answers at detail phase must:
+    1. First: return need_help with scaffolding (detail_stuck_count = 1).
+    2. Second: force-advance with a playful default (counters reset,
+       name + detail appended, round_advance_pending True).
+    """
+    from turn_handling.directive import _get_turn_directive
+
+    state = _make_state(
+        current_step="STEP_3_COLLECT_3",
+        current_round=3,
+        total_rounds=3,
+        collection_phase="detail",
+        collected_photos=["fuzzy_moss", "woolly_caterpillar", "fluffy_seed"],
+        collected_names=["Softie", "Cloudy"],
+        collected_details=["soft and cozy", "fluffy"],
+        detail_exchange_count=0,
+        detail_stuck_count=0,
+    )
+
+    # First non-answer: scaffolds via need_help, stuck_count = 1
+    first = await _get_turn_directive(state, _make_input(text="i dont know"))
+    assert first.action == "need_help", f"first non-answer should scaffold, got {first.action}"
+    assert state.detail_stuck_count == 1
+    assert state.round_advance_pending is False
+    # Counter for exchanges should NOT have been bumped (we're still stuck)
+    assert state.detail_exchange_count == 0
+    # Name/detail lists unchanged (nothing harvested yet)
+    assert state.collected_names == ["Softie", "Cloudy"]
+    assert state.collected_details == ["soft and cozy", "fluffy"]
+
+    # Second non-answer: force-advance with default name + detail
+    second = await _get_turn_directive(state, _make_input(text="i dont know"))
+    assert second.action == "advance", (
+        f"second non-answer should force-advance, got {second.action}"
+    )
+    # Counters reset
+    assert state.detail_stuck_count == 0
+    assert state.detail_exchange_count == 0
+    # Round-advance pending set so the next turn moves to the next photo round
+    assert state.round_advance_pending is True
+    # A default name + detail were applied.
+    assert len(state.collected_names) == 3
+    assert state.collected_names[-1] not in ("Softie", "Cloudy"), (
+        f"default name should not collide with existing names, got {state.collected_names[-1]}"
+    )
+    assert len(state.collected_details) == 3
+    assert state.collected_details[-1], "default detail text must be non-empty"

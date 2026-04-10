@@ -100,6 +100,41 @@ _NAME_EXTRACT_PATTERNS = [
     re.compile(r"(?:name (?:it|him|her|them))\s+(.+)", re.IGNORECASE),
 ]
 
+# Playful fallback (name, detail) pairs per observation angle. Used when the
+# child is stuck at the detail phase (2+ consecutive non-answers). The first
+# unused option is picked so two stuck items in a row get distinct defaults.
+_STUCK_DEFAULTS: dict[str, list[tuple[str, str]]] = {
+    "texture": [("Softie", "soft and cozy"), ("Fuzzy", "fluffy and warm")],
+    "color": [("Sunny", "bright and cheerful"), ("Rainbow", "colorful and fun")],
+    "shape": [("Curvy", "smooth and curvy"), ("Pointy", "tall and pointy")],
+    "size": [("Tiny", "small and cute"), ("Mighty", "big and strong")],
+    "pattern": [("Spotty", "covered in pretty spots"), ("Dotty", "full of tiny dots")],
+    "form": [("Bumpy", "bumpy and interesting"), ("Wiggly", "wiggly and playful")],
+    "movement": [("Dancy", "always moving"), ("Bouncy", "bouncing around")],
+    "smell": [("Sweetie", "sweet and fresh"), ("Minty", "cool and fresh")],
+    "function": [("Helpful", "useful and clever"), ("Special", "special and unique")],
+    "habitat": [("Cozy", "snug and safe"), ("Hidden", "tucked away")],
+}
+
+
+def _pick_stuck_default(state: SessionStateModel) -> tuple[str, str]:
+    """Pick a playful (name, detail) fallback for a stuck child at detail phase.
+
+    Rotates through options by observation angle so consecutive stuck items
+    don't all get the same default. Falls back to texture defaults if the
+    game's angle has no entry.
+    """
+    angle = "texture"
+    if isinstance(state.creative_slots, Cat5CreativeSlots):
+        angle = state.creative_slots.observation_angle
+    options = _STUCK_DEFAULTS.get(angle) or _STUCK_DEFAULTS["texture"]
+    used_names = {n for n in state.collected_names}
+    for opt in options:
+        if opt[0] not in used_names:
+            return opt
+    # All options already used — just cycle by modulo of how many items stuck
+    return options[len(state.collected_names) % len(options)]
+
 
 def _build_story_direction(state: SessionStateModel, chosen_theme: str = "") -> tuple[str, int]:
     """Build a rich synthesis direction from harvested story elements.
@@ -636,11 +671,54 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
 
         # Detect non-answers: child is stuck, confused, or asking AI to decide.
         if normalized_detail in _NON_ANSWER_PHRASES:
+            state.detail_stuck_count += 1
             current_item = state.collected_photos[-1] if state.collected_photos else "this item"
             current_item_label = current_item.replace("_", " ")
             obs_angle = ""
             if isinstance(state.creative_slots, Cat5CreativeSlots):
                 obs_angle = state.creative_slots.observation_angle
+
+            # After 2 consecutive non-answers, stop scaffolding: pick a playful
+            # default and force-advance past the detail phase. This prevents
+            # the infinite scaffold loop where the LLM keeps generating the
+            # same "Is it soft like a bunny or smooth like an egg?" question.
+            if state.detail_stuck_count >= 2:
+                default_name, default_detail = _pick_stuck_default(state)
+                _record_collection_detail(state, default_detail)
+                if is_naming_game:
+                    state.collected_names.append(default_name)
+                state.detail_stuck_count = 0
+                state.detail_exchange_count = 0
+                state.round_advance_pending = True
+
+                if is_naming_game:
+                    direction = (
+                        f"No worries! Let's call this one {default_name} — it feels {default_detail}. "
+                        f"Then warmly invite the child to find the next item."
+                    )
+                else:
+                    direction = (
+                        f"No worries! This {current_item_label} looks {default_detail}. "
+                        f"Then warmly invite the child to find the next item."
+                    )
+                fast = TurnDirective(
+                    action="advance",
+                    reasoning=(
+                        f"Child stuck (2 consecutive non-answers). "
+                        f"Applied default name='{default_name}' detail='{default_detail}'."
+                    ),
+                    response_direction=direction,
+                    emotion_tag="gentle",
+                    max_sentences=3,
+                )
+                logger.info(
+                    "turn_director: step=%s action=advance (stuck default) name=%s detail=%s",
+                    state.current_step,
+                    default_name,
+                    default_detail,
+                )
+                state.last_directive_action = fast.action
+                return fast
 
             if is_naming_game:
                 exchange_label = "texture" if state.detail_exchange_count == 0 else "naming"
@@ -677,13 +755,16 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
                 offer_binary_choice=True,
             )
             logger.info(
-                "turn_director: step=%s action=need_help (non-answer in detail) text=%s",
+                "turn_director: step=%s action=need_help (non-answer %d) text=%s",
                 state.current_step,
+                state.detail_stuck_count,
                 child_text[:30],
             )
             state.last_directive_action = fast.action
             return fast
 
+        # Successful harvest — reset the stuck counter
+        state.detail_stuck_count = 0
         state.detail_exchange_count += 1
         remaining = max(0, state.total_rounds - len(state.collected_photos))
         names_so_far = ", ".join(state.collected_names) if state.collected_names else ""
@@ -927,6 +1008,7 @@ async def _resolve_turn_with_directive(
         if state.current_step.startswith("STEP_3_COLLECT_"):
             state.collection_phase = "photo"
             state.detail_exchange_count = 0
+            state.detail_stuck_count = 0
 
         # Synthesis: show loading screen then generate companion images.
         # collaborative_story → 3 story scenes. comparison_reveal → 1 reveal

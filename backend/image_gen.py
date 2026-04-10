@@ -13,6 +13,7 @@ scene because each call was independent.
 
 import asyncio
 import base64
+import io
 import time
 from functools import lru_cache
 from pathlib import Path
@@ -20,6 +21,7 @@ from pathlib import Path
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
+from PIL import Image
 
 try:
     from .config import get_settings
@@ -147,10 +149,28 @@ async def generate_image(
     return None
 
 
-def image_to_base64(image_bytes: bytes) -> str:
+def _downscale_to_jpeg(image_bytes: bytes, max_dim: int = 768, quality: int = 85) -> bytes:
+    """Downscale an image and re-encode as JPEG for much smaller payload.
+
+    Gemini 2.5 Flash Image returns ~1024x1024 PNGs at ~1.3MB each. Base64-
+    encoded inline that's ~1.75MB of text in the turn JSON response — large
+    enough to cause noticeable rendering lag when the browser decodes it.
+    Downscaling to 768 on the longest side + JPEG 85% quality reduces the
+    payload ~10x with no visible quality loss for watercolor art.
+    """
+    img = Image.open(io.BytesIO(image_bytes))
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+    img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=quality, optimize=True)
+    return out.getvalue()
+
+
+def image_to_base64(image_bytes: bytes, mime: str = "image/png") -> str:
     """Convert raw image bytes to a base64-encoded data URL string."""
     encoded = base64.b64encode(image_bytes).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
+    return f"data:{mime};base64,{encoded}"
 
 
 _IMAGES_DIR = Path(__file__).parent / "data" / "images"
@@ -201,8 +221,19 @@ async def generate_scene_images(
             anchor=anchor_bytes,
         )
         if img_bytes:
+            # Save the original PNG for debug/inspection on disk
             _save_image(img_bytes, sid, f"scene_{i + 1}.png")
-            scene_urls.append(image_to_base64(img_bytes))
+            # Downscale + re-encode as JPEG for the browser payload
+            jpeg_bytes = _downscale_to_jpeg(img_bytes, max_dim=768, quality=85)
+            scene_urls.append(image_to_base64(jpeg_bytes, mime="image/jpeg"))
+            logger.info(
+                "Scene %d downscaled: %d bytes -> %d bytes (%.1f%%)",
+                i + 1, len(img_bytes), len(jpeg_bytes),
+                100 * len(jpeg_bytes) / len(img_bytes),
+            )
+            # Keep the ORIGINAL PNG bytes as the reference/anchor for the
+            # next generation — full resolution gives Gemini more detail
+            # to lock onto for character consistency.
             if anchor_bytes is None:
                 anchor_bytes = img_bytes
             previous_bytes = img_bytes
@@ -220,7 +251,13 @@ async def generate_scene_images(
     achievement_url: str | None = None
     if achievement_bytes:
         _save_image(achievement_bytes, sid, "achievement.png")
-        achievement_url = image_to_base64(achievement_bytes)
+        jpeg_bytes = _downscale_to_jpeg(achievement_bytes, max_dim=768, quality=85)
+        achievement_url = image_to_base64(jpeg_bytes, mime="image/jpeg")
+        logger.info(
+            "Achievement downscaled: %d bytes -> %d bytes (%.1f%%)",
+            len(achievement_bytes), len(jpeg_bytes),
+            100 * len(jpeg_bytes) / len(achievement_bytes),
+        )
     else:
         logger.error("Achievement image generation failed")
 

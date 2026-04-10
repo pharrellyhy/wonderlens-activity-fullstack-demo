@@ -325,21 +325,22 @@
   }
 }
 
-/* Stage mode — celebrate/closing grow the device panel while keeping the
- * conversation panel fully usable (just smaller). The conversation still
- * shows messages and the input bar so the user can always type or scroll. */
+/* Stage mode — any "full-visual" widget (scene delivery, loading, celebrate,
+ * closing) grows the device panel while keeping the conversation panel
+ * usable. The conversation still shows messages and the input bar so the
+ * user can always type or scroll. */
 .app-top-panel,
 .app-main > section[aria-label="Conversation panel"] {
   transition: flex-basis 500ms ease-out, max-height 500ms ease-out, height 500ms ease-out;
 }
 
 .stage-mode .app-top-panel {
-  flex: 1 1 72%;
-  height: 72%;
-  max-height: 48rem;
+  flex: 1 1 78%;
+  height: 78%;
+  max-height: 56rem;
 }
 
 .stage-mode > section[aria-label="Conversation panel"] {
   flex: 1 1 auto;
-  min-height: 9rem;
+  min-height: 8rem;
 }

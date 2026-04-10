@@ -101,9 +101,11 @@ function App() {
     && sessionState?.collection_phase !== 'detail'
     && isActive;
 
-  const stageMode = ['STEP_5_CELEBRATE', 'STEP_6_CLOSING'].includes(
-    sessionState?.current_step
-  );
+  // Stage mode = grow the device panel whenever a "full-visual" widget is
+  // showing. Triggered by widget, not step, so scene delivery during
+  // STEP_4_SYNTHESIS also gets the bigger panel (not just celebrate/closing).
+  const STAGE_MODE_WIDGETS = ['story_scene', 'story_loading', 'achievement_image', 'concept_reveal'];
+  const stageMode = STAGE_MODE_WIDGETS.includes(screenFrame?.widget);
 
   return (
     <div className="app-shell flex flex-col bg-nature text-gray-800 font-sans">

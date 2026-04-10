@@ -104,10 +104,13 @@ def _is_synthesis_confirm(text: str) -> bool:
 
 
 def _loading_result(state: SessionStateModel) -> TurnResult:
-    """Return a story_loading screen and queue story generation via auto-advance."""
-    names = ", ".join(state.collected_names) if state.collected_names else "your friends"
+    """Return a synthesis loading screen and queue generation via auto-advance.
+
+    Format-neutral: the same dialogue works for collaborative_story (dandelion),
+    comparison_reveal (ladybug), and any future synthesis format.
+    """
     turn_response = TurnResponse(
-        dialogue=f"[excited] Ooh, let me think of a story about {names}...",
+        dialogue="[excited] Ooh, let me put it all together for you...",
         tone_marker="excited",
         screen_widget="story_loading",
         screen_widget_params={},

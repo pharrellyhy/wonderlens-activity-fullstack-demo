@@ -24,10 +24,10 @@ export default function StoryLoading() {
       {/* Shimmer text — large with gradient glow sweeping left to right */}
       <div className="text-center">
         <p className="text-xl max-[380px]:text-lg font-display font-bold story-loading-shimmer">
-          Creating your story
+          Creating your adventure
         </p>
         <p className="text-sm max-[380px]:text-xs text-gray-400 mt-2 animate-pulse">
-          Painting scenes with words and colors...
+          Bringing everything together...
         </p>
       </div>
 

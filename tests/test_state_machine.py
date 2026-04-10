@@ -32,6 +32,25 @@ def _cat5_slots() -> Cat5CreativeSlots:
     )
 
 
+def _cat5_context(
+    *,
+    structured_story: StructuredStory | None = None,
+    collected_photos: list[str] | None = None,
+    collected_details: list[str] | None = None,
+) -> dict:
+    """Build a Cat5 get_screen_frame context with sensible defaults."""
+    return {
+        "entity_name": "ladybug",
+        "ib_key_concepts": ["Form", "Connection"],
+        "collection_phase": "photo",
+        "collected_photos": collected_photos if collected_photos is not None else ["speckled_leaf"],
+        "collected_names": [],
+        "collected_details": collected_details if collected_details is not None else [],
+        "structured_story": structured_story,
+        "round_items": [],
+    }
+
+
 def _make_visual_frames() -> list[ScreenFrame]:
     """Create a set of Visual Agent frames for testing."""
     return [
@@ -254,52 +273,31 @@ class TestGetScreenFrameWithVisualFrames:
 
 def test_cat5_celebrate_returns_achievement_image_without_concepts():
     """STEP_5_CELEBRATE should render achievement_image with title only, no concepts."""
-    slots = _cat5_slots()
-    context = {
-        "entity_name": "ladybug",
-        "ib_key_concepts": ["Form", "Connection"],
-        "collection_phase": "photo",
-        "collected_photos": ["speckled_leaf", "circle_flower"],
-        "collected_names": [],
-        "collected_details": ["big dots", "small dots"],
-        "structured_story": None,
-        "round_items": [],
-    }
+    context = _cat5_context(
+        collected_photos=["speckled_leaf", "circle_flower"],
+        collected_details=["big dots", "small dots"],
+    )
 
-    frame = get_screen_frame("STEP_5_CELEBRATE", "cat5", slots, context)
+    frame = get_screen_frame("STEP_5_CELEBRATE", "cat5", _cat5_slots(), context)
 
     assert frame.widget == "achievement_image"
     assert frame.widget_params["title"] == "Shape Specialist"
-    assert "concepts" not in frame.widget_params, (
-        "celebrate should NOT include IB concepts — those belong to closing"
-    )
-    assert "image_data_url" not in frame.widget_params, (
-        "no structured_story in context means no image URL"
-    )
+    assert "concepts" not in frame.widget_params, "celebrate should NOT include IB concepts — those belong to closing"
+    assert "image_data_url" not in frame.widget_params, "no structured_story in context means no image URL"
     assert frame.animation == "badge_reveal"
     assert frame.sfx_cue == "badge_awarded"
 
 
 def test_cat5_celebrate_includes_image_when_structured_story_has_achievement_url():
     """When structured_story has an achievement image URL, celebrate passes it through."""
-    slots = _cat5_slots()
     structured = StructuredStory(
         scenes=[],
         achievement_description="",
         achievement_image_data_url="data:image/png;base64,FAKE",
     )
-    context = {
-        "entity_name": "ladybug",
-        "ib_key_concepts": ["Form", "Connection"],
-        "collection_phase": "photo",
-        "collected_photos": ["speckled_leaf"],
-        "collected_names": [],
-        "collected_details": [],
-        "structured_story": structured,
-        "round_items": [],
-    }
+    context = _cat5_context(structured_story=structured)
 
-    frame = get_screen_frame("STEP_5_CELEBRATE", "cat5", slots, context)
+    frame = get_screen_frame("STEP_5_CELEBRATE", "cat5", _cat5_slots(), context)
 
     assert frame.widget == "achievement_image"
     assert frame.widget_params["image_data_url"] == "data:image/png;base64,FAKE"
@@ -308,26 +306,12 @@ def test_cat5_celebrate_includes_image_when_structured_story_has_achievement_url
 
 def test_cat5_closing_returns_concept_reveal_with_concepts():
     """STEP_6_CLOSING should render concept_reveal widget with concepts, no image."""
-    slots = _cat5_slots()
-    context = {
-        "entity_name": "ladybug",
-        "ib_key_concepts": ["Form", "Connection"],
-        "collection_phase": "photo",
-        "collected_photos": ["speckled_leaf"],
-        "collected_names": [],
-        "collected_details": [],
-        "structured_story": None,
-        "round_items": [],
-    }
-
-    frame = get_screen_frame("STEP_6_CLOSING", "cat5", slots, context)
+    frame = get_screen_frame("STEP_6_CLOSING", "cat5", _cat5_slots(), _cat5_context())
 
     assert frame.widget == "concept_reveal"
     assert frame.widget_params["title"] == "Shape Specialist"
     assert frame.widget_params["concepts"] == ["Form", "Connection"]
-    assert "image_data_url" not in frame.widget_params, (
-        "closing is concept-focused — no image"
-    )
+    assert "image_data_url" not in frame.widget_params, "closing is concept-focused — no image"
     assert frame.animation == "badge_reveal"
     assert frame.sfx_cue == "celebration_fanfare"
 

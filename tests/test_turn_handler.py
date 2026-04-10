@@ -102,6 +102,29 @@ def _make_input(**overrides: object) -> TurnInput:
     return TurnInput(**defaults)
 
 
+async def _run_directive_advance(
+    state: SessionStateModel,
+    turn_response: TurnResponse,
+    *,
+    emotion_tag: str = "gentle",
+):
+    """Run _resolve_turn_with_directive with a canned advance directive.
+
+    Wraps the boilerplate shared by tests that exercise the directive handler:
+    builds a ScriptAgent mock returning ``turn_response``, constructs a basic
+    advance directive, and invokes the resolver.
+    """
+    agent = _make_agent_mock()
+    agent.generate_turn_from_directive = AsyncMock(return_value=turn_response)
+    directive = TurnDirective(
+        action="advance",
+        reasoning="test",
+        response_direction="test",
+        emotion_tag=emotion_tag,
+    )
+    return await _resolve_turn_with_directive(state, _make_input(), agent, directive)
+
+
 def _make_round_items() -> list[list[dict[str, object]]]:
     """Build predictable Cat5 round items for collection tests."""
     return [
@@ -1480,29 +1503,13 @@ async def test_cat5_celebrate_handler_returns_achievement_image_frame() -> None:
         current_step="STEP_5_CELEBRATE",
         current_round=3,
     )
-
-    script_agent = _make_agent_mock()
-    script_agent.generate_turn_from_directive = AsyncMock(
-        return_value=_mock_turn(
-            dialogue="[celebrating] You did it!",
-            tone_marker="celebrating",
-            screen_widget="achievement_image",
-        )
+    turn_response = _mock_turn(
+        dialogue="[celebrating] You did it!",
+        tone_marker="celebrating",
+        screen_widget="achievement_image",
     )
 
-    directive = TurnDirective(
-        action="advance",
-        reasoning="Celebrate acceptance",
-        response_direction="Celebrate the child's find.",
-        emotion_tag="celebrating",
-    )
-
-    result = await _resolve_turn_with_directive(
-        state,
-        _make_input(),
-        script_agent,
-        directive,
-    )
+    result = await _run_directive_advance(state, turn_response, emotion_tag="celebrating")
 
     # Critical: the screen frame returned for celebrate must be achievement_image,
     # NOT concept_reveal (even though state has now advanced to STEP_6_CLOSING).
@@ -1521,28 +1528,12 @@ async def test_cat5_closing_handler_sets_concept_reveal_widget() -> None:
         status="active",
         template_type="cat5",
     )
-    script_agent = _make_agent_mock()
-    script_agent.generate_turn_from_directive = AsyncMock(
-        return_value=_mock_turn(dialogue="[gentle] You learned about Form and Connection.")
-    )
+    turn_response = _mock_turn(dialogue="[gentle] You learned about Form and Connection.")
 
-    directive = TurnDirective(
-        action="advance",
-        reasoning="Closing",
-        response_direction="Wrap up warmly.",
-        emotion_tag="gentle",
-    )
-
-    result = await _resolve_turn_with_directive(
-        state,
-        _make_input(),
-        script_agent,
-        directive,
-    )
+    result = await _run_directive_advance(state, turn_response)
 
     assert result.turn_response.screen_widget == "concept_reveal", (
-        f"Cat5 closing should set screen_widget to concept_reveal, "
-        f"got {result.turn_response.screen_widget}"
+        f"Cat5 closing should set screen_widget to concept_reveal, got {result.turn_response.screen_widget}"
     )
 
 
@@ -1563,26 +1554,10 @@ async def test_cat1_closing_handler_keeps_achievement_image_widget() -> None:
         current_step="STEP_5_CLOSING",
         status="active",
     )
-    script_agent = _make_agent_mock()
-    script_agent.generate_turn_from_directive = AsyncMock(
-        return_value=_mock_turn(dialogue="[gentle] You discovered so much.")
-    )
+    turn_response = _mock_turn(dialogue="[gentle] You discovered so much.")
 
-    directive = TurnDirective(
-        action="advance",
-        reasoning="Closing",
-        response_direction="Wrap up warmly.",
-        emotion_tag="gentle",
-    )
-
-    result = await _resolve_turn_with_directive(
-        state,
-        _make_input(),
-        script_agent,
-        directive,
-    )
+    result = await _run_directive_advance(state, turn_response)
 
     assert result.turn_response.screen_widget == "achievement_image", (
-        f"Cat1 closing should stay on achievement_image, "
-        f"got {result.turn_response.screen_widget}"
+        f"Cat1 closing should stay on achievement_image, got {result.turn_response.screen_widget}"
     )

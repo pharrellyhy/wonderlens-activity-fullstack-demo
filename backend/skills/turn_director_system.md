@@ -39,3 +39,15 @@ This field tells the Speaker WHAT to say (strategy), not HOW to say it (exact wo
 "{child_text}"
 
 Output a valid JSON object matching the TurnDirective schema. Include ALL required fields: action, reasoning, response_direction, emotion_tag, stay_on_step, max_sentences, screen_widget.
+
+`screen_widget` MUST be a plain string — the NAME of a widget like `"photo_display"`, `"photo_grid"`, `"badge_award"`, or `"binary_choice"`. It is NOT an object. Any structured data (options, labels, counts, etc.) goes in `screen_widget_params` as a separate dict field. Example — CORRECT:
+
+```json
+{"screen_widget": "binary_choice", "screen_widget_params": {"options": ["A", "B"]}}
+```
+
+WRONG (do not do this):
+
+```json
+{"screen_widget": {"type": "binary_choice", "options": ["A", "B"]}}
+```

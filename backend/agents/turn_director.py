@@ -56,9 +56,12 @@ _CAT5_COLLECTION_RULES = """\
   sfx_cue="slot_fill_chime" (or "mission_complete_fanfare" if this is the LAST item)
 - Phase=photo, wrong photo (child input contains "[selected wrong photo"):
   action=stay, direction="Acknowledge warmly in ONE short sentence (e.g., 'Ooh, interesting find!'). Then redirect with ONE invitational sentence toward something {observation_angle}. That's it — just two sentences, no questions about the wrong item, no comparisons, no modeling."
-- Phase=detail, child gave substantive response (name, description, detail):
-  action=advance, harvest a story_element with the child's words and any character name.
-  direction="Celebrate the detail. Name the character if synthesis_format is collaborative_story. Reference ALL previous characters."
+- Phase=detail, child gave substantive response AND this is NOT the last round:
+  action=advance, max_sentences=2, harvest a story_element with the child's words and any character name.
+  direction="Celebrate the detail in ONE short sentence. Name the character if synthesis_format is collaborative_story. Reference ALL previous characters by name."
+- Phase=detail, child gave substantive response AND this IS the last round (collected == total_rounds):
+  action=advance, max_sentences=4, harvest a story_element with the child's words and any character name.
+  direction="You have FOUR sentences — use them. (1) Celebrate the detail and/or name warmly. (2) Name the WHOLE crew so far by name (e.g., 'Peter, Sam, and Zip'). (3) Note this was the last find. (4) Tease that you're going to make up a story together about the whole crew — make it sound exciting. Do NOT wrap up, award a title, or say the game is done — the celebration step handles that."
 - Phase=detail, child is off-topic:
   action=stay (stay_on_step=true), direction="Acknowledge, re-ask the detail question with different wording."
 - Phase=detail, silence:

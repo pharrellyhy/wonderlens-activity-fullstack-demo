@@ -6,9 +6,9 @@ and HOW TO RESPOND (response_direction), which the Speaker then converts into
 child-facing dialogue.
 """
 
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .turn_response import CharacterSfxCue
 
@@ -80,3 +80,42 @@ class TurnDirective(BaseModel):
         default_factory=list,
         description="Character/environment sound effects: [{cue, timing}]",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_screen_widget(cls, data: Any) -> Any:
+        """Coerce a structured ``screen_widget`` dict into name + params.
+
+        The LLM occasionally returns ``screen_widget`` as an object like
+        ``{"type": "binary_choice", "options": [...]}`` instead of a plain
+        widget-name string. This validator peels out the ``type`` key (or
+        ``widget``/``name`` as fallback keys) and merges the remaining
+        fields into ``screen_widget_params`` so the rest of the pipeline
+        can keep treating ``screen_widget`` as a string. Silent drift is
+        better than a hard crash: the Turn Director is a first-class path
+        and a failed parse forces the whole turn into fallback handling.
+        """
+        if not isinstance(data, dict):
+            return data
+        widget = data.get("screen_widget")
+        if not isinstance(widget, dict):
+            return data
+
+        # Accept any of the common "name" keys the LLM might pick.
+        name = widget.get("type") or widget.get("widget") or widget.get("name")
+        if not isinstance(name, str) or not name:
+            # Give up and let the default kick in rather than leave a dict
+            # in place, which would still fail string validation below.
+            data["screen_widget"] = "photo_display"
+            return data
+
+        # Merge everything else into screen_widget_params (caller-provided
+        # params win so we don't clobber an already-populated dict).
+        remainder = {k: v for k, v in widget.items() if k not in {"type", "widget", "name"}}
+        existing_params = data.get("screen_widget_params") or {}
+        if not isinstance(existing_params, dict):
+            existing_params = {}
+        merged = {**remainder, **existing_params}
+        data["screen_widget"] = name
+        data["screen_widget_params"] = merged
+        return data

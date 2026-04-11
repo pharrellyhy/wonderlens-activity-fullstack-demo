@@ -177,8 +177,13 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
         )}
       </div>
 
-      {/* Animation label + scene progress dots + SFX indicators */}
-      <div className="flex items-center justify-between px-2.5 py-1 max-[380px]:px-2 max-[380px]:py-0.5 gap-1.5 max-[380px]:gap-1">
+      {/* Animation label + scene progress dots + SFX indicators.
+       * `relative` + absolute-positioned dots so the progress dots sit in
+       * the true center of the panel, independent of the left-label and
+       * right-SFX widths. A plain `justify-between` would only work if the
+       * two outer children had equal width — they don't, so the dots would
+       * visually drift left or right. */}
+      <div className="relative flex items-center justify-between px-2.5 py-1 max-[380px]:px-2 max-[380px]:py-0.5 gap-1.5 max-[380px]:gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
           {screenFrame.animation_label && (
             <p className="text-[9px] max-[380px]:text-[8px] text-gray-400 italic truncate">{screenFrame.animation_label}</p>
@@ -197,9 +202,13 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
         </div>
         {/* Scene progress dots for story_scene widget — rendered here (not
          * inside StoryScene) so they stay visible even when the image fills
-         * the widget area in stage mode. */}
+         * the widget area in stage mode. Absolutely positioned so they stay
+         * centered on the panel regardless of sibling widths. */}
         {screenFrame.widget === 'story_scene' && params.total_scenes > 0 && (
-          <div className="flex justify-center gap-1.5 shrink-0" aria-label="Scene progress">
+          <div
+            className="absolute left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-none"
+            aria-label="Scene progress"
+          >
             {Array.from({ length: params.total_scenes }, (_, i) => (
               <div
                 key={i}

@@ -8,13 +8,17 @@ export default function AchievementImage({ image_data_url, title, animation, ent
         {title || 'Explorer'}
       </h2>
 
-      {/* Achievement image fills remaining space — object-contain respects aspect ratio */}
+      {/* Achievement image fills remaining space — object-contain respects
+       * aspect ratio. Hover lifts the image gently and deepens the drop
+       * shadow for a tactile feel matching the scene image; the global
+       * prefers-reduced-motion rule in index.css disables the scale for
+       * users who opt out of motion. */}
       <div className="flex-1 min-h-0 w-full flex items-center justify-center">
         {image_data_url ? (
           <img
             src={image_data_url}
             alt="Your adventure"
-            className="max-w-full max-h-full rounded-3xl shadow-2xl object-contain animate-fade-in"
+            className="max-w-full max-h-full rounded-3xl shadow-2xl object-contain animate-fade-in transition-transform duration-300 ease-out hover:scale-[1.03] hover:shadow-[0_25px_60px_-10px_rgba(76,175,80,0.35)]"
           />
         ) : (
           <FallbackTrophy entity={entity} />

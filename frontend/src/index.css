@@ -327,27 +327,21 @@
 
 /* Stage mode — any "full-visual" widget (scene delivery, loading, celebrate,
  * closing) grows the device panel while keeping the conversation panel
- * usable. The conversation still shows messages and the input bar so the
- * user can always type or scroll.
+ * usable. The device panel height/maxHeight is set via inline style in
+ * App.jsx (not CSS) so that stage mode reliably overrides the
+ * short-viewport media queries above — inline styles beat any CSS rule
+ * without !important, which none of the media queries use.
  *
- * !important is required because of the short-viewport media queries above
- * (max-height 760px / 580px) that cap .app-top-panel max-height at 18rem /
- * 14rem. Those caps make sense in normal mode but break stage mode's
- * intended "grow the device panel" behavior on laptops with short viewports.
- * Stage mode explicitly wants the device panel to dominate at celebrate /
- * closing / scene delivery regardless of viewport height. */
+ * We DO override the short-viewport media queries here for stage mode,
+ * because those queries target .app-top-panel directly and would clamp
+ * max-height even when an inline style is present (if they used !important).
+ * They don't, but keeping this override is defensive. */
 .app-top-panel,
 .app-main > section[aria-label="Conversation panel"] {
   transition: flex-basis 500ms ease-out, max-height 500ms ease-out, height 500ms ease-out;
 }
 
-.stage-mode .app-top-panel {
-  flex: 1 1 78% !important;
-  height: 78% !important;
-  max-height: 56rem !important;
-}
-
 .stage-mode > section[aria-label="Conversation panel"] {
-  flex: 1 1 auto !important;
-  min-height: 7rem !important;
+  flex: 1 1 auto;
+  min-height: 7rem;
 }

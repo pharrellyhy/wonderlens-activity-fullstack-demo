@@ -20,11 +20,6 @@ export default function ConceptReveal({ title, concepts = [], animation }) {
           <ConceptMedallion key={concept} concept={concept} delayMs={i * 250} />
         ))}
       </div>
-
-      {/* Role line */}
-      <p className="text-base font-display text-[var(--color-forest-dark)]/80 text-center">
-        {`You are now a ${title || 'Explorer'}!`}
-      </p>
     </div>
   );
 }

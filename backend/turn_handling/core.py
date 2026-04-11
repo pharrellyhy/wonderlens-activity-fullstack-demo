@@ -180,7 +180,7 @@ async def resolve_turn(
             and state.structured_story
         ):
             scene_num = int(state.synthesis_phase.split("_")[1])
-            return _deliver_scene(state, scene_num)
+            return await _deliver_scene(state, scene_num)
         if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase == "generate":
             return await _resolve_synthesis_turn(state, turn_input, script_agent)
 

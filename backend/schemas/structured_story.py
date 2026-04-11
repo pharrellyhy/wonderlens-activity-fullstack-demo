@@ -9,6 +9,10 @@ class StoryScene(BaseModel):
     narration: str = Field(description="The narration text for this scene (2-5 sentences)")
     image_description: str = Field(description="Visual description for Imagen generation")
     image_data_url: str | None = Field(default=None, description="Base64 data URL of generated image")
+    caption: str | None = Field(
+        default=None,
+        description="Short (<= 10 word) caption baked into the bottom of the image as hand-lettered text",
+    )
 
 
 class StructuredStory(BaseModel):
@@ -20,5 +24,17 @@ class StructuredStory(BaseModel):
     """
 
     scenes: list[StoryScene] = Field(description="Story scenes (3 for story, 1 for comparison reveal)")
-    achievement_description: str = Field(description="Visual description for achievement summary image")
+    # achievement_description is always overwritten post-parse with a
+    # deterministic celebration-poster template (see _build_achievement_prompt
+    # in turn_handling/synthesis.py). We keep it optional with a default of ""
+    # so LLM responses that omit the field — which they will, because the
+    # prompt no longer asks for it — validate cleanly.
+    achievement_description: str = Field(
+        default="",
+        description="Visual description for achievement summary image (filled in post-parse)",
+    )
     achievement_image_data_url: str | None = Field(default=None, description="Base64 data URL of achievement image")
+    achievement_caption: str | None = Field(
+        default=None,
+        description="Short (<= 6 word) caption baked into the achievement image",
+    )

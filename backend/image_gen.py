@@ -9,12 +9,18 @@ used as a reference anchor for subsequent images. This keeps character
 designs, colors, and art style visually consistent across scenes — the
 previous parallel batching produced noticeably different characters per
 scene because each call was independent.
+
+Progressive delivery: the sequential worker publishes each finished image
+via a per-session ``asyncio.Future`` the moment it resolves, so scene 1
+can be delivered to the frontend while scenes 2 and 3 are still mid-
+generation. See ``start_scene_images`` / ``get_scene_futures``.
 """
 
 import asyncio
 import base64
 import io
 import time
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
@@ -32,14 +38,24 @@ except ImportError:
 
 logger = setup_logger(__name__)
 
-_STYLE_PREFIX = (
-    "Soft watercolor children's storybook illustration. "
-    "Gentle pastel tones, warm lighting, no text or words in the image."
-)
+_STYLE_PREFIX = "Soft watercolor children's storybook illustration. Gentle pastel tones, warm lighting."
 
 _CONSISTENCY_SUFFIX = (
-    " Keep the character designs, proportions, colors, and art style "
-    "visually consistent with the reference image(s)."
+    " Keep the character designs, proportions, colors, and art style visually consistent with the reference image(s)."
+)
+
+# Caption template: Gemini 2.5 Flash Image is decent at rendering short
+# quoted text when we spell out exactly what should appear. Keeping the
+# caption short (≤10 words) and quoted improves fidelity dramatically —
+# longer or unquoted captions tend to get misspelled. We build this with
+# simple concatenation (not str.format) so captions containing literal
+# braces from an LLM don't crash the call.
+_CAPTION_PREFIX = (
+    ' Include exactly ONE short hand-lettered caption along the bottom of the illustration that reads EXACTLY: "'
+)
+_CAPTION_SUFFIX = (
+    '". Paint it in a cozy hand-lettered storybook style, clearly readable,'
+    " no other words, no extra letters, no speech bubbles elsewhere in the image."
 )
 
 _MAX_RETRIES = 2
@@ -79,6 +95,7 @@ async def generate_image(
     aspect_ratio: str = "16:9",
     reference: bytes | None = None,
     anchor: bytes | None = None,
+    caption: str | None = None,
 ) -> bytes | None:
     """Generate a single image, optionally threaded with reference images.
 
@@ -90,6 +107,9 @@ async def generate_image(
                 canon that should stay stable across all scenes. Passed as
                 an additional reference part alongside ``reference`` (unless
                 they're the same image).
+        caption: Optional short (≤10 word) caption to bake into the image as
+                hand-lettered text along the bottom. When None, the image is
+                rendered without any text.
 
     Returns:
         PNG image bytes, or None if generation fails.
@@ -102,6 +122,15 @@ async def generate_image(
     full_prompt = f"{_STYLE_PREFIX} {prompt}"
     if reference or anchor:
         full_prompt += _CONSISTENCY_SUFFIX
+    if caption:
+        # String concatenation rather than .format() so a caption
+        # containing literal "{" or "}" (possible from an LLM) can't
+        # trigger a KeyError / IndexError at runtime. We also strip any
+        # pre-existing double quotes from the caption so they don't
+        # collide with the quoted-instruction wrapper.
+        safe_caption = caption.strip().replace('"', "").replace("\u201c", "").replace("\u201d", "")
+        if safe_caption:
+            full_prompt += _CAPTION_PREFIX + safe_caption + _CAPTION_SUFFIX
 
     contents: list = [full_prompt]
     if anchor:
@@ -186,51 +215,83 @@ def _save_image(image_bytes: bytes, session_id: str, filename: str) -> Path:
     return path
 
 
-async def generate_scene_images(
+@dataclass
+class _SceneSession:
+    """Per-session state for progressive scene image delivery.
+
+    ``scene_futures`` holds one future per scene description (in order),
+    ``achievement_future`` holds the future for the achievement image, and
+    ``task`` is kept as a strong reference so the event loop doesn't garbage-
+    collect the background worker while it's still running.
+    """
+
+    scene_futures: list[asyncio.Future[str | None]]
+    achievement_future: asyncio.Future[str | None]
+    task: asyncio.Task[None] = field(repr=False)
+
+
+_scene_sessions: dict[str, _SceneSession] = {}
+
+
+def _process_generated_image(img_bytes: bytes, session_id: str, filename: str, label: str) -> str:
+    """Save PNG to disk and return a downscaled JPEG data URL for the browser."""
+    _save_image(img_bytes, session_id, filename)
+    jpeg_bytes = _downscale_to_jpeg(img_bytes, max_dim=768, quality=85)
+    logger.info(
+        "%s downscaled: %d bytes -> %d bytes (%.1f%%)",
+        label,
+        len(img_bytes),
+        len(jpeg_bytes),
+        100 * len(jpeg_bytes) / len(img_bytes),
+    )
+    return image_to_base64(jpeg_bytes, mime="image/jpeg")
+
+
+async def _scene_image_worker(
+    session_id: str,
     scene_descriptions: list[str],
     achievement_description: str,
-    session_id: str = "",
-) -> tuple[list[str | None], str | None]:
-    """Generate scene images sequentially for character consistency.
+    scene_futures: list[asyncio.Future[str | None]],
+    achievement_future: asyncio.Future[str | None],
+    scene_captions: list[str | None],
+    achievement_caption: str | None,
+) -> None:
+    """Sequential scene generator that resolves each future as its image lands.
 
-    Each scene after the first receives the first-scene image as an
-    "anchor" (character canon) plus the immediately previous scene as a
-    "reference" (style continuity). The achievement image is generated
-    last, also using the anchor.
+    Generation order is preserved (later scenes use earlier images as
+    anchor/reference for character consistency), but each finished image is
+    published immediately so callers awaiting scene N don't have to wait for
+    scenes N+1..M to finish.
 
-    Args:
-        scene_descriptions: List of scene image descriptions (1 for
-            comparison_reveal, 3 for collaborative_story).
-        achievement_description: Description for the achievement image.
-        session_id: Session identifier for organizing saved images on disk.
-
-    Returns:
-        Tuple of (scene_image_data_urls, achievement_image_data_url).
-        Each scene entry is a base64 data URL or None if that scene failed.
+    ``scene_captions`` and ``achievement_caption`` are optional short (<=10
+    word) strings baked into the bottom of each image as hand-lettered text.
+    When a caption is None the corresponding image renders without any text.
     """
     sid = session_id or "unknown"
-    scene_urls: list[str | None] = []
     anchor_bytes: bytes | None = None  # first successful scene — character canon
     previous_bytes: bytes | None = None  # immediately preceding scene — style continuity
 
+    def _set(future: asyncio.Future[str | None], value: str | None) -> None:
+        if not future.done():
+            future.set_result(value)
+
     for i, desc in enumerate(scene_descriptions):
-        img_bytes = await generate_image(
-            desc,
-            aspect_ratio="16:9",
-            reference=previous_bytes,
-            anchor=anchor_bytes,
-        )
-        if img_bytes:
-            # Save the original PNG for debug/inspection on disk
-            _save_image(img_bytes, sid, f"scene_{i + 1}.png")
-            # Downscale + re-encode as JPEG for the browser payload
-            jpeg_bytes = _downscale_to_jpeg(img_bytes, max_dim=768, quality=85)
-            scene_urls.append(image_to_base64(jpeg_bytes, mime="image/jpeg"))
-            logger.info(
-                "Scene %d downscaled: %d bytes -> %d bytes (%.1f%%)",
-                i + 1, len(img_bytes), len(jpeg_bytes),
-                100 * len(jpeg_bytes) / len(img_bytes),
+        data_url: str | None = None
+        caption = scene_captions[i] if i < len(scene_captions) else None
+        try:
+            img_bytes = await generate_image(
+                desc,
+                aspect_ratio="16:9",
+                reference=previous_bytes,
+                anchor=anchor_bytes,
+                caption=caption,
             )
+        except Exception as exc:
+            logger.error("Scene %d generation raised: %s", i + 1, exc)
+            img_bytes = None
+
+        if img_bytes:
+            data_url = _process_generated_image(img_bytes, sid, f"scene_{i + 1}.png", f"Scene {i + 1}")
             # Keep the ORIGINAL PNG bytes as the reference/anchor for the
             # next generation — full resolution gives Gemini more detail
             # to lock onto for character consistency.
@@ -239,28 +300,137 @@ async def generate_scene_images(
             previous_bytes = img_bytes
         else:
             logger.error("Scene %d image generation failed", i + 1)
-            scene_urls.append(None)
+
+        _set(scene_futures[i], data_url)
 
     # Achievement image: use the anchor + the last scene as references.
     # 16:9 matches the landscape device panel — a 1:1 square would leave
     # large empty bands on the sides after object-contain scaling.
-    achievement_bytes = await generate_image(
-        achievement_description,
-        aspect_ratio="16:9",
-        reference=previous_bytes,
-        anchor=anchor_bytes,
-    )
     achievement_url: str | None = None
-    if achievement_bytes:
-        _save_image(achievement_bytes, sid, "achievement.png")
-        jpeg_bytes = _downscale_to_jpeg(achievement_bytes, max_dim=768, quality=85)
-        achievement_url = image_to_base64(jpeg_bytes, mime="image/jpeg")
-        logger.info(
-            "Achievement downscaled: %d bytes -> %d bytes (%.1f%%)",
-            len(achievement_bytes), len(jpeg_bytes),
-            100 * len(jpeg_bytes) / len(achievement_bytes),
+    try:
+        achievement_bytes = await generate_image(
+            achievement_description,
+            aspect_ratio="16:9",
+            reference=previous_bytes,
+            anchor=anchor_bytes,
+            caption=achievement_caption,
         )
+    except Exception as exc:
+        logger.error("Achievement generation raised: %s", exc)
+        achievement_bytes = None
+
+    if achievement_bytes:
+        achievement_url = _process_generated_image(achievement_bytes, sid, "achievement.png", "Achievement")
     else:
         logger.error("Achievement image generation failed")
 
+    _set(achievement_future, achievement_url)
+
+
+def start_scene_images(
+    session_id: str,
+    scene_descriptions: list[str],
+    achievement_description: str,
+    scene_captions: list[str | None] | None = None,
+    achievement_caption: str | None = None,
+) -> _SceneSession:
+    """Kick off sequential scene image generation as a background task.
+
+    Returns immediately with a ``_SceneSession`` whose futures resolve
+    progressively as each image lands. Callers should await
+    ``scene_futures[n]`` for scene N and ``achievement_future`` for the
+    achievement image. A strong reference to the worker task is held inside
+    the returned session (and the module-level registry) so the event loop
+    doesn't garbage-collect it mid-run.
+
+    ``scene_captions`` (one per scene) and ``achievement_caption`` are
+    optional short strings baked into each image as hand-lettered text. When
+    omitted the images render without captions, preserving the pre-caption
+    behaviour for callers that don't care about in-image text.
+
+    If a session already exists for ``session_id``, its previous worker is
+    cancelled before the new one starts — this keeps reset / retry flows
+    from leaking stale tasks.
+    """
+    clear_scene_session(session_id)
+
+    # Normalise captions to a list aligned with scene_descriptions so the
+    # worker can index by scene number without extra bounds checks.
+    normalized_captions: list[str | None]
+    if scene_captions is None:
+        normalized_captions = [None] * len(scene_descriptions)
+    elif len(scene_captions) < len(scene_descriptions):
+        normalized_captions = list(scene_captions) + [None] * (len(scene_descriptions) - len(scene_captions))
+    else:
+        normalized_captions = list(scene_captions)
+
+    loop = asyncio.get_running_loop()
+    scene_futures: list[asyncio.Future[str | None]] = [loop.create_future() for _ in scene_descriptions]
+    achievement_future: asyncio.Future[str | None] = loop.create_future()
+
+    task = asyncio.create_task(
+        _scene_image_worker(
+            session_id,
+            scene_descriptions,
+            achievement_description,
+            scene_futures,
+            achievement_future,
+            normalized_captions,
+            achievement_caption,
+        ),
+        name=f"scene-images-{session_id}",
+    )
+    session = _SceneSession(
+        scene_futures=scene_futures,
+        achievement_future=achievement_future,
+        task=task,
+    )
+    _scene_sessions[session_id] = session
+    return session
+
+
+def get_scene_session(session_id: str) -> _SceneSession | None:
+    """Look up the active scene-image session for ``session_id``, if any."""
+    return _scene_sessions.get(session_id)
+
+
+def clear_scene_session(session_id: str) -> None:
+    """Cancel and drop any scene-image session registered for ``session_id``."""
+    session = _scene_sessions.pop(session_id, None)
+    if session is None:
+        return
+    if not session.task.done():
+        session.task.cancel()
+    for fut in (*session.scene_futures, session.achievement_future):
+        if not fut.done():
+            fut.cancel()
+
+
+async def generate_scene_images(
+    scene_descriptions: list[str],
+    achievement_description: str,
+    session_id: str = "",
+    scene_captions: list[str | None] | None = None,
+    achievement_caption: str | None = None,
+) -> tuple[list[str | None], str | None]:
+    """Generate all scene images + achievement and wait for them.
+
+    Thin wrapper around ``start_scene_images`` preserved for callers that
+    want the old "block until everything is ready" behaviour (comparison
+    reveal, ad-hoc scripts, tests). Progressive callers should use
+    ``start_scene_images`` directly and await individual futures.
+
+    Returns:
+        Tuple of (scene_image_data_urls, achievement_image_data_url).
+        Each scene entry is a base64 data URL or None if that scene failed.
+    """
+    session = start_scene_images(
+        session_id,
+        scene_descriptions,
+        achievement_description,
+        scene_captions=scene_captions,
+        achievement_caption=achievement_caption,
+    )
+    scene_urls = [await fut for fut in session.scene_futures]
+    achievement_url = await session.achievement_future
     return scene_urls, achievement_url

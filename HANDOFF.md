@@ -1,6 +1,44 @@
 # Session Handoff
 
-Last updated: 2026-04-09
+Last updated: 2026-04-11
+
+---
+
+## Progressive Scene Delivery, In-Image Captions, Distinct Celebration + Turn Director Robustness
+
+**Problem**: Three rounds of playtesting Cat5 synthesis surfaced compound issues. (1) The backend blocked on all 3 scene images plus the achievement image before delivering scene 1 to the frontend, so the child watched the loading widget for ~20s even though each scene only takes ~5s. (2) The generated achievement image was visually indistinguishable from scene 3 because the LLM kept producing "characters together in a warm scene" as the achievement description — which is exactly what scene 3 already is. (3) Generated images had no text, while storybook pages traditionally carry a short caption. (4) TurnDirective parsing hard-failed when the LLM returned `screen_widget` as a structured dict `{type: ..., options: [...]}` instead of a plain string, dropping the whole turn into fallback handling. (5) On the last Cat5 collection round the Turn Director wrote a 4-part directive ("celebrate + introduce crew + mark last find + tease story") but forgot to raise `max_sentences`, so the Speaker respected the schema default of 2 and dropped the story-tease half. (6) Device panel rendered-image widgets had no hover feedback; progress dots drifted off-center when label/SFX indicator widths were uneven; ConceptReveal's "You are now a X!" line duplicated the H2 title; and `index.css` still had leftover `!important` stage-mode overrides from before the inline-style fix landed.
+
+**Solution**: Three focused commits:
+- `feat(synthesis)`: per-session `_SceneSession` background worker in `image_gen.py` publishes each finished image to its own `asyncio.Future`; `_deliver_scene` awaits only the future for the scene it's shipping via `asyncio.wait_for(asyncio.shield(future), timeout=30s)` so scene 1 ships the moment it's ready. Last-scene delivery also awaits the achievement future so the celebrate frame has the URL. Only non-None results are cached onto `scene.image_data_url` so a timed-out wait doesn't poison retries. Added `_build_achievement_prompt` in `synthesis.py` that returns a deterministic celebration-poster template with rotating props (confetti / crowns / banners / spotlight / petals / campfire) — character names are interpolated so the portrait matches the story but the composition is locked to a centered hero shot. Removed "no text" from `_STYLE_PREFIX`; `generate_image` now accepts an optional `caption` that gets threaded through the worker and baked into the image via plain string concat (not `str.format` — LLM-produced braces would KeyError). Schema: `StructuredStory.achievement_description` is now optional (default `""`) since the prompt no longer asks for it.
+- `feat(ui)`: `StoryScene`, `AchievementImage`, and `PhotoDisplay` get `transition-transform duration-300 ease-out hover:scale-[1.03]` + a deeper shadow. Global `prefers-reduced-motion` rule already disables the transform for opt-outs. Progress dots moved to `absolute left-1/2 -translate-x-1/2` inside a `relative` parent. ConceptReveal drops the redundant role-line. `index.css` stage-mode `!important` overrides removed now that App.jsx owns device-panel sizing via inline style.
+- `fix(turn-director)`: `TurnDirective` gains a `model_validator(mode="before")` that peels `type` / `widget` / `name` out of a dict `screen_widget` and merges the remainder into `screen_widget_params` (caller-provided params still win). Turn Director system prompt tightened with CORRECT/WRONG examples. `_CAT5_COLLECTION_RULES` detail-phase advance split into "NOT the last round" (`max_sentences=2`, lean celebrate) and "IS the last round" (`max_sentences=4`, explicit 4-sentence structure: celebrate → name crew → mark last find → tease story).
+
+**Edits**:
+- `backend/image_gen.py` — new `_SceneSession` dataclass, `_scene_sessions` registry, `start_scene_images()`, `get_scene_session()`, `clear_scene_session()`, `_scene_image_worker()`, `_process_generated_image()` helper; `generate_image` accepts optional `caption` param; `_STYLE_PREFIX` no longer bans text; brace-safe string-concat prompt assembly with `_CAPTION_PREFIX` / `_CAPTION_SUFFIX`
+- `backend/turn_handling/synthesis.py` — `_generate_structured_story` kicks off background delivery and returns story immediately with image URLs unset; `_deliver_scene` is now async, awaits per-scene future, and pulls the achievement future forward on `is_last`; new `_build_achievement_prompt`, `_CELEBRATION_PROPS` / `_CELEBRATION_CAPTIONS` palettes, `_role_title_for` helper, and `_condense_caption` utility; LLM prompts ask for a per-scene `caption` instead of `achievement_description`
+- `backend/turn_handling/core.py` — updated `_deliver_scene` call site to `await`
+- `backend/schemas/structured_story.py` — `caption` field on `StoryScene`, `achievement_caption` field on `StructuredStory`, `achievement_description` now optional with default `""`
+- `backend/schemas/turn_directive.py` — new `_normalize_screen_widget` model validator coerces dict → name + params split
+- `backend/skills/turn_director_system.md` — explicit `screen_widget` MUST-be-string note with CORRECT/WRONG JSON examples
+- `backend/agents/turn_director.py` — `_CAT5_COLLECTION_RULES` detail-advance split into NOT-last-round vs IS-last-round with explicit `max_sentences`
+- `frontend/src/components/DeviceScreen.jsx` — progress dots absolutely positioned for true panel-center alignment
+- `frontend/src/index.css` — removed `!important` stage-mode overrides; updated comment explaining the inline-style approach
+- `frontend/src/widgets/StoryScene.jsx`, `AchievementImage.jsx`, `PhotoDisplay.jsx` — hover scale + deeper shadow on the image element
+- `frontend/src/widgets/ConceptReveal.jsx` — dropped redundant "You are now a {role}!" paragraph
+- `docs/plans/2026-04-10-celebration-bugfixes-and-consistency.md`, `docs/plans/2026-04-10-progressive-scene-image-delivery.md`, `docs/plans/2026-04-11-hover-caption-distinct-celebration.md` — plan docs
+
+**NOT Changed**:
+- Gemini 2.5 Flash Image model selection, anchor/reference character-consistency chain, JPEG downscale pipeline — all preserved
+- Blocking `generate_scene_images()` wrapper — still used by `_generate_comparison_reveal` (1 scene, no progressive benefit)
+- `prefers-reduced-motion` handling — already present in `index.css`, unchanged
+- Cat1 rules, Cat1 Round rules, Synthesis / Celebrate / Closing rules — unchanged; fix was scoped to Cat5 collection only
+- Tests and pytest suite — no new tests added (all verification was manual + focused import smoke tests)
+
+**Verification**:
+- `cd backend && uv run ruff check . && uv run ruff format --check .` — clean on all changed files
+- Import smoke tests: progressive delivery, caption threading, brace-escape, `_build_achievement_prompt`, `_condense_caption` edge cases, `TurnDirective` dict / string / default / alias / merge all pass
+- `cd frontend && npx vite build` — clean (85 modules)
+- LLM regression test: the exact failing `TurnDirective` payload from the playtest log now parses correctly with `screen_widget="binary_choice"`, `screen_widget_params={"options": [...]}`
 
 ---
 
@@ -311,28 +349,4 @@ uv run ruff format --check .  # All formatted
 - `cd backend && uv run pytest ../tests/ -v` — 360 passed, 7 skipped
 - `cd backend && uv run ruff check turn_handler.py && uv run ruff format turn_handler.py` — clean
 - `cd backend && uv run mypy turn_handler.py --ignore-missing-imports` — only pre-existing yaml stub issue
-
----
-
-## Review Follow-Up: Preserve Response Step in Turn Logs
-
-**Problem**: Reviewing the new comprehensive turn logging changes uncovered one correctness gap in `backend/server.py`. User turns were logged with the correct pre-resolution step, but AI turns were logged with `state.current_step` after `resolve_turn()`. For turns that auto-advance inside the handler, that misattributes the dialogue to the next step. The clearest case is synthesis completion: the generated story belongs to `STEP_4_SYNTHESIS`, but the logged AI row could show `STEP_5_CELEBRATE`.
-
-**Solution**: Kept the new DB schema and state snapshot format, but fixed the AI logging path to use the step attached to the most recently appended AI conversation turn. While touching that path, I also collapsed the duplicated `/api/turn` and `/api/turn-speak` logging blocks into `_log_user_turn()` and `_log_ai_turn()` helpers so both endpoints stay aligned. Added an API regression that proves the logged AI step stays on `STEP_4_SYNTHESIS` even when the persisted state snapshot has already advanced to `STEP_5_CELEBRATE`.
-
-**Edits**:
-- `backend/server.py` — extracted `_log_user_turn()`, `_log_ai_turn()`, and `_latest_ai_turn_step()`; AI turn logging now derives `step` from conversation history instead of post-resolution `state.current_step`
-- `tests/test_api.py` — added a synthesis auto-advance regression covering the AI log `step` vs `state_snapshot.current_step` distinction
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/db.py` schema/migration work — reviewed and kept as-is
-- Hook-turn logging on all three start paths — kept as-is
-- `tests/test_deep_link.py` logging stub update — reviewed and kept as-is
-- Frontend code — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_api.py tests/test_deep_link.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py -q` — PASS (`150 passed, 1 skipped`)
-- `uv run ruff check backend/db.py backend/server.py backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_api.py tests/test_deep_link.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
-- `uv run ruff format --check backend/db.py backend/server.py backend/agents/script_agent.py backend/entity_registry.py backend/turn_handler.py tests/test_api.py tests/test_deep_link.py tests/test_entity_registry.py tests/test_state_machine.py tests/test_turn_handler.py tests/test_visual_agent.py` — PASS
 

@@ -19,15 +19,15 @@ keywords:
 - guide
 feature_keywords: [reflective, stripes, helmet, bright, sturdy]
 photo_features: [bright reflective stripes, sturdy helmet, protective gear]
-plain_description: "Walk the neighborhood and find 3 things that help keep people safe, then sort each one by whether it warns, protects, or guides."
+plain_description: "Explore the neighborhood and discover 3 things that help keep people safe, then sort each one by whether it warns, protects, or guides."
 steps_summary:
-  - "Find 3 things in the neighborhood that help keep people safe"
-  - "Describe each find's safety job"
+  - "Discover 3 things in the neighborhood that help keep people safe"
+  - "Notice each find's safety job"
   - "Sort the collection by function — warning helpers vs protecting helpers vs guiding helpers"
   - "Earn the Safety Inspector badge!"
 creative_slots:
   observation_angle: function
-  collection_criterion: Find things in the neighborhood that help keep people safe (warn, protect, or guide)
+  collection_criterion: Things in the neighborhood that help keep people safe (warn, protect, or guide)
   collection_count: 3
   mission_metaphor: You are a Safety Inspector on a mission to find safety helpers!
   role_title: Safety Inspector

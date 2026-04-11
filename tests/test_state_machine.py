@@ -2,6 +2,7 @@
 
 from schemas import ScreenFrame
 from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+from schemas.structured_story import StructuredStory
 from state_machine import _match_visual_frame, get_screen_frame
 
 
@@ -29,6 +30,25 @@ def _cat5_slots() -> Cat5CreativeSlots:
         detail_question_template="What does it remind you of?",
         sorting_criterion="",
     )
+
+
+def _cat5_context(
+    *,
+    structured_story: StructuredStory | None = None,
+    collected_photos: list[str] | None = None,
+    collected_details: list[str] | None = None,
+) -> dict:
+    """Build a Cat5 get_screen_frame context with sensible defaults."""
+    return {
+        "entity_name": "ladybug",
+        "ib_key_concepts": ["Form", "Connection"],
+        "collection_phase": "photo",
+        "collected_photos": collected_photos if collected_photos is not None else ["speckled_leaf"],
+        "collected_names": [],
+        "collected_details": collected_details if collected_details is not None else [],
+        "structured_story": structured_story,
+        "round_items": [],
+    }
 
 
 def _make_visual_frames() -> list[ScreenFrame]:
@@ -249,3 +269,70 @@ class TestGetScreenFrameWithVisualFrames:
         assert frame.widget == "badge_award"
         assert frame.sfx_cue == "badge_awarded"
         assert frame.widget_label == "Your explorer badge"
+
+
+def test_cat5_celebrate_returns_achievement_image_without_concepts():
+    """STEP_5_CELEBRATE should render achievement_image with title only, no concepts."""
+    context = _cat5_context(
+        collected_photos=["speckled_leaf", "circle_flower"],
+        collected_details=["big dots", "small dots"],
+    )
+
+    frame = get_screen_frame("STEP_5_CELEBRATE", "cat5", _cat5_slots(), context)
+
+    assert frame.widget == "achievement_image"
+    assert frame.widget_params["title"] == "Shape Specialist"
+    assert "concepts" not in frame.widget_params, "celebrate should NOT include IB concepts — those belong to closing"
+    assert "image_data_url" not in frame.widget_params, "no structured_story in context means no image URL"
+    assert frame.animation == "badge_reveal"
+    assert frame.sfx_cue == "badge_awarded"
+
+
+def test_cat5_celebrate_includes_image_when_structured_story_has_achievement_url():
+    """When structured_story has an achievement image URL, celebrate passes it through."""
+    structured = StructuredStory(
+        scenes=[],
+        achievement_description="",
+        achievement_image_data_url="data:image/png;base64,FAKE",
+    )
+    context = _cat5_context(structured_story=structured)
+
+    frame = get_screen_frame("STEP_5_CELEBRATE", "cat5", _cat5_slots(), context)
+
+    assert frame.widget == "achievement_image"
+    assert frame.widget_params["image_data_url"] == "data:image/png;base64,FAKE"
+    assert "concepts" not in frame.widget_params
+
+
+def test_cat5_closing_returns_concept_reveal_with_concepts():
+    """STEP_6_CLOSING should render concept_reveal widget with concepts, no image."""
+    frame = get_screen_frame("STEP_6_CLOSING", "cat5", _cat5_slots(), _cat5_context())
+
+    assert frame.widget == "concept_reveal"
+    assert frame.widget_params["title"] == "Shape Specialist"
+    assert frame.widget_params["concepts"] == ["Form", "Connection"]
+    assert "image_data_url" not in frame.widget_params, "closing is concept-focused — no image"
+    assert frame.animation == "badge_reveal"
+    assert frame.sfx_cue == "celebration_fanfare"
+
+
+def test_cat1_closing_unchanged():
+    """Cat1 closing path must not be affected by the Cat5 split."""
+    slots = _cat1_slots()
+    context = {
+        "entity_name": "dog",
+        "ib_key_concepts": ["Perspective"],
+        "collection_phase": "photo",
+        "collected_photos": [],
+        "collected_names": [],
+        "collected_details": [],
+        "structured_story": None,
+        "round_items": [],
+    }
+
+    frame = get_screen_frame("STEP_5_CLOSING", "cat1", slots, context)
+
+    # Cat1 uses STEP_5_CLOSING (not STEP_6) and its own badge_award widget
+    assert frame.widget == "badge_award"
+    assert frame.widget_params["title"] == "IB Concepts"
+    assert frame.widget_params["concepts"] == ["Perspective"]

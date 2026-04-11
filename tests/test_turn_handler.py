@@ -16,6 +16,7 @@ from agents.script_agent import ScriptAgentError
 from schemas.child_intent import ChildIntentClassification
 from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from schemas.session_state import ConversationTurn, SessionStateModel
+from schemas.turn_directive import TurnDirective
 from schemas.turn_plan import TurnPlan
 from schemas.turn_response import TurnResponse
 from state_machine import EARLY_EXIT
@@ -32,7 +33,9 @@ from turn_handling import (
     _record_collection_detail,
     resolve_turn,
 )
+from turn_handling.directive import _resolve_turn_with_directive
 from turn_handling.helpers import _HISTORY_LIMIT, _append_ai_turn, _should_auto_advance
+from turn_handling.types import TurnResult
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -98,6 +101,29 @@ def _make_input(**overrides: object) -> TurnInput:
     }
     defaults.update(overrides)
     return TurnInput(**defaults)
+
+
+async def _run_directive_advance(
+    state: SessionStateModel,
+    turn_response: TurnResponse,
+    *,
+    emotion_tag: str = "gentle",
+) -> TurnResult:
+    """Run _resolve_turn_with_directive with a canned advance directive.
+
+    Wraps the boilerplate shared by tests that exercise the directive handler:
+    builds a ScriptAgent mock returning ``turn_response``, constructs a basic
+    advance directive, and invokes the resolver.
+    """
+    agent = _make_agent_mock()
+    agent.generate_turn_from_directive = AsyncMock(return_value=turn_response)
+    directive = TurnDirective(
+        action="advance",
+        reasoning="test",
+        response_direction="test",
+        emotion_tag=emotion_tag,
+    )
+    return await _resolve_turn_with_directive(state, _make_input(), agent, directive)
 
 
 def _make_round_items() -> list[list[dict[str, object]]]:
@@ -464,9 +490,10 @@ async def test_synthesis_evaluate_silence_skips_classification_and_generates() -
 
     result = await resolve_turn(state, _make_input(is_silent=True), agent)
 
+    # Silence triggers the loading screen first (auto-advance to generate phase)
     assert state.synthesis_phase == "generate"
-    assert state.current_step == "STEP_5_CELEBRATE"
-    assert result.turn_response.dialogue == "The friends curled up under the stars."
+    assert state.current_step == "STEP_4_SYNTHESIS"
+    assert "story" in result.turn_response.dialogue.lower() or result.turn_response.screen_widget == "story_loading"
     assert result.auto_advance is True
 
 
@@ -498,8 +525,9 @@ async def test_synthesis_confirm_generates_full_story(monkeypatch) -> None:
     assert state.synthesis_child_story == ""
     # confirm is not a decline — counter should not increment
     assert state.synthesis_declines == 0
-    assert state.current_step == "STEP_5_CELEBRATE"
-    assert result.turn_response.dialogue == "Cloud Puff and Mossy Dot went on a big adventure!"
+    # Confirm triggers loading screen first (auto-advance to generate phase)
+    assert state.synthesis_phase == "generate"
+    assert state.current_step == "STEP_4_SYNTHESIS"
     assert result.auto_advance is True
 
 
@@ -528,10 +556,10 @@ async def test_synthesis_t0_substantive_generates_from_seed(monkeypatch) -> None
     monkeypatch.setattr("turn_handling.core._classify_child_intent", _substantive)
     result = await resolve_turn(state, _make_input(text="moss go sleep"), agent)
 
-    # T0 substantive with weak quality: routes to generate phase (AI expands the seed)
+    # T0 substantive with weak quality: routes to loading → generate phase
     assert state.synthesis_phase == "generate"
     assert state.synthesis_child_story == "moss go sleep"
-    assert state.current_step == "STEP_5_CELEBRATE"
+    assert state.current_step == "STEP_4_SYNTHESIS"
     assert result.auto_advance is True
 
 
@@ -578,10 +606,10 @@ async def test_synthesis_improve_silence_skips_classification_and_generates() ->
 
     result = await resolve_turn(state, _make_input(is_silent=True), agent)
 
+    # Silence in improve triggers loading → generate (doesn't advance immediately)
     assert state.synthesis_phase == "generate"
     assert state.synthesis_child_story == "Cloud Puff met Mossy Dot."
-    assert state.current_step == "STEP_5_CELEBRATE"
-    assert result.turn_response.dialogue == "Cloud Puff met Mossy Dot and they became brave."
+    assert state.current_step == "STEP_4_SYNTHESIS"
     assert result.auto_advance is True
 
 
@@ -1247,9 +1275,10 @@ async def test_synthesis_decline_in_evaluate_generates_story(monkeypatch) -> Non
     result = await resolve_turn(state, _make_input(text="no thanks"), agent)
 
     assert state.synthesis_declines == 1
-    assert state.current_step == "STEP_5_CELEBRATE"
+    # Decline triggers loading → generate (doesn't advance immediately)
+    assert state.current_step == "STEP_4_SYNTHESIS"
+    assert state.synthesis_phase == "generate"
     assert result.auto_advance is True
-    assert result.response_type == "synthesis"
 
 
 @pytest.mark.asyncio
@@ -1310,9 +1339,9 @@ async def test_synthesis_off_topic_at_limit_generates(monkeypatch) -> None:
     result = await resolve_turn(state, _make_input(text="I want a puppy"), agent)
 
     assert state.synthesis_unrelated == 1
-    assert state.current_step == "STEP_5_CELEBRATE"
+    assert state.current_step == "STEP_4_SYNTHESIS"
+    assert state.synthesis_phase == "generate"
     assert result.auto_advance is True
-    assert result.response_type == "synthesis"
 
 
 @pytest.mark.asyncio
@@ -1377,9 +1406,9 @@ async def test_synthesis_improve_substantive_weak_generates(monkeypatch) -> None
     result = await resolve_turn(state, _make_input(text="and looked up"), agent)
 
     assert state.synthesis_child_story == "Cloud Puff sat. and looked up"
-    assert state.current_step == "STEP_5_CELEBRATE"
+    assert state.current_step == "STEP_4_SYNTHESIS"
+    assert state.synthesis_phase == "generate"
     assert result.auto_advance is True
-    assert result.response_type == "synthesis"
 
 
 @pytest.mark.asyncio
@@ -1460,3 +1489,133 @@ async def test_closing_marks_session_completed() -> None:
     assert state.status == "completed"
     assert result.response_type == "closing"
     assert result.auto_advance is False
+
+
+@pytest.mark.asyncio
+async def test_cat5_celebrate_handler_returns_achievement_image_frame() -> None:
+    """Celebrate turn must return an achievement_image frame even though state
+    advances to STEP_6_CLOSING.
+
+    Regression test for the pre-advance snapshot bug: if _get_screen_frame is
+    called after _advance_state, it returns the closing concept_reveal frame
+    instead and the achievement image never renders.
+    """
+    state = _make_state(
+        current_step="STEP_5_CELEBRATE",
+        current_round=3,
+    )
+    turn_response = _mock_turn(
+        dialogue="[celebrating] You did it!",
+        tone_marker="celebrating",
+        screen_widget="achievement_image",
+    )
+
+    result = await _run_directive_advance(state, turn_response, emotion_tag="celebrating")
+
+    # Critical: the screen frame returned for celebrate must be achievement_image,
+    # NOT concept_reveal (even though state has now advanced to STEP_6_CLOSING).
+    assert result.screen_frame.widget == "achievement_image", (
+        f"celebrate should render achievement_image, got {result.screen_frame.widget}"
+    )
+    assert state.current_step == "STEP_6_CLOSING"
+    assert result.response_type == "celebrate"
+    # Force-advance to closing: without this, _should_auto_advance returns False
+    # at STEP_6_CLOSING and the frontend never triggers a closing turn →
+    # concept_reveal (the closing widget) would never render.
+    assert result.auto_advance is True, (
+        "celebrate must auto-advance so the closing turn actually runs"
+    )
+
+
+@pytest.mark.asyncio
+async def test_cat5_closing_handler_sets_concept_reveal_widget() -> None:
+    """Cat5 closing handler should set turn_response.screen_widget to 'concept_reveal'."""
+    state = _make_state(
+        current_step="STEP_6_CLOSING",
+        status="active",
+        template_type="cat5",
+    )
+    turn_response = _mock_turn(dialogue="[gentle] You learned about Form and Connection.")
+
+    result = await _run_directive_advance(state, turn_response)
+
+    assert result.turn_response.screen_widget == "concept_reveal", (
+        f"Cat5 closing should set screen_widget to concept_reveal, got {result.turn_response.screen_widget}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_cat1_closing_handler_keeps_achievement_image_widget() -> None:
+    """Cat1 closing must continue to use achievement_image — the Cat5 change is scoped."""
+    state = _make_state(
+        template_type="cat1",
+        activity_type="mood_changer_dog",
+        creative_slots=Cat1CreativeSlots(
+            game_mechanic="voice_acting",
+            metaphor="A fluffy friend",
+            role_title="Dog Whisperer",
+            round_scenarios=["sunny day", "rainy day", "snowy day"],
+            escalation_axis="weather",
+            observation_detail="fluffy ears",
+        ),
+        current_step="STEP_5_CLOSING",
+        status="active",
+    )
+    turn_response = _mock_turn(dialogue="[gentle] You discovered so much.")
+
+    result = await _run_directive_advance(state, turn_response)
+
+    assert result.turn_response.screen_widget == "achievement_image", (
+        f"Cat1 closing should stay on achievement_image, got {result.turn_response.screen_widget}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_detail_phase_non_answer_scaffolds_first_then_force_advances() -> None:
+    """Two consecutive 'i dont know' non-answers at detail phase must:
+    1. First: return need_help with scaffolding (detail_stuck_count = 1).
+    2. Second: force-advance with a playful default (counters reset,
+       name + detail appended, round_advance_pending True).
+    """
+    from turn_handling.directive import _get_turn_directive
+
+    state = _make_state(
+        current_step="STEP_3_COLLECT_3",
+        current_round=3,
+        total_rounds=3,
+        collection_phase="detail",
+        collected_photos=["fuzzy_moss", "woolly_caterpillar", "fluffy_seed"],
+        collected_names=["Softie", "Cloudy"],
+        collected_details=["soft and cozy", "fluffy"],
+        detail_exchange_count=0,
+        detail_stuck_count=0,
+    )
+
+    # First non-answer: scaffolds via need_help, stuck_count = 1
+    first = await _get_turn_directive(state, _make_input(text="i dont know"))
+    assert first.action == "need_help", f"first non-answer should scaffold, got {first.action}"
+    assert state.detail_stuck_count == 1
+    assert state.round_advance_pending is False
+    # Counter for exchanges should NOT have been bumped (we're still stuck)
+    assert state.detail_exchange_count == 0
+    # Name/detail lists unchanged (nothing harvested yet)
+    assert state.collected_names == ["Softie", "Cloudy"]
+    assert state.collected_details == ["soft and cozy", "fluffy"]
+
+    # Second non-answer: force-advance with default name + detail
+    second = await _get_turn_directive(state, _make_input(text="i dont know"))
+    assert second.action == "advance", (
+        f"second non-answer should force-advance, got {second.action}"
+    )
+    # Counters reset
+    assert state.detail_stuck_count == 0
+    assert state.detail_exchange_count == 0
+    # Round-advance pending set so the next turn moves to the next photo round
+    assert state.round_advance_pending is True
+    # A default name + detail were applied.
+    assert len(state.collected_names) == 3
+    assert state.collected_names[-1] not in ("Softie", "Cloudy"), (
+        f"default name should not collide with existing names, got {state.collected_names[-1]}"
+    )
+    assert len(state.collected_details) == 3
+    assert state.collected_details[-1], "default detail text must be non-empty"

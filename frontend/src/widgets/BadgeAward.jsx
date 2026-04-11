@@ -1,12 +1,30 @@
 import { useState } from 'react';
 import { BadgeIcon, StarIcon } from '../icons';
-import BASE from '../utils/basePath';
+import BASE, { asset } from '../utils/basePath';
 
-function CssBadgeFallback() {
+/**
+ * Central badge circle. Shows the game's entity icon (e.g. dog.png, cat.png,
+ * dandelion.png) in the center when available so each game has a distinct
+ * visual. Falls back to a generic BadgeIcon SVG if no entity is provided or
+ * the icon fails to load.
+ */
+function CssBadgeFallback({ entity }) {
+  const [iconFailed, setIconFailed] = useState(false);
+  const showIcon = entity && !iconFailed;
+
   return (
     <div className="w-[clamp(4.75rem,20vw,6.5rem)] h-[clamp(4.75rem,20vw,6.5rem)] rounded-full bg-gradient-to-br from-[var(--color-sunflower)] via-[var(--color-sunflower-light)] to-[var(--color-forest)] shadow-lg flex items-center justify-center border-[3px] border-white/80">
-      <div className="w-[clamp(3.4rem,14vw,4.4rem)] h-[clamp(3.4rem,14vw,4.4rem)] rounded-full bg-white/70 flex items-center justify-center">
-        <BadgeIcon className="w-[clamp(1.4rem,6vw,2rem)] h-[clamp(1.4rem,6vw,2rem)] text-[var(--color-sunflower)]" />
+      <div className="w-[clamp(3.4rem,14vw,4.4rem)] h-[clamp(3.4rem,14vw,4.4rem)] rounded-full bg-white/80 flex items-center justify-center overflow-hidden">
+        {showIcon ? (
+          <img
+            src={asset(`/icons/${entity}.png`)}
+            alt={entity}
+            className="w-[90%] h-[90%] object-contain"
+            onError={() => setIconFailed(true)}
+          />
+        ) : (
+          <BadgeIcon className="w-[clamp(1.4rem,6vw,2rem)] h-[clamp(1.4rem,6vw,2rem)] text-[var(--color-sunflower)]" />
+        )}
       </div>
     </div>
   );
@@ -50,7 +68,7 @@ export default function BadgeAward({ title, concepts = [], animation, entity }) 
       {/* Main badge — show CSS fallback when no concepts, or as hero badge */}
       {!hasConcepts && (
         <div className="relative">
-          <CssBadgeFallback />
+          <CssBadgeFallback entity={entity} />
           <div className="absolute -top-2 -right-2 animate-sparkle-large">
             <StarIcon className="w-4 h-4 max-[380px]:w-3.5 max-[380px]:h-3.5 text-[var(--color-sunflower)]" />
           </div>

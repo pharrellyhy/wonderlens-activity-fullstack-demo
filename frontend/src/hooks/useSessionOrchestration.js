@@ -246,9 +246,17 @@ export default function useSessionOrchestration(tier) {
           speak(lastMsg.text, tier);
         }
       } else {
-        // TTS muted — let character sounds play briefly before triggering done
+        // TTS muted — simulate reading time before triggering done.
+        // Story scenes need enough time for the child to see the image;
+        // other auto-advance turns (celebrate, closing) use a brief delay.
         pendingAudioRef.current = null;
-        const mutedDelay = characterCues.length > 0 ? 500 : 0;
+        let mutedDelay = characterCues.length > 0 ? 500 : 0;
+        if (lastMsg.autoAdvance && lastMsg.text) {
+          // ~150 words/min reading pace → 400ms per word, minimum 3s for scenes
+          const wordCount = lastMsg.text.split(/\s+/).length;
+          const readingMs = Math.max(3000, wordCount * 400);
+          mutedDelay = Math.max(mutedDelay, readingMs);
+        }
         mutedCompletionTimeoutRef.current = window.setTimeout(() => {
           mutedCompletionTimeoutRef.current = null;
           handleSpeakingDone();

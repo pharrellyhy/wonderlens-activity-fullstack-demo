@@ -321,6 +321,36 @@ def get_screen_frame(
             trigger="on_correct",
         )
 
+    # Cat5 celebrate: achievement image only — no concepts, no character names.
+    # Concepts live on the closing step so each step has a single focus.
+    if template_type == "cat5" and step == "STEP_5_CELEBRATE":
+        structured = context.get("structured_story")
+        achievement_url = structured.achievement_image_data_url if structured else None
+        role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
+        # entity is passed through so the FallbackTrophy widget can render
+        # a per-game icon (e.g. /icons/ladybug.png) instead of a generic trophy.
+        widget_params: dict = {"title": role_title, "entity": entity}
+        if achievement_url:
+            widget_params["image_data_url"] = achievement_url
+        return ScreenFrame(
+            widget="achievement_image",
+            widget_params=widget_params,
+            animation="badge_reveal",
+            trigger="on_correct",
+            sfx_cue="badge_awarded",
+        )
+
+    # Cat5 closing: concept reveal — large IB concept medallions, no image.
+    if template_type == "cat5" and step == "STEP_6_CLOSING":
+        role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
+        return ScreenFrame(
+            widget="concept_reveal",
+            widget_params={"title": role_title, "concepts": key_concepts},
+            animation="badge_reveal",
+            trigger="on_enter",
+            sfx_cue="celebration_fanfare",
+        )
+
     # Cat 5: use Explorer's Map for the primary activity flow.
     if template_type == "cat5":
         return _build_explorer_map_frame(step, context, creative_slots, entity, key_concepts)

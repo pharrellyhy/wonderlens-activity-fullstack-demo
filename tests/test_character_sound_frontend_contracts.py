@@ -18,10 +18,6 @@ def test_muted_tts_path_does_not_play_outros_twice() -> None:
     """Muted playback should leave outro playback to handleSpeakingDone()."""
     source = USE_SESSION_ORCHESTRATION_PATH.read_text(encoding="utf-8")
 
-    timeout_block = (
-        "mutedCompletionTimeoutRef.current = window.setTimeout(() => {\n"
-        "          mutedCompletionTimeoutRef.current = null;\n"
-        "          handleSpeakingDone();\n"
-        "        }, 500);"
-    )
-    assert timeout_block in source
+    assert "mutedCompletionTimeoutRef.current = window.setTimeout(() => {" in source
+    assert "handleSpeakingDone();" in source
+    assert "}, mutedDelay);" in source

@@ -10,15 +10,15 @@ concepts_earned: [Form, Connection]
 keywords: [piano, keys, music, sound, instrument]
 feature_keywords: [black, white, row, teeth, strings]
 photo_features: [black and white keys, wooden body, pedals, music stand]
-plain_description: "Go outside to find 3 things that make interesting sounds, describe each sound, and then sort them from highest to lowest pitch."
+plain_description: "Explore and discover 3 things that make interesting sounds, listen to each one, and then sort them from highest to lowest pitch."
 steps_summary:
   - "Look at the piano and talk about the sounds it makes"
-  - "Find 3 things outside that make sounds when tapped or shaken"
-  - "Describe each sound and sort them by pitch"
+  - "Discover 3 things outside that make sounds when tapped or shaken"
+  - "Listen to each sound and sort them by pitch"
   - "Earn the Sound Detective badge!"
 creative_slots:
   observation_angle: form
-  collection_criterion: Find things outside that make interesting sounds when you tap, shake, or blow on them
+  collection_criterion: Things outside that make interesting sounds when you tap, shake, or blow on them
   collection_count: 3
   mission_metaphor: You are a Sound Detective on an acoustic investigation!
   role_title: Sound Detective

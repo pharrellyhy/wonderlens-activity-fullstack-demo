@@ -8,6 +8,7 @@ CollectionPhase = Literal["photo", "detail"]
 
 from .creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
 from .recipe import InstructionRecipe
+from .structured_story import StructuredStory
 from .turn_directive import StoryElement
 from .visual_composition import ScreenFrame
 
@@ -48,6 +49,11 @@ class SessionStateModel(BaseModel):
     consecutive_wrong: int = 0
     consecutive_silence: int = 0
     detail_exchange_count: int = Field(default=0, description="Cat 5 Phase B exchange counter — reset on phase change")
+    detail_stuck_count: int = Field(
+        default=0,
+        description="Count of consecutive non-answers ('i dont know') in Cat 5 detail phase; "
+        "reset on any successful harvest or on round advance",
+    )
     turn_count: int = 0
     status: Literal["active", "completed", "exited", "error"] = "active"
 
@@ -76,6 +82,11 @@ class SessionStateModel(BaseModel):
     synthesis_story_quality: str = Field(
         default="", description="Last story classification quality: good, weak, or empty"
     )
+    # Structured scene-by-scene story (used when imagen_enabled)
+    structured_story: StructuredStory | None = Field(
+        default=None, description="Scene-by-scene story with image data URLs"
+    )
+    current_scene: int = Field(default=0, description="Current scene being delivered (0=not started, 1-3=delivering)")
     child_intent: str = Field(
         default="", description="Pre-classified intent for the current turn: confirm, decline, substantive, off_topic"
     )

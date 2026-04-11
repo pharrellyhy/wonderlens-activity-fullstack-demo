@@ -56,9 +56,12 @@ _CAT5_COLLECTION_RULES = """\
   sfx_cue="slot_fill_chime" (or "mission_complete_fanfare" if this is the LAST item)
 - Phase=photo, wrong photo (child input contains "[selected wrong photo"):
   action=stay, direction="Acknowledge warmly in ONE short sentence (e.g., 'Ooh, interesting find!'). Then redirect with ONE invitational sentence toward something {observation_angle}. That's it — just two sentences, no questions about the wrong item, no comparisons, no modeling."
-- Phase=detail, child gave substantive response (name, description, detail):
-  action=advance, harvest a story_element with the child's words and any character name.
-  direction="Celebrate the detail. Name the character if synthesis_format is collaborative_story. Reference ALL previous characters."
+- Phase=detail, child gave substantive response AND this is NOT the last round:
+  action=advance, max_sentences=2, harvest a story_element with the child's words and any character name.
+  direction="Celebrate the detail in ONE short sentence. Name the character if synthesis_format is collaborative_story. Reference ALL previous characters by name."
+- Phase=detail, child gave substantive response AND this IS the last round (collected == total_rounds):
+  action=advance, max_sentences=4, harvest a story_element with the child's words and any character name.
+  direction="You have FOUR sentences — use them. (1) Celebrate the detail and/or name warmly. (2) Name the WHOLE crew so far by name (e.g., 'Peter, Sam, and Zip'). (3) Note this was the last find. (4) Tease that you're going to make up a story together about the whole crew — make it sound exciting. Do NOT wrap up, award a title, or say the game is done — the celebration step handles that."
 - Phase=detail, child is off-topic:
   action=stay (stay_on_step=true), direction="Acknowledge, re-ask the detail question with different wording."
 - Phase=detail, silence:
@@ -108,8 +111,12 @@ _CAT1_ROUND_RULES_VOICE_ACTING = """\
   action=advance, max_sentences=3, direction="Celebrate the child's answer warmly in one sentence. Then use a brief, natural transition before presenting the NEXT round's scenario vividly. End with ONE question about the emotion. Use the EXACT next scenario from the round list — do NOT invent one."
 - Child gave a good/creative answer AND this IS the last round (current round = total rounds):
   action=advance, max_sentences=2, direction="Celebrate this answer warmly. Do NOT wrap up, recap, award a title, or say the game is done — the celebration step handles all of that."
-- Child gave a wrong/unexpected answer:
-  action=stay, direction="Warmly acknowledge. Model a SOUND or ACTION (e.g., 'Woof!', 'Yawn!', tremble), then offer a binary choice between two emotions."
+- Child gave an unexpected-but-on-topic answer AND this is NOT the last round (related to the scenario but not a listed theme — e.g., "hungry" when asked about feelings):
+  action=advance, max_sentences=3, direction="Celebrate their creative take! Echo back their specific word and build on it with wonder before transitioning."
+- Child gave an unexpected-but-on-topic answer AND this IS the last round (current round = total rounds):
+  action=advance, max_sentences=2, direction="Celebrate their creative take warmly. Do NOT wrap up, recap, award a title, or say the game is done — the celebration step handles all of that."
+- Child gave an off-topic answer (clearly unrelated to the scenario — e.g., talking about a TV show during a mood scene):
+  action=stay, direction="Warmly acknowledge what they said, then gently redirect to the scenario with a SOUND or ACTION and offer a binary choice between two emotions."
 - Child is silent:
   action=need_help, direction="Model a SOUND or ACTION for the scenario, then offer a binary choice between two emotions."
 
@@ -127,8 +134,12 @@ _CAT1_ROUND_RULES_STORYTELLING = """\
   action=advance, max_sentences=3, direction="Celebrate the child's answer warmly in one sentence. Then use a brief, natural transition before presenting the NEXT round's scenario vividly. End with ONE question about what happens in the scene (what the {entity_name} sees, finds, or discovers). Use the EXACT next scenario from the round list — do NOT invent one."
 - Child gave a good/creative answer AND this IS the last round (current round = total rounds):
   action=advance, max_sentences=2, direction="Celebrate this answer warmly. Do NOT wrap up, recap dreams, award a title, or say the game/story is done — the celebration step handles all of that."
-- Child gave a wrong/unexpected answer:
-  action=stay, direction="Warmly acknowledge. Then offer a binary choice between two concrete things the {entity_name} might see, find, or do in the scene."
+- Child gave an unexpected-but-on-topic answer AND this is NOT the last round (related to the scene but not a listed theme):
+  action=advance, max_sentences=3, direction="Celebrate their creative idea! Echo back their specific word and weave it into the story before transitioning."
+- Child gave an unexpected-but-on-topic answer AND this IS the last round (current round = total rounds):
+  action=advance, max_sentences=2, direction="Celebrate their creative idea warmly. Do NOT wrap up, recap, award a title, or say the game/story is done — the celebration step handles all of that."
+- Child gave an off-topic answer (clearly unrelated to the current scene):
+  action=stay, direction="Warmly acknowledge, then gently redirect with a binary choice between two concrete things the {entity_name} might see or do in the scene."
 - Child is silent:
   action=need_help, direction="Model what the {entity_name} might find in the scene, then offer a binary choice between two concrete discoveries or actions."
 

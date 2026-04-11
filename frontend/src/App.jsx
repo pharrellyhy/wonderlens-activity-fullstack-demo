@@ -101,6 +101,12 @@ function App() {
     && sessionState?.collection_phase !== 'detail'
     && isActive;
 
+  // Stage mode = grow the device panel whenever a "full-visual" widget is
+  // showing. Triggered by widget, not step, so scene delivery during
+  // STEP_4_SYNTHESIS also gets the bigger panel (not just celebrate/closing).
+  const STAGE_MODE_WIDGETS = ['story_scene', 'story_loading', 'achievement_image', 'concept_reveal'];
+  const stageMode = STAGE_MODE_WIDGETS.includes(screenFrame?.widget);
+
   return (
     <div className="app-shell flex flex-col bg-nature text-gray-800 font-sans">
       <TopBar
@@ -112,9 +118,24 @@ function App() {
       />
 
       <h1 className="sr-only">WonderLens Activity Demo</h1>
-      <main className="app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-4xl mx-auto w-full">
-        {/* TOP — Device Screen in Toy Camera (flex ratio ~4:6 with conversation) */}
-        <section className="app-top-panel h-[50%] max-h-[28rem] shrink min-h-0" aria-label="Device screen">
+      <main className={`app-main flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5 sm:gap-3 max-[380px]:px-2 max-[380px]:pt-1.5 max-[380px]:pb-2 max-[380px]:gap-2 max-w-4xl mx-auto w-full ${stageMode ? 'stage-mode' : ''}`}>
+        {/* TOP — Device Screen in Toy Camera.
+         * Sizing is set via inline style with `flex: none` so that the
+         * `height` property is authoritative (not subject to flex shrinking
+         * when the conversation panel's basis competes for space). This was
+         * the actual root cause of the "device panel too small" regression:
+         * CSS was fine, but `flex: 1 1 78%` let the browser shrink the panel
+         * to ~35% of the intended height under flex layout pressure.
+         * `flex: none` = `flex: 0 0 auto` — don't grow, don't shrink, let
+         * `height` rule the size. */}
+        <section
+          className="app-top-panel min-h-0"
+          style={stageMode
+            ? { flex: 'none', height: '78%', maxHeight: '56rem' }
+            : { flex: 'none', height: '55%', maxHeight: '34rem' }
+          }
+          aria-label="Device screen"
+        >
           <ToyCameraFrame videoMode={!!currentClipUrl}>
             {showPhotoGallery ? (
               <PhotoGallery

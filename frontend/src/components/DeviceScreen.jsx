@@ -3,7 +3,12 @@ import PhotoDisplay from '../widgets/PhotoDisplay';
 import ProgressTracker from '../widgets/ProgressTracker';
 import CharacterDisplay from '../widgets/CharacterDisplay';
 import PhotoGrid from '../widgets/PhotoGrid';
+import PhotoRecallGrid from '../widgets/PhotoRecallGrid';
 import BadgeAward from '../widgets/BadgeAward';
+import StoryScene from '../widgets/StoryScene';
+import StoryLoading from '../widgets/StoryLoading';
+import AchievementImage from '../widgets/AchievementImage';
+import ConceptReveal from '../widgets/ConceptReveal';
 import ExplorerMap from '../canvas/ExplorerMap';
 import AnimationOverlay from '../widgets/AnimationOverlay';
 import SfxIndicator from './SfxIndicator';
@@ -16,7 +21,12 @@ const WIDGET_MAP = {
   progress_tracker: ProgressTracker,
   character_display: CharacterDisplay,
   photo_grid: PhotoGrid,
+  photo_recall_grid: PhotoRecallGrid,
   badge_award: BadgeAward,
+  story_scene: StoryScene,
+  story_loading: StoryLoading,
+  achievement_image: AchievementImage,
+  concept_reveal: ConceptReveal,
   explorer_map: ExplorerMap,
 };
 
@@ -41,6 +51,8 @@ function getFrameKey(screenFrame) {
     screenFrame.widget_params?.photo_id,
     screenFrame.widget_params?.game_phase,
     screenFrame.widget_params?.collected_count,
+    screenFrame.widget_params?.image_data_url?.slice(0, 50),
+    screenFrame.widget_params?.scene_number,
   ].join('|');
 }
 
@@ -118,9 +130,9 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
       )}
 
       <div className={`flex-1 min-h-0 grid place-items-center ${isVideoMode ? '' : 'px-2 pb-1 max-[380px]:px-1.5 max-[380px]:pb-0.5'}`}>
-        {screenFrame.widget === 'explorer_map' && WidgetComponent ? (
+        {(screenFrame.widget === 'explorer_map' || screenFrame.widget === 'story_scene' || screenFrame.widget === 'story_loading' || screenFrame.widget === 'achievement_image' || screenFrame.widget === 'concept_reveal') && WidgetComponent ? (
           <div className="w-full h-full">
-            <WidgetComponent {...params} />
+            <WidgetComponent {...params} photoUrl={asset(params.photoUrl) || photoUrl} animation={screenFrame.animation} sessionState={sessionState} />
           </div>
         ) : (
           <AnimationOverlay animation={overlayAnimation} className="flex h-full w-full items-center justify-center">
@@ -165,8 +177,13 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
         )}
       </div>
 
-      {/* Animation label + SFX + emotion/scenario indicators */}
-      <div className="flex items-center justify-between px-2.5 py-1 max-[380px]:px-2 max-[380px]:py-0.5 gap-1.5 max-[380px]:gap-1">
+      {/* Animation label + scene progress dots + SFX indicators.
+       * `relative` + absolute-positioned dots so the progress dots sit in
+       * the true center of the panel, independent of the left-label and
+       * right-SFX widths. A plain `justify-between` would only work if the
+       * two outer children had equal width — they don't, so the dots would
+       * visually drift left or right. */}
+      <div className="relative flex items-center justify-between px-2.5 py-1 max-[380px]:px-2 max-[380px]:py-0.5 gap-1.5 max-[380px]:gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
           {screenFrame.animation_label && (
             <p className="text-[9px] max-[380px]:text-[8px] text-gray-400 italic truncate">{screenFrame.animation_label}</p>
@@ -183,6 +200,27 @@ export default function DeviceScreen({ screenFrame, photoUrl, sessionState, clip
             </>
           )}
         </div>
+        {/* Scene progress dots for story_scene widget — rendered here (not
+         * inside StoryScene) so they stay visible even when the image fills
+         * the widget area in stage mode. Absolutely positioned so they stay
+         * centered on the panel regardless of sibling widths. */}
+        {screenFrame.widget === 'story_scene' && params.total_scenes > 0 && (
+          <div
+            className="absolute left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-none"
+            aria-label="Scene progress"
+          >
+            {Array.from({ length: params.total_scenes }, (_, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                  i + 1 <= params.scene_number
+                    ? 'bg-[var(--color-sunflower)]'
+                    : 'bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        )}
         <SfxIndicator key={`sfx-${frameKey}`} sfxCue={screenFrame.sfx_cue} sfxLabel={screenFrame.sfx_label} />
       </div>
     </div>

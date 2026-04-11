@@ -43,6 +43,11 @@ tiers:
       - "Now let's..."
       - "Look for..."
       - "Tell me!"
+      - "Touch..."
+      - "Describe..."
+      - "Show me..."
+      - "Try to..."
+      - "Find..."
 
   T1:
     label: "Function Discoverer"
@@ -78,6 +83,11 @@ tiers:
       - "Now let's..."
       - "Look for..."
       - "Tell me!"
+      - "Touch..."
+      - "Describe..."
+      - "Show me..."
+      - "Try to..."
+      - "Find..."
 
   T2:
     label: "System Thinker"
@@ -113,3 +123,8 @@ tiers:
       - "Now let's..."
       - "Look for..."
       - "Tell me!"
+      - "Touch..."
+      - "Describe..."
+      - "Show me..."
+      - "Try to..."
+      - "Find..."

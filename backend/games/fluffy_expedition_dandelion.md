@@ -10,23 +10,23 @@ concepts_earned: [Connection]
 keywords: [dandelion, flower]
 feature_keywords: [fluffy, dandelion, soft, fuzzy]
 photo_features: [white fluffy seeds, round seed head, thin stem, delicate structure]
-plain_description: "Go outside and find 3 things that feel fluffy, fuzzy, or soft, then give each one a character name and tell a short story about them."
+plain_description: "Explore and discover 3 things that feel fluffy, fuzzy, or soft, then give each one a character name and tell a short story about them."
 steps_summary:
-  - "Find 3 things nearby that are fluffy, fuzzy, or soft"
-  - "Touch each one and describe how it feels"
-  - "Give each fluffy find a character name and tell a story about the fluffy friends meeting"
+  - "Discover 3 things nearby that are fluffy, fuzzy, or soft"
+  - "Wonder how each one feels — soft? fuzzy? squishy?"
+  - "Give each fluffy friend a character name and tell a story about them meeting"
   - "Earn the Fluffy Expedition Explorer badge!"
 
 creative_slots:
   observation_angle: texture
-  collection_criterion: "Find things that are fluffy, fuzzy, or soft"
+  collection_criterion: "Things that are fluffy, fuzzy, or soft"
   collection_count: 3
   mission_metaphor: "You are a Fluffy Expedition Explorer!"
   role_title: Fluffy Expedition Explorer
   synthesis_type: naming_story
   stuck_hint: "Would you like to feel things nearby? Something soft might be waiting for you!"
   naming_prompt: "What would you name this fluffy friend?"
-  detail_question_template: "Touch it gently — how does it feel?"
+  detail_question_template: "I wonder how it feels..."
   sorting_criterion: ""
 
 story_scaffold:

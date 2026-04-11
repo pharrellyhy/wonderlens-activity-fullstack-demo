@@ -10,16 +10,16 @@ concepts_earned: [Form, Connection]
 keywords: [ladybug, ladybird, beetle]
 feature_keywords: [spot, dot, polka]
 photo_features: [red shell, black polka dots, tiny legs, small antennae]
-plain_description: "Go outside and find 3 things that have dots, spots, or circles on them, then compare how the dots look different on each one."
+plain_description: "Explore and discover 3 things that have dots, spots, or circles on them, then compare how the dots look different on each one."
 steps_summary:
-  - "Find 3 things nearby with dots, spots, or circles"
+  - "Discover 3 things nearby with dots, spots, or circles"
   - "Describe and name each spotted find"
   - "Compare the dots across all finds — big splotches vs tiny speckles vs perfect circles"
   - "Earn the Polka-Dot Patrol Officer badge!"
 
 creative_slots:
   observation_angle: pattern
-  collection_criterion: "Find things with dots, spots, or circles"
+  collection_criterion: "Things with dots, spots, or circles"
   collection_count: 3
   mission_metaphor: "You are a Polka-Dot Patrol Officer!"
   role_title: Polka-Dot Patrol Officer

@@ -43,7 +43,6 @@ from .helpers import (
     _DECLINE_WORDS,
     _advance_state,
     _append_ai_turn,
-    _badge_screen_frame,
     _get_response_type,
     _get_screen_frame,
     _is_celebrate_step,
@@ -51,6 +50,7 @@ from .helpers import (
     _is_invitation_step,
     _should_auto_advance,
 )
+from .synthesis import _loading_result
 from .types import GenerationDebugInfo, TurnInput, TurnResult
 
 logger = setup_logger(__name__)
@@ -99,6 +99,41 @@ _NAME_EXTRACT_PATTERNS = [
     re.compile(r"(?:how about|maybe)\s+(.+)", re.IGNORECASE),
     re.compile(r"(?:name (?:it|him|her|them))\s+(.+)", re.IGNORECASE),
 ]
+
+# Playful fallback (name, detail) pairs per observation angle. Used when the
+# child is stuck at the detail phase (2+ consecutive non-answers). The first
+# unused option is picked so two stuck items in a row get distinct defaults.
+_STUCK_DEFAULTS: dict[str, list[tuple[str, str]]] = {
+    "texture": [("Softie", "soft and cozy"), ("Fuzzy", "fluffy and warm")],
+    "color": [("Sunny", "bright and cheerful"), ("Rainbow", "colorful and fun")],
+    "shape": [("Curvy", "smooth and curvy"), ("Pointy", "tall and pointy")],
+    "size": [("Tiny", "small and cute"), ("Mighty", "big and strong")],
+    "pattern": [("Spotty", "covered in pretty spots"), ("Dotty", "full of tiny dots")],
+    "form": [("Bumpy", "bumpy and interesting"), ("Wiggly", "wiggly and playful")],
+    "movement": [("Dancy", "always moving"), ("Bouncy", "bouncing around")],
+    "smell": [("Sweetie", "sweet and fresh"), ("Minty", "cool and fresh")],
+    "function": [("Helpful", "useful and clever"), ("Special", "special and unique")],
+    "habitat": [("Cozy", "snug and safe"), ("Hidden", "tucked away")],
+}
+
+
+def _pick_stuck_default(state: SessionStateModel) -> tuple[str, str]:
+    """Pick a playful (name, detail) fallback for a stuck child at detail phase.
+
+    Rotates through options by observation angle so consecutive stuck items
+    don't all get the same default. Falls back to texture defaults if the
+    game's angle has no entry.
+    """
+    angle = "texture"
+    if isinstance(state.creative_slots, Cat5CreativeSlots):
+        angle = state.creative_slots.observation_angle
+    options = _STUCK_DEFAULTS.get(angle) or _STUCK_DEFAULTS["texture"]
+    used_names = {n for n in state.collected_names}
+    for opt in options:
+        if opt[0] not in used_names:
+            return opt
+    # All options already used — just cycle by modulo of how many items stuck
+    return options[len(state.collected_names) % len(options)]
 
 
 def _build_story_direction(state: SessionStateModel, chosen_theme: str = "") -> tuple[str, int]:
@@ -215,6 +250,19 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
     Context-dependent: "yes" means different things at different steps.
     Returns None when LLM classification is needed.
     """
+    # Synthesis: detect delegation phrases ("you tell me", "you do it") → generate story directly
+    if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase not in ("invite",):
+        if "you tell" in normalized_text or "you do" in normalized_text or "tell me a story" in normalized_text:
+            story_dir, max_s = _build_story_direction(state)
+            state.synthesis_phase = "generate"
+            return TurnDirective(
+                action="advance",
+                reasoning="Child asked AI to generate story.",
+                response_direction=story_dir,
+                emotion_tag="playful",
+                max_sentences=max_s,
+            )
+
     if normalized_text in _DECLINE_WORDS:
         if _is_invitation_step(state.current_step):
             count = state.invitation_decline_count + 1
@@ -595,12 +643,15 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
     # so the LLM Turn Director at the bottom of the function classifies them —
     # a fixed list can't anticipate every way a child asks the AI to answer.
     _detail_text = child_text.strip().lower().rstrip("!.?") if child_text else ""
-    _is_detail_delegation = bool(
-        re.match(
-            r"^(?:you |can you |could you |will you |would you |please )",
-            _detail_text,
+    _is_detail_delegation = (
+        bool(
+            re.match(
+                r"^(?:you |can you |could you |will you |would you |please )",
+                _detail_text,
+            )
         )
-    ) and len(_detail_text.split()) <= 6
+        and len(_detail_text.split()) <= 6
+    )
     if (
         child_text
         and not turn_input.is_silent
@@ -620,11 +671,54 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
 
         # Detect non-answers: child is stuck, confused, or asking AI to decide.
         if normalized_detail in _NON_ANSWER_PHRASES:
+            state.detail_stuck_count += 1
             current_item = state.collected_photos[-1] if state.collected_photos else "this item"
             current_item_label = current_item.replace("_", " ")
             obs_angle = ""
             if isinstance(state.creative_slots, Cat5CreativeSlots):
                 obs_angle = state.creative_slots.observation_angle
+
+            # After 2 consecutive non-answers, stop scaffolding: pick a playful
+            # default and force-advance past the detail phase. This prevents
+            # the infinite scaffold loop where the LLM keeps generating the
+            # same "Is it soft like a bunny or smooth like an egg?" question.
+            if state.detail_stuck_count >= 2:
+                default_name, default_detail = _pick_stuck_default(state)
+                _record_collection_detail(state, default_detail)
+                if is_naming_game:
+                    state.collected_names.append(default_name)
+                state.detail_stuck_count = 0
+                state.detail_exchange_count = 0
+                state.round_advance_pending = True
+
+                if is_naming_game:
+                    direction = (
+                        f"No worries! Let's call this one {default_name} — it feels {default_detail}. "
+                        f"Then warmly invite the child to find the next item."
+                    )
+                else:
+                    direction = (
+                        f"No worries! This {current_item_label} looks {default_detail}. "
+                        f"Then warmly invite the child to find the next item."
+                    )
+                fast = TurnDirective(
+                    action="advance",
+                    reasoning=(
+                        f"Child stuck (2 consecutive non-answers). "
+                        f"Applied default name='{default_name}' detail='{default_detail}'."
+                    ),
+                    response_direction=direction,
+                    emotion_tag="gentle",
+                    max_sentences=3,
+                )
+                logger.info(
+                    "turn_director: step=%s action=advance (stuck default) name=%s detail=%s",
+                    state.current_step,
+                    default_name,
+                    default_detail,
+                )
+                state.last_directive_action = fast.action
+                return fast
 
             if is_naming_game:
                 exchange_label = "texture" if state.detail_exchange_count == 0 else "naming"
@@ -661,13 +755,16 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
                 offer_binary_choice=True,
             )
             logger.info(
-                "turn_director: step=%s action=need_help (non-answer in detail) text=%s",
+                "turn_director: step=%s action=need_help (non-answer %d) text=%s",
                 state.current_step,
+                state.detail_stuck_count,
                 child_text[:30],
             )
             state.last_directive_action = fast.action
             return fast
 
+        # Successful harvest — reset the stuck counter
+        state.detail_stuck_count = 0
         state.detail_exchange_count += 1
         remaining = max(0, state.total_rounds - len(state.collected_photos))
         names_so_far = ", ".join(state.collected_names) if state.collected_names else ""
@@ -911,58 +1008,61 @@ async def _resolve_turn_with_directive(
         if state.current_step.startswith("STEP_3_COLLECT_"):
             state.collection_phase = "photo"
             state.detail_exchange_count = 0
+            state.detail_stuck_count = 0
 
-        # Synthesis: generate the story at STEP_4_SYNTHESIS BEFORE advancing
-        # to CELEBRATE. Otherwise the speaker runs at CELEBRATE and ignores
-        # the story direction.
-        if state.current_step == "STEP_4_SYNTHESIS" and "story" in directive.response_direction.lower():
-            try:
-                turn_response = await script_agent.generate_turn_from_directive(state, directive)
-            except Exception as e:
-                speaker_errors.append(f"synthesis: {e}")
-                logger.warning("Directive speaker failed at synthesis, falling back: %s", e)
-                turn_response, _ = await _generate_with_retry(script_agent, state)
-            _append_ai_turn(state, turn_response.dialogue)
-            state.turn_count += 1
-            _advance_state(state)  # STEP_4_SYNTHESIS → STEP_5_CELEBRATE
-
-            # Now auto-generate celebrate + closing inline
-            if _is_celebrate_step(state.current_step):
-                turn_response.screen_widget = "badge_award"
-                turn_response.sfx_cue = "badge_awarded"
-            return TurnResult(
-                turn_response=turn_response,
-                screen_frame=_get_screen_frame(state),
-                auto_advance=_should_auto_advance(state),
-                response_type=_get_response_type(state.current_step),
-                error_exit=False,
-                debug=_debug(None, turn_response),
-            )
+        # Synthesis: show loading screen then generate companion images.
+        # collaborative_story → 3 story scenes. comparison_reveal → 1 reveal
+        # scene showing items side by side. Both end with an achievement image.
+        if state.current_step == "STEP_4_SYNTHESIS":
+            return _loading_result(state)
 
         # Celebrate: generate celebrate dialogue, show badge, then auto-advance
         # to closing on the NEXT turn. This keeps celebrate and closing as
         # separate turns so the badge stays visible long enough.
         if _is_celebrate_step(state.current_step):
-            directive.screen_widget = "badge_award"
+            directive.screen_widget = "achievement_image"
             directive.sfx_cue = "badge_awarded"
+            # Celebrate auto-advances to closing. The speaker LLM tends to end
+            # with a conversational question ("Would you like to wear your
+            # badge?") which creates an unnatural UX when we auto-advance
+            # without waiting for an answer. Append a hard no-question
+            # constraint to the direction before generating.
+            no_question_suffix = (
+                " End with a warm celebratory statement. Do NOT ask the child "
+                "a question at the end — do not say 'would you like...', "
+                "'shall we...', 'ready for...', or anything similar. "
+                "The celebration is a statement, not an invitation."
+            )
+            if no_question_suffix not in (directive.response_direction or ""):
+                directive.response_direction = (directive.response_direction or "") + no_question_suffix
             try:
                 turn_response = await script_agent.generate_turn_from_directive(state, directive)
             except Exception as e:
                 speaker_errors.append(f"celebrate: {e}")
                 logger.warning("Directive speaker failed at celebrate, falling back: %s", e)
                 turn_response, _ = await _generate_with_retry(script_agent, state)
-            turn_response.screen_widget = "badge_award"
+            turn_response.screen_widget = "achievement_image"
             turn_response.sfx_cue = "badge_awarded"
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
 
+            # Snapshot the celebrate screen frame BEFORE advancing — otherwise
+            # _get_screen_frame(state) would return the STEP_6_CLOSING frame
+            # (concept_reveal) and the achievement image would never render.
+            celebrate_screen_frame = _get_screen_frame(state)
+
             # Advance to closing now, so the next auto-advance turn
-            # arrives at STEP_5_CLOSING instead of looping at celebrate.
+            # arrives at STEP_6_CLOSING instead of looping at celebrate.
             _advance_state(state)
+
+            # Force auto_advance=True here: we explicitly want a closing turn
+            # to follow so concept_reveal actually renders. _should_auto_advance
+            # would return False because state is now at closing, which would
+            # leave the frontend stuck on the celebrate frame forever.
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=_badge_screen_frame(state),
-                auto_advance=_should_auto_advance(state),
+                screen_frame=celebrate_screen_frame,
+                auto_advance=True,
                 response_type="celebrate",
                 error_exit=False,
                 debug=_debug(None, turn_response),
@@ -981,19 +1081,32 @@ async def _resolve_turn_with_directive(
         _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
 
-        # For closing, keep the badge visible — use badge_award frame
+        # For closing: Cat5 uses concept_reveal, Cat1 keeps achievement_image
         if is_closing:
-            turn_response.screen_widget = "badge_award"
+            if state.template_type == "cat5":
+                turn_response.screen_widget = "concept_reveal"
+            else:
+                turn_response.screen_widget = "achievement_image"
+
+        # Snapshot screen frame BEFORE advancing — closing advances to ENDED
+        # which has no matching widget and would fall through to ExplorerMap.
+        pre_advance_frame = _get_screen_frame(state) if is_closing else None
 
         _advance_state(state)
+
+        # When the last collection round advances into STEP_4_SYNTHESIS,
+        # the advance response already teases the synthesis (e.g. "let's
+        # compare all your finds!"), so skip the invite phase — treat the
+        # child's next reply as a response to that built-in invitation.
+        if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase == "invite":
+            state.synthesis_phase = "evaluate"
+            state.synthesis_prompt_count = 1
+
         if is_terminal(state.current_step):
             state.status = "completed"
-            # Return the closing turn_response (with badge) instead of
-            # the generic ended result, so the closing dialogue + badge
-            # are delivered to the frontend.
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=_badge_screen_frame(state),
+                screen_frame=pre_advance_frame or _get_screen_frame(state),
                 auto_advance=False,
                 response_type="closing",
                 error_exit=False,

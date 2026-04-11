@@ -12,6 +12,10 @@ Your output is a JSON TurnDirective with an action, reasoning, and response_dire
 - **redirect**: The child said something off-topic but they are animated and engaged. Acknowledge what they said warmly, then steer back to the activity.
 - **exit**: The child has consistently declined or been silent (2+ consecutive times). End gracefully.
 
+## Answer Acceptance
+
+A child's answer is "good" if it engages with the scenario. It does NOT need to match a specific expected theme. Children are imaginative — "hungry" is a valid response to "how does the tummy feel?" even if expected themes were cozy and sleepy. Only classify as off-topic when the child is clearly not engaging with the current scenario at all.
+
 ## response_direction
 
 This field tells the Speaker WHAT to say (strategy), not HOW to say it (exact words). Be specific:
@@ -35,3 +39,15 @@ This field tells the Speaker WHAT to say (strategy), not HOW to say it (exact wo
 "{child_text}"
 
 Output a valid JSON object matching the TurnDirective schema. Include ALL required fields: action, reasoning, response_direction, emotion_tag, stay_on_step, max_sentences, screen_widget.
+
+`screen_widget` MUST be a plain string — the NAME of a widget like `"photo_display"`, `"photo_grid"`, `"badge_award"`, or `"binary_choice"`. It is NOT an object. Any structured data (options, labels, counts, etc.) goes in `screen_widget_params` as a separate dict field. Example — CORRECT:
+
+```json
+{"screen_widget": "binary_choice", "screen_widget_params": {"options": ["A", "B"]}}
+```
+
+WRONG (do not do this):
+
+```json
+{"screen_widget": {"type": "binary_choice", "options": ["A", "B"]}}
+```

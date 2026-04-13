@@ -2,7 +2,12 @@
 
 from typing import Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+try:
+    from ..synthesis_formats import get_format
+except ImportError:
+    from synthesis_formats import get_format
 
 
 class StoryScaffold(BaseModel):
@@ -28,14 +33,26 @@ class StoryScaffold(BaseModel):
     synthesis_goal: str = Field(
         description="What synthesis should accomplish, e.g. 'Characters combine their talents on a shared adventure'"
     )
-    synthesis_format: Literal["collaborative_story", "comparison_reveal", "sorting_challenge"] = Field(
-        description="Structural format for synthesis"
+    synthesis_format: str = Field(
+        description="Structural format id — must be registered in backend/synthesis_formats/*.md",
     )
     story_themes: list[str] = Field(
         default_factory=list,
         description="Optional theme seeds for story generation, "
         "e.g. 'One friend can't sleep, the others use their talents to help'",
     )
+
+    @field_validator("synthesis_format")
+    @classmethod
+    def _validate_format_registered(cls, value: str) -> str:
+        """Fail fast at scaffold creation time if the format id is unknown.
+
+        ``get_format`` raises ``ValueError`` naming the registered ids, so
+        typos and missing format files are surfaced at session start rather
+        than silently at synthesis time.
+        """
+        get_format(value)
+        return value
 
 
 class Cat1CreativeSlots(BaseModel):

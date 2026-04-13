@@ -1,6 +1,88 @@
 # Session Handoff
 
-Last updated: 2026-04-11
+Last updated: 2026-04-13
+
+---
+
+## Synthesis Format Registry — Phases 3–6 (completed)
+
+**Problem**: After Phase 2 landed `collaborative_story.md` alongside the legacy Python generators, the codebase still carried ~270 lines of dead code (`_generate_structured_story`, `_generate_comparison_reveal`, `_MIN_STORY_SENTENCES`), hardcoded `synthesis_format == "collaborative_story"` branches across `directive.py`, and a `Literal[...]` enum in `creative_slots.py` that blocked new formats from being added without a Python edit.
+
+**Solution**: Completed phases 3–6 of `docs/plans/2026-04-10-synthesis-format-registry.md`. Phase 3 added `comparison_reveal.md`, deleted the legacy generators, and made `_generate_and_advance` fully format-agnostic. Phase 4 rewrote `_build_story_direction` to render `fmt.direction_template`, collapsed the fast-path invite/confirm branches, and replaced the detail-phase naming check with `fmt.is_naming_game`. Phase 5 dropped the `Literal` enum and added a pydantic `field_validator` on `StoryScaffold.synthesis_format` that calls `get_format()` to fail-fast at scaffold creation. Phase 6 proved the registry's purpose by adding `sorting_challenge.md` as a markdown-only new format — zero Python changes required.
+
+**Edits**:
+- `backend/synthesis_formats/comparison_reveal.md` — NEW: 1-scene format, `is_naming_game: false`, `confirm_goes_to: generate`, direction_template uses `{theme_angle_suffix}`/`{sorting_suffix}`/`{goal_suffix}`
+- `backend/synthesis_formats/sorting_challenge.md` — NEW: 1-scene format, a third registered format added as Phase 6 proof; uses the existing template vocabulary unchanged
+- `backend/turn_handling/synthesis.py` — Deleted `_generate_structured_story`, `_generate_comparison_reveal`, `_MIN_STORY_SENTENCES` (~270 lines removed); `_generate_and_advance` now always calls `_generate_structured_output(state, get_format(_resolve_format_id(state)))`; min_sentences fallback read from `fmt.min_sentences_total`; removed unused `generate_scene_images` and `StoryScene` imports; `_build_template_variables` `names` fallback changed from `""` to `"the friends"`
+- `backend/turn_handling/directive.py` — `_build_story_direction` rewritten from 105 lines of inline f-strings to 14 lines that render `fmt.direction_template.format(**variables)`; fast-path confirm at STEP_4_SYNTHESIS uses `fmt.confirm_goes_to` to decide story-try routing; fast-path invite at STEP_4_SYNTHESIS renders `fmt.invite_direction.format(**variables)`; detail-phase `is_naming_game` reads from `fmt.is_naming_game`; added `get_format`, `_build_template_variables`, `_resolve_format_id` to top-of-file imports
+- `backend/schemas/creative_slots.py` — `StoryScaffold.synthesis_format` changed from `Literal[...]` to `str` with `@field_validator` that calls `get_format()` to raise at scaffold creation on unknown ids
+- `backend/tools/capture_synthesis_baselines.py` — Rewritten to render format templates directly via `_build_template_variables` instead of mocking `AsyncOpenAI`; goldens in `tests/fixtures/golden/` remain byte-identical
+- `tests/test_synthesis_format_loader.py` — Added `TestRealRegistryLoadsComparisonReveal`, `TestRealRegistryLoadsSortingChallenge`, `TestStoryScaffoldValidatesFormat`
+- `tests/test_format_rendering.py` — Added `_make_comparison_state` helper and `TestComparisonRevealDirectionMatchesGolden` (byte-for-byte match against `comparison_direction_T1.txt`)
+
+**NOT Changed**:
+- Golden files in `tests/fixtures/golden/` — unchanged across all 4 phases (capture script produces bit-identical output)
+- `backend/games/*.md` — no game YAML edits required; existing `synthesis_format` references still resolve to the same ids
+- ScriptAgent step instructions under `backend/skills/step_instructions/cat5_step4_synthesis__*.md` — deferred per plan decision
+- Frontend — no changes; it already consumed `StructuredStory` generically
+
+**Verification**:
+```bash
+# Full suite
+uv run pytest tests/ --ignore=tests/test_ai_quality.py --deselect tests/test_device_screen_layout.py::test_device_screen_keeps_widget_area_centered_on_tall_viewports -q
+# → 500 passed, 12 skipped (baseline 482; +18 new loader / rendering / validator tests)
+
+# Goldens byte-identical after capture script runs
+cd backend && uv run python tools/capture_synthesis_baselines.py
+cd .. && git diff --stat tests/fixtures/golden/    # → empty
+
+# Lint + format
+cd backend && uv run ruff check . && uv run ruff format --check .    # → clean
+
+# Success criteria greps
+grep -rn "is_story_game" backend/    # → empty
+grep -rn "synthesis_format ==" backend/    # → empty
+```
+
+---
+
+## Phase 2: Migrate collaborative_story to data-driven format file
+
+**Problem**: The `collaborative_story` synthesis format had its LLM prompts and direction template hardcoded as Python string literals in `synthesis.py` and `directive.py`. Any change to prompt wording required a code edit; the prompts were invisible to non-Python tooling; and there was no single source of truth linking the LLM parameters (temperature, max_tokens, scene_count) to the prompt body.
+
+**Solution**: Extracted the collaborative_story format into `backend/synthesis_formats/collaborative_story.md` (YAML frontmatter + three body sections). Added `_build_template_variables`, `_resolve_format_id`, and `_generate_structured_output` to `synthesis.py`. Wired the story branch of `_generate_and_advance` to use the registry. Three golden-file diff tests assert byte-for-byte fidelity between the new template rendering and the pre-refactor baselines captured in Phase 0.
+
+**Edits**:
+- `backend/synthesis_formats/collaborative_story.md` — NEW: YAML frontmatter (scene_count, LLM params, tier constraints, invite templates) + `# system_prompt`, `# user_prompt`, `# direction_template` body sections; JSON `{` / `}` in user_prompt escaped as `{{` / `}}`; direction template uses `{theme_suffix}`, `{premise_line}`, `{child_story_line}` placeholders for optional segments
+- `backend/turn_handling/synthesis.py` — Added `get_format` / `SynthesisFormat` imports (try/except pattern); added `_resolve_format_id`, `_build_template_variables`, `_generate_structured_output`; changed story branch of `_generate_and_advance` from `_generate_structured_story(state)` to `_generate_structured_output(state, get_format("collaborative_story"))`; fixed mislabeled `# obs_list` comment to `# obs_angle`; removed unnecessary "Build full characters string" comment
+- `tests/test_format_rendering.py` — NEW: three golden-file diff tests (system_prompt, user_prompt, direction) using the same deterministic synthetic state as `capture_synthesis_baselines.py`
+- `tests/test_synthesis_format_loader.py` — Added `TestRealRegistryLoadsCollaborativeStory` class exercising the real format file (not a mock)
+
+**NOT Changed**:
+- `_generate_structured_story` — preserved for Phase 3 cleanup
+- `_build_story_direction` in `directive.py` — untouched; Phase 4 will refactor
+- `_generate_comparison_reveal` — untouched; comparison branch still unchanged
+- `_MIN_STORY_SENTENCES` — preserved; Phase 3 will delete it and read from fmt
+- Golden files in `tests/fixtures/golden/` — unchanged (capture script verified zero diffs)
+
+**Verification**:
+```bash
+# New and existing loader + rendering tests
+uv run pytest tests/test_synthesis_format_loader.py tests/test_format_rendering.py -v
+# → 13 passed
+
+# Full suite
+uv run pytest tests/ --ignore=tests/test_ai_quality.py --deselect tests/test_device_screen_layout.py::test_device_screen_keeps_widget_area_centered_on_tall_viewports -q
+# → 495 passed, 12 skipped
+
+# Lint
+cd backend && uv run ruff check . && uv run ruff format --check .
+# → All checks passed / 59 files already formatted
+
+# Golden sanity
+uv run python tools/capture_synthesis_baselines.py && git diff --stat tests/fixtures/golden/
+# → 0 diffs
+```
 
 ---
 
@@ -319,34 +401,4 @@ uv run ruff format --check .  # All formatted
 - `uv run pytest backend/tests/test_character_sounds.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py tests/test_backend_imports.py tests/test_device_screen_layout.py -q` - PASS (`40 passed`)
 - `uv run ruff check backend/schemas/turn_plan.py backend/agents/script_agent.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py backend/tests/test_character_sounds.py tests/test_backend_imports.py tests/test_device_screen_layout.py` - PASS
 - `uv run ruff format --check backend/schemas/turn_plan.py backend/agents/script_agent.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py` - PASS
-
----
-
-## Fix: Cat5 Collection Phase Desync + Synthesis Classification Too Strict
-
-**Problem**: Two Cat5 game flow bugs: (1) When a child completes a detail question in Phase B, the backend returned `collection_phase="photo"` + advanced `current_step` in the same response as the naming dialogue. The frontend immediately showed the next round's photo grid while TTS was still playing "Let's call it Cloud Puff!" (2) For T0 children (ages 2-4), the LLM story classifier often misclassified short story attempts like "moss go sleep" as "unrelated" instead of "story_attempt(weak)", triggering confusing re-invites. Additionally, the classification exception fallback defaulted to "unrelated", compounding the issue when the LLM was down.
-
-**Solution**: Three targeted fixes in `turn_handler.py`:
-- Bug 1: Replaced immediate `collection_phase = "photo"` + `_advance_state()` with the existing `round_advance_pending = True` + `auto_advance = True` pattern (same approach already used for the last-round → synthesis transition). The frontend now keeps showing the detail screen during TTS, then auto-advances to the next round's photo grid.
-- Bug 2a: Added T0 early-return before the `_classify_story_response()` LLM call — treats any non-silent T0 response as a story seed for AI expansion.
-- Bug 2b: Changed `_classify_story_response()` exception fallback from `"unrelated"` to `"story_attempt(weak)"` — fail-safe toward acceptance.
-- Code simplifier removed the now-dead T0 branch in the classification handler and collapsed duplicate TurnResult blocks.
-
-**Edits**:
-- `backend/turn_handler.py` — deferred Phase B→next round advance via `round_advance_pending`; added T0 early-return in `_resolve_synthesis_turn` before LLM classification; changed exception fallback to `story_attempt(weak)`; removed dead T0 branch and collapsed duplicate TurnResult blocks
-- `tests/test_turn_handler.py` — updated `test_detail_response_advances_to_next_round` and `test_silence_during_detail_phase_still_advances` to expect deferred advance; added `test_synthesis_t0_skips_classification_and_expands_seed` and `test_synthesis_classification_failure_defaults_to_story_attempt`
-- `tests/test_api.py` — updated `test_turn_advances_cat5_collection_after_detail_response` to expect deferred advance
-- `docs/plans/2026-03-30-cat5-workflow-diagnosis.md` — diagnostic mermaid diagrams (3 diagrams: backbone, desync sequence, synthesis state machine)
-- `docs/plans/2026-03-30-fix-cat5-collection-desync-and-synthesis.md` — implementation plan
-
-**NOT Changed**:
-- `backend/state_machine.py` — step transitions unchanged; the `round_advance_pending` handler in section 7c already handled the deferred advance pattern
-- `frontend/src/App.jsx` — `showPhotoGallery` condition unchanged; the fix is backend-only
-- `frontend/src/hooks/` — no frontend changes needed; auto-advance already handled by `useSessionOrchestration.js`
-- T1/T2 synthesis classification — still uses LLM classification as before
-
-**Verification**:
-- `cd backend && uv run pytest ../tests/ -v` — 360 passed, 7 skipped
-- `cd backend && uv run ruff check turn_handler.py && uv run ruff format turn_handler.py` — clean
-- `cd backend && uv run mypy turn_handler.py --ignore-missing-imports` — only pre-existing yaml stub issue
 

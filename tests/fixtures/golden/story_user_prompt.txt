@@ -1,0 +1,20 @@
+Characters: Peter (a soft petal), Spiky (a woolly caterpillar), Sam (a fuzzy moss)
+Sensory details the child shared: soft; wiggly; fluffy
+Tier: T1
+Child's story attempt to expand (if any): Peter wants to fly
+
+Generate a JSON object with this EXACT structure:
+{"scenes": [{"narration": "Scene 1 text (2-4 sentences)", "image_description": "Watercolor illustration description under 50 words", "caption": "Short 4-8 word caption for this scene"},{"narration": "Scene 2 text (2-4 sentences)", "image_description": "Watercolor illustration description under 50 words", "caption": "Short 4-8 word caption for this scene"},{"narration": "Scene 3 text (2-4 sentences)", "image_description": "Watercolor illustration description under 50 words", "caption": "Short 4-8 word caption for this scene"}]}
+
+SCENE STRUCTURE:
+Scene 1 — Opening + Surprise: Set the scene. Something unexpected happens.
+Scene 2 — Try and Struggle: A character tries to solve it. It doesn't work. Another has an idea.
+Scene 3 — Breakthrough + Warm Ending: They figure it out together. End with comfort.
+
+RULES:
+- Use ALL characters by name. Every character appears in at least 2 scenes.
+- Start scene 1 narration with an emotion tag like [gentle] or [warm].
+- Real emotions (scared, proud, cozy), real dialogue in quotes.
+- Warm ending on comfort, not excitement.
+- Image descriptions: watercolor storybook style. Characters are NOT human — they are the actual items listed above (petals, caterpillars, moss, seeds, etc.) drawn as cute animated versions. Include character names + physical traits, mood/lighting cues. Each image will have ONE short hand-lettered caption painted along the bottom — describe the scene as if it's a storybook page.
+- Captions: 4-8 words each, present tense, concrete and punchy. Examples: "A sudden gust scatters the leaves.", "They stretch to reach the sky.", "Tucked together, warm and safe." Avoid names already visible in the picture.

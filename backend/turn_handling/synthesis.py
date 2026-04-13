@@ -17,15 +17,17 @@ from pydantic import ValidationError
 try:
     from ..agents.script_agent import ScriptAgent
     from ..config import get_settings
-    from ..image_gen import generate_scene_images, get_scene_session, start_scene_images
+    from ..image_gen import get_scene_session, start_scene_images
     from ..logger import setup_logger
     from ..schemas import ScreenFrame
     from ..schemas.child_intent import ChildIntentClassification
     from ..schemas.creative_slots import Cat5CreativeSlots
     from ..schemas.session_state import ConversationTurn, SessionStateModel
-    from ..schemas.structured_story import StoryScene, StructuredStory
+    from ..schemas.structured_story import StructuredStory
     from ..schemas.turn_response import TurnResponse
     from ..state_machine import is_terminal, step_needs_user_input
+    from ..synthesis_formats import get_format
+    from ..synthesis_formats.loader import SynthesisFormat
     from .debug import _build_debug_payload
     from .generation import _classify_child_intent, _generate_with_retry
     from .helpers import _advance_state, _append_ai_turn, _get_response_type, _get_screen_frame
@@ -33,15 +35,17 @@ try:
 except ImportError:
     from agents.script_agent import ScriptAgent
     from config import get_settings
-    from image_gen import generate_scene_images, get_scene_session, start_scene_images
+    from image_gen import get_scene_session, start_scene_images
     from logger import setup_logger
     from schemas import ScreenFrame
     from schemas.child_intent import ChildIntentClassification
     from schemas.creative_slots import Cat5CreativeSlots
     from schemas.session_state import ConversationTurn, SessionStateModel
-    from schemas.structured_story import StoryScene, StructuredStory
+    from schemas.structured_story import StructuredStory
     from schemas.turn_response import TurnResponse
     from state_machine import is_terminal, step_needs_user_input
+    from synthesis_formats import get_format
+    from synthesis_formats.loader import SynthesisFormat
 
     from turn_handling.debug import _build_debug_payload
     from turn_handling.generation import _classify_child_intent, _generate_with_retry
@@ -62,9 +66,6 @@ _SYNTHESIS_INVITE_TEMPLATES = [
     "[curious] What if {names} went on an adventure? Would you like to tell that story?",
     "[whispering] I wonder what {names} would do together... would you like to imagine?",
 ]
-
-_MIN_STORY_SENTENCES: dict[str, int] = {"T0": 7, "T1": 9, "T2": 12}
-
 
 # Celebration poster palette — rotating celebration props picked at image
 # generation time so each session's achievement image feels fresh and, more
@@ -154,6 +155,251 @@ def _condense_caption(text: str, max_words: int = 8) -> str | None:
     return first or None
 
 
+def _resolve_format_id(state: SessionStateModel) -> str:
+    """Return the synthesis format id for the current session state.
+
+    Args:
+        state: Session state with optional story scaffold.
+
+    Returns:
+        The synthesis format id from the scaffold, or ``"collaborative_story"`` as default.
+    """
+    if isinstance(state.creative_slots, Cat5CreativeSlots) and state.creative_slots.story_scaffold:
+        return state.creative_slots.story_scaffold.synthesis_format
+    return "collaborative_story"
+
+
+def _build_template_variables(
+    state: SessionStateModel,
+    fmt: SynthesisFormat,
+    *,
+    chosen_theme: str = "",
+) -> dict[str, str | int]:
+    """Build the canonical render dict for story prompt and direction templates.
+
+    Covers all template keys used by collaborative_story (and future formats).
+    Every key is always present — empty string when not applicable.
+
+    Args:
+        state: Session state with collected items and story elements.
+        fmt: Loaded synthesis format providing tier-specific sentence counts.
+        chosen_theme: Theme string chosen by the child (or empty for no theme).
+
+    Returns:
+        Dict mapping template variable names to their rendered string values.
+    """
+    scaffold = None
+    if isinstance(state.creative_slots, Cat5CreativeSlots) and state.creative_slots.story_scaffold:
+        scaffold = state.creative_slots.story_scaffold
+
+    # --- characters: for the LLM user_prompt ("Peter (a soft petal), ...") ---
+    char_parts: list[str] = []
+    for i, name in enumerate(state.collected_names):
+        photo_id = state.collected_photos[i] if i < len(state.collected_photos) else ""
+        item_type = photo_id.replace("_", " ") if photo_id else "unknown creature"
+        char_parts.append(f"{name} (a {item_type})")
+    # items must be computed before characters so the fallback can reference it.
+    items = [p.replace("_", " ") for p in state.collected_photos]
+    if char_parts:
+        characters = ", ".join(char_parts)
+    elif items:
+        # Non-naming games (e.g. comparison_reveal) have no child-given names;
+        # use item labels as the "characters" for the achievement poster.
+        characters = ", ".join(items)
+    else:
+        characters = "the characters"
+
+    # --- chars_desc: for the direction template ("Peter (soft), Spiky (wiggly), ...") ---
+    elems = state.story_elements
+    if elems:
+        desc_parts: list[str] = []
+        for e in elems:
+            name = e.character_name or f"Friend {e.round_number}"
+            trait = e.trait_or_detail or "soft"
+            desc_parts.append(f"{name} ({trait})")
+        chars_desc = ", ".join(desc_parts)
+    else:
+        chars_desc = ", ".join(state.collected_names) if state.collected_names else "the collected friends"
+
+    # --- items: photo ids as human-readable strings (already computed above) ---
+    items_str = ", ".join(items) if items else ""
+
+    # --- names: comma-joined child-given names ---
+    # Fallback "the friends" matches the plan's template vocabulary and lets
+    # format files reference {names} unconditionally without crashing.
+    names = ", ".join(state.collected_names) if state.collected_names else "the friends"
+
+    # --- details: semicolon-joined sensory details ---
+    details = "; ".join(state.collected_details) if state.collected_details else "no details"
+
+    # --- obs_angle: observation angle from creative slots ---
+    obs_angle = ""
+    if isinstance(state.creative_slots, Cat5CreativeSlots):
+        obs_angle = state.creative_slots.observation_angle or ""
+
+    # --- obs_list: numbered list of round observations ---
+    if elems:
+        obs_parts: list[str] = []
+        for i, e in enumerate(elems, 1):
+            detail = e.trait_or_detail or e.child_words or f"find {i}"
+            obs_parts.append(f"Find {i}: {detail}")
+        obs_list = "; ".join(obs_parts)
+    else:
+        obs_list = "; ".join(state.collected_details) if state.collected_details else "the collected finds"
+
+    # --- tier / tier_sentences ---
+    tier = state.tier
+    tier_sentences = fmt.direction_tier_sentences.get(tier, "6-10")
+
+    # --- theme_suffix: " (theme)" when present, "" otherwise (used by collaborative_story) ---
+    theme_suffix = f" ({chosen_theme})" if chosen_theme else ""
+
+    # --- theme_angle_suffix: "Use this angle: theme. " when present (used by comparison_reveal) ---
+    theme_angle_suffix = f"Use this angle: {chosen_theme}. " if chosen_theme else ""
+
+    # --- sorting_suffix: "Sort by: criterion. " when present (used by comparison_reveal) ---
+    sorting_criterion = ""
+    if isinstance(state.creative_slots, Cat5CreativeSlots):
+        sorting_criterion = state.creative_slots.sorting_criterion or ""
+    sorting_suffix = f"Sort by: {sorting_criterion}. " if sorting_criterion else ""
+
+    # --- goal_suffix: "\nGoal: ..." when scaffold present (used by comparison_reveal) ---
+    if scaffold and scaffold.synthesis_goal:
+        goal_suffix = f"\nGoal: {scaffold.synthesis_goal}. "
+    else:
+        goal_suffix = ""
+
+    # --- premise_line: "Premise: ...\n" when scaffold present, "" otherwise ---
+    if scaffold and scaffold.premise and scaffold.synthesis_goal:
+        premise_line = f"Premise: {scaffold.premise}. Goal: {scaffold.synthesis_goal}.\n"
+    else:
+        premise_line = ""
+
+    # --- child_story_line: '\nThe child tried... \n' when present, "" otherwise ---
+    child_story = state.synthesis_child_story or "none"
+    if state.synthesis_child_story:
+        child_story_line = (
+            f'\nThe child tried to tell a story: "{state.synthesis_child_story}". '
+            f"Weave their idea into the story — honor what they said and expand it.\n"
+        )
+    else:
+        child_story_line = ""
+
+    return {
+        "characters": characters,
+        "chars_desc": chars_desc,
+        "items": items_str,
+        "count": len(items),
+        "names": names,
+        "details": details,
+        "obs_angle": obs_angle,
+        "obs_list": obs_list,
+        "tier": tier,
+        "tier_sentences": tier_sentences,
+        "theme": chosen_theme,
+        "child_story": child_story,
+        "theme_suffix": theme_suffix,
+        "theme_angle_suffix": theme_angle_suffix,
+        "sorting_suffix": sorting_suffix,
+        "goal_suffix": goal_suffix,
+        "premise_line": premise_line,
+        "child_story_line": child_story_line,
+    }
+
+
+async def _generate_structured_output(
+    state: SessionStateModel,
+    fmt: SynthesisFormat,
+) -> StructuredStory | None:
+    """Format-agnostic structured story generator driven by a SynthesisFormat.
+
+    Renders the format's system_prompt and user_prompt templates, calls the LLM
+    with the format's temperature and max_tokens, then validates, post-processes,
+    and kicks off progressive scene image generation.
+
+    Args:
+        state: Current session state.
+        fmt: Loaded synthesis format to drive generation.
+
+    Returns:
+        Populated StructuredStory on success, or None on any failure.
+    """
+    settings = get_settings()
+    variables = _build_template_variables(state, fmt)
+    system_prompt = fmt.system_prompt.format(**variables)
+    user_prompt = fmt.user_prompt.format(**variables)
+    # characters is always a str in the builder; coerce defensively so the
+    # type checker can see the value as str when passed to _build_achievement_prompt.
+    characters = str(variables["characters"])
+
+    try:
+        start = time.perf_counter()
+        client = AsyncOpenAI(
+            api_key=settings.ali_api_key,
+            base_url=settings.ali_base_url,
+            max_retries=0,
+            timeout=httpx.Timeout(60.0, connect=15.0),
+        )
+        response = await client.chat.completions.create(
+            model=settings.ali_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=fmt.temperature,
+            max_tokens=fmt.max_tokens,
+            response_format={"type": "json_object"},
+            extra_body={"enable_thinking": False},
+        )
+        raw_text = response.choices[0].message.content or ""
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        logger.info("Structured story LLM response (%dms): %s", latency_ms, raw_text[:200])
+
+        raw = json.loads(raw_text)
+        story = StructuredStory.model_validate(raw)
+
+    except (json.JSONDecodeError, ValidationError) as exc:
+        logger.error("Failed to parse structured story JSON: %s", exc)
+        return None
+    except (httpx.HTTPError, openai.OpenAIError) as exc:
+        logger.error("Structured story LLM call failed: %s", exc)
+        return None
+
+    if len(story.scenes) != fmt.scene_count:
+        logger.warning(
+            "Structured story has %d scenes (expected %d), falling back",
+            len(story.scenes),
+            fmt.scene_count,
+        )
+        return None
+
+    # Normalise captions
+    scene_captions: list[str | None] = []
+    for scene in story.scenes:
+        scene.caption = _condense_caption(scene.caption or "", max_words=10) or _condense_caption(
+            scene.narration, max_words=8
+        )
+        scene_captions.append(scene.caption)
+
+    # Override the LLM's achievement description with a deterministic celebration-poster template
+    achievement_desc, achievement_caption = _build_achievement_prompt(characters, _role_title_for(state))
+    story.achievement_description = achievement_desc
+    story.achievement_caption = achievement_caption
+
+    # Progressive scene image generation — scene 1 is delivered while 2, 3 are mid-generation
+    scene_descs = [s.image_description for s in story.scenes]
+    start_scene_images(
+        state.session_id,
+        scene_descs,
+        story.achievement_description,
+        scene_captions=scene_captions,
+        achievement_caption=story.achievement_caption,
+    )
+
+    # image_data_urls intentionally left None — _deliver_scene fills them from futures
+    return story
+
+
 # Short responses that are always "confirm" at synthesis — no LLM needed.
 _SYNTHESIS_CONFIRM_WORDS = frozenset(
     {
@@ -231,277 +477,6 @@ def _loading_result(state: SessionStateModel) -> TurnResult:
         auto_advance=True,
         response_type=_get_response_type(state.current_step),
         debug=debug,
-    )
-
-
-async def _generate_structured_story(
-    state: SessionStateModel,
-) -> StructuredStory | None:
-    """Generate a structured 3-scene story via direct LLM call, then images in parallel.
-
-    Calls the LLM directly (bypassing ScriptAgent) with JSON mode enforced so the
-    response is guaranteed to be valid JSON matching the StructuredStory schema.
-    ScriptAgent wraps all output in {"dialogue": "..."} format which conflicts
-    with structured story JSON — hence the direct call.
-
-    Returns StructuredStory with image data URLs populated, or None on failure.
-    """
-    settings = get_settings()
-    details = "; ".join(state.collected_details) if state.collected_details else "no details"
-    child_story = state.synthesis_child_story or "none"
-
-    # Build character identity: map child-given names to what they actually are
-    # e.g. "Peter (a soft petal), Spiky (a woolly caterpillar), Sam (a fuzzy moss)"
-    char_parts: list[str] = []
-    for i, name in enumerate(state.collected_names):
-        photo_id = state.collected_photos[i] if i < len(state.collected_photos) else ""
-        item_type = photo_id.replace("_", " ") if photo_id else "unknown creature"
-        char_parts.append(f"{name} (a {item_type})")
-    characters = ", ".join(char_parts) if char_parts else "the characters"
-
-    system_prompt = (
-        "You are a warm storyteller for young children. "
-        "Generate a structured 3-scene story as a JSON object. Output ONLY valid JSON."
-    )
-
-    user_prompt = (
-        f"Characters: {characters}\n"
-        f"Sensory details the child shared: {details}\n"
-        f"Tier: {state.tier}\n"
-        f"Child's story attempt to expand (if any): {child_story}\n\n"
-        "Generate a JSON object with this EXACT structure:\n"
-        '{"scenes": ['
-        '{"narration": "Scene 1 text (2-4 sentences)", '
-        '"image_description": "Watercolor illustration description under 50 words", '
-        '"caption": "Short 4-8 word caption for this scene"},'
-        '{"narration": "Scene 2 text (2-4 sentences)", '
-        '"image_description": "Watercolor illustration description under 50 words", '
-        '"caption": "Short 4-8 word caption for this scene"},'
-        '{"narration": "Scene 3 text (2-4 sentences)", '
-        '"image_description": "Watercolor illustration description under 50 words", '
-        '"caption": "Short 4-8 word caption for this scene"}'
-        "]}\n\n"
-        "SCENE STRUCTURE:\n"
-        "Scene 1 — Opening + Surprise: Set the scene. Something unexpected happens.\n"
-        "Scene 2 — Try and Struggle: A character tries to solve it. It doesn't work. Another has an idea.\n"
-        "Scene 3 — Breakthrough + Warm Ending: They figure it out together. End with comfort.\n\n"
-        "RULES:\n"
-        "- Use ALL characters by name. Every character appears in at least 2 scenes.\n"
-        "- Start scene 1 narration with an emotion tag like [gentle] or [warm].\n"
-        "- Real emotions (scared, proud, cozy), real dialogue in quotes.\n"
-        "- Warm ending on comfort, not excitement.\n"
-        "- Image descriptions: watercolor storybook style. Characters are NOT human — they are "
-        "the actual items listed above (petals, caterpillars, moss, seeds, etc.) drawn as cute "
-        "animated versions. Include character names + physical traits, mood/lighting cues. Each "
-        "image will have ONE short hand-lettered caption painted along the bottom — describe "
-        "the scene as if it's a storybook page.\n"
-        "- Captions: 4-8 words each, present tense, concrete and punchy. Examples: "
-        '"A sudden gust scatters the leaves.", "They stretch to reach the sky.", '
-        '"Tucked together, warm and safe." Avoid names already visible in the picture.'
-    )
-
-    try:
-        start = time.perf_counter()
-        client = AsyncOpenAI(
-            api_key=settings.ali_api_key,
-            base_url=settings.ali_base_url,
-            max_retries=0,
-            timeout=httpx.Timeout(60.0, connect=15.0),
-        )
-        response = await client.chat.completions.create(
-            model=settings.ali_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.7,
-            max_tokens=2048,
-            response_format={"type": "json_object"},
-            extra_body={"enable_thinking": False},
-        )
-        raw_text = response.choices[0].message.content or ""
-        latency_ms = int((time.perf_counter() - start) * 1000)
-        logger.info("Structured story LLM response (%dms): %s", latency_ms, raw_text[:200])
-
-        raw = json.loads(raw_text)
-        story = StructuredStory.model_validate(raw)
-
-    except (json.JSONDecodeError, ValidationError) as exc:
-        logger.error("Failed to parse structured story JSON: %s", exc)
-        return None
-    except (httpx.HTTPError, openai.OpenAIError) as exc:
-        logger.error("Structured story LLM call failed: %s", exc)
-        return None
-
-    if len(story.scenes) != 3:
-        logger.warning("Structured story has %d scenes (expected 3), falling back", len(story.scenes))
-        return None
-
-    # Normalise captions: the LLM may omit or over-run the caption field,
-    # so fall back to a condensed form of the narration when the explicit
-    # caption condenses to nothing. _condense_caption already handles
-    # None / empty input, so we can chain the fallback with ``or``.
-    scene_captions: list[str | None] = []
-    for scene in story.scenes:
-        scene.caption = _condense_caption(scene.caption or "", max_words=10) or _condense_caption(
-            scene.narration, max_words=8
-        )
-        scene_captions.append(scene.caption)
-
-    # Override the LLM's achievement description with a deterministic
-    # celebration-poster template. The LLM consistently produces "characters
-    # together in a warm scene" — which is exactly what scene 3 already is —
-    # so the generated achievement image ends up visually indistinguishable
-    # from scene 3. Taking control of the composition here with rotating
-    # celebration props (confetti / crowns / banners / etc.) guarantees the
-    # celebration image looks like an iconic poster, not a story page.
-    achievement_desc, achievement_caption = _build_achievement_prompt(characters, _role_title_for(state))
-    story.achievement_description = achievement_desc
-    story.achievement_caption = achievement_caption
-
-    # Kick off sequential scene + achievement image generation as a background
-    # task. Scenes MUST generate sequentially (later scenes use earlier images
-    # as anchor/reference for character consistency), but each finished image
-    # is published to its own future immediately — so scene 1 can be delivered
-    # to the frontend while scenes 2, 3 and the achievement image are still
-    # mid-generation. _deliver_scene awaits the specific future for the scene
-    # it's shipping.
-    scene_descs = [s.image_description for s in story.scenes]
-    start_scene_images(
-        state.session_id,
-        scene_descs,
-        story.achievement_description,
-        scene_captions=scene_captions,
-        achievement_caption=story.achievement_caption,
-    )
-
-    # image_data_urls are intentionally left None here — _deliver_scene fills
-    # them in from the per-scene futures at delivery time.
-    return story
-
-
-async def _generate_comparison_reveal(
-    state: SessionStateModel,
-) -> StructuredStory | None:
-    """Generate a 1-scene comparison reveal for non-story synthesis formats.
-
-    Unlike collaborative_story which has 3 narrative scenes, comparison_reveal
-    produces a single "reveal" scene that shows all collected items side by
-    side, highlighting how they differ across the observation angle. Uses a
-    direct LLM call with JSON mode (bypasses ScriptAgent for the same reason
-    as structured story — ScriptAgent forces {"dialogue": "..."} format).
-
-    Returns StructuredStory with 1 scene + achievement image, or None on failure.
-    """
-    settings = get_settings()
-    items = [p.replace("_", " ") for p in state.collected_photos]
-    if not items:
-        return None
-
-    obs_angle = ""
-    if isinstance(state.creative_slots, Cat5CreativeSlots):
-        obs_angle = state.creative_slots.observation_angle
-    obs_angle = obs_angle or "special feature"
-
-    details = "; ".join(state.collected_details) if state.collected_details else "no details"
-    items_str = ", ".join(items)
-
-    system_prompt = (
-        "You are a warm guide for young children exploring patterns and observations. "
-        "Generate a JSON object. Output ONLY valid JSON."
-    )
-
-    user_prompt = (
-        f"Items collected: {items_str}\n"
-        f"Observation angle: {obs_angle}\n"
-        f"Details the child noticed: {details}\n"
-        f"Tier: {state.tier}\n\n"
-        "Generate a JSON object with this EXACT structure:\n"
-        '{"narration": "Comparison text (3-5 sentences)", '
-        '"reveal_description": "Image description under 50 words", '
-        '"reveal_caption": "Short 4-8 word caption for the reveal image"}\n\n'
-        "NARRATION RULES:\n"
-        "- Start with an emotion tag like [excited] or [curious]\n"
-        f"- Help the child compare the {obs_angle} across all {len(items)} items\n"
-        f"- Point out how the {obs_angle} looks different on each\n"
-        "- Reference the child's observations when possible\n"
-        "- 3-5 warm sentences, end with celebration (not a question)\n\n"
-        f"REVEAL IMAGE: Watercolor storybook illustration showing all {len(items)} items "
-        f"({items_str}) arranged side by side in a row, each clearly showing their "
-        f"different {obs_angle}. Soft pastel tones, warm lighting. The image will have ONE "
-        "short hand-lettered caption painted along the bottom.\n\n"
-        "REVEAL CAPTION: 4-8 words highlighting the observation angle, e.g. "
-        f'"Every {obs_angle} is different.", "Look how they compare!"'
-    )
-
-    try:
-        start = time.perf_counter()
-        client = AsyncOpenAI(
-            api_key=settings.ali_api_key,
-            base_url=settings.ali_base_url,
-            max_retries=0,
-            timeout=httpx.Timeout(60.0, connect=15.0),
-        )
-        response = await client.chat.completions.create(
-            model=settings.ali_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.7,
-            max_tokens=1024,
-            response_format={"type": "json_object"},
-            extra_body={"enable_thinking": False},
-        )
-        raw_text = response.choices[0].message.content or ""
-        latency_ms = int((time.perf_counter() - start) * 1000)
-        logger.info("Comparison reveal LLM response (%dms): %s", latency_ms, raw_text[:200])
-
-        raw = json.loads(raw_text)
-        narration = raw.get("narration", "").strip()
-        reveal_desc = raw.get("reveal_description", "").strip()
-        reveal_caption_raw = raw.get("reveal_caption", "").strip()
-
-        if not narration or not reveal_desc:
-            logger.warning("Comparison reveal JSON missing required fields")
-            return None
-
-    except (json.JSONDecodeError, ValidationError) as exc:
-        logger.error("Failed to parse comparison reveal JSON: %s", exc)
-        return None
-    except (httpx.HTTPError, openai.OpenAIError) as exc:
-        logger.error("Comparison reveal LLM call failed: %s", exc)
-        return None
-
-    # Normalise reveal caption and build the deterministic achievement
-    # poster. Same rationale as the collaborative_story path: we don't want
-    # the LLM's achievement description to read like another version of the
-    # reveal scene, so we lock the composition here.
-    reveal_caption = _condense_caption(reveal_caption_raw, max_words=10) or _condense_caption(narration, max_words=8)
-    achievement_desc, achievement_caption = _build_achievement_prompt(items_str, _role_title_for(state))
-
-    # Generate reveal image + achievement image (blocking — comparison reveal
-    # is a single scene so progressive delivery adds no benefit here)
-    scene_images, achievement_image = await generate_scene_images(
-        [reveal_desc],
-        achievement_desc,
-        session_id=state.session_id,
-        scene_captions=[reveal_caption],
-        achievement_caption=achievement_caption,
-    )
-
-    scene = StoryScene(
-        narration=narration,
-        image_description=reveal_desc,
-        image_data_url=scene_images[0] if scene_images else None,
-        caption=reveal_caption,
-    )
-
-    return StructuredStory(
-        scenes=[scene],
-        achievement_description=achievement_desc,
-        achievement_caption=achievement_caption,
-        achievement_image_data_url=achievement_image,
     )
 
 
@@ -728,21 +703,12 @@ async def _resolve_synthesis_turn(
             debug=invite_debug,
         )
 
-    # Shared helper: generate a story and advance past synthesis.
-    # Picks structured generator based on synthesis_format, falls back to monolithic.
+    # Shared helper: format-agnostic structured generation with monolithic fallback.
     async def _generate_and_advance() -> TurnResult:
         state.synthesis_phase = "generate"
 
-        # Choose generator based on synthesis format
-        scaffold = None
-        if isinstance(state.creative_slots, Cat5CreativeSlots) and state.creative_slots.story_scaffold:
-            scaffold = state.creative_slots.story_scaffold
-        is_story = bool(scaffold and scaffold.synthesis_format == "collaborative_story")
-
-        if is_story:
-            structured = await _generate_structured_story(state)
-        else:
-            structured = await _generate_comparison_reveal(state)
+        fmt = get_format(_resolve_format_id(state))
+        structured = await _generate_structured_output(state, fmt)
 
         if structured and structured.scenes:
             state.structured_story = structured
@@ -750,31 +716,28 @@ async def _resolve_synthesis_turn(
             state.synthesis_phase = "scene_1"
             return await _deliver_scene(state, 1)
 
-        # Fallback: monolithic story (no images)
+        # Fallback: monolithic ScriptAgent output (no images)
         turn_response, gen_debug = await _generate_with_retry(script_agent, state)
 
-        # Sentence count check only for story format — comparison is naturally shorter
-        if is_story:
-            min_sentences = _MIN_STORY_SENTENCES.get(state.tier, 6)
-            sentences = [s.strip() for s in re.split(r"[.!?]+", turn_response.dialogue) if s.strip()]
-            if len(sentences) < min_sentences:
-                logger.warning(
-                    "Story too short (%d sentences, need %d), regenerating with length hint",
-                    len(sentences),
-                    min_sentences,
-                )
-                hint_text = (
-                    f"[system: The story is too short. Generate a complete story with at "
-                    f"least {min_sentences} sentences.]"
-                )
-                hint = ConversationTurn(
-                    role="child",
-                    text=hint_text,
-                    step=state.current_step,
-                )
-                state.conversation_history.append(hint)
-                turn_response, gen_debug = await _generate_with_retry(script_agent, state)
-                state.conversation_history = [t for t in state.conversation_history if t != hint]
+        # Length check via the format's min_sentences_total
+        min_sentences = fmt.min_sentences_total.get(state.tier, 6)
+        sentences = [s.strip() for s in re.split(r"[.!?]+", turn_response.dialogue) if s.strip()]
+        if len(sentences) < min_sentences:
+            logger.warning(
+                "Synthesis [%s] too short (%d sentences, need %d), regenerating",
+                fmt.id,
+                len(sentences),
+                min_sentences,
+            )
+            hint_text = f"[system: Output is too short. Generate at least {min_sentences} sentences.]"
+            hint = ConversationTurn(
+                role="child",
+                text=hint_text,
+                step=state.current_step,
+            )
+            state.conversation_history.append(hint)
+            turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+            state.conversation_history = [t for t in state.conversation_history if t != hint]
 
         return _synthesis_result(
             state,

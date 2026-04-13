@@ -22,6 +22,7 @@ try:
         EARLY_EXIT,
         is_terminal,
     )
+    from ..synthesis_formats import get_format
 except ImportError:
     from agents.script_agent import ScriptAgent
     from agents.turn_director import TurnDirector
@@ -34,6 +35,7 @@ except ImportError:
         EARLY_EXIT,
         is_terminal,
     )
+    from synthesis_formats import get_format
 
 from .collection import _record_collection_detail
 from .debug import _build_debug_payload
@@ -50,7 +52,7 @@ from .helpers import (
     _is_invitation_step,
     _should_auto_advance,
 )
-from .synthesis import _loading_result
+from .synthesis import _build_template_variables, _loading_result, _resolve_format_id
 from .types import GenerationDebugInfo, TurnInput, TurnResult
 
 logger = setup_logger(__name__)
@@ -137,111 +139,35 @@ def _pick_stuck_default(state: SessionStateModel) -> tuple[str, str]:
 
 
 def _build_story_direction(state: SessionStateModel, chosen_theme: str = "") -> tuple[str, int]:
-    """Build a rich synthesis direction from harvested story elements.
+    """Build the synthesis response direction from the active format's direction_template.
 
-    The direction varies by synthesis_format:
-    - collaborative_story: Tell a complete story with named characters
-    - comparison_reveal: Guide comparison across observations
-    - sorting_challenge: Guide sorting by criterion
+    Looks up the synthesis format for the current session (defaulting to
+    ``collaborative_story`` when no scaffold is present), renders its
+    ``direction_template`` with the canonical template variable dict, and
+    returns the max_sentences hint from ``direction_max_sentences``.
+
+    When no explicit theme is supplied, a random theme is sampled from the
+    scaffold's ``story_themes`` list (if any) so tier-appropriate variety
+    still happens on every run.
 
     Args:
-        state: Session state with story elements and scaffold.
-        chosen_theme: Theme chosen by the child (or empty for random).
+        state: Mutable session state with collected items and story elements.
+        chosen_theme: Theme string chosen by the child, or empty to sample.
 
     Returns:
-        (direction_text, max_sentences).
+        ``(direction_text, max_sentences)`` ready to attach to a ``TurnDirective``.
     """
-    scaffold = None
-    if isinstance(state.creative_slots, Cat5CreativeSlots) and state.creative_slots.story_scaffold:
-        scaffold = state.creative_slots.story_scaffold
-
-    synthesis_format = scaffold.synthesis_format if scaffold else "collaborative_story"
-
-    # Use child's chosen theme, or fall back to random from scaffold
     theme = chosen_theme
-    if not theme and scaffold and scaffold.story_themes:
-        theme = random.choice(scaffold.story_themes)
+    if not theme and isinstance(state.creative_slots, Cat5CreativeSlots):
+        scaffold = state.creative_slots.story_scaffold
+        if scaffold and scaffold.story_themes:
+            theme = random.choice(scaffold.story_themes)
 
-    tier_sentences = {"T0": "4-6", "T1": "6-10", "T2": "8-14"}
-    max_s = {"T0": 8, "T1": 11, "T2": 14}.get(state.tier, 11)
-
-    if synthesis_format == "collaborative_story":
-        # Named characters → story
-        elems = state.story_elements
-        if elems:
-            parts = []
-            for e in elems:
-                name = e.character_name or f"Friend {e.round_number}"
-                trait = e.trait_or_detail or "soft"
-                parts.append(f"{name} ({trait})")
-            chars_desc = ", ".join(parts)
-        else:
-            chars_desc = ", ".join(state.collected_names) if state.collected_names else "the collected friends"
-
-        direction = (
-            f"Tell a COMPLETE story about {chars_desc}. "
-            f"The story must have:\n"
-            f"- BEGINNING: Set the scene. The characters are together and something happens"
-        )
-        if theme:
-            direction += f" ({theme})"
-        direction += (
-            ".\n"
-            "- MIDDLE: Each character uses their special trait to help. "
-            "Show what each one DOES, not just what they are.\n"
-            "- END: The problem is solved and the friends celebrate together.\n\n"
-        )
-        if scaffold:
-            direction += f"Premise: {scaffold.premise}. Goal: {scaffold.synthesis_goal}.\n"
-        if state.synthesis_child_story:
-            direction += (
-                f'\nThe child tried to tell a story: "{state.synthesis_child_story}". '
-                f"Weave their idea into the story — honor what they said and expand it.\n"
-            )
-        direction += (
-            f"Length: {tier_sentences.get(state.tier, '6-10')} sentences. "
-            f"Do NOT end with a question. End the story with a warm conclusion."
-        )
-
-    else:
-        # comparison_reveal or sorting_challenge → comparison/sorting synthesis
-        elems = state.story_elements
-        obs_list = ""
-        if elems:
-            parts = []
-            for i, e in enumerate(elems, 1):
-                detail = e.trait_or_detail or e.child_words or f"find {i}"
-                parts.append(f"Find {i}: {detail}")
-            obs_list = "; ".join(parts)
-        else:
-            obs_list = "; ".join(state.collected_details) if state.collected_details else "the collected finds"
-
-        obs_angle = ""
-        sorting_criterion = ""
-        if isinstance(state.creative_slots, Cat5CreativeSlots):
-            obs_angle = state.creative_slots.observation_angle
-            sorting_criterion = state.creative_slots.sorting_criterion
-
-        direction = (
-            f"Guide a fun comparison of all the finds. "
-            f"Observations collected: {obs_list}.\n"
-            f"Help the child see how the same thing ({obs_angle}) looks DIFFERENT on each item. "
-        )
-        if theme:
-            direction += f"Use this angle: {theme}. "
-        if sorting_criterion:
-            direction += f"Sort by: {sorting_criterion}. "
-        if scaffold:
-            direction += f"\nGoal: {scaffold.synthesis_goal}. "
-        direction += (
-            f"\nThen invite the child to give each find a fun creative name "
-            f"(e.g. 'Freckle Stone', 'Polka Petal'). "
-            f"Length: {tier_sentences.get(state.tier, '6-10')} sentences. "
-            f"End warmly — do NOT end with a question."
-        )
-        max_s = {"T0": 6, "T1": 8, "T2": 11}.get(state.tier, 8)
-
-    return direction, max_s
+    fmt = get_format(_resolve_format_id(state))
+    variables = _build_template_variables(state, fmt, chosen_theme=theme)
+    direction = fmt.direction_template.format(**variables)
+    max_sentences = fmt.direction_max_sentences.get(state.tier, 11)
+    return direction, max_sentences
 
 
 def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> TurnDirective | None:
@@ -344,15 +270,15 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
             if state.synthesis_phase == "invite":
                 return None  # let LLM Turn Director or fallback handle the invite
 
-            names = ", ".join(state.collected_names) if state.collected_names else "our friends"
-            scaffold = None
-            if isinstance(state.creative_slots, Cat5CreativeSlots) and state.creative_slots.story_scaffold:
-                scaffold = state.creative_slots.story_scaffold
-            is_story_game = scaffold and scaffold.synthesis_format == "collaborative_story"
-
-            if is_story_game and state.synthesis_phase not in ("child_try", "theme_choice", "generate"):
-                # Child said yes → invite them to try making a story first
+            fmt = get_format(_resolve_format_id(state))
+            if fmt.confirm_goes_to == "child_try" and state.synthesis_phase not in (
+                "child_try",
+                "theme_choice",
+                "generate",
+            ):
+                # Child said yes → invite them to try making one up first
                 state.synthesis_phase = "child_try"
+                names = ", ".join(state.collected_names) if state.collected_names else "our friends"
                 direction = (
                     f"The child wants a story about {names}! "
                     f"Encourage the child to try making one up. "
@@ -368,11 +294,11 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
                     max_sentences=2,
                 )
 
-            # Fallback: generate story directly (no scaffold, or already in generate phase)
+            # Fallback: generate directly (no child_try gate for this format)
             story_dir, max_s = _build_story_direction(state)
             return TurnDirective(
                 action="advance",
-                reasoning="Generating story for synthesis.",
+                reasoning="Generating synthesis output.",
                 response_direction=story_dir,
                 emotion_tag="playful",
                 max_sentences=max_s,
@@ -401,32 +327,16 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
     # Any input here (e.g. "ok") is from the previous auto-advance, not a
     # synthesis response. Generate the invitation first.
     if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase == "invite":
-        names = ", ".join(state.collected_names) if state.collected_names else "your collected friends"
-        scaffold = None
-        if isinstance(state.creative_slots, Cat5CreativeSlots) and state.creative_slots.story_scaffold:
-            scaffold = state.creative_slots.story_scaffold
-        is_story_game = scaffold and scaffold.synthesis_format == "collaborative_story"
-
-        if is_story_game:
-            direction = (
-                f"Invite the child to make up a little story about {names}. "
-                f"Keep it warm and simple — ask if they'd like to imagine what {names} might do together."
-            )
-        else:
-            obs_angle = ""
-            if isinstance(state.creative_slots, Cat5CreativeSlots):
-                obs_angle = state.creative_slots.observation_angle
-            direction = (
-                f"Invite the child to compare all their finds together. "
-                f"Ask if they'd like to see how the {obs_angle} looks different on each one."
-            )
+        fmt = get_format(_resolve_format_id(state))
+        variables = _build_template_variables(state, fmt)
+        direction = fmt.invite_direction.format(**variables)
 
         state.synthesis_phase = "evaluate"
         state.synthesis_prompt_count += 1
         logger.info(
-            "turn_director: step=%s action=stay (fast-path invite) synthesis_format=%s",
+            "turn_director: step=%s action=stay (fast-path invite) format=%s",
             state.current_step,
-            scaffold.synthesis_format if scaffold else "unknown",
+            fmt.id,
         )
         return TurnDirective(
             action="stay",
@@ -661,13 +571,9 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
     ):
         normalized_detail = _detail_text
 
-        # Determine if this is a naming game (2 exchanges) or observation game (1 exchange)
-        is_naming_game = True  # default to naming
-        scaffold = None
-        if isinstance(state.creative_slots, Cat5CreativeSlots):
-            scaffold = state.creative_slots.story_scaffold
-            if scaffold and scaffold.synthesis_format != "collaborative_story":
-                is_naming_game = False
+        # Whether this format expects a 2-exchange naming flow (detail → name)
+        # or a 1-exchange observation flow comes from the synthesis format config.
+        is_naming_game = get_format(_resolve_format_id(state)).is_naming_game
 
         # Detect non-answers: child is stuck, confused, or asking AI to decide.
         if normalized_detail in _NON_ANSWER_PHRASES:

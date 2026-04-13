@@ -71,22 +71,49 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 
 ```
 ├── backend/
-│   ├── agents/            # Director, Script, Visual, Recipe Assembler
-│   ├── entity_registry.py # Single source of truth for all entity config
-│   ├── games/             # Game definitions (*.md with YAML frontmatter)
-│   │   ├── cat1/          # Cat1 design reference docs (not loaded at runtime)
-│   │   └── cat5/          # Cat5 design reference docs (not loaded at runtime)
-│   ├── prompts/           # Agent system prompts
-│   ├── scenarios/         # Activity YAML definitions
-│   ├── schemas/           # Pydantic models
-│   ├── skills/            # Step instruction templates
-│   ├── server.py          # FastAPI app + endpoints
-│   ├── turn_handler.py    # Unified step transition logic (incl. 2-phase Cat5 loop)
-│   ├── recipe_loader.py   # Recipe loading + session state builder
-│   ├── state_machine.py   # Step progression + screen frame selection
-│   ├── vision.py          # Photo analysis via Gemini
-│   ├── stt.py             # Speech-to-text (Vertex AI)
-│   └── tts.py             # Text-to-speech (Vertex AI)
+│   ├── agents/              # Multi-agent pipeline
+│   │   ├── director.py       # Creative plan (LLM)
+│   │   ├── planner.py        # Round/step planning
+│   │   ├── script_agent.py   # Per-turn dialogue generation (LLM)
+│   │   ├── visual_agent.py   # Screen widget + frame sequencing (rules)
+│   │   ├── recipe_assembler.py # Merge + validate recipe
+│   │   ├── pipeline.py       # Pipeline orchestration
+│   │   └── turn_director.py  # Per-turn routing
+│   ├── turn_handling/       # Step transition logic (decomposed package)
+│   │   ├── core.py           # Entry point + dispatch
+│   │   ├── directive.py      # Directive interpretation
+│   │   ├── rounds.py         # Round progression
+│   │   ├── collection.py     # Cat5 2-phase collection loop
+│   │   ├── invitation.py     # Invitation step handling
+│   │   ├── synthesis.py      # Cat5 synthesis step
+│   │   ├── generation.py     # Content generation helpers
+│   │   ├── helpers.py        # Shared utilities
+│   │   ├── debug.py          # Debug/trace helpers
+│   │   └── types.py          # Shared types
+│   ├── games/               # Game definitions (*.md with YAML frontmatter)
+│   │   ├── cat1/             # Cat1 design reference docs (not loaded at runtime)
+│   │   └── cat5/             # Cat5 design reference docs (not loaded at runtime)
+│   ├── prompts/             # Agent system prompts
+│   ├── scenarios/           # Activity YAML definitions
+│   ├── schemas/             # Pydantic models
+│   ├── skills/              # Step instruction templates
+│   ├── synthesis_formats/   # Cat5 synthesis format templates
+│   ├── recipes/             # Cached/authored recipes
+│   ├── tools/               # Agent tool definitions
+│   ├── server.py            # FastAPI app + endpoints
+│   ├── entity_registry.py   # Single source of truth for all entity config
+│   ├── recipe_loader.py     # Recipe loading + session state builder
+│   ├── state_machine.py     # Step progression + screen frame selection
+│   ├── game_loader.py       # Game *.md loader
+│   ├── game_parser.py       # YAML frontmatter parser
+│   ├── scenarios.py         # Scenario registry
+│   ├── config.py            # Runtime config loader
+│   ├── db.py                # Session persistence
+│   ├── image_gen.py         # Scene image generation (Imagen)
+│   ├── character_sounds.py  # Character voice/sound mapping
+│   ├── vision.py            # Photo analysis via Gemini
+│   ├── stt.py               # Speech-to-text (Vertex AI)
+│   └── tts.py               # Text-to-speech (Vertex AI)
 ├── frontend/
 │   └── src/
 │       ├── App.jsx         # Main React app

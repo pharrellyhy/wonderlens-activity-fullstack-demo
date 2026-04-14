@@ -6,6 +6,7 @@ Extracted verbatim from turn_handler.py during package decomposition.
 import random
 
 try:
+    from ..image_gen import get_scene_session
     from ..logger import setup_logger
     from ..schemas import ScreenFrame
     from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
@@ -19,6 +20,7 @@ try:
     )
     from .types import TurnResult
 except ImportError:
+    from image_gen import get_scene_session
     from logger import setup_logger
     from schemas import ScreenFrame
     from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
@@ -126,8 +128,36 @@ def _state_context(state: SessionStateModel) -> dict:
     }
 
 
+def _backfill_achievement_failure(state: SessionStateModel) -> None:
+    """Re-check the live image session before rendering a Cat5 celebrate frame.
+
+    The synthesis layer only awaits the achievement future once, with a 30 s
+    timeout, on the last scene turn (``synthesis.py:561``). If the worker
+    fails after that wait — for example when Imagen returns a sustained 429
+    that exhausts the retry budget seconds later, or when a tester manually
+    advances before the timeout completes — ``story.achievement_image_failed``
+    stays False and the celebrate frame falls back to ``image_status='pending'``
+    forever, hiding the failure banner. Re-checking the live session here
+    closes that gap. Failure is permanent for a session, so we mutate the
+    cached story in place.
+    """
+    if (
+        state.template_type != "cat5"
+        or state.current_step != "STEP_5_CELEBRATE"
+        or state.structured_story is None
+        or state.structured_story.achievement_image_failed
+        or state.structured_story.achievement_image_data_url is not None
+    ):
+        return
+
+    image_session = get_scene_session(state.session_id)
+    if image_session is not None and image_session.achievement_failed:
+        state.structured_story.achievement_image_failed = True
+
+
 def _get_screen_frame(state: SessionStateModel) -> ScreenFrame:
     """Get screen frame for the current step."""
+    _backfill_achievement_failure(state)
     return get_screen_frame(
         state.current_step,
         state.template_type,

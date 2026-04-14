@@ -4,6 +4,43 @@ Last updated: 2026-04-14
 
 ---
 
+## Achievement Failure Banner Reliability
+
+**Problem**: The "Couldn't create this image" banner on the Cat5 celebration screen sometimes did not show even when the Imagen worker had clearly returned 429 / failed. Trace: when the worker eventually flips `_SceneSession.achievement_failed = True`, the only place that propagated that flag onto the cached `StructuredStory` was `backend/turn_handling/synthesis.py:561-568`, which awaits the achievement future once with a 30-second timeout on the **last scene turn**. Two failure modes leaked through that single check: (1) the worker fails *after* the 30 s wait expires (very common with `_MAX_RETRIES > 2` because the retry budget exceeds the wait window), and (2) the tester clicks Continue / manually advances past synthesis before the wait completes. In both cases `story.achievement_image_failed` stays `False`, the celebrate frame builder at `backend/state_machine.py:326-347` falls into the `else` branch and renders `image_status="pending"`, the frontend shows the fallback trophy, and the banner never appears.
+
+**Solution**: Added a private `_backfill_achievement_failure(state)` helper in `backend/turn_handling/helpers.py` that re-checks the live `_SceneSession.achievement_failed` whenever a Cat5 `STEP_5_CELEBRATE` frame is about to be built. If the cached story has no achievement URL AND `achievement_image_failed` is still `False` AND the live session reports the worker has failed, the helper mutates the cached story to `True`. Called from `_get_screen_frame()` before delegating to `state_machine.get_screen_frame()`, so any code path that lands on the celebrate screen now picks up the latest worker state instead of a possibly-stale cache. Failure is monotonic (False → True only), so the in-place mutation is safe across turns. Investigated the analogous gap for **scene** images (`synthesis.py:547-556`) and intentionally left it alone — scene turns auto-advance, the user never re-renders past scenes, and there's no celebrate-equivalent for them; the existing synchronous check inside `_deliver_scene` already covers the cases that have visible UX impact.
+
+**Edits**:
+- `backend/turn_handling/helpers.py` — added `from ..image_gen import get_scene_session` (and the matching fallback branch), added `_backfill_achievement_failure(state)` private helper, called it from `_get_screen_frame(state)` before delegating to `get_screen_frame`.
+- `tests/test_state_machine.py` — added 3 regression tests under `test_celebrate_frame_*`: live session failed → frame surfaces `image_status='failed'` and mutates `structured.achievement_image_failed` to `True`; live session still in flight → frame stays `pending` and cache stays `False`; cached story already has a URL → live failure does NOT clobber the success. Includes a `fresh_scene_session_registry` fixture that snapshots and restores the module-level `_scene_sessions` dict in a `try/finally` so a failing test can't leak state. `_make_scene_session()` builds an `_SceneSession` with a placeholder `Future` (the backfill only reads `achievement_failed`, never awaits the future).
+- `backend/image_gen.py` — also captured an unrelated `imagen_model` config alignment from the prior session (still pointed at `gemini-2.5-flash-image`).
+
+**NOT Changed**:
+- `synthesis.py:547-568` — the existing per-turn check for scene + achievement futures is unchanged. The new helper layers on top, doesn't replace it.
+- `_deliver_scene` and the scene-image failure path — the same race technically exists but has zero user-visible impact (scenes auto-advance, no re-render). Documented as out of scope after investigation; would require either a behavior change to `_await_scene_image` or a new "missing scenes" recap UI to be worth fixing.
+- The achievement image hardcoded `aspect_ratio="16:9"` at `backend/image_gen.py:324` — orthogonal bug, still flagged.
+- Frontend `StoryScene.jsx` already had the `{failed && <ImageFailedBanner />}` wiring on `image_status === 'failed'`, so no frontend changes were needed even though we walked through it.
+
+**Verification**:
+```bash
+cd backend
+uv run ruff check turn_handling/helpers.py ../tests/test_state_machine.py    # pass
+uv run ruff format turn_handling/helpers.py ../tests/test_state_machine.py   # 1 file reformatted
+uv run pytest ../tests/test_state_machine.py -v                              # 29 passed (3 new)
+uv run pytest ../tests/ -q --timeout=30 --ignore=../tests/test_ai_quality.py  # 508 passed, 1 pre-existing failure (test_device_screen_layout — unrelated)
+```
+
+**Manual repro plan** (the user should verify on prod once Imagen recovers):
+1. Bump `_MAX_RETRIES` past `_RETRY_DELAY × 30 / 30` to force the worker to fail after the synthesis layer's 30 s wait expires (or trigger a sustained 429 by saturating the project quota).
+2. Run a `polka_dot_patrol` session through synthesis to celebrate.
+3. Confirm the celebrate screen renders the amber "Couldn't create this image" banner in the top-right of the achievement widget instead of staying stuck on the fallback trophy with no indicator.
+
+**Post-implementation review**:
+- `code-review-specialist` confirmed the guards are correct (no clobbering of a success URL, safe mutation of the Pydantic model, no circular-import risk between `helpers.py` and `image_gen.py`). Caught one MEDIUM: the `fresh_scene_session_registry` fixture wasn't using `try/finally`, so a teardown line raising could leave `_scene_sessions` polluted. Applied the fix. Also flagged that the backfill keys on `current_step == "STEP_5_CELEBRATE"` rather than "frame will render achievement_image" — accepted as out of scope since today's state machine has a single celebrate entry point.
+- `code-simplifier` removed the unnecessary `asyncio.new_event_loop()` dance from `_make_scene_session` (the backfill never awaits the future, so the loop was pure overhead) and dropped the `Iterator` import that was only used for an annotation.
+
+---
+
 ## Imagen Concurrency Limit (429 fix)
 
 **Problem**: Cat5 sessions running `polka_dot_patrol` (and any other `comparison_reveal` synthesis format) hit Vertex Imagen 429 errors on the achievement image, leaving the celebration screen with a missing image. Root cause traced through `backend/image_gen.py:288-339`: `_scene_image_worker` generates scenes sequentially then immediately fires the achievement image. `comparison_reveal` has `scene_count: 1` (`backend/synthesis_formats/comparison_reveal.md:4`), so the worker fires scene 1 → achievement back-to-back with zero spacing. Worse, `_get_client` (`backend/image_gen.py:65-78`) builds a singleton `genai.Client` with no concurrency cap, no semaphore, no rate limiter. Cross-session races compound the problem because `start_scene_images` is fire-and-forget (`backend/turn_handling/synthesis.py:391`). Existing 429 handling is just a 2-attempt retry with a flat 3-second sleep, which recovers from a single burst but doesn't prevent the burst.
@@ -335,46 +372,3 @@ uv run python tools/capture_synthesis_baselines.py && git diff --stat tests/fixt
 - `uv run pytest tests/test_turn_handler.py tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py tests/test_api.py tests/test_server_visual.py -q` — PASS (`116 passed`)
 - `uv run ruff check backend/turn_handling backend/server.py scripts/scoring.py tests/test_turn_handler.py tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py tests/test_api.py tests/test_server_visual.py` — PASS
 - `uv run ruff format --check tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py scripts/scoring.py` — PASS
-
----
-
-## Decompose turn_handler.py into turn_handling/ package
-
-**Problem**: `backend/turn_handler.py` was 2,936 lines with a 619-line god-method (`resolve_turn`) containing 60+ branches and 29 return paths. Debugging any single code path required reading the entire function and mentally filtering out irrelevant branches.
-
-**Solution**: Replaced the monolithic file with a `backend/turn_handling/` package of 11 focused modules. Pure refactoring — no behavioral changes. Each module maps to a debuggable concern (e.g., Cat5 collection bugs → open `collection.py` at ~180 lines).
-
-**Edits**:
-- `backend/turn_handler.py` — DELETED (replaced by package)
-- `backend/turn_handling/__init__.py` — NEW: Re-exports public API + backward-compatible internal symbols
-- `backend/turn_handling/types.py` — NEW: TurnInput, TurnResult, GenerationDebugInfo dataclasses (~40 lines)
-- `backend/turn_handling/helpers.py` — NEW: Predicates, state mutation, response builders, constants (~370 lines)
-- `backend/turn_handling/generation.py` — NEW: LLM generation retry, validation, intent classification (~550 lines)
-- `backend/turn_handling/invitation.py` — NEW: STEP_2 invitation routing (~130 lines)
-- `backend/turn_handling/collection.py` — NEW: Cat5 photo validation, detail phase (~240 lines)
-- `backend/turn_handling/rounds.py` — NEW: Round generation, deferred advance, guardrails (~240 lines)
-- `backend/turn_handling/synthesis.py` — NEW: Synthesis phases (invite/evaluate/improve/generate) (~300 lines)
-- `backend/turn_handling/directive.py` — NEW: Turn Director feature-flagged bypass (~960 lines)
-- `backend/turn_handling/debug.py` — NEW: Debug payload, step flow, phase timelines (~190 lines)
-- `backend/turn_handling/core.py` — NEW: Slim resolve_turn dispatcher (~290 lines)
-- `backend/server.py` — Updated imports: `turn_handler` → `turn_handling`
-- `tests/test_turn_handler.py` — Updated imports + monkeypatch targets
-- `tests/test_debug_payload.py` — Updated imports
-- `tests/test_intent_classifier.py` — Updated imports + patch targets
-- `tests/test_deep_link.py` — Updated imports
-- `tests/test_api.py` — Updated patch targets
-- `tests/test_server_visual.py` — Updated patch targets
-- `scripts/scoring.py` — Updated imports
-
-**NOT Changed**:
-- `backend/state_machine.py` — Step transition logic stays where it is
-- `backend/agents/script_agent.py` — Called by generation.py but not modified
-- `backend/schemas/` — No schema changes
-- Frontend — Backend API contract is identical
-- Behavioral semantics — Same branches, same order, same outputs
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py` — 18 failed / 21 passed (identical to pre-refactor baseline on main)
-- `uv run pytest tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py` — 39/39 passed
-- `uv run ruff check backend/turn_handling/` — all clean
-- `uv run ruff format --check backend/turn_handling/` — all formatted

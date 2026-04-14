@@ -1,9 +1,15 @@
 """Tests for state machine visual frame matching and get_screen_frame with visual_frames."""
 
+import asyncio
+
+import pytest
+from image_gen import _scene_sessions, _SceneSession
 from schemas import ScreenFrame
 from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+from schemas.session_state import SessionStateModel
 from schemas.structured_story import StructuredStory
 from state_machine import _match_visual_frame, get_screen_frame
+from turn_handling.helpers import _get_screen_frame
 
 
 def _cat1_slots() -> Cat1CreativeSlots:
@@ -302,6 +308,120 @@ def test_cat5_celebrate_includes_image_when_structured_story_has_achievement_url
     assert frame.widget == "achievement_image"
     assert frame.widget_params["image_data_url"] == "data:image/png;base64,FAKE"
     assert "concepts" not in frame.widget_params
+
+
+# ---------------------------------------------------------------------------
+# Achievement-failure backfill (regression for "banner sometimes missing")
+# ---------------------------------------------------------------------------
+
+
+def _cat5_state(*, structured_story: StructuredStory) -> SessionStateModel:
+    """Minimal Cat5 session at STEP_5_CELEBRATE with a structured story attached."""
+    return SessionStateModel(
+        session_id="sess-banner",
+        tier="T0",
+        template_type="cat5",
+        activity_type="polka_dot_patrol",
+        current_step="STEP_5_CELEBRATE",
+        creative_slots=_cat5_slots(),
+        structured_story=structured_story,
+    )
+
+
+@pytest.fixture()
+def fresh_scene_session_registry():
+    """Wipe and restore the module-level scene-session registry per test."""
+    snapshot = dict(_scene_sessions)
+    _scene_sessions.clear()
+    try:
+        yield
+    finally:
+        _scene_sessions.clear()
+        _scene_sessions.update(snapshot)
+
+
+def _make_scene_session(achievement_failed: bool) -> _SceneSession:
+    """Build a stand-in _SceneSession. The backfill only reads ``achievement_failed``;
+    the future is a placeholder to satisfy the dataclass signature."""
+    return _SceneSession(
+        scene_futures=[],
+        achievement_future=asyncio.new_event_loop().create_future(),
+        achievement_failed=achievement_failed,
+    )
+
+
+def test_celebrate_frame_surfaces_failure_when_live_session_failed_after_synthesis(
+    fresh_scene_session_registry: object,
+) -> None:
+    """The banner gap: the synthesis layer's 30 s wait expires (or the tester
+    manually advances) before the worker fails, so ``story.achievement_image_failed``
+    stays False. Without the backfill, the celebrate frame would render
+    ``image_status='pending'`` forever and hide the failure banner. With the
+    backfill in ``_get_screen_frame``, the live session's failure flag wins.
+    """
+    structured = StructuredStory(
+        scenes=[],
+        achievement_description="",
+        achievement_image_data_url=None,
+        achievement_image_failed=False,
+    )
+    state = _cat5_state(structured_story=structured)
+    _scene_sessions[state.session_id] = _make_scene_session(achievement_failed=True)
+
+    frame = _get_screen_frame(state)
+
+    assert frame.widget == "achievement_image"
+    assert frame.widget_params["image_status"] == "failed", (
+        "live image session reported failure but celebrate frame stayed pending — the failure banner would not render"
+    )
+    assert state.structured_story is not None
+    assert state.structured_story.achievement_image_failed is True, (
+        "expected the helper to mutate the cached story so subsequent turns stay consistent"
+    )
+
+
+def test_celebrate_frame_stays_pending_when_live_session_still_in_flight(
+    fresh_scene_session_registry: object,
+) -> None:
+    """Backfill must not flip the status to 'failed' while the worker is still
+    running — that would show a false-negative banner mid-generation."""
+    structured = StructuredStory(
+        scenes=[],
+        achievement_description="",
+        achievement_image_data_url=None,
+        achievement_image_failed=False,
+    )
+    state = _cat5_state(structured_story=structured)
+    _scene_sessions[state.session_id] = _make_scene_session(achievement_failed=False)
+
+    frame = _get_screen_frame(state)
+
+    assert frame.widget_params["image_status"] == "pending"
+    assert state.structured_story is not None
+    assert state.structured_story.achievement_image_failed is False
+
+
+def test_celebrate_frame_keeps_existing_url_even_if_session_marked_failed(
+    fresh_scene_session_registry: object,
+) -> None:
+    """If the cached story already has an image URL, the live failure flag
+    must NOT clobber it — the worker may have failed on a *retry* after the
+    URL was already cached."""
+    structured = StructuredStory(
+        scenes=[],
+        achievement_description="",
+        achievement_image_data_url="data:image/png;base64,REAL",
+        achievement_image_failed=False,
+    )
+    state = _cat5_state(structured_story=structured)
+    _scene_sessions[state.session_id] = _make_scene_session(achievement_failed=True)
+
+    frame = _get_screen_frame(state)
+
+    assert frame.widget_params["image_status"] == "ready"
+    assert frame.widget_params["image_data_url"] == "data:image/png;base64,REAL"
+    assert state.structured_story is not None
+    assert state.structured_story.achievement_image_failed is False
 
 
 def test_cat5_closing_returns_concept_reveal_with_concepts():

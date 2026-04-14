@@ -9,7 +9,7 @@ const CATEGORY_ICONS = {
   cat5: MagnifyingGlassIcon,
 };
 
-export default function PhotoSelector({ onPhotoSelect, isLoading }) {
+export default function PhotoSelector({ onPhotoSelect, isLoading, onOpenGallery }) {
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
 
@@ -92,7 +92,16 @@ export default function PhotoSelector({ onPhotoSelect, isLoading }) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-full p-6 max-[380px]:p-4 overflow-y-auto">
+    <div className="relative flex flex-col items-center justify-start min-h-full p-6 max-[380px]:p-4 overflow-y-auto">
+      {onOpenGallery ? (
+        <button
+          type="button"
+          onClick={onOpenGallery}
+          className="absolute top-3 right-3 max-[380px]:top-2 max-[380px]:right-2 text-xs font-medium text-[var(--color-forest-dark)]/70 hover:text-[var(--color-forest-dark)] underline-offset-2 hover:underline cursor-pointer"
+        >
+          View feedback gallery →
+        </button>
+      ) : null}
       <div className="w-10 h-10 sm:w-14 sm:h-14 max-[380px]:w-9 max-[380px]:h-9 rounded-2xl max-[380px]:rounded-xl bg-gradient-to-br from-[var(--color-forest)] to-[var(--color-forest-dark)] flex items-center justify-center mb-4 max-[380px]:mb-3 shadow-lg">
         <CameraIcon className="w-5 h-5 sm:w-7 sm:h-7 max-[380px]:w-4 max-[380px]:h-4 text-white" />
       </div>

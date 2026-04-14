@@ -126,3 +126,17 @@ export async function transcribeAudio(audioBlob) {
   if (!res.ok) return null;
   return res.json();
 }
+
+export async function fetchFeedbackList() {
+  const res = await fetch(`${BASE}/api/feedback/list`);
+  if (!res.ok) throw new Error(`Feedback list failed: ${res.status}`);
+  return res.json();
+}
+
+export function feedbackImageUrl(folderName, relativePath) {
+  const encodedRelative = relativePath
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/');
+  return `${BASE}/api/feedback/image/${encodeURIComponent(folderName)}/${encodedRelative}`;
+}

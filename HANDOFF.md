@@ -1,6 +1,64 @@
 # Session Handoff
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
+
+---
+
+## Feedback Gallery Panel (read-only)
+
+**Problem**: Testers flag moments during a session and submit feedback via `POST /api/feedback`, which persists a JSON bundle + screenshots per session on disk. Nothing could browse the result — reviewers had to shell into `backend/feedback/` to read anything. The data was effectively write-only.
+
+**Solution**: Added a read-only gallery, reachable from the landing page via `?view=feedback` (linked from a "View feedback gallery →" button on `PhotoSelector`). Backend gains two GET endpoints that walk the feedback directory, flatten flags across sessions, and serve screenshot bytes with strict path-traversal + symlink-escape guarding. Frontend renders a flat, filterable list (tag chip row + tester alias dropdown + newest/oldest sort toggle) with a fullscreen lightbox for thumbnails. No moderation surface — explicitly read-only to keep auth out of scope.
+
+**Edits**:
+- `backend/feedback_storage.py` — added `list_all_feedback(base_dir)` walking the feedback root, loading each `feedback.json`, and flattening each flag into `{flag, session}` enriched with `folder_name`; added `read_feedback_image(folder_name, relative_path, base_dir)` that resolves `bundle_root` and requires `bundle_root.is_relative_to(root)` before delegating to the existing `_resolve_safe` helper — catches both traversal and symlink-escape attacks; tightened `_is_safe_folder_name` to reject dotfile-prefixed names (`.git`, `.hidden`, `.`, `..`).
+- `backend/server.py` — added `GET /api/feedback/list` (sorts by `flagged_at` desc) and `GET /api/feedback/image/{folder_name}/{relative_path:path}` (uses `mimetypes.guess_type`, returns 400 on unsafe path / 404 on missing); imports `list_all_feedback` and `read_feedback_image` in both try/except ImportError branches.
+- `backend/tests/test_feedback_endpoint.py` — new `TestFeedbackListAndImage` class with 20 new assertions covering list flattening, malformed-bundle skipping, missing-root handling, image happy-path, path-traversal parametrized cases (including new `.git`/`.hidden` cases), **symlink-escape test** that plants a symlink to an outside tmp dir and asserts `ValueError`, and endpoint coverage for sort order + image serving + 404.
+- `frontend/src/components/feedback/TagChip.jsx` — NEW shared component extracted from `FeedbackReviewScreen` so `FeedbackReviewScreen`, `FeedbackGalleryCard`, and any future card all use the same chip styling.
+- `frontend/src/components/feedback/FeedbackReviewScreen.jsx` — replaced inline `TagChip` + `TAGS_BY_ID` with the shared import.
+- `frontend/src/components/feedback/FeedbackGalleryPanel.jsx` — NEW: fetches `/api/feedback/list` once on mount (initial state `loading: true`, no setState-in-effect since the project's lint rule forbids it), renders filter bar (tag chips, tester dropdown, sort toggle) with `useMemo` for filtered/sorted entries, portals the lightbox via state, handles loading/error/empty states.
+- `frontend/src/components/feedback/FeedbackGalleryCard.jsx` — NEW: flat card per flag — tag chips + turn number + tester alias + relative time + activity label + quick_note + review_comment + turn snapshot block + thumbnail row (each thumbnail is a button that opens the lightbox).
+- `frontend/src/components/feedback/ScreenshotLightbox.jsx` — NEW: React portal into `document.body`, fullscreen dark backdrop, Escape-to-close, click-backdrop-to-close, centered image.
+- `frontend/src/utils/api.js` — added `fetchFeedbackList()` and `feedbackImageUrl(folderName, relativePath)` (encodes each path segment).
+- `frontend/src/App.jsx` — added `galleryView` state initialized from `?view=feedback`, unified `setGalleryViewWithUrl(on)` helper that mutates the URL via `history.pushState` and updates state, `popstate` listener, and an early-return render branch: `if (galleryView && !sessionId) return <FeedbackGalleryPanel onBack={closeGalleryView} />`.
+- `frontend/src/components/PhotoSelector.jsx` — accepts an `onOpenGallery` prop and renders a "View feedback gallery →" link in the top-right of the panel header.
+- `docs/plans/2026-04-14-feedback-gallery.md` — NEW design doc per the project's plan-before-code rule.
+
+**NOT Changed**:
+- `POST /api/feedback`, `FeedbackQuickFlag`, `FeedbackReviewScreen` submission flow — unchanged; gallery is purely additive.
+- Schema (`backend/schemas/feedback.py`) — the list endpoint returns raw dicts (no `FeedbackListResponse` model) because the pipeline is already validated via the write path; adding a read-side schema was deferred.
+- No pagination, delete, resolve, edit, or auth — explicitly out of scope per the brainstorming decisions.
+- Pre-existing `# noqa: F401` comments on `get_demo_recipe` imports in `server.py` — left alone (CLAUDE.md forbids `noqa` but these predate this work).
+- Pre-existing mypy "cannot perform relative import" error in `server.py` — unchanged by this work.
+
+**Verification**:
+```bash
+# Backend
+cd backend
+uv run ruff check feedback_storage.py server.py tests/test_feedback_endpoint.py   # pass
+uv run ruff format feedback_storage.py server.py tests/test_feedback_endpoint.py  # formatted
+uv run pytest tests/test_feedback_endpoint.py -q                                   # 24 passed (4 pre-existing + 20 new)
+
+# Frontend
+cd ../frontend
+npm run lint   # pass
+npm run build  # pass
+
+# End-to-end smoke test (playwright-mcp against backend-served dist)
+# 1. Start backend on :8765, plant a fake 2-flag bundle in backend/feedback/
+# 2. GET /api/feedback/list → returned both flags sorted newest first
+# 3. GET /api/feedback/image/.../screenshots/turn-03.png → 200, image/png, 20 bytes
+# 4. Navigate to /?view=feedback → gallery renders, "2 of 2 flags"
+# 5. Click "Tone" chip → filter reduces to "1 of 2 flags", correct card shown
+# 6. Click thumbnail → lightbox portal opens with backdrop + close button
+# 7. Close lightbox → click "← Back to photos" → URL cleared, PhotoSelector shows link
+# 8. Click "View feedback gallery →" → URL becomes /?view=feedback again
+```
+
+**Post-implementation review**:
+- `code-review-specialist` sub-agent found a **HIGH-severity symlink escape** in `read_feedback_image` (passing an unresolved `bundle_root` to `_resolve_safe` let symlinks in the feedback dir widen the boundary to the symlink target). Fixed by resolving `bundle_root` and asserting `is_relative_to(root)` before touching files; added a symlink-escape regression test that plants a symlink to an out-of-tree `secret.png` and asserts `ValueError`.
+- Reviewer also flagged dotfile folder names (`.git`, `.hidden`) passing the regex — fixed via `startswith(".")` rejection in `_is_safe_folder_name` + parametrized test cases.
+- `code-simplifier` sub-agent trimmed a redundant `bundle_root.exists()` + `target.is_file()` double-check in `read_feedback_image`, collapsed `openGalleryView`/`closeGalleryView` in `App.jsx` into a single `setGalleryViewWithUrl(on)` helper, replaced the inline `_sort_key` function in `server.py` with a `lambda` on `entries.sort`, and removed a dead `|| ''` fallback in the panel's sort comparator.
 
 ---
 
@@ -323,82 +381,3 @@ uv run ruff check .          # All passed
 uv run ruff format --check .  # All formatted
 # Enable: set turn_director_enabled: true in config.yaml, restart server
 ```
-
----
-
-## Unified Intent Classifier + Phase Timeline Debug + Code-Controlled Transitions
-
-**Problem**: Multiple interconnected issues: (1) Fragmented intent classification — Script Agent `child_intent`, `_classify_story_response`, and a hardcoded frozenset all classified child responses differently, causing misrouted turns (e.g., "yes" treated as story content). (2) Debug panel lacked phase-level visibility for Cat5 collection/synthesis loops and Cat1 invitation. (3) LLM-generated transition prompts were unreliable — celebration responses leaked finding prompts, collection photo prompts said "you found something!" when nothing was found, synthesis invite phase narrated stories instead of asking questions. (4) Stories were too short and ignored collected details. (5) Debug data wasn't persisted to DB.
-
-**Solution**: Three major changes:
-
-*Unified Intent Classifier* — Replaced all three classification mechanisms with a single `_classify_child_intent` LLM pre-classifier that runs before the Script Agent. Common phrases (yes/no/sure/maybe) are detected in code via `_CONFIRM_WORDS`/`_DECLINE_WORDS` frozensets, bypassing the LLM entirely. Removed `child_intent` from `TurnResponse` and `TurnPlan`. Added `ChildIntentClassification` schema with optional synthesis extension (`story_quality`, `is_related_to_collection`). Script Agent receives classified intent as context instead of doing classification itself.
-
-*Code-Controlled Transitions* — Replaced unreliable LLM-generated responses with deterministic templates for critical transitions: invitation acceptance celebration (`_ACCEPTANCE_CELEBRATIONS`), collection photo prompt (`_collection_photo_prompt` with `_ANGLE_ADJECTIVES` mapping), synthesis invite (`_SYNTHESIS_INVITE_TEMPLATES`), and synthesis confirm detection (`_SYNTHESIS_CONFIRM_WORDS`). Combined celebration + finding prompt into a single response to eliminate auto-advance round trip. Added story length enforcement (`_MIN_STORY_SENTENCES`) with retry when below minimum.
-
-*Phase Timeline Debug* — Added `_build_phase_timeline(state)` returning sub-step phase lists (done/current/pending) for Cat5 collection, Cat5 synthesis, and Cat1 invitation. Rendered as compact horizontal badge row in the debug panel State tab. Added `debug_payload` column to DB turns table. Added `child_intent` to state snapshot and session state dict.
-
-**Edits**:
-- `backend/schemas/child_intent.py` — NEW: `ChildIntentClassification` Pydantic model
-- `backend/schemas/story_classification.py` — DELETED: replaced by `child_intent.py`
-- `backend/schemas/session_state.py` — added `synthesis_story_quality`, `child_intent` fields
-- `backend/schemas/turn_response.py` — removed `child_intent` field
-- `backend/schemas/turn_plan.py` — removed `child_intent` field
-- `backend/turn_handler.py` — added `_classify_child_intent`, `_CONFIRM_WORDS`/`_DECLINE_WORDS`, `_collection_photo_prompt`, `_ACCEPTANCE_CELEBRATIONS`, `_synthesis_invite_prompt`, `_SYNTHESIS_CONFIRM_WORDS`, `_build_phase_timeline`, story length enforcement; removed `_classify_story_response`, `_AFFIRMATIVE_PATTERNS`, `_is_affirmative_or_continuation`; rewrote invitation/synthesis handlers; fixed name extraction patterns; disabled `_validate_response`
-- `backend/agents/script_agent.py` — removed `child_intent` from output; added intent context to prompt; removed round number from synthesis/celebrate/closing prompts
-- `backend/server.py` — added `child_intent` to `_session_state_dict` and `_build_state_snapshot`; added `debug_payload` to AI turn logging
-- `backend/db.py` — added `debug_payload TEXT` migration and param to `log_turn`
-- `backend/config.py` — added `ali_classifier_model` (defaults to `qwen3.5-flash`)
-- `backend/skills/step_instructions/cat5_step2_mission.md` — removed `child_intent` classification rules; added acceptance celebration rule
-- `backend/skills/step_instructions/cat1_step2_rules.md` — same
-- `backend/skills/step_instructions/cat5_step3_collect.md` — added Phase A opening rule, no-location rule, Phase B celebrate-only rule, anti-repetition rules
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — hardened invite phase; moved quality standard + examples inside GENERATE phase section
-- `backend/skills/step_instructions/cat5_step4_synthesis__story_generation.md` — 5-beat story framework (opening→surprise→try-and-fail→breakthrough→warm ending); increased length requirements; added context usage rules
-- `backend/skills/planner_system.md` — removed `child_intent` from output
-- `backend/skills/script_turn.md` — removed `child_intent` output instruction
-- `backend/skills/few_shot.md` — cleaned location-specific hints
-- All 15 step instruction files — updated example headers to prevent LLM copying
-- `frontend/src/components/DebugPanel.jsx` — added `PhaseBadge`/`PhaseTimeline` components; added `child_intent` to State tab; removed `child_intent` from LLM Output; added phase badge to History tab
-- `tests/test_intent_classifier.py` — NEW: 9 tests for classifier
-- `tests/test_debug_payload.py` — 19 new tests for phase timeline
-- `tests/test_turn_handler.py` — updated invitation/synthesis tests for new classifier flow
-- `tests/test_api.py`, `tests/test_server_visual.py`, `tests/test_turn_plan.py`, `tests/test_planner.py` — removed `child_intent` references
-
-**NOT Changed**:
-- `backend/agents/director.py`, `backend/agents/visual_agent.py`, `backend/agents/recipe_assembler.py` — untouched
-- Frontend conversation flow, TTS/STT pipeline — unchanged
-- `backend/state_machine.py` — step transitions unchanged
-
-**Verification**:
-- `uv run pytest tests/ --ignore=tests/test_character_sound_frontend_contracts.py -q` — 423 passed, 12 skipped (1 pre-existing failure excluded)
-- `uv run ruff check backend/ tests/` — PASS
-- `grep -r "StoryClassification\|_classify_story_response\|_AFFIRMATIVE_PATTERNS" backend/ tests/` — zero matches
-
----
-
-## Review Follow-Up: Immersive Character Sounds Frontend Contract + Schema Tightening
-
-**Problem**: Reviewing the in-progress `feat/immersive-character-sounds` worktree against `docs/plans/2026-03-28-immersive-character-sounds.md` surfaced three concrete issues. First, the frontend only preserved `character_sfx` for normal `/api/turn` responses; hook turns from `/api/start` and `/api/start-deep-link` dropped that field, so first-turn ambient or character sounds would never play. Second, the muted TTS path in `useSessionOrchestration.js` triggered `playOutros()` inside the timeout callback and then called `handleSpeakingDone()`, which played the same outro cues a second time. Third, `TurnPlan.character_sfx` was still typed as raw `list[dict]` even though the branch had already introduced a dedicated `CharacterSfxCue` schema, which kept planner parsing looser than necessary and forced redundant dict-to-model conversion in `ScriptAgent`.
-
-**Solution**: Kept the overall immersive-sound design and narrowed the fixes to the verified contract gaps. The conversation hook now carries `character_sfx` for first-turn messages as well as regular turn responses, so hook audio can reach the orchestration layer. The muted playback path now lets `handleSpeakingDone()` own outro playback, eliminating the duplicate-fire path. On the backend, `TurnPlan` now uses `CharacterSfxCue` directly, which simplifies the plan-to-turn merge and validates planner sound entries earlier without changing the server-side cue whitelist and timing normalization.
-
-**Edits**:
-- `frontend/src/hooks/useConversation.js` - preserved `characterSfx` when hydrating the initial hook message from both `/api/start` and `/api/start-deep-link`
-- `frontend/src/hooks/useSessionOrchestration.js` - removed the extra muted-path `playOutros()` call so outro cues only fire once per turn
-- `frontend/src/hooks/useCharacterSfx.js` - removed unused pool bookkeeping and dead preload metadata so the hook matches its current lazy-cache behavior more clearly
-- `backend/schemas/turn_plan.py` - changed `character_sfx` from raw dicts to `list[CharacterSfxCue]`
-- `backend/agents/script_agent.py` - simplified the two-pass merge path to reuse validated `CharacterSfxCue` models directly
-- `tests/test_turn_plan.py` - added coverage for `character_sfx` defaults and dict-to-model coercion in `TurnPlan`
-- `tests/test_character_sound_frontend_contracts.py` - added source-level regressions for hook-turn `character_sfx` preservation and the muted outro path
-- `HANDOFF.md` - added this review follow-up entry
-
-**NOT Changed**:
-- `backend/server.py` cue validation and response wiring - unchanged in this review follow-up
-- Character sound asset files under `frontend/public/sfx/character/` - reviewed, not modified
-- The separate script/test formatting changes already present in the worktree - reviewed, not modified in this follow-up
-
-**Verification**:
-- `uv run pytest backend/tests/test_character_sounds.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py tests/test_backend_imports.py tests/test_device_screen_layout.py -q` - PASS (`40 passed`)
-- `uv run ruff check backend/schemas/turn_plan.py backend/agents/script_agent.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py backend/tests/test_character_sounds.py tests/test_backend_imports.py tests/test_device_screen_layout.py` - PASS
-- `uv run ruff format --check backend/schemas/turn_plan.py backend/agents/script_agent.py tests/test_turn_plan.py tests/test_character_sound_frontend_contracts.py` - PASS
-

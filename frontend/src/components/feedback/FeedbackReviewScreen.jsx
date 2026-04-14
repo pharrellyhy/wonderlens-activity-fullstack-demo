@@ -1,29 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FEEDBACK_TAGS } from './tags.js';
-import { TAG_STYLES } from './tagStyles.js';
+import TagChip from './TagChip.jsx';
 import {
   buildFolderNameClient,
   downloadFeedbackZip,
   submitFeedbackToBackend,
 } from '../../utils/submitFeedback.js';
-
-const TAGS_BY_ID = Object.fromEntries(FEEDBACK_TAGS.map((t) => [t.id, t]));
-
-function TagChip({ tagId }) {
-  const tag = TAGS_BY_ID[tagId];
-  if (!tag) return null;
-  const styles = TAG_STYLES[tag.color] || TAG_STYLES.amber;
-  return (
-    <span
-      className={[
-        'px-2 py-0.5 rounded-full text-[11px] font-semibold border',
-        styles.selected,
-      ].join(' ')}
-    >
-      {tag.label}
-    </span>
-  );
-}
 
 export default function FeedbackReviewScreen({
   isOpen,
@@ -123,8 +104,21 @@ export default function FeedbackReviewScreen({
       const { payload, endedAt } = getPayload();
       if (!payload) throw new Error('No payload available');
       const folderName = buildFolderNameClient(endedAt, testerAlias, sessionId);
-      await downloadFeedbackZip({ ...payload, folderName });
-      finishWithSuccess('downloaded');
+
+      // Kick the zip and the backend POST off in parallel. The zip MUST
+      // succeed (the tester expects a local copy); the backend save is
+      // best-effort — staging builds may not reach /api/feedback, and we
+      // don't want to block the download on that.
+      const zipPromise = downloadFeedbackZip({ ...payload, folderName });
+      const backendPromise = submitFeedbackToBackend(payload).then(
+        () => true,
+        (err) => {
+          console.warn('[feedback] backend save during download failed', err);
+          return false;
+        },
+      );
+      const [, backendSaved] = await Promise.all([zipPromise, backendPromise]);
+      finishWithSuccess(backendSaved ? 'downloaded_and_sent' : 'downloaded');
     } catch (err) {
       setSubmitError(err?.message || 'Download failed');
     } finally {
@@ -148,12 +142,20 @@ export default function FeedbackReviewScreen({
   const hasFlags = (flags || []).length > 0;
 
   if (submitComplete) {
-    const headline =
-      submitComplete === 'downloaded' ? 'Feedback downloaded' : 'Feedback sent';
-    const detail =
-      submitComplete === 'downloaded'
-        ? 'Hand the zip to a developer to reproduce the moments you flagged.'
-        : 'Thanks — a developer will pick it up from the backend.';
+    const HEADLINES = {
+      submitted: 'Feedback sent',
+      downloaded: 'Feedback downloaded',
+      downloaded_and_sent: 'Feedback downloaded and sent',
+    };
+    const DETAILS = {
+      submitted: 'Thanks — a developer will pick it up from the backend.',
+      downloaded:
+        'Zip is in your Downloads folder — the backend copy failed, so hand the file to a developer.',
+      downloaded_and_sent:
+        'Zip is in your Downloads folder and a copy landed on the backend.',
+    };
+    const headline = HEADLINES[submitComplete] || 'Feedback sent';
+    const detail = DETAILS[submitComplete] || DETAILS.submitted;
     return (
       <div
         className="fixed inset-0 z-[68] bg-black/40 flex items-center justify-center p-4"

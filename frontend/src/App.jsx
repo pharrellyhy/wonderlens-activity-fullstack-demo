@@ -12,6 +12,7 @@ import FeedbackFlagButton from './components/feedback/FeedbackFlagButton';
 import FeedbackQuickFlag from './components/feedback/FeedbackQuickFlag';
 import TesterIdentityModal from './components/feedback/TesterIdentityModal';
 import FeedbackReviewScreen from './components/feedback/FeedbackReviewScreen';
+import FeedbackGalleryPanel from './components/feedback/FeedbackGalleryPanel';
 import { getInitialAppMode } from './components/feedback/appMode';
 import useSessionOrchestration from './hooks/useSessionOrchestration';
 import useFeedbackStore from './hooks/useFeedbackStore';
@@ -112,6 +113,31 @@ function App() {
   // Absent an override, visibility is derived from session lifecycle.
   const [reviewOverride, setReviewOverride] = useState(null);
   const appShellRef = useRef(null);
+
+  const [galleryView, setGalleryView] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('view') === 'feedback';
+  });
+
+  const setGalleryViewWithUrl = useCallback((on) => {
+    const url = new URL(window.location.href);
+    if (on) url.searchParams.set('view', 'feedback');
+    else url.searchParams.delete('view');
+    window.history.pushState({}, '', url);
+    setGalleryView(on);
+  }, []);
+
+  const openGalleryView = useCallback(() => setGalleryViewWithUrl(true), [setGalleryViewWithUrl]);
+  const closeGalleryView = useCallback(() => setGalleryViewWithUrl(false), [setGalleryViewWithUrl]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const viewParam = new URLSearchParams(window.location.search).get('view');
+      setGalleryView(viewParam === 'feedback');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -324,6 +350,10 @@ function App() {
   const STAGE_MODE_WIDGETS = ['story_scene', 'story_loading', 'achievement_image', 'concept_reveal'];
   const stageMode = STAGE_MODE_WIDGETS.includes(screenFrame?.widget);
 
+  if (galleryView && !sessionId) {
+    return <FeedbackGalleryPanel onBack={closeGalleryView} />;
+  }
+
   return (
     <div ref={appShellRef} className="app-shell flex flex-col bg-nature text-gray-800 font-sans">
       <TopBar
@@ -387,7 +417,11 @@ function App() {
               <RetryButton onRetry={handleRetry} retryCount={retryCount} maxRetries={3} />
             </div>
           ) : showPhotoSelector ? (
-            <PhotoSelector onPhotoSelect={startSession} isLoading={loading} />
+            <PhotoSelector
+              onPhotoSelect={startSession}
+              isLoading={loading}
+              onOpenGallery={openGalleryView}
+            />
           ) : (
             <ConversationPanel
               messages={messages}

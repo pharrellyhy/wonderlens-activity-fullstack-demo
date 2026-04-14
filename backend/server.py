@@ -36,7 +36,12 @@ try:
         lookup_by_entity_name,
         validate_registry,
     )
-    from .feedback_storage import build_folder_name, write_feedback_bundle
+    from .feedback_storage import (
+        build_folder_name,
+        list_all_feedback,
+        read_feedback_image,
+        write_feedback_bundle,
+    )
     from .game_loader import get_demo_recipe  # noqa: F401 — triggers game loading + registry population
     from .logger import setup_logger
     from .recipe_loader import load_instruction_recipe, recipe_to_session_state
@@ -73,7 +78,12 @@ except ImportError:
         lookup_by_entity_name,
         validate_registry,
     )
-    from feedback_storage import build_folder_name, write_feedback_bundle
+    from feedback_storage import (
+        build_folder_name,
+        list_all_feedback,
+        read_feedback_image,
+        write_feedback_bundle,
+    )
     from game_loader import get_demo_recipe  # noqa: F401
     from logger import setup_logger
     from recipe_loader import load_instruction_recipe, recipe_to_session_state
@@ -681,6 +691,49 @@ async def submit_feedback(
             {"status": "error", "error": "feedback_write_failed"},
             status_code=500,
         )
+
+
+@app.get("/api/feedback/list")
+async def list_feedback() -> JSONResponse:
+    """Return every flag across every saved feedback bundle, newest first."""
+    try:
+        entries = list_all_feedback(feedback_storage.FEEDBACK_DIR)
+    except Exception:
+        logger.exception("Feedback list read failed")
+        return JSONResponse(
+            {"status": "error", "error": "feedback_list_failed"},
+            status_code=500,
+        )
+
+    entries.sort(key=lambda e: (e.get("flag") or {}).get("flagged_at") or "", reverse=True)
+    return JSONResponse({"entries": entries})
+
+
+@app.get("/api/feedback/image/{folder_name}/{relative_path:path}")
+async def get_feedback_image(folder_name: str, relative_path: str) -> Response:
+    """Serve a single screenshot file from a feedback bundle."""
+    try:
+        data = read_feedback_image(folder_name, relative_path, feedback_storage.FEEDBACK_DIR)
+    except ValueError:
+        return JSONResponse(
+            {"status": "error", "error": "unsafe_feedback_path"},
+            status_code=400,
+        )
+    except Exception:
+        logger.exception("Feedback image read failed")
+        return JSONResponse(
+            {"status": "error", "error": "feedback_image_failed"},
+            status_code=500,
+        )
+
+    if data is None:
+        return JSONResponse(
+            {"status": "error", "error": "feedback_image_not_found"},
+            status_code=404,
+        )
+
+    mime_type, _ = mimetypes.guess_type(relative_path)
+    return Response(content=data, media_type=mime_type or "application/octet-stream")
 
 
 # --- Helpers ---

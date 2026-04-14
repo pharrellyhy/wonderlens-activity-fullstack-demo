@@ -128,3 +128,149 @@ class TestFeedbackEndpoint:
         body = response.json()
         assert body["error"] == "unsafe_screenshot_path"
         assert list(tmp_path.iterdir()) == []
+
+
+def _write_bundle(
+    base_dir: Path,
+    folder_name: str,
+    payload: dict,
+    screenshots: dict[str, bytes] | None = None,
+) -> Path:
+    bundle = base_dir / folder_name
+    (bundle / "screenshots").mkdir(parents=True, exist_ok=True)
+    (bundle / "feedback.json").write_text(json.dumps(payload), encoding="utf-8")
+    for rel, data in (screenshots or {}).items():
+        (bundle / rel).parent.mkdir(parents=True, exist_ok=True)
+        (bundle / rel).write_bytes(data)
+    return bundle
+
+
+class TestFeedbackListAndImage:
+    def test_list_all_feedback_flattens_flags(self, tmp_path: Path) -> None:
+        payload_a = _valid_payload_dict(session_id="aaa111bbb222")
+        payload_a["flags"][0]["flagged_at"] = "2026-04-13T14:30:02+08:00"
+        payload_b = _valid_payload_dict(session_id="ccc333ddd444")
+        payload_b["flags"][0]["flag_id"] = "f-02"
+        payload_b["flags"][0]["flagged_at"] = "2026-04-14T09:00:00+08:00"
+        payload_b["tester_alias"] = "Bob"
+
+        _write_bundle(tmp_path, "2026-04-13-1432-alice-aaa111", payload_a)
+        _write_bundle(tmp_path, "2026-04-14-0901-bob-ccc333", payload_b)
+
+        entries = feedback_storage.list_all_feedback(tmp_path)
+
+        assert len(entries) == 2
+        flag_ids = {entry["flag"]["flag_id"] for entry in entries}
+        assert flag_ids == {"f-01", "f-02"}
+        folders = {entry["session"]["folder_name"] for entry in entries}
+        assert folders == {"2026-04-13-1432-alice-aaa111", "2026-04-14-0901-bob-ccc333"}
+        aliases = {entry["session"]["tester_alias"] for entry in entries}
+        assert aliases == {"Alice", "Bob"}
+
+    def test_list_all_feedback_skips_malformed(self, tmp_path: Path) -> None:
+        payload = _valid_payload_dict()
+        _write_bundle(tmp_path, "2026-04-13-1432-alice-abc123", payload)
+
+        bad_bundle = tmp_path / "2026-04-14-0000-mallory-xxxxxx"
+        bad_bundle.mkdir()
+        (bad_bundle / "feedback.json").write_text("{not json", encoding="utf-8")
+
+        orphan = tmp_path / "orphan-folder"
+        orphan.mkdir()
+
+        entries = feedback_storage.list_all_feedback(tmp_path)
+
+        assert len(entries) == 1
+        assert entries[0]["flag"]["flag_id"] == "f-01"
+
+    def test_list_all_feedback_handles_missing_root(self, tmp_path: Path) -> None:
+        assert feedback_storage.list_all_feedback(tmp_path / "nope") == []
+
+    def test_read_feedback_image_happy_path(self, tmp_path: Path) -> None:
+        payload = _valid_payload_dict()
+        png = b"\x89PNGCONTENT"
+        _write_bundle(
+            tmp_path,
+            "2026-04-13-1432-alice-abc123",
+            payload,
+            {"screenshots/turn-03-auto.png": png},
+        )
+
+        data = feedback_storage.read_feedback_image(
+            "2026-04-13-1432-alice-abc123",
+            "screenshots/turn-03-auto.png",
+            tmp_path,
+        )
+        assert data == png
+
+    def test_read_feedback_image_missing_returns_none(self, tmp_path: Path) -> None:
+        payload = _valid_payload_dict()
+        _write_bundle(tmp_path, "2026-04-13-1432-alice-abc123", payload)
+
+        data = feedback_storage.read_feedback_image(
+            "2026-04-13-1432-alice-abc123",
+            "screenshots/nope.png",
+            tmp_path,
+        )
+        assert data is None
+
+    @pytest.mark.parametrize(
+        "folder_name",
+        ["..", "../etc", "with/slash", "with\\backslash", "", ".git", ".", ".hidden"],
+    )
+    def test_read_feedback_image_rejects_unsafe_folder(self, tmp_path: Path, folder_name: str) -> None:
+        with pytest.raises(ValueError):
+            feedback_storage.read_feedback_image(folder_name, "screenshots/a.png", tmp_path)
+
+    def test_read_feedback_image_rejects_symlink_escape(self, tmp_path: Path) -> None:
+        outside = tmp_path.parent / "outside-bundle"
+        (outside / "screenshots").mkdir(parents=True, exist_ok=True)
+        (outside / "screenshots" / "secret.png").write_bytes(b"top-secret")
+
+        (tmp_path / "escape-bundle").symlink_to(outside, target_is_directory=True)
+
+        with pytest.raises(ValueError):
+            feedback_storage.read_feedback_image("escape-bundle", "screenshots/secret.png", tmp_path)
+
+    @pytest.mark.parametrize(
+        "relative_path",
+        ["../evil.png", "screenshots/../../escape.png", "/absolute.png"],
+    )
+    def test_read_feedback_image_rejects_unsafe_path(self, tmp_path: Path, relative_path: str) -> None:
+        _write_bundle(tmp_path, "2026-04-13-1432-alice-abc123", _valid_payload_dict())
+        with pytest.raises(ValueError):
+            feedback_storage.read_feedback_image("2026-04-13-1432-alice-abc123", relative_path, tmp_path)
+
+    def test_get_list_endpoint_sorted_newest_first(self, client: TestClient, tmp_path: Path) -> None:
+        payload_old = _valid_payload_dict(session_id="aaa111bbb222")
+        payload_old["flags"][0]["flagged_at"] = "2026-04-13T14:30:02+08:00"
+        payload_new = _valid_payload_dict(session_id="ccc333ddd444")
+        payload_new["flags"][0]["flag_id"] = "f-02"
+        payload_new["flags"][0]["flagged_at"] = "2026-04-14T09:00:00+08:00"
+
+        _write_bundle(tmp_path, "2026-04-13-1432-alice-aaa111", payload_old)
+        _write_bundle(tmp_path, "2026-04-14-0901-alice-ccc333", payload_new)
+
+        response = client.get("/api/feedback/list")
+        assert response.status_code == 200
+        body = response.json()
+        assert [e["flag"]["flag_id"] for e in body["entries"]] == ["f-02", "f-01"]
+
+    def test_get_image_endpoint_serves_png(self, client: TestClient, tmp_path: Path) -> None:
+        png = b"\x89PNGBODY"
+        _write_bundle(
+            tmp_path,
+            "2026-04-13-1432-alice-abc123",
+            _valid_payload_dict(),
+            {"screenshots/turn-03-auto.png": png},
+        )
+
+        response = client.get("/api/feedback/image/2026-04-13-1432-alice-abc123/screenshots/turn-03-auto.png")
+        assert response.status_code == 200
+        assert response.content == png
+        assert response.headers["content-type"].startswith("image/png")
+
+    def test_get_image_endpoint_404_on_missing(self, client: TestClient, tmp_path: Path) -> None:
+        _write_bundle(tmp_path, "2026-04-13-1432-alice-abc123", _valid_payload_dict())
+        response = client.get("/api/feedback/image/2026-04-13-1432-alice-abc123/screenshots/nope.png")
+        assert response.status_code == 404

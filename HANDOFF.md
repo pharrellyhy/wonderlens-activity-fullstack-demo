@@ -4,6 +4,38 @@ Last updated: 2026-04-14
 
 ---
 
+## Imagen Concurrency Limit (429 fix)
+
+**Problem**: Cat5 sessions running `polka_dot_patrol` (and any other `comparison_reveal` synthesis format) hit Vertex Imagen 429 errors on the achievement image, leaving the celebration screen with a missing image. Root cause traced through `backend/image_gen.py:288-339`: `_scene_image_worker` generates scenes sequentially then immediately fires the achievement image. `comparison_reveal` has `scene_count: 1` (`backend/synthesis_formats/comparison_reveal.md:4`), so the worker fires scene 1 → achievement back-to-back with zero spacing. Worse, `_get_client` (`backend/image_gen.py:65-78`) builds a singleton `genai.Client` with no concurrency cap, no semaphore, no rate limiter. Cross-session races compound the problem because `start_scene_images` is fire-and-forget (`backend/turn_handling/synthesis.py:391`). Existing 429 handling is just a 2-attempt retry with a flat 3-second sleep, which recovers from a single burst but doesn't prevent the burst.
+
+**Solution**: Added a module-level `asyncio.Semaphore(1)` in `backend/image_gen.py` that gates the actual Imagen API call inside `generate_image()`. Single-permit collapses both intra-session bursts (scene N → achievement on `comparison_reveal`) and cross-session races into a serial queue. The `async with` block wraps the API call + 429 retry loop so a 429 sleep also blocks other queued callers — no thundering-herd retry storm. Prompt assembly stays outside the lock (pure CPU work). Wait-time ≥ 100 ms emits an INFO log so contention is visible. Concurrency limit is intentionally `1` for this single-tenant demo; can be lifted via config later if needed.
+
+**Edits**:
+- `backend/image_gen.py` — added `_imagen_semaphore = asyncio.Semaphore(1)` next to existing module constants (line 69), wrapped the API-call + retry-loop branch of `generate_image()` in `async with _imagen_semaphore:` (lines 151-192), added a wait-time log line for visibility under contention.
+- `backend/tests/test_image_gen_concurrency.py` (new) — `_FakeImagenClient` records `peak_in_flight` using a blocking `time.sleep(0.2)` inside `client.models.generate_content` (production code wraps it in `asyncio.to_thread`, so a real blocking sleep is the right tool for measuring serialization). `fake_client` fixture patches `_get_client`, `_extract_image_bytes`, the semaphore (via `monkeypatch.setattr` so cleanup is automatic), and `imagen_enabled`. Two tests: `test_concurrent_calls_are_serialized` proves two `gather`ed calls take >= 0.35s and never overlap; `test_single_call_does_not_block` proves a lone caller pays no penalty.
+- `docs/plans/2026-04-14-imagen-concurrency-limit.md` (new) — design doc per the project's plan-before-code rule.
+
+**NOT Changed**:
+- `_MAX_RETRIES` / `_RETRY_DELAY` — out of scope; the bug is missing concurrency control, not bad backoff.
+- The hardcoded `aspect_ratio="16:9"` for the achievement image at `backend/image_gen.py:324` (which ignores `achievement_aspect_ratio` from the format YAML) — orthogonal bug, flagged but not fixed in this change.
+- `start_scene_images` / `_scene_image_worker` / anything in `backend/turn_handling/synthesis.py` — fix lives entirely in `generate_image()`.
+- The pre-existing bare `except Exception` inside `generate_image`'s retry loop — flagged by reviewer as a CLAUDE.md violation, but it predates this work and changing it could silently change error semantics; left alone.
+
+**Verification**:
+```bash
+cd backend
+uv run ruff check image_gen.py tests/test_image_gen_concurrency.py   # pass
+uv run ruff format image_gen.py tests/test_image_gen_concurrency.py  # 2 files left unchanged
+uv run pytest tests/test_image_gen_concurrency.py -v                  # 2 passed
+uv run pytest tests/ -q --timeout=30 --ignore=tests/test_ai_quality.py # 45 passed
+```
+
+**Post-implementation review**:
+- `code-review-specialist` confirmed semaphore scope is correct (prompt assembly outside, retry loop inside so 429 sleeps block queued callers and prevent retry storms). Flagged the pre-existing bare `except Exception` as CLAUDE.md non-compliance — left alone since this diff didn't introduce it.
+- `code-simplifier` inlined the `_SEMAPHORE_WAIT_LOG_MS = 100` constant (single-use), flattened `TestImagenSemaphore` class into module-level test functions, and removed a redundant teardown reset in the autouse fixture. Then I followed up: dropped `raising=False` on the `imagen_enabled` patch (it's a real Pydantic field, so a future rename should fail loudly), and switched the semaphore reset from autouse-rebind to `monkeypatch.setattr` so cleanup is automatic and bound-name leakage isn't possible.
+
+---
+
 ## Feedback Gallery Panel (read-only)
 
 **Problem**: Testers flag moments during a session and submit feedback via `POST /api/feedback`, which persists a JSON bundle + screenshots per session on disk. Nothing could browse the result — reviewers had to shell into `backend/feedback/` to read anything. The data was effectively write-only.
@@ -346,38 +378,3 @@ uv run python tools/capture_synthesis_baselines.py && git diff --stat tests/fixt
 - `uv run pytest tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py` — 39/39 passed
 - `uv run ruff check backend/turn_handling/` — all clean
 - `uv run ruff format --check backend/turn_handling/` — all formatted
-
----
-
-## Turn Director + Story Scaffold (Feature-Flagged)
-
-**Problem**: Three interconnected issues: (1) Intent classification outputs content-type (confirm/decline/substantive/off_topic) requiring ~300 lines of if/elif routing to map to actions. (2) Fixed response templates (`_ACCEPTANCE_CELEBRATIONS`, `_PHOTO_FIND_PROMPTS`) feel robotic. (3) Cat5 collection detail questions repeat ("how does it feel?" every round) and gathered details are ignored in synthesis stories.
-
-**Solution**: Merged classifier + planner into a single **Turn Director** LLM call behind `turn_director_enabled` feature flag. Outputs action-based intents (advance/stay/need_help/redirect/exit) + reasoning + response_direction. Added **Story Scaffold** to game definitions so collection rounds harvest story ingredients for synthesis.
-
-**Edits**:
-- `backend/schemas/turn_directive.py` — NEW: `TurnDirective` and `StoryElement` schemas
-- `backend/schemas/creative_slots.py` — Added `StoryScaffold` model, `story_scaffold` optional field on `Cat5CreativeSlots`
-- `backend/schemas/session_state.py` — Added `story_elements: list[StoryElement]`, `last_directive_action: str`
-- `backend/schemas/__init__.py` — Added exports for new schemas
-- `backend/agents/turn_director.py` — NEW: `TurnDirector` agent with step phase rules, state context builder, LLM call
-- `backend/skills/turn_director_system.md` — NEW: Turn Director prompt template
-- `backend/skills/speaker_directive_system.md` — NEW: Speaker prompt for directive path
-- `backend/agents/script_agent.py` — Added `generate_turn_from_directive()`, `_build_directive_speaker_prompt()`
-- `backend/turn_handler.py` — Added `_fast_path_directive()`, `_get_turn_directive()`, `_resolve_turn_with_directive()`, feature flag branch in `resolve_turn()`
-- `backend/config.py` — Added `turn_director_enabled` setting
-- `backend/config.yaml` — Added `turn_director_enabled: false`
-- `backend/games/fluffy_expedition_dandelion.md` — Added `story_scaffold` section
-- `backend/games/polka_dot_patrol.md` — Added `story_scaffold` section
-- `docs/plans/2026-03-31-turn-director-story-scaffold.md` — Design plan
-
-**NOT Changed**: Legacy intent classification path (fully intact behind feature flag), frontend, remaining 7 Cat5 game definitions (story_scaffold is optional — games without it use legacy path)
-
-**Verification**:
-```bash
-cd backend
-uv run pytest tests/ -x -q --timeout=30 --ignore=tests/test_ai_quality.py --ignore=tests/test_session_runner.py --ignore=tests/test_eval.py  # 19 passed
-uv run ruff check .          # All passed
-uv run ruff format --check .  # All formatted
-# Enable: set turn_director_enabled: true in config.yaml, restart server
-```

@@ -61,6 +61,13 @@ _CAPTION_SUFFIX = (
 _MAX_RETRIES = 2
 _RETRY_DELAY = 3.0
 
+# Single-flight gate around the Imagen API call. Vertex Imagen's per-project
+# burst limit is the bottleneck for this demo, so we only let one generation
+# in flight at a time across the whole backend. This collapses both intra-
+# session bursts (scene N → achievement on `comparison_reveal`, which has
+# scene_count=1) and cross-session races into a serial queue.
+_imagen_semaphore = asyncio.Semaphore(1)
+
 
 @lru_cache(maxsize=1)
 def _get_client() -> genai.Client:
@@ -140,40 +147,46 @@ async def generate_image(
 
     client = _get_client()
 
-    for attempt in range(_MAX_RETRIES):
-        try:
-            start = time.perf_counter()
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=settings.imagen_model,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    response_modalities=["IMAGE"],
-                    image_config=types.ImageConfig(aspect_ratio=aspect_ratio),
-                ),
-            )
-            latency_ms = int((time.perf_counter() - start) * 1000)
-            image_bytes = _extract_image_bytes(response)
-            has_refs = bool(anchor or reference)
-            logger.info(
-                "Imagen generated image (%d bytes, %dms, refs=%s)",
-                len(image_bytes),
-                latency_ms,
-                "yes" if has_refs else "no",
-            )
-            return image_bytes
+    wait_start = time.perf_counter()
+    async with _imagen_semaphore:
+        wait_ms = int((time.perf_counter() - wait_start) * 1000)
+        if wait_ms >= 100:
+            logger.info("Imagen waited %dms for semaphore", wait_ms)
 
-        except (genai_errors.ClientError, genai_errors.APIError) as exc:
-            is_retryable = "RESOURCE_EXHAUSTED" in str(exc) or "429" in str(exc)
-            if not is_retryable or attempt == _MAX_RETRIES - 1:
-                logger.error("Imagen generation failed (attempt %d): %s", attempt + 1, exc)
+        for attempt in range(_MAX_RETRIES):
+            try:
+                start = time.perf_counter()
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=settings.imagen_model,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        response_modalities=["IMAGE"],
+                        image_config=types.ImageConfig(aspect_ratio=aspect_ratio),
+                    ),
+                )
+                latency_ms = int((time.perf_counter() - start) * 1000)
+                image_bytes = _extract_image_bytes(response)
+                has_refs = bool(anchor or reference)
+                logger.info(
+                    "Imagen generated image (%d bytes, %dms, refs=%s)",
+                    len(image_bytes),
+                    latency_ms,
+                    "yes" if has_refs else "no",
+                )
+                return image_bytes
+
+            except (genai_errors.ClientError, genai_errors.APIError) as exc:
+                is_retryable = "RESOURCE_EXHAUSTED" in str(exc) or "429" in str(exc)
+                if not is_retryable or attempt == _MAX_RETRIES - 1:
+                    logger.error("Imagen generation failed (attempt %d): %s", attempt + 1, exc)
+                    return None
+                logger.warning("Imagen rate-limited, retrying in %.1fs", _RETRY_DELAY)
+                await asyncio.sleep(_RETRY_DELAY)
+
+            except Exception as exc:
+                logger.error("Imagen unexpected error: %s", exc)
                 return None
-            logger.warning("Imagen rate-limited, retrying in %.1fs", _RETRY_DELAY)
-            await asyncio.sleep(_RETRY_DELAY)
-
-        except Exception as exc:
-            logger.error("Imagen unexpected error: %s", exc)
-            return None
 
     return None
 

@@ -16,7 +16,6 @@ export default function CharacterDisplay({
 }) {
   const theme = getThemeForEntity(entity);
   const hasVideo = !!clipUrl;
-  const expectsVideo = !!theme?.videoPrefix;
   const [videoMuted, setVideoMuted] = useState(true);
 
   // Dual video crossfade state
@@ -38,7 +37,7 @@ export default function CharacterDisplay({
 
     let activated = false;
 
-    const activate = (source) => {
+    const activate = () => {
       if (activated) return;
       activated = true;
       if (oldVideo) oldVideo.pause();
@@ -54,8 +53,8 @@ export default function CharacterDisplay({
       setReadyToShow(true);
     };
 
-    const onCanPlay = () => activate('canplay');
-    const onLoadedData = () => activate('loadeddata');
+    const onCanPlay = () => activate();
+    const onLoadedData = () => activate();
     const onError = () => {
       console.error('[CharacterDisplay] video error:', nextVideo.error?.message, clipUrl);
     };

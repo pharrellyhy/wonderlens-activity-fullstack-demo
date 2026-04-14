@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import TopBar from './components/TopBar';
 import ConversationPanel from './components/ConversationPanel';
 import DebugPanel from './components/DebugPanel';
@@ -7,7 +7,15 @@ import PhotoSelector from './components/PhotoSelector';
 import PhotoGallery from './components/PhotoGallery';
 import RetryButton from './components/RetryButton';
 import ToyCameraFrame from './components/ToyCameraFrame';
+import ModePill from './components/feedback/ModePill';
+import FeedbackFlagButton from './components/feedback/FeedbackFlagButton';
+import FeedbackQuickFlag from './components/feedback/FeedbackQuickFlag';
+import TesterIdentityModal from './components/feedback/TesterIdentityModal';
+import FeedbackReviewScreen from './components/feedback/FeedbackReviewScreen';
+import { getInitialAppMode } from './components/feedback/appMode';
 import useSessionOrchestration from './hooks/useSessionOrchestration';
+import useFeedbackStore from './hooks/useFeedbackStore';
+import { captureScreenshot } from './utils/captureScreenshot';
 
 function getEndedStatusLabel(status) {
   if (status === 'completed') {
@@ -45,12 +53,71 @@ function getFooterStatusLabel({ loading, turnPending, status }) {
   return status || 'idle';
 }
 
+// Derive a flat turn snapshot for the feedback store. Fields default to
+// empty/zero because the backend TurnSnapshot schema requires strings +
+// an int; the tester can still flag moments with incomplete state (e.g.
+// before the first AI reply arrives).
+function buildTurnSnapshot({ messages, sessionState, screenFrame }) {
+  const msgs = messages || [];
+  let speakerText = '';
+  let childTranscript = '';
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i];
+    if (!speakerText && m.role === 'ai' && typeof m.text === 'string') {
+      speakerText = m.text;
+    }
+    if (!childTranscript && m.role === 'child' && typeof m.text === 'string' && !m.isSilent) {
+      childTranscript = m.text;
+    }
+    if (speakerText && childTranscript) break;
+  }
+  return {
+    step: sessionState?.current_step || '',
+    speaker_text: speakerText,
+    child_transcript: childTranscript,
+    widget_type: screenFrame?.widget || '',
+    recipe_round: Number(sessionState?.current_round || 0),
+  };
+}
+
+// Map templateType → {category, photo_filename} for the feedback payload.
+// Backend FeedbackActivity schema requires all three fields populated.
+function deriveFeedbackActivity({ templateType, activityType }) {
+  const category = templateType === 'cat5' ? 'cat5' : 'cat1';
+  return {
+    template_type: templateType || activityType || 'unknown',
+    category,
+    photo_filename: activityType || 'unknown',
+  };
+}
+
 function App() {
   const [tier, setTier] = useState('T0');
   const [debugOpen, setDebugOpen] = useState(false);
 
+  // Tester-feedback mode state — parallel surface gated by appMode.
+  const [appMode, setAppMode] = useState(() => getInitialAppMode());
+  const isDevMode = appMode === 'dev';
+  const isTesterMode = appMode === 'tester';
+  const feedbackStore = useFeedbackStore();
+  const [quickFlagOpen, setQuickFlagOpen] = useState(false);
+  // Frozen snapshot captured at the moment the tester clicks Flag:
+  // { turnNumber, screenshotBlob, turnSnapshot }. Never updated while the
+  // popover is open so the preview doesn't drift as the session advances.
+  const [pendingFlagData, setPendingFlagData] = useState(null);
+  const [identityModalOpen, setIdentityModalOpen] = useState(false);
+  // `reviewOverride` records an explicit session-scoped intent:
+  //   { id, state } where state is 'open' (force-open) or
+  //   'dismissed' (sticky-close for this session).
+  // Absent an override, visibility is derived from session lifecycle.
+  const [reviewOverride, setReviewOverride] = useState(null);
+  const appShellRef = useRef(null);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Ctrl+D only flips debug state in dev mode. Tester mode keeps the
+      // panel mounted-less, so swallowing the shortcut would be a no-op.
+      if (!isDevMode) return;
       if (e.ctrlKey && e.key === 'd') {
         e.preventDefault();
         setDebugOpen(prev => !prev);
@@ -58,7 +125,11 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isDevMode]);
+
+  // Any open tester-feedback overlay freezes auto-advance + silence timer
+  // so the session waits while the tester is reporting an issue.
+  const autoAdvancePaused = isTesterMode && (quickFlagOpen || identityModalOpen);
 
   const {
     messages, sessionId, sessionState, screenFrame, loading, turnPending, error,
@@ -67,7 +138,8 @@ function App() {
     isSpeaking, audioInfo, ttsEnabled, toggleTts, silenceTimerOn, toggleSilenceTimer, isMicActive, sttMode, silenceTimer,
     animationState, currentScenario, currentClipUrl, isOneShot, onClipEnded,
     startSession, startDeepLinkSession, sendMessage, sendPhotoCollection, toggleMic, resetSession,
-  } = useSessionOrchestration(tier);
+    awaitingManualAdvance, manualAdvance,
+  } = useSessionOrchestration(tier, { testerMode: isTesterMode, autoAdvancePaused });
 
   const deepLinkHandled = useRef(false);
 
@@ -92,6 +164,151 @@ function App() {
     })();
   }, [startDeepLinkSession, setTier]);
 
+  // Capture a start timestamp that is stable for the lifetime of a given
+  // sessionId. useMemo on [sessionId] gives us a deterministic value per
+  // session without mutating refs during render or deferring via effect.
+  const sessionStartedAt = useMemo(
+    () => (sessionId ? new Date().toISOString() : null),
+    [sessionId],
+  );
+
+  // Derived review visibility. The override is keyed by sessionId, so
+  // switching to a new session transparently clears any previous intent
+  // without needing an effect to reset state.
+  const overrideForCurrent =
+    reviewOverride && reviewOverride.id === sessionId ? reviewOverride.state : null;
+  const reviewOpen = overrideForCurrent === 'open'
+    || (overrideForCurrent !== 'dismissed'
+      && isTesterMode
+      && isEnded
+      && Boolean(sessionId)
+      && feedbackStore.hasFlags);
+
+  // Freeze turn number + turn snapshot at click time so the popover never
+  // drifts mid-review. captureScreenshot is async, so we snapshot the sync
+  // state first and then attach the blob when it resolves.
+  const captureFreshFlagData = useCallback(async () => {
+    const turnNumber = sessionState?.turn_count ?? 0;
+    const turnSnapshot = buildTurnSnapshot({ messages, sessionState, screenFrame });
+    let screenshotBlob = null;
+    try {
+      screenshotBlob = await captureScreenshot(appShellRef.current);
+    } catch (err) {
+      console.warn('[feedback] screenshot capture failed', err);
+    }
+    return {
+      turnNumber,
+      turnSnapshot,
+      screenshotBlob,
+      editingFlagId: null,
+      initialTags: [],
+      initialQuickNote: '',
+    };
+  }, [messages, sessionState, screenFrame]);
+
+  // Edit-in-place: if a flag already exists for this turn, reopen it so the
+  // tester can revise tags/note. The original screenshot + turn_snapshot are
+  // kept (they describe the moment first flagged, not the moment re-opened).
+  const openFlagFlow = useCallback(async () => {
+    if (quickFlagOpen) return;
+    const turnNumber = sessionState?.turn_count ?? 0;
+    const existing = feedbackStore.flags.find((f) => f.turn_number === turnNumber);
+    if (existing) {
+      setPendingFlagData({
+        turnNumber,
+        screenshotBlob: existing.screenshots?.[0]?.blob || null,
+        turnSnapshot: existing.turn_snapshot,
+        editingFlagId: existing.flag_id,
+        initialTags: [...(existing.tags || [])],
+        initialQuickNote: existing.quick_note || '',
+      });
+      setQuickFlagOpen(true);
+      return;
+    }
+    const data = await captureFreshFlagData();
+    setPendingFlagData(data);
+    setQuickFlagOpen(true);
+  }, [captureFreshFlagData, feedbackStore.flags, quickFlagOpen, sessionState?.turn_count]);
+
+  const handleFlagClick = useCallback(async () => {
+    if (!feedbackStore.testerAlias) {
+      setIdentityModalOpen(true);
+      return;
+    }
+    await openFlagFlow();
+  }, [feedbackStore.testerAlias, openFlagFlow]);
+
+  const handleIdentitySubmit = useCallback(
+    (alias) => {
+      feedbackStore.setTesterAlias(alias);
+      setIdentityModalOpen(false);
+      // Always continue the flag flow — skip path leaves alias empty and
+      // the backend slugifier resolves it to "anon".
+      void openFlagFlow();
+    },
+    [feedbackStore, openFlagFlow],
+  );
+
+  const handleQuickFlagSave = useCallback(
+    ({ tags, quickNote }) => {
+      if (!pendingFlagData) return;
+      if (pendingFlagData.editingFlagId) {
+        feedbackStore.updateFlag(pendingFlagData.editingFlagId, {
+          tags,
+          quick_note: quickNote,
+        });
+      } else {
+        feedbackStore.addFlag({
+          turnNumber: pendingFlagData.turnNumber,
+          tags,
+          quickNote,
+          screenshot: pendingFlagData.screenshotBlob,
+          turnSnapshot: pendingFlagData.turnSnapshot,
+        });
+      }
+      setQuickFlagOpen(false);
+      setPendingFlagData(null);
+    },
+    [feedbackStore, pendingFlagData],
+  );
+
+  const handleQuickFlagCancel = useCallback(() => {
+    setQuickFlagOpen(false);
+    setPendingFlagData(null);
+  }, []);
+
+  const handleReviewClose = useCallback(() => {
+    if (sessionId) {
+      setReviewOverride({ id: sessionId, state: 'dismissed' });
+    } else {
+      setReviewOverride(null);
+    }
+  }, [sessionId]);
+
+  // Called right after a successful submit/download: clears flag blobs but
+  // leaves the session alone so the review screen can show its thanks view.
+  const handleReviewClearFlags = useCallback(() => {
+    feedbackStore.clearSession();
+  }, [feedbackStore]);
+
+  // Called when the tester chooses "Start another session" from the thanks
+  // view — now we actually reset the activity pipeline.
+  const handleReviewNewSession = useCallback(() => {
+    resetSession();
+  }, [resetSession]);
+
+  // In tester mode, the end-of-session button routes through the review
+  // screen if there are flags; otherwise it behaves like dev mode.
+  const handleNewSession = useCallback(() => {
+    if (isTesterMode && feedbackStore.hasFlags && !reviewOpen && sessionId) {
+      setReviewOverride({ id: sessionId, state: 'open' });
+      return;
+    }
+    resetSession();
+  }, [feedbackStore.hasFlags, isTesterMode, resetSession, reviewOpen, sessionId]);
+
+  const feedbackActivity = deriveFeedbackActivity({ templateType, activityType });
+
   const handleRetry = useCallback(() => resetSession(), [resetSession]);
   const showRetry = Boolean(error && !sessionId);
   const showPhotoSelector = !sessionId && !loading && !showRetry;
@@ -108,12 +325,12 @@ function App() {
   const stageMode = STAGE_MODE_WIDGETS.includes(screenFrame?.widget);
 
   return (
-    <div className="app-shell flex flex-col bg-nature text-gray-800 font-sans">
+    <div ref={appShellRef} className="app-shell flex flex-col bg-nature text-gray-800 font-sans">
       <TopBar
         tier={tier}
         onTierChange={setTier}
         activityName={activityType?.replace(/_/g, ' ')}
-        onNewSession={resetSession}
+        onNewSession={handleNewSession}
         sessionActive={!!sessionId}
       />
 
@@ -178,7 +395,7 @@ function App() {
               onMicToggle={toggleMic}
               isMicActive={isMicActive}
               silenceTimer={silenceTimer}
-              isInputDisabled={isInputDisabled || showPhotoGallery}
+              isInputDisabled={isInputDisabled || showPhotoGallery || (isTesterMode && awaitingManualAdvance)}
               sttMode={sttMode}
               loading={loading}
               turnPending={turnPending}
@@ -186,6 +403,11 @@ function App() {
               collectMode={showPhotoGallery}
               sessionState={sessionState}
               templateType={templateType}
+              advancePrompt={
+                isTesterMode && awaitingManualAdvance && !quickFlagOpen && !identityModalOpen
+                  ? { onAdvance: manualAdvance, disabled: turnPending || loading }
+                  : null
+              }
             />
           )}
         </section>
@@ -209,7 +431,7 @@ function App() {
               {getEndedStatusLabel(sessionState?.status)}
             </p>
             <button
-              onClick={resetSession}
+              onClick={handleNewSession}
               className="px-5 py-2 max-[380px]:px-4 max-[380px]:py-1.5 bg-[var(--color-forest)] text-white rounded-full hover:bg-[var(--color-forest-dark)] text-sm max-[380px]:text-xs font-semibold transition-all hover:shadow-md"
             >
               New Session
@@ -286,23 +508,74 @@ function App() {
         </div>
       </footer>
 
-      <DebugPanel
-        debugData={debugData}
-        debugHistory={debugHistory}
-        sessionState={sessionState}
-        templateType={templateType}
-        isOpen={debugOpen}
-      />
+      {isDevMode && (
+        <DebugPanel
+          debugData={debugData}
+          debugHistory={debugHistory}
+          sessionState={sessionState}
+          templateType={templateType}
+          isOpen={debugOpen}
+        />
+      )}
 
       {/* Debug toggle button — visible on all devices, replaces Ctrl+D on mobile */}
-      <button
-        onClick={() => setDebugOpen(prev => !prev)}
-        className="fixed bottom-3 right-3 z-[60] w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold opacity-30 hover:opacity-80 transition-opacity cursor-pointer"
-        style={{ backgroundColor: '#313244', color: '#89b4fa', border: '1px solid #45475a' }}
-        title="Toggle debug panel (Ctrl+D)"
-      >
-        {debugOpen ? '×' : 'D'}
-      </button>
+      {isDevMode && (
+        <button
+          onClick={() => setDebugOpen(prev => !prev)}
+          className="fixed bottom-3 right-3 z-[60] w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold opacity-30 hover:opacity-80 transition-opacity cursor-pointer"
+          style={{ backgroundColor: '#313244', color: '#89b4fa', border: '1px solid #45475a' }}
+          title="Toggle debug panel (Ctrl+D)"
+        >
+          {debugOpen ? '×' : 'D'}
+        </button>
+      )}
+
+      {/* Always-visible mode pill lets devs and testers swap surfaces. */}
+      <ModePill onChange={setAppMode} />
+
+      {isTesterMode && (
+        <FeedbackFlagButton
+          onClick={handleFlagClick}
+          disabled={turnPending || loading || !sessionState}
+        />
+      )}
+
+      {isTesterMode && identityModalOpen && (
+        <TesterIdentityModal
+          onSubmit={handleIdentitySubmit}
+          onCancel={() => setIdentityModalOpen(false)}
+        />
+      )}
+
+      {isTesterMode && quickFlagOpen && pendingFlagData && (
+        <FeedbackQuickFlag
+          screenshotBlob={pendingFlagData.screenshotBlob}
+          turnNumber={pendingFlagData.turnNumber}
+          initialTags={pendingFlagData.initialTags}
+          initialQuickNote={pendingFlagData.initialQuickNote}
+          isEditing={Boolean(pendingFlagData.editingFlagId)}
+          onSave={handleQuickFlagSave}
+          onCancel={handleQuickFlagCancel}
+        />
+      )}
+
+      {isTesterMode && (
+        <FeedbackReviewScreen
+          isOpen={reviewOpen}
+          flags={feedbackStore.flags}
+          sessionId={sessionId}
+          testerAlias={feedbackStore.testerAlias}
+          activity={feedbackActivity}
+          sessionStartedAt={sessionStartedAt}
+          appMode="tester"
+          buildPayload={feedbackStore.buildPayload}
+          onUpdateFlag={feedbackStore.updateFlag}
+          onDeleteFlag={feedbackStore.deleteFlag}
+          onClose={handleReviewClose}
+          onClearSession={handleReviewClearFlags}
+          onNewSession={handleReviewNewSession}
+        />
+      )}
     </div>
   );
 }

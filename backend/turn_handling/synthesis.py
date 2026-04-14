@@ -544,18 +544,28 @@ async def _deliver_scene(state: SessionStateModel, scene_number: int) -> TurnRes
     # timed out here, a later retry delivery of the same scene should get
     # another chance to read the future (the background worker keeps running
     # even after a wait_for timeout thanks to asyncio.shield).
-    if scene.image_data_url is None:
+    if scene.image_data_url is None and not scene.image_failed:
         resolved = await _await_scene_image(state.session_id, scene_number - 1)
         if resolved is not None:
             scene.image_data_url = resolved
+        else:
+            # Distinguish a confirmed failure from "still pending": the
+            # worker flips session.scene_failed[i] only on real failures.
+            image_session = get_scene_session(state.session_id)
+            if image_session and scene_number - 1 < len(image_session.scene_failed):
+                scene.image_failed = image_session.scene_failed[scene_number - 1]
 
     # On the final scene, pull the achievement image forward too so it's
     # ready by the time the celebrate frame is built on the next turn.
     # Same rule: only cache a non-None result so a retry can re-await.
-    if is_last and story.achievement_image_data_url is None:
+    if is_last and story.achievement_image_data_url is None and not story.achievement_image_failed:
         resolved_ach = await _await_achievement_image(state.session_id)
         if resolved_ach is not None:
             story.achievement_image_data_url = resolved_ach
+        else:
+            image_session = get_scene_session(state.session_id)
+            if image_session and image_session.achievement_failed:
+                story.achievement_image_failed = True
 
     sfx = "celebration_fanfare" if is_last else "story_page_turn"
     widget_params: dict = {
@@ -564,6 +574,11 @@ async def _deliver_scene(state: SessionStateModel, scene_number: int) -> TurnRes
     }
     if scene.image_data_url:
         widget_params["image_data_url"] = scene.image_data_url
+        widget_params["image_status"] = "ready"
+    elif scene.image_failed:
+        widget_params["image_status"] = "failed"
+    else:
+        widget_params["image_status"] = "pending"
 
     turn_response = TurnResponse(
         dialogue=scene.narration,

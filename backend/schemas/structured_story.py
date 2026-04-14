@@ -9,6 +9,10 @@ class StoryScene(BaseModel):
     narration: str = Field(description="The narration text for this scene (2-5 sentences)")
     image_description: str = Field(description="Visual description for Imagen generation")
     image_data_url: str | None = Field(default=None, description="Base64 data URL of generated image")
+    image_failed: bool = Field(
+        default=False,
+        description="True when the image generation worker confirmed failure (vs. still in-flight)",
+    )
     caption: str | None = Field(
         default=None,
         description="Short (<= 10 word) caption baked into the bottom of the image as hand-lettered text",
@@ -34,6 +38,10 @@ class StructuredStory(BaseModel):
         description="Visual description for achievement summary image (filled in post-parse)",
     )
     achievement_image_data_url: str | None = Field(default=None, description="Base64 data URL of achievement image")
+    achievement_image_failed: bool = Field(
+        default=False,
+        description="True when the achievement image generation worker confirmed failure",
+    )
     achievement_caption: str | None = Field(
         default=None,
         description="Short (<= 6 word) caption baked into the achievement image",

@@ -5,10 +5,11 @@ import { memo, useMemo } from 'react';
  * Renders absolutely-positioned emoji spans with state-driven CSS animations.
  */
 const ParticleField = memo(function ParticleField({ animationState, particles }) {
-  if (!particles || particles.length === 0) return null;
-
-  // Generate stable particle positions on mount (deterministic from particle config)
+  // Generate stable particle positions on mount (deterministic from particle config).
+  // `useMemo` must run unconditionally before any early return to satisfy
+  // React's rules-of-hooks.
   const items = useMemo(() => {
+    if (!particles || particles.length === 0) return [];
     const totalCount = particles.reduce((s, p) => s + p.count, 0);
     const result = [];
     for (const { emoji, count, baseSize } of particles) {
@@ -31,6 +32,8 @@ const ParticleField = memo(function ParticleField({ animationState, particles })
     }
     return result;
   }, [particles]);
+
+  if (items.length === 0) return null;
 
   const stateClass = `particle-${animationState || 'idle'}`;
 

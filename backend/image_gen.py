@@ -223,11 +223,17 @@ class _SceneSession:
     ``achievement_future`` holds the future for the achievement image, and
     ``task`` is kept as a strong reference so the event loop doesn't garbage-
     collect the background worker while it's still running.
+
+    ``scene_failed`` + ``achievement_failed`` are mutated by the worker
+    when generation returns no bytes. They let callers distinguish a
+    confirmed failure from "still pending" when a future resolves to None.
     """
 
     scene_futures: list[asyncio.Future[str | None]]
     achievement_future: asyncio.Future[str | None]
-    task: asyncio.Task[None] = field(repr=False)
+    scene_failed: list[bool] = field(default_factory=list)
+    achievement_failed: bool = False
+    task: asyncio.Task[None] | None = field(default=None, repr=False)
 
 
 _scene_sessions: dict[str, _SceneSession] = {}
@@ -248,11 +254,10 @@ def _process_generated_image(img_bytes: bytes, session_id: str, filename: str, l
 
 
 async def _scene_image_worker(
+    session: "_SceneSession",
     session_id: str,
     scene_descriptions: list[str],
     achievement_description: str,
-    scene_futures: list[asyncio.Future[str | None]],
-    achievement_future: asyncio.Future[str | None],
     scene_captions: list[str | None],
     achievement_caption: str | None,
 ) -> None:
@@ -262,6 +267,11 @@ async def _scene_image_worker(
     anchor/reference for character consistency), but each finished image is
     published immediately so callers awaiting scene N don't have to wait for
     scenes N+1..M to finish.
+
+    On failure the worker records the outcome on the shared
+    ``_SceneSession`` (``scene_failed[i] = True`` or ``achievement_failed =
+    True``) so callers can distinguish "generation failed" from "still
+    pending" when a future resolves to None.
 
     ``scene_captions`` and ``achievement_caption`` are optional short (<=10
     word) strings baked into the bottom of each image as hand-lettered text.
@@ -300,8 +310,9 @@ async def _scene_image_worker(
             previous_bytes = img_bytes
         else:
             logger.error("Scene %d image generation failed", i + 1)
+            session.scene_failed[i] = True
 
-        _set(scene_futures[i], data_url)
+        _set(session.scene_futures[i], data_url)
 
     # Achievement image: use the anchor + the last scene as references.
     # 16:9 matches the landscape device panel — a 1:1 square would leave
@@ -323,8 +334,9 @@ async def _scene_image_worker(
         achievement_url = _process_generated_image(achievement_bytes, sid, "achievement.png", "Achievement")
     else:
         logger.error("Achievement image generation failed")
+        session.achievement_failed = True
 
-    _set(achievement_future, achievement_url)
+    _set(session.achievement_future, achievement_url)
 
 
 def start_scene_images(
@@ -368,24 +380,25 @@ def start_scene_images(
     scene_futures: list[asyncio.Future[str | None]] = [loop.create_future() for _ in scene_descriptions]
     achievement_future: asyncio.Future[str | None] = loop.create_future()
 
-    task = asyncio.create_task(
+    # Create the session first so the worker can mutate its failure flags.
+    session = _SceneSession(
+        scene_futures=scene_futures,
+        achievement_future=achievement_future,
+        scene_failed=[False] * len(scene_descriptions),
+    )
+    _scene_sessions[session_id] = session
+
+    session.task = asyncio.create_task(
         _scene_image_worker(
+            session,
             session_id,
             scene_descriptions,
             achievement_description,
-            scene_futures,
-            achievement_future,
             normalized_captions,
             achievement_caption,
         ),
         name=f"scene-images-{session_id}",
     )
-    session = _SceneSession(
-        scene_futures=scene_futures,
-        achievement_future=achievement_future,
-        task=task,
-    )
-    _scene_sessions[session_id] = session
     return session
 
 
@@ -399,7 +412,7 @@ def clear_scene_session(session_id: str) -> None:
     session = _scene_sessions.pop(session_id, None)
     if session is None:
         return
-    if not session.task.done():
+    if session.task is not None and not session.task.done():
         session.task.cancel()
     for fut in (*session.scene_futures, session.achievement_future):
         if not fut.done():

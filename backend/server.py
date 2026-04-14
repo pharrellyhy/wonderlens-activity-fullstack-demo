@@ -8,7 +8,7 @@ import struct
 import time
 import uuid
 from contextlib import asynccontextmanager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import httpx
 from fastapi import FastAPI, File, Form, UploadFile
@@ -19,9 +19,10 @@ from fastapi.staticfiles import StaticFiles
 # Ensure JS/CSS MIME types are correct (some systems default .js to application/json)
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 try:
+    from . import feedback_storage
     from .agents.pipeline import initialize_session
     from .agents.script_agent import ScriptAgent
     from .character_sounds import pick_fallback_cue, validate_character_sfx
@@ -35,12 +36,14 @@ try:
         lookup_by_entity_name,
         validate_registry,
     )
+    from .feedback_storage import build_folder_name, write_feedback_bundle
     from .game_loader import get_demo_recipe  # noqa: F401 — triggers game loading + registry population
     from .logger import setup_logger
     from .recipe_loader import load_instruction_recipe, recipe_to_session_state
     from .scenarios import load_scenario, match_scenario
     from .schemas import ScreenFrame
     from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from .schemas.feedback import FeedbackPayload
     from .schemas.session_state import ConversationTurn, SessionStateModel, UpstreamConversationTurn
     from .schemas.turn_response import TurnResponse
     from .state_machine import get_screen_frame
@@ -56,6 +59,7 @@ try:
     )
     from .vision import analyze_image
 except ImportError:
+    import feedback_storage
     from agents.pipeline import initialize_session
     from agents.script_agent import ScriptAgent
     from character_sounds import pick_fallback_cue, validate_character_sfx
@@ -69,12 +73,14 @@ except ImportError:
         lookup_by_entity_name,
         validate_registry,
     )
+    from feedback_storage import build_folder_name, write_feedback_bundle
     from game_loader import get_demo_recipe  # noqa: F401
     from logger import setup_logger
     from recipe_loader import load_instruction_recipe, recipe_to_session_state
     from scenarios import load_scenario, match_scenario
     from schemas import ScreenFrame
     from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.feedback import FeedbackPayload
     from schemas.session_state import ConversationTurn, SessionStateModel, UpstreamConversationTurn
     from schemas.turn_response import TurnResponse
     from state_machine import get_screen_frame
@@ -602,6 +608,79 @@ async def text_to_speech_stream(text: str, tier: str = "T0") -> Response:
         synthesize_speech_ogg_stream_async(text, tier),
         media_type="audio/ogg",
     )
+
+
+@app.post("/api/feedback")
+async def submit_feedback(
+    feedback: str = Form(...),
+    screenshots: list[UploadFile] = File(default_factory=list),
+) -> JSONResponse:
+    """Persist a tester feedback bundle (JSON + screenshot PNGs) to disk."""
+    try:
+        payload = FeedbackPayload.model_validate_json(feedback)
+    except ValidationError as exc:
+        return JSONResponse(
+            {"status": "error", "error": "invalid_feedback_payload", "details": exc.errors()},
+            status_code=422,
+        )
+
+    referenced_paths = [rel for flag in payload.flags for rel in flag.screenshots]
+    for rel in referenced_paths:
+        posix = PurePosixPath(rel)
+        if posix.is_absolute() or ".." in posix.parts:
+            return JSONResponse(
+                {"status": "error", "error": "unsafe_screenshot_path", "path": rel},
+                status_code=422,
+            )
+
+    expected = {PurePosixPath(rel).name for rel in referenced_paths}
+    received = {Path(up.filename or "").name for up in screenshots if up.filename}
+    missing = sorted(expected - received)
+    extra = sorted(received - expected)
+    if missing or extra:
+        return JSONResponse(
+            {
+                "status": "error",
+                "error": "screenshot_filename_mismatch",
+                "missing": missing,
+                "extra": extra,
+            },
+            status_code=422,
+        )
+
+    try:
+        blobs = {Path(up.filename or "").name: await up.read() for up in screenshots if up.filename}
+        screenshots_by_relative = {rel: blobs[PurePosixPath(rel).name] for rel in referenced_paths}
+
+        folder_name = build_folder_name(
+            payload.session_ended_at,
+            payload.tester_alias,
+            payload.session_id,
+        )
+        normalized_json = json.dumps(payload.model_dump(mode="json"), indent=2)
+        bundle_path = write_feedback_bundle(
+            feedback_storage.FEEDBACK_DIR,
+            folder_name,
+            normalized_json,
+            screenshots_by_relative,
+        )
+
+        backend_root = Path(__file__).resolve().parent
+        try:
+            relative_str = str(bundle_path.resolve().relative_to(backend_root))
+        except ValueError:
+            relative_str = str(bundle_path)
+
+        return JSONResponse({"status": "saved", "path": relative_str})
+
+    except ValueError as exc:
+        return JSONResponse({"status": "error", "error": str(exc)}, status_code=422)
+    except Exception:
+        logger.exception("Feedback submission failed")
+        return JSONResponse(
+            {"status": "error", "error": "feedback_write_failed"},
+            status_code=500,
+        )
 
 
 # --- Helpers ---

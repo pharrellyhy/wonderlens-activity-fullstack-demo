@@ -186,7 +186,11 @@ export default function useCharacterSfx() {
       source.start();
 
       source.onended = () => {
-        try { source.disconnect(); } catch {}
+        try {
+          source.disconnect();
+        } catch {
+          // disconnect is best-effort; ignore if the node is already torn down
+        }
       };
     }).catch(() => {
       // Silently ignore missing micro-sound assets

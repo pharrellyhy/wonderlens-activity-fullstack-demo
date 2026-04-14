@@ -1,6 +1,8 @@
 import FallbackTrophy from './FallbackTrophy';
+import ImageFailedBanner from './ImageFailedBanner';
 
-export default function AchievementImage({ image_data_url, title, animation, entity }) {
+export default function AchievementImage({ image_data_url, image_status, title, animation, entity }) {
+  const failed = image_status === 'failed';
   return (
     <div className={`relative flex flex-col h-full w-full p-4 ${animation === 'badge_reveal' ? 'animate-celebration-large' : ''}`}>
       {/* Role title — top, centered, generous */}
@@ -24,6 +26,7 @@ export default function AchievementImage({ image_data_url, title, animation, ent
           <FallbackTrophy entity={entity} />
         )}
       </div>
+      {failed && <ImageFailedBanner />}
     </div>
   );
 }

@@ -9,7 +9,7 @@
 import { asset } from '../utils/basePath';
 import { CheckmarkIcon, StarIcon } from '../icons';
 
-function ZoneSlot({ index, isRevealed, isActive, character, entityId }) {
+function ZoneSlot({ index, isRevealed, isActive, character }) {
   if (isRevealed && character) {
     return (
       <div className="flex flex-col items-center gap-1.5 animate-grow-in">
@@ -176,8 +176,6 @@ function PhaseLabel({ game_phase, collected_count, total_zones }) {
 
 export default function ExplorerMap({
   game_phase,
-  entity_id,
-  entity_image,
   revealed_zones = [],
   characters = [],
   active_zone,

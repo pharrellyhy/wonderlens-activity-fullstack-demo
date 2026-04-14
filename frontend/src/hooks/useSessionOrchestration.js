@@ -7,14 +7,22 @@ import useSilenceTimer from './useSilenceTimer';
 import useSpeechRecognition from './useSpeechRecognition';
 import useTTS from './useTTS';
 
-export default function useSessionOrchestration(tier) {
+export default function useSessionOrchestration(tier, options = {}) {
+  const { testerMode = false, autoAdvancePaused = false } = options;
+
   const [retryCount, setRetryCount] = useState(0);
   const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('ttsEnabled') === 'true');
   const [silenceTimerOn, setSilenceTimerOn] = useState(() => localStorage.getItem('silenceTimerOn') === 'true');
+  // Tester mode replaces auto-advance with a manual Continue button; this
+  // state flips true when the current auto-advance turn is ready to advance
+  // and waits for an explicit click.
+  const [awaitingManualAdvance, setAwaitingManualAdvance] = useState(false);
   const silenceTimerRef = useRef({ start() {}, clear() {} });
   const lastSpokenIndexRef = useRef(-1);
   const autoAdvancePendingRef = useRef(false);
   const mutedCompletionTimeoutRef = useRef(null);
+  const autoAdvancePausedRef = useRef(autoAdvancePaused);
+  const testerModeRef = useRef(testerMode);
 
   const {
     messages,
@@ -55,16 +63,57 @@ export default function useSessionOrchestration(tier) {
     characterSfxControlsRef.current?.playOutros();
     characterSfxControlsRef.current = null;
 
-    if (sessionState?.status === 'active') {
-      // Check if the last message was an auto-advance step
-      if (autoAdvancePendingRef.current) {
-        autoAdvancePendingRef.current = false;
-        sendAutoAdvance();
-      } else {
-        silenceTimerRef.current.start();
+    if (sessionState?.status !== 'active') return;
+
+    if (autoAdvancePendingRef.current) {
+      if (testerModeRef.current) {
+        // Tester mode: wait for an explicit Continue click so testers can
+        // inspect + flag synthesis/celebration turns without a race.
+        setAwaitingManualAdvance(true);
+        return;
       }
+      if (autoAdvancePausedRef.current) {
+        // Dev mode never pauses today, but keep the unpause effect as a
+        // safety net so a deferred advance can still fire.
+        return;
+      }
+      autoAdvancePendingRef.current = false;
+      sendAutoAdvance();
+    } else if (!autoAdvancePausedRef.current) {
+      silenceTimerRef.current.start();
     }
   }, [sessionState?.status, sendAutoAdvance]);
+
+  const manualAdvance = useCallback(() => {
+    if (!autoAdvancePendingRef.current) return;
+    autoAdvancePendingRef.current = false;
+    setAwaitingManualAdvance(false);
+    sendAutoAdvance();
+  }, [sendAutoAdvance]);
+
+  useEffect(() => {
+    autoAdvancePausedRef.current = autoAdvancePaused;
+    if (autoAdvancePaused) {
+      // Freeze the session while the tester inspects the moment.
+      silenceTimerRef.current.clear();
+      return;
+    }
+    // Popover/modal just closed. Fire a deferred auto-advance if one was
+    // blocked by pause (only reachable in dev mode now — tester mode uses
+    // the Continue button instead).
+    if (
+      !testerModeRef.current
+      && autoAdvancePendingRef.current
+      && sessionState?.status === 'active'
+    ) {
+      autoAdvancePendingRef.current = false;
+      sendAutoAdvance();
+    }
+  }, [autoAdvancePaused, sessionState?.status, sendAutoAdvance]);
+
+  useEffect(() => {
+    testerModeRef.current = testerMode;
+  }, [testerMode]);
 
   const clearMutedCompletionTimeout = useCallback(() => {
     if (mutedCompletionTimeoutRef.current !== null) {
@@ -104,7 +153,7 @@ export default function useSessionOrchestration(tier) {
     }
   }, [sendSilence, sessionState?.status]);
 
-  const silenceTimerEnabled = silenceTimerOn && isActive && !isSpeaking && !turnPending;
+  const silenceTimerEnabled = silenceTimerOn && isActive && !isSpeaking && !turnPending && !autoAdvancePaused;
   const silenceTimer = useSilenceTimer(
     tier,
     handleSilence,
@@ -355,6 +404,7 @@ export default function useSessionOrchestration(tier) {
     speech.stop();
     reset();
     setRetryCount(0);
+    setAwaitingManualAdvance(false);
     lastSpokenIndexRef.current = -1;
     autoAdvancePendingRef.current = false;
     characterSfxControlsRef.current = null;
@@ -400,5 +450,7 @@ export default function useSessionOrchestration(tier) {
     sendPhotoCollection: handlePhotoCollection,
     toggleMic,
     resetSession,
+    awaitingManualAdvance,
+    manualAdvance,
   };
 }

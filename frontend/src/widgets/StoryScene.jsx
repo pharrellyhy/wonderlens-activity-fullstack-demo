@@ -1,4 +1,7 @@
-export default function StoryScene({ image_data_url, scene_number, animation }) {
+import ImageFailedBanner from './ImageFailedBanner';
+
+export default function StoryScene({ image_data_url, image_status, scene_number, animation }) {
+  const failed = image_status === 'failed';
   return (
     <div className={`relative flex flex-col items-center w-full h-full p-3 ${
       animation === 'appear' ? 'animate-fade-in' : ''
@@ -22,6 +25,7 @@ export default function StoryScene({ image_data_url, scene_number, animation }) 
           </div>
         )}
       </div>
+      {failed && <ImageFailedBanner />}
     </div>
   );
 }

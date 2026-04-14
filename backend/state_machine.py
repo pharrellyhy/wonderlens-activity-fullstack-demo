@@ -326,12 +326,18 @@ def get_screen_frame(
     if template_type == "cat5" and step == "STEP_5_CELEBRATE":
         structured = context.get("structured_story")
         achievement_url = structured.achievement_image_data_url if structured else None
+        achievement_failed = bool(structured.achievement_image_failed) if structured else False
         role_title = creative_slots.role_title if isinstance(creative_slots, Cat5CreativeSlots) else "Explorer"
         # entity is passed through so the FallbackTrophy widget can render
         # a per-game icon (e.g. /icons/ladybug.png) instead of a generic trophy.
         widget_params: dict = {"title": role_title, "entity": entity}
         if achievement_url:
             widget_params["image_data_url"] = achievement_url
+            widget_params["image_status"] = "ready"
+        elif achievement_failed:
+            widget_params["image_status"] = "failed"
+        else:
+            widget_params["image_status"] = "pending"
         return ScreenFrame(
             widget="achievement_image",
             widget_params=widget_params,

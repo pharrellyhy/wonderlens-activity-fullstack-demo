@@ -85,6 +85,7 @@ export default function ConversationPanel({
   collectMode,
   sessionState,
   templateType,
+  advancePrompt,
 }) {
   const scrollRef = useRef(null);
   const [sttBannerDismissed, setSttBannerDismissed] = useState(false);
@@ -187,12 +188,29 @@ export default function ConversationPanel({
         </div>
       )}
 
-      {/* Text Input or collection hint */}
+      {/* Text Input, collection hint, or tester "Continue" prompt */}
       {collectMode ? (
         <div className="px-4 py-3 text-center">
           <p className="text-xs max-[380px]:text-[11px] text-[var(--color-teal)] font-medium">
             Tap a photo in the camera above to collect it!
           </p>
+        </div>
+      ) : advancePrompt ? (
+        <div className="px-4 py-3 max-[380px]:py-2 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={advancePrompt.onAdvance}
+            disabled={advancePrompt.disabled}
+            data-feedback-overlay="true"
+            aria-label="Continue to next turn"
+            className="w-full max-w-xs px-6 py-3 rounded-full bg-[var(--color-forest)] text-white text-sm font-semibold shadow-md hover:bg-[var(--color-forest-dark)] hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <span>Continue</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </button>
         </div>
       ) : (
         <TextInput

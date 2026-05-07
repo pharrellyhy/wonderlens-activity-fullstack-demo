@@ -17,7 +17,7 @@ WonderLens Activity Demo is a split-view interactive browser demo with a multi-a
 - **Category 1** (In-Device Verbal): mood_changer_dog, dream_whisperer_cat, or time_machine_dinosaur
 - **Category 5** (Out-of-Device Collection): polka_dot_patrol or fluffy_expedition_dandelion
 
-**Tech stack:** Python 3.12+, FastAPI, Pydantic v2, Gemini 2.0 Flash (Vertex AI), React (JSX), Tailwind CSS, Vite
+**Tech stack:** Python 3.12+, FastAPI, Pydantic v2, Gemini 2.5 Flash (Vertex AI), React (JSX), Tailwind CSS, Vite
 
 ## Quick Start
 
@@ -158,7 +158,7 @@ Always use context7 when you need code generation, setup or configuration steps,
 
 ## Important Constraints
 
-- Gemini 2.0 Flash via Vertex AI is the LLM — always use JSON mode with Pydantic schema enforcement
+- Gemini 2.5 Flash via Vertex AI is the LLM — always use JSON mode with Pydantic schema enforcement
 - Agent pipeline: Director → Script + Visual (can run in parallel) → Recipe Assembler
 - Retry logic: 3 attempts → fallback recipe from `backend/fallbacks/`
 - Tier rules loaded from `backend/tier_rules.yaml` — 3 tiers: T0 (2-4), T1 (4-6), T2 (6-8)

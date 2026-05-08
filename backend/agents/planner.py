@@ -1,4 +1,4 @@
-"""Planner Agent — structured turn planning using Qwen via ALI DashScope.
+"""Planner Agent — structured turn planning using Qwen via DashScope.
 
 The Planner is the first pass in the two-pass generation architecture.
 It sees full context (conversation history, state, child's words, collected
@@ -149,7 +149,7 @@ def _build_planner_user_prompt(state: SessionStateModel) -> str:
 
 
 class Planner:
-    """Plans structured turn content using Qwen via ALI DashScope.
+    """Plans structured turn content using Qwen via DashScope.
 
     The Planner outputs a TurnPlan JSON that describes what the AI response
     should contain — items to celebrate, question types, characters to
@@ -180,7 +180,7 @@ class Planner:
             client = _get_client()
 
             response = await client.chat.completions.create(
-                model=settings.ali_model,
+                model=settings.dashscope_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},

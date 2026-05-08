@@ -96,8 +96,8 @@ def _load_prompt() -> str:
 def _get_client() -> AsyncOpenAI:
     settings = get_settings()
     return AsyncOpenAI(
-        api_key=settings.ali_api_key,
-        base_url=settings.ali_base_url,
+        api_key=settings.dashscope_api_key,
+        base_url=settings.dashscope_base_url,
         max_retries=0,
         timeout=httpx.Timeout(30.0, connect=5.0),
     )
@@ -140,7 +140,7 @@ class VisualAgent:
             return self._rule_based_fallback(plan, context)
 
     async def _llm_generate(self, plan: CompositionPlan, context: dict) -> VisualComposition:
-        """Call ALI Qwen to generate visual composition."""
+        """Call DashScope Qwen to generate visual composition."""
         settings = get_settings()
         client = _get_client()
         prompt = _load_prompt()
@@ -159,7 +159,7 @@ class VisualAgent:
         )
 
         response = await client.chat.completions.create(
-            model=settings.ali_model,
+            model=settings.dashscope_model,
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": user_content},

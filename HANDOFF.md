@@ -1,6 +1,32 @@
 # Session Handoff
 
-Last updated: 2026-04-14
+Last updated: 2026-05-07
+
+---
+
+## DashScope Settings Rename
+
+**Problem**: Runtime code and docs still used the older provider-prefixed setting names and their uppercase environment variants. The requested convention is `dashscope_api_key`, `dashscope_base_url`, `dashscope_model`, `dashscope_classifier_model` and `DASHSCOPE_*`.
+
+**Solution**: Renamed the settings fields, config YAML keys, call sites, scripts, tests, and documentation references to the DashScope naming. Added a focused config regression test proving uppercase `DASHSCOPE_*` environment variables populate `Settings`.
+
+**Edits**:
+- `backend/config.py`, `backend/config.yaml`, `backend/.env.example` — renamed settings/config/env names.
+- Backend call sites in `backend/agents/`, `backend/turn_handling/`, and `backend/vision.py` — updated to `settings.dashscope_*`.
+- `scripts/run_eval.py` — updated fallback model endpoint settings.
+- `tests/test_config.py` — added regression coverage for uppercase DashScope env vars.
+- `README.md`, `docs/aigc-pipeline-reference.md`, and historical plan docs — updated references.
+
+**NOT Changed**:
+- Actual model defaults remain `qwen3.5-plus` and `qwen3.5-flash`.
+- No local `.env` or credentials were edited.
+
+**Verification**:
+- Red test first: `uv run pytest tests/test_config.py -q` failed because `Settings` had no `dashscope_api_key`.
+- `uv run pytest tests/test_config.py -q` — 1 passed.
+- `uv run pytest tests/test_backend_imports.py -q` — 2 passed.
+- `uv run ruff check backend/config.py backend/vision.py backend/agents/director.py backend/agents/planner.py backend/agents/script_agent.py backend/agents/turn_director.py backend/agents/visual_agent.py backend/turn_handling/generation.py backend/turn_handling/synthesis.py scripts/run_eval.py tests/test_config.py` — passed.
+- Exact old-name and provider-word sweep — no matches.
 
 ---
 

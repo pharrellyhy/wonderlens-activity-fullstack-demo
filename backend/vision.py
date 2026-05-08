@@ -1,4 +1,4 @@
-"""Vision API for entity identification using Qwen VL via ALI DashScope."""
+"""Vision API for entity identification using Qwen VL via DashScope."""
 
 import asyncio
 import base64
@@ -29,15 +29,15 @@ _VISION_PROMPT = (
 
 @lru_cache(maxsize=1)
 def _get_client() -> AsyncOpenAI:
-    """Get or create the ALI DashScope client."""
+    """Get or create the DashScope client."""
     settings = get_settings()
     client = AsyncOpenAI(
-        api_key=settings.ali_api_key,
-        base_url=settings.ali_base_url,
+        api_key=settings.dashscope_api_key,
+        base_url=settings.dashscope_base_url,
         max_retries=0,
         timeout=httpx.Timeout(30.0, connect=5.0),
     )
-    logger.info("Initialized ALI Vision client")
+    logger.info("Initialized DashScope Vision client")
     return client
 
 
@@ -65,7 +65,7 @@ async def analyze_image(image_bytes: bytes, mime_type: str, max_retries: int = 1
 
             response = await asyncio.wait_for(
                 client.chat.completions.create(
-                    model=settings.ali_model,
+                    model=settings.dashscope_model,
                     messages=[
                         {
                             "role": "user",

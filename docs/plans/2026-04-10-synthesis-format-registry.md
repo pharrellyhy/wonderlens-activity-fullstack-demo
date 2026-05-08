@@ -610,13 +610,13 @@ async def _generate_structured_output(
     try:
         start = time.perf_counter()
         client = AsyncOpenAI(
-            api_key=settings.ali_api_key,
-            base_url=settings.ali_base_url,
+            api_key=settings.dashscope_api_key,
+            base_url=settings.dashscope_base_url,
             max_retries=0,
             timeout=httpx.Timeout(60.0, connect=15.0),
         )
         response = await client.chat.completions.create(
-            model=settings.ali_model,
+            model=settings.dashscope_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},

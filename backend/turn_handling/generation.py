@@ -266,13 +266,13 @@ async def _classify_child_intent(state: SessionStateModel, child_text: str) -> C
     try:
         settings = get_settings()
         client = AsyncOpenAI(
-            api_key=settings.ali_api_key,
-            base_url=settings.ali_base_url,
+            api_key=settings.dashscope_api_key,
+            base_url=settings.dashscope_base_url,
             max_retries=0,
             timeout=httpx.Timeout(10.0, connect=3.0),
         )
         response = await client.chat.completions.create(
-            model=settings.ali_classifier_model,
+            model=settings.dashscope_classifier_model,
             messages=[
                 {"role": "system", "content": "Classify a child's response. Output valid JSON only."},
                 {"role": "user", "content": prompt},

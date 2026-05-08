@@ -4,9 +4,9 @@
 
 **Goal:** Replace the single Script Agent LLM call with two sequential calls — a Planner that outputs structured JSON (what to say, what to reference, what to avoid) and a Speaker that generates natural dialogue from the plan — so structural decisions and creative language are handled by separate, focused calls.
 
-**Architecture:** The Planner LLM sees full context (conversation history, state, child's words, collected characters) and outputs a structured `TurnPlan` JSON describing what the response should contain (items to celebrate, question type, characters to reference, things to avoid). The Speaker LLM sees only the plan + tier info and generates warm, natural dialogue. Both use the same Qwen 3.5+ model via ALI DashScope. Post-processing validation runs on the Speaker's output as before.
+**Architecture:** The Planner LLM sees full context (conversation history, state, child's words, collected characters) and outputs a structured `TurnPlan` JSON describing what the response should contain (items to celebrate, question type, characters to reference, things to avoid). The Speaker LLM sees only the plan + tier info and generates warm, natural dialogue. Both use the same Qwen 3.5+ model via DashScope. Post-processing validation runs on the Speaker's output as before.
 
-**Tech Stack:** Python 3.12+, Pydantic v2, AsyncOpenAI (ALI DashScope), Qwen 3.5+, JSON mode
+**Tech Stack:** Python 3.12+, Pydantic v2, AsyncOpenAI (DashScope), Qwen 3.5+, JSON mode
 
 ---
 

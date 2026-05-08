@@ -65,6 +65,10 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account JSON |
 | `GOOGLE_CLOUD_PROJECT` | GCP project ID |
 | `GOOGLE_CLOUD_LOCATION` | GCP region (e.g. `us-central1`) |
+| `DASHSCOPE_API_KEY` | DashScope API key for Qwen-compatible LLM calls |
+| `DASHSCOPE_BASE_URL` | DashScope OpenAI-compatible endpoint |
+| `DASHSCOPE_MODEL` | Main DashScope model override |
+| `DASHSCOPE_CLASSIFIER_MODEL` | Lightweight DashScope classifier model override |
 | `LOG_LEVEL` | Logging level (default: `INFO`) |
 
 ## Project Structure

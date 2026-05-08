@@ -33,14 +33,14 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = ""
     gemini_api_key: str = ""
-    ali_api_key: str = ""
-    ali_base_url: str = ""
+    dashscope_api_key: str = ""
+    dashscope_base_url: str = ""
 
     # App config — defaults from config.yaml, overridable by env vars
     gemini_model: str = str(_yaml_config.get("gemini_model", "gemini-2.5-flash"))
     openai_model: str = str(_yaml_config.get("openai_model", "gpt-5.2"))
-    ali_model: str = str(_yaml_config.get("ali_model", "qwen3.5-plus"))
-    ali_classifier_model: str = str(_yaml_config.get("ali_classifier_model", "qwen3.5-flash"))
+    dashscope_model: str = str(_yaml_config.get("dashscope_model", "qwen3.5-plus"))
+    dashscope_classifier_model: str = str(_yaml_config.get("dashscope_classifier_model", "qwen3.5-flash"))
     tts_model: str = str(_yaml_config.get("tts_model", "gemini-2.5-flash-tts"))
     director_timeout_ms: int = int(_yaml_config.get("director_timeout_ms", 200))
     director_max_tokens: int = int(_yaml_config.get("director_max_tokens", 150))

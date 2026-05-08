@@ -1,4 +1,4 @@
-"""Script Agent — per-turn dialogue generation using Qwen via ALI DashScope."""
+"""Script Agent — per-turn dialogue generation using Qwen via DashScope."""
 
 import asyncio
 import json
@@ -241,8 +241,8 @@ class ScriptAgentError(Exception):
 def _get_client() -> AsyncOpenAI:
     settings = get_settings()
     return AsyncOpenAI(
-        api_key=settings.ali_api_key,
-        base_url=settings.ali_base_url,
+        api_key=settings.dashscope_api_key,
+        base_url=settings.dashscope_base_url,
         max_retries=0,
         timeout=httpx.Timeout(60.0, connect=15.0),
     )
@@ -826,7 +826,7 @@ def _build_system_prompt(state: SessionStateModel) -> str:
 
 
 class ScriptAgent:
-    """Generates per-turn dialogue using Qwen via ALI DashScope."""
+    """Generates per-turn dialogue using Qwen via DashScope."""
 
     def __init__(self) -> None:
         self.last_plan: TurnPlan | None = None
@@ -1003,7 +1003,7 @@ class ScriptAgent:
             client = _get_client()
 
             response = await client.chat.completions.create(
-                model=settings.ali_model,
+                model=settings.dashscope_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
@@ -1088,7 +1088,7 @@ class ScriptAgent:
             client = _get_client()
 
             response = await client.chat.completions.create(
-                model=settings.ali_model,
+                model=settings.dashscope_model,
                 messages=[
                     {"role": "system", "content": speaker_prompt},
                     {"role": "user", "content": user_prompt},
@@ -1247,7 +1247,7 @@ class ScriptAgent:
             client = _get_client()
 
             response = await client.chat.completions.create(
-                model=settings.ali_model,
+                model=settings.dashscope_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
@@ -1365,7 +1365,7 @@ class ScriptAgent:
             client = _get_client()
 
             response_stream = await client.chat.completions.create(
-                model=settings.ali_model,
+                model=settings.dashscope_model,
                 messages=[
                     {"role": "system", "content": speaker_prompt},
                     {"role": "user", "content": user_prompt},
@@ -1461,7 +1461,7 @@ class ScriptAgent:
             client = _get_client()
 
             response_stream = await client.chat.completions.create(
-                model=settings.ali_model,
+                model=settings.dashscope_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},

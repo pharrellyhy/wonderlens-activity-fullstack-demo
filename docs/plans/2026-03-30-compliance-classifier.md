@@ -45,7 +45,7 @@ _classify_dialogue_compliance(state, dialogue, history)
 
 ## Reusable Existing Patterns
 
-- **`_classify_story_response()`** (turn_handler.py:550-613): Same LLM call pattern — `AsyncOpenAI` client, `ali_api_key`/`ali_base_url`, `temperature=0.1`, `max_tokens=150`, `response_format={"type": "json_object"}`, fail-safe default on exception
+- **`_classify_story_response()`** (turn_handler.py:550-613): Same LLM call pattern — `AsyncOpenAI` client, `dashscope_api_key`/`dashscope_base_url`, `temperature=0.1`, `max_tokens=150`, `response_format={"type": "json_object"}`, fail-safe default on exception
 - **`StoryClassification`** (schemas/story_classification.py): Same Pydantic schema pattern for the new `DialogueCompliance` model
 - **`_advance_state()`** (turn_handler.py): Existing function to advance the state machine
 - **`round_advance_pending` + `auto_advance`**: Existing deferred-advance pattern (turn_handler.py:1135-1143)
@@ -231,13 +231,13 @@ async def _classify_dialogue_compliance(
     try:
         settings = get_settings()
         client = AsyncOpenAI(
-            api_key=settings.ali_api_key,
-            base_url=settings.ali_base_url,
+            api_key=settings.dashscope_api_key,
+            base_url=settings.dashscope_base_url,
             max_retries=0,
             timeout=httpx.Timeout(15.0, connect=5.0),
         )
         response = await client.chat.completions.create(
-            model=settings.ali_model,
+            model=settings.dashscope_model,
             messages=[
                 {"role": "system", "content": "Classify dialogue-state compliance. Output valid JSON only."},
                 {"role": "user", "content": prompt},
@@ -554,4 +554,4 @@ Check the eval results for improvement in collection step quality — fewer repe
 2. **Confidence threshold (0.8)**: Only act on high-confidence mismatches to prevent false advances. Configurable via `compliance_confidence_threshold`.
 3. **State advancement only for `premature_advance`**: `wrong_phase` and `repetition` only regenerate — they cannot safely advance state (no item found, or no clear target state).
 4. **Single compliance check per generation**: Runs once after `_generate_with_retry()`, not inside the retry loop, to avoid consuming retry budget.
-5. **Same LLM endpoint**: Uses `ali_api_key`/`ali_base_url` (same as story classifier) for consistency.
+5. **Same LLM endpoint**: Uses `dashscope_api_key`/`dashscope_base_url` (same as story classifier) for consistency.

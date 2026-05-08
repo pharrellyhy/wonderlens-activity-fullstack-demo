@@ -53,9 +53,9 @@ async def run_eval(config: EvalConfig) -> int:
     (output_dir / "transcripts").mkdir(exist_ok=True)
 
     # Use the same OpenAI-compatible endpoint the game uses for classification
-    api_key = settings.ali_api_key or settings.gemini_api_key or settings.openai_api_key
+    api_key = settings.dashscope_api_key or settings.gemini_api_key or settings.openai_api_key
     base_url = (
-        settings.ali_base_url or settings.openai_base_url or "https://generativelanguage.googleapis.com/v1beta/openai/"
+        settings.dashscope_base_url or settings.openai_base_url or "https://generativelanguage.googleapis.com/v1beta/openai/"
     )
 
     child_sim = ChildSimulator(

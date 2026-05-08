@@ -1,4 +1,4 @@
-"""Director Agent — plans activity composition using Qwen via ALI DashScope."""
+"""Director Agent — plans activity composition using Qwen via DashScope."""
 
 import json
 import time
@@ -32,8 +32,8 @@ _SKILL_PATH = Path(__file__).parent.parent / "skills" / "director.md"
 def _get_client() -> AsyncOpenAI:
     settings = get_settings()
     return AsyncOpenAI(
-        api_key=settings.ali_api_key,
-        base_url=settings.ali_base_url,
+        api_key=settings.dashscope_api_key,
+        base_url=settings.dashscope_base_url,
         max_retries=0,
         timeout=httpx.Timeout(settings.director_timeout_ms / 1000, connect=5.0),
     )
@@ -151,7 +151,7 @@ class DirectorAgent:
             schema_json = json.dumps(CompositionPlan.model_json_schema(), indent=2)
 
             response = await client.chat.completions.create(
-                model=settings.ali_model,
+                model=settings.dashscope_model,
                 messages=[
                     {"role": "system", "content": self.skill},
                     {

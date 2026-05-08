@@ -503,13 +503,13 @@ async def _generate_structured_output(
     try:
         start = time.perf_counter()
         client = AsyncOpenAI(
-            api_key=settings.ali_api_key,
-            base_url=settings.ali_base_url,
+            api_key=settings.dashscope_api_key,
+            base_url=settings.dashscope_base_url,
             max_retries=0,
             timeout=httpx.Timeout(60.0, connect=15.0),
         )
         response = await client.chat.completions.create(
-            model=settings.ali_model,
+            model=settings.dashscope_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -567,7 +567,7 @@ async def _generate_structured_output(
     return story
 ```
 
-The LLM provider is **DashScope/ALI Qwen** (`AsyncOpenAI` pointed at `settings.ali_base_url` with `settings.ali_model` — `qwen3.5-plus` by default). The image model is independent — Vertex Imagen 3.
+The LLM provider is **DashScope Qwen** (`AsyncOpenAI` pointed at `settings.dashscope_base_url` with `settings.dashscope_model` — `qwen3.5-plus` by default). The image model is independent — Vertex Imagen 3.
 
 #### `_await_scene_image` / `_await_achievement_image`
 
@@ -2321,11 +2321,11 @@ LOG_LEVEL=INFO
 # Set IMAGEN_ENABLED=false to disable image generation (story still works without images)
 ```
 
-Additionally — but not in `.env.example` — the synthesis LLM uses ALI Qwen via DashScope:
+The synthesis LLM uses Qwen via DashScope:
 
 ```
-ALI_API_KEY="your-dashscope-api-key"
-ALI_BASE_URL="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+DASHSCOPE_API_KEY="your-dashscope-api-key"
+DASHSCOPE_BASE_URL="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 ```
 
 ### 6.2 `config.yaml` (verbatim)
@@ -2336,7 +2336,7 @@ Source: `backend/config.yaml`.
 gemini_model: "gemini-2.5-flash"
 tts_model: "gemini-2.5-flash-tts"
 openai_model: "gpt-5.2"
-ali_model: "qwen3.5-plus"
+dashscope_model: "qwen3.5-plus"
 imagen_model: "gemini-2.5-flash-image"
 vision_timeout_ms: 15000
 director_timeout_ms: 10000
@@ -2371,14 +2371,14 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = ""
     gemini_api_key: str = ""
-    ali_api_key: str = ""
-    ali_base_url: str = ""
+    dashscope_api_key: str = ""
+    dashscope_base_url: str = ""
 
     # App config — defaults from config.yaml, overridable by env vars
     gemini_model: str = str(_yaml_config.get("gemini_model", "gemini-2.5-flash"))
     openai_model: str = str(_yaml_config.get("openai_model", "gpt-5.2"))
-    ali_model: str = str(_yaml_config.get("ali_model", "qwen3.5-plus"))
-    ali_classifier_model: str = str(_yaml_config.get("ali_classifier_model", "qwen3.5-flash"))
+    dashscope_model: str = str(_yaml_config.get("dashscope_model", "qwen3.5-plus"))
+    dashscope_classifier_model: str = str(_yaml_config.get("dashscope_classifier_model", "qwen3.5-flash"))
     tts_model: str = str(_yaml_config.get("tts_model", "gemini-2.5-flash-tts"))
     director_timeout_ms: int = int(_yaml_config.get("director_timeout_ms", 200))
     director_max_tokens: int = int(_yaml_config.get("director_max_tokens", 150))
@@ -2412,9 +2412,9 @@ Override precedence: env var → `config.yaml` → hardcoded default.
 | `google_cloud_location` | `"us-central1"` | Informational; client uses `"global"` | `config.py:31` |
 | `google_application_credentials` | `""` | Vertex AI service account JSON path | `config.py:32` |
 | `gemini_api_key` | `""` | Used when `google_cloud_project` is empty | `config.py:35` |
-| `ali_api_key` | `""` | Story-LLM key (DashScope) | `config.py:36` |
-| `ali_base_url` | `""` | Story-LLM endpoint | `config.py:37` |
-| `ali_model` | `"qwen3.5-plus"` | Story LLM model id | `config.yaml:4`, `config.py:42` |
+| `dashscope_api_key` | `""` | Story-LLM key (DashScope) | `config.py:36` |
+| `dashscope_base_url` | `""` | Story-LLM endpoint | `config.py:37` |
+| `dashscope_model` | `"qwen3.5-plus"` | Story LLM model id | `config.yaml:4`, `config.py:42` |
 | `script_timeout_ms` | `60000` | Story LLM request timeout | `config.yaml:9`, `config.py:47` |
 | `script_max_tokens` | `4096` | Hard ceiling; per-format `max_tokens` is the practical limit | `config.yaml:10`, `config.py:48` |
 

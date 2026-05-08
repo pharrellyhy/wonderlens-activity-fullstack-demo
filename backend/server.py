@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
 
 import httpx
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -53,6 +53,14 @@ try:
     from .schemas.turn_response import TurnResponse
     from .state_machine import get_screen_frame
     from .stt import transcribe_audio
+    from .stt_stream import (
+        MAX_BINARY_FRAME_SIZE_BYTES,
+        SttPingMessage,
+        SttStartMessage,
+        SttStopMessage,
+        select_stt_provider_route,
+        validate_first_audio_chunk,
+    )
     from .tts import synthesize_speech_ogg_async, synthesize_speech_ogg_stream_async
     from .turn_handling import (
         TurnInput,
@@ -95,6 +103,14 @@ except ImportError:
     from schemas.turn_response import TurnResponse
     from state_machine import get_screen_frame
     from stt import transcribe_audio
+    from stt_stream import (
+        MAX_BINARY_FRAME_SIZE_BYTES,
+        SttPingMessage,
+        SttStartMessage,
+        SttStopMessage,
+        select_stt_provider_route,
+        validate_first_audio_chunk,
+    )
     from tts import synthesize_speech_ogg_async, synthesize_speech_ogg_stream_async
     from turn_handling import (
         TurnInput,
@@ -599,6 +615,158 @@ async def speech_to_text(audio: UploadFile = File(...)) -> JSONResponse:
     if not result["text"]:
         return JSONResponse({"text": "", "error": "transcription_failed"}, status_code=422)
     return JSONResponse(result)
+
+
+def _stt_error_payload(code: str, message: str) -> dict[str, str]:
+    """Build a stable STT WebSocket error payload."""
+    return {
+        "type": "error",
+        "code": code,
+        "message": message,
+    }
+
+
+async def _close_stt_stream(websocket: WebSocket, code: str, message: str, close_code: int = 1003) -> None:
+    """Send an STT error payload, then close the WebSocket."""
+    await websocket.send_json(_stt_error_payload(code, message))
+    await websocket.close(code=close_code)
+
+
+def _decode_stt_control_message(text: str) -> dict:
+    """Decode a client STT control message."""
+    payload = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ValueError("STT control message must be a JSON object")
+    return payload
+
+
+@app.websocket("/api/stt/stream")
+async def speech_to_text_stream(websocket: WebSocket) -> None:
+    """Accept ordered browser Opus chunks over WebSocket and transcribe on stop."""
+    await websocket.accept()
+
+    try:
+        first_message = await websocket.receive()
+    except WebSocketDisconnect:
+        return
+
+    if first_message.get("bytes") is not None:
+        await _close_stt_stream(websocket, "start_required", "Send a start JSON message before binary audio")
+        return
+
+    first_text = first_message.get("text")
+    if first_text is None:
+        await _close_stt_stream(websocket, "invalid_control", "Expected a start JSON message")
+        return
+
+    try:
+        first_payload = _decode_stt_control_message(first_text)
+    except (json.JSONDecodeError, ValueError) as exc:
+        await _close_stt_stream(websocket, "invalid_control", str(exc))
+        return
+
+    if first_payload.get("type") != "start":
+        await _close_stt_stream(websocket, "start_required", "First STT control message must be start")
+        return
+
+    try:
+        start_message = SttStartMessage.model_validate(first_payload)
+        route = select_stt_provider_route(start_message.audio)
+    except (ValidationError, ValueError) as exc:
+        await _close_stt_stream(websocket, "invalid_start", str(exc))
+        return
+
+    await websocket.send_json(
+        {
+            "type": "ready",
+            "audio": start_message.audio.model_dump(mode="json"),
+            "route": route.name,
+        }
+    )
+    if start_message.stt.interim_results:
+        await websocket.send_json(
+            {
+                "type": "warning",
+                "code": "interim_results_unavailable",
+                "message": "This provider route returns the final transcript after stop.",
+            }
+        )
+
+    audio_chunks: list[bytes] = []
+    has_first_audio_chunk = False
+
+    while True:
+        try:
+            message = await websocket.receive()
+        except WebSocketDisconnect:
+            return
+
+        if message.get("bytes") is not None:
+            chunk = message["bytes"]
+            if len(chunk) > MAX_BINARY_FRAME_SIZE_BYTES:
+                await _close_stt_stream(
+                    websocket,
+                    "chunk_too_large",
+                    f"Audio chunk exceeds {MAX_BINARY_FRAME_SIZE_BYTES} bytes",
+                    close_code=1009,
+                )
+                return
+            if not has_first_audio_chunk:
+                try:
+                    validate_first_audio_chunk(start_message.audio, chunk)
+                except ValueError as exc:
+                    await _close_stt_stream(websocket, "container_mismatch", str(exc))
+                    return
+                has_first_audio_chunk = True
+            audio_chunks.append(chunk)
+            continue
+
+        text = message.get("text")
+        if text is None:
+            continue
+
+        try:
+            payload = _decode_stt_control_message(text)
+        except (json.JSONDecodeError, ValueError) as exc:
+            await _close_stt_stream(websocket, "invalid_control", str(exc))
+            return
+
+        message_type = payload.get("type")
+        if message_type == "ping":
+            SttPingMessage.model_validate(payload)
+            await websocket.send_json({"type": "ready", "state": "streaming"})
+            continue
+
+        if message_type != "stop":
+            await _close_stt_stream(websocket, "invalid_control", "Expected stop or ping after start")
+            return
+
+        try:
+            stop_message = SttStopMessage.model_validate(payload)
+        except ValidationError as exc:
+            await _close_stt_stream(websocket, "invalid_control", str(exc))
+            return
+
+        audio_bytes = b"".join(audio_chunks)
+        result = await transcribe_audio(audio_bytes, route.mime_type) if audio_bytes else {
+            "text": "",
+            "confidence": 0.0,
+            "latency_ms": 0,
+        }
+        final_text = result.get("text", "")
+        close_reason = "stream_complete" if final_text else "transcription_failed"
+        await websocket.send_json(
+            {
+                "type": "closed",
+                "reason": close_reason,
+                "client_reason": stop_message.reason,
+                "final_text": final_text,
+                "confidence": result.get("confidence", 0.0),
+                "latency_ms": result.get("latency_ms", 0),
+            }
+        )
+        await websocket.close(code=1000)
+        return
 
 
 @app.post("/api/tts")

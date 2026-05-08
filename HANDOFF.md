@@ -1,6 +1,38 @@
 # Session Handoff
 
-Last updated: 2026-05-07
+Last updated: 2026-05-08
+
+---
+
+## Browser Opus STT Streaming
+
+**Problem**: Browser STT used `MediaRecorder` but waited until recording stopped, then uploaded one blob to `POST /api/stt`. The portable Opus streaming plan called for explicit start metadata, ordered binary chunks over one WebSocket session, route selection by codec/container, and browser feature detection.
+
+**Solution**: Added a browser-targeted STT WebSocket path. The frontend now prefers `MediaRecorder` Opus streaming to `WS /api/stt/stream`, sends the portable `start` JSON first, forwards binary chunks in capture order, and sends `stop` when the mic is released. The backend validates the start message, rejects binary-before-start and container mismatches, selects Opus/PCM routes from explicit metadata, and returns the final transcript after `stop` using the existing Gemini STT helper. The existing batch upload and browser Web Speech fallbacks remain in place.
+
+**Edits**:
+- `backend/stt_stream.py` — added protocol enums, Pydantic models, route selection, first-chunk signature validation, and frame-size limit.
+- `backend/server.py` — added `WS /api/stt/stream` alongside the existing `POST /api/stt` fallback.
+- `frontend/src/utils/opusSttStream.js` — added browser MIME feature detection, WebSocket URL construction, MediaRecorder chunk forwarding, server-message handling, and stop cleanup.
+- `frontend/src/hooks/useSpeechRecognition.js` — wired speech input to prefer WebSocket Opus streaming, then batch upload, then browser speech.
+- `docs/opus-stt-protocol.md`, `README.md`, `docs/plans/2026-05-08-portable-opus-stt-streaming.md` — documented the implemented browser protocol and status.
+- `tests/test_stt_stream.py`, `frontend/tests/opusSttStream.test.js` — added focused backend and frontend regression tests.
+
+**NOT Changed**:
+- No Android or Linux client implementation.
+- No true interim transcripts yet; current provider path returns the final transcript after `stop`.
+- No server-side Opus-to-PCM transcoder; unsupported direct provider ingest still requires future work.
+
+**Verification**:
+- Red backend test first: `uv run pytest tests/test_stt_stream.py -q` failed because `stt_stream` did not exist.
+- Red frontend test first: `npm run test -- opusSttStream.test.js` failed because `frontend/src/utils/opusSttStream.js` did not exist.
+- Cleanup regression test first: `npm run test -- opusSttStream.test.js` failed because a server `error` left the recorder active.
+- `uv run pytest tests/test_stt_stream.py tests/test_api.py::TestSTTEndpoint tests/test_backend_imports.py -q` — 11 passed.
+- `uv run ruff check backend/stt_stream.py backend/server.py tests/test_stt_stream.py` — passed.
+- `npm run test -- opusSttStream.test.js` — 4 passed.
+- `npm run lint` — passed.
+- `npm run build` — passed; Vite emitted the pre-existing large bundle warning.
+- `git diff --check` — passed.
 
 ---
 

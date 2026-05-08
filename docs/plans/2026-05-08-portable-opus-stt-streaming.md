@@ -8,6 +8,8 @@
 
 **Tech Stack:** WebSocket, Opus, WebM, Ogg, browser `MediaRecorder`, Android `MediaRecorder` / `AudioRecord`, Linux GStreamer or libopus/libopusenc.
 
+**Repo implementation status (2026-05-08):** Browser target is implemented for this repo. The frontend now prefers browser `MediaRecorder` Opus over `WS /api/stt/stream`, then falls back to the existing batch `POST /api/stt` path and finally browser Web Speech. The backend validates the shared protocol and returns a final transcript on `stop` through the current Gemini batch STT helper. Android, Linux, true provider-live interim transcripts, and server-side Opus-to-PCM transcoding remain future work.
+
 ---
 
 ## Non-Repo-Specific Scope
@@ -533,7 +535,7 @@ Use metrics to decide whether to reduce chunk duration, adjust bitrate, or switc
 - Create or modify: backend WebSocket message models in the target repo
 - Test: backend protocol/model tests
 
-- [ ] **Step 1: Add protocol enums**
+- [x] **Step 1: Add protocol enums**
 
 Define:
 
@@ -545,7 +547,7 @@ ControlMessageType = start | stop | ping
 ServerMessageType = ready | transcript | warning | error | closed
 ```
 
-- [ ] **Step 2: Add validation rules**
+- [x] **Step 2: Add validation rules**
 
 Validation must require:
 
@@ -559,7 +561,7 @@ codec=pcm_s16le requires container=raw and sample_rate_hz
 codec=opus requires container=webm or ogg
 ```
 
-- [ ] **Step 3: Add tests**
+- [x] **Step 3: Add tests**
 
 Test valid and invalid `start` messages, binary-before-start rejection, and stop handling.
 
@@ -569,7 +571,7 @@ Test valid and invalid `start` messages, binary-before-start rejection, and stop
 - Modify: backend STT streaming service/provider adapter files in the target repo
 - Test: provider routing tests
 
-- [ ] **Step 1: Add route selection**
+- [x] **Step 1: Add route selection**
 
 Route by `(codec, container)`:
 
@@ -580,13 +582,13 @@ pcm_s16le + raw -> PCM provider adapter
 unsupported -> explicit error
 ```
 
-- [ ] **Step 2: Add provider request builders**
+- [x] **Step 2: Add provider request builders**
 
 For Opus containers, omit PCM-only parameters unless the provider documentation explicitly requires them.
 
 For PCM raw audio, include sample rate, channel count, and encoding.
 
-- [ ] **Step 3: Add tests**
+- [x] **Step 3: Add tests**
 
 Assert WebM/Ogg Opus sessions do not set `encoding=linear16` or equivalent PCM-only fields.
 
@@ -596,7 +598,7 @@ Assert WebM/Ogg Opus sessions do not set `encoding=linear16` or equivalent PCM-o
 - Create: browser audio client module in the target repo
 - Test: browser unit tests and one manual browser test page
 
-- [ ] **Step 1: Add MIME feature detection**
+- [x] **Step 1: Add MIME feature detection**
 
 Use:
 
@@ -609,11 +611,11 @@ Use:
 ]
 ```
 
-- [ ] **Step 2: Stream MediaRecorder chunks**
+- [x] **Step 2: Stream MediaRecorder chunks**
 
 Send the `start` JSON first, then `ArrayBuffer` chunks from `dataavailable`, then `stop`.
 
-- [ ] **Step 3: Add fallback**
+- [x] **Step 3: Add fallback**
 
 If no Opus MIME type is supported, use PCM capture or batch upload depending on the product's latency requirement.
 

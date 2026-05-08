@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeAudio } from '../utils/api';
+import { startBrowserOpusSttStream } from '../utils/opusSttStream';
 
 const BrowserSpeechRecognition =
   typeof window === 'undefined'
@@ -14,6 +15,7 @@ export default function useSpeechRecognition() {
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recognitionRef = useRef(null);
+  const streamSessionRef = useRef(null);
 
   // --- Browser Web Speech API fallback ---
 
@@ -49,9 +51,9 @@ export default function useSpeechRecognition() {
     setIsListening(false);
   }, []);
 
-  // --- Server-side STT via MediaRecorder + /api/stt ---
+  // --- Server-side STT batch fallback via MediaRecorder + /api/stt ---
 
-  const startServer = useCallback(async () => {
+  const startBatchServer = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -92,7 +94,40 @@ export default function useSpeechRecognition() {
     }
   }, [startBrowser]);
 
+  // --- Server-side STT streaming via MediaRecorder + WebSocket ---
+
+  const startServer = useCallback(async () => {
+    try {
+      setTranscript('');
+      const session = await startBrowserOpusSttStream({
+        onTranscript: (text) => {
+          if (!text) return;
+          setTranscript(text);
+          setResultId((prev) => prev + 1);
+        },
+        onClosed: () => {
+          streamSessionRef.current = null;
+          setIsListening(false);
+        },
+        onError: () => {
+          streamSessionRef.current = null;
+          setIsListening(false);
+        },
+      });
+
+      streamSessionRef.current = session;
+      setIsListening(true);
+    } catch {
+      await startBatchServer();
+    }
+  }, [startBatchServer]);
+
   const stopServer = useCallback(() => {
+    if (streamSessionRef.current) {
+      streamSessionRef.current.stop();
+      streamSessionRef.current = null;
+      return;
+    }
     if (recorderRef.current && recorderRef.current.state === 'recording') {
       recorderRef.current.stop();
     }

@@ -64,8 +64,41 @@ Key files/locations (current and near-term):
 3. Validate immediately with the narrowest useful check.
 4. Stop on failing checks, summarize root cause, then fix incrementally.
 5. Show concise diffs and list exactly what was verified.
+6. Use a git worktree for code changes by default, and switch into that worktree before editing files or running implementation commands. The exception is doc-only or config-only edits, which may be made in the current checkout when appropriate.
+7. When creating a git worktree, place it under `.worktrees/` at the project root using the convention `.worktrees/{feat,docs,fix,refactor,styele,test,chore}/<worktree-name>`.
+8. When working in plan mode or discussing design / implementation plans, write the plan to `docs/plans/` before making code changes. Use the project plan naming convention and make the plan detailed enough for a fresh session to execute.
 
-## 6) Canonical Commands
+## 6) Commit and Pull Request Messages
+
+Use conventional commit format: `type(scope): description`.
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+
+```text
+feat(agents): add director agent
+fix(frontend): resolve silence timer race condition
+refactor(assembler): simplify recipe validation
+```
+
+Keep the first line under 50 characters. Use present tense.
+
+Use the same conventional format for pull request titles. Do not prefix PR
+titles with agent markers such as `[codex]`; the title should describe the
+full branch diff, for example `feat(graph): rewrite knowledge graph viz with focus+context`.
+
+PR descriptions should be detailed enough to stand alone for reviewers. Use
+real Markdown sections and include, as applicable:
+
+- `## Summary` with concise bullets covering what changed, why it changed, and
+  operator/developer impact.
+- `## What's in the branch` when the branch has multiple commits, phases, or
+  implementation arcs.
+- `## Files` summarizing important new, modified, and removed paths.
+- `## Test plan` with exact commands and manual checks, using checkboxes when
+  the checks are reviewer-facing.
+- `## Out of scope / deferred` for known non-goals, tradeoffs, or follow-ups.
+
+## 7) Canonical Commands
 
 Run from repo root unless noted. Verify the referenced manifest or entrypoint exists before running setup or app commands.
 
@@ -92,7 +125,7 @@ Validation policy:
 - If required tooling is not scaffolded yet, document that clearly and perform manual verification against the build spec and touched files.
 - Stop on first failure; summarize root cause before broadening scope.
 
-## 7) Change-Specific Guardrails
+## 8) Change-Specific Guardrails
 
 - Backend pipeline changes:
   - Keep agent boundaries clear and consistent with the build spec.
@@ -113,7 +146,7 @@ Validation policy:
   - Keep Vertex AI related configuration consistent with documented environment variables.
   - Do not hardcode credentials or machine-specific paths into code or docs.
 
-## 8) Documentation and Session State
+## 9) Documentation and Session State
 
 Update docs when behavior, operator workflow, or implementation status changes:
 
@@ -129,14 +162,14 @@ Update docs when behavior, operator workflow, or implementation status changes:
 
 Keep docs concise and factual; avoid aspirational text not reflected in code.
 
-## 9) External Docs and Uncertainty
+## 10) External Docs and Uncertainty
 
 - Use Context7 for library/framework API uncertainty before coding.
 - Prefer official docs and repo source over memory when APIs are version-sensitive.
 - When WonderLens project behavior is unclear, check the build spec before inferring architecture from partial scaffold files.
 - If API uncertainty remains, build a minimal reproducible check locally and report the result.
 
-## 10) Completion Checklist
+## 11) Completion Checklist
 
 Before declaring completion:
 

@@ -117,6 +117,7 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 │   ├── character_sounds.py  # Character voice/sound mapping
 │   ├── vision.py            # Photo analysis via Gemini
 │   ├── stt.py               # Speech-to-text (Vertex AI)
+│   ├── stt_stream.py        # Browser Opus STT WebSocket protocol
 │   └── tts.py               # Text-to-speech (Vertex AI)
 ├── frontend/
 │   └── src/
@@ -140,6 +141,7 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 | `/api/turn-speak` | POST | Combined turn + TTS — streams JSON header + PCM audio |
 | `/api/tts` | POST | Text-to-speech via Vertex AI (fallback: browser SpeechSynthesis) |
 | `/api/stt` | POST | Speech-to-text via Vertex AI (fallback: browser Web Speech API) |
+| `/api/stt/stream` | WebSocket | Browser MediaRecorder Opus chunks with final STT on stop |
 | `/api/entities` | GET | List demo entities grouped by category (for frontend) |
 | `/api/health` | GET | Health check |
 

@@ -138,8 +138,8 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 | `/api/start` | POST | Start session — runs agent pipeline, returns recipe + first turn |
 | `/api/start-deep-link` | POST | Start session from an upstream app deep link |
 | `/api/turn` | POST | Process user turn — returns dialogue + screen frame |
-| `/api/turn-speak` | POST | Combined turn + TTS — streams JSON header + PCM audio |
-| `/api/tts` | POST | Text-to-speech via Vertex AI (fallback: browser SpeechSynthesis) |
+| `/api/turn-speak` | POST | Combined turn + inline OGG/Opus audio stream; retained for compatibility |
+| `/api/tts` | GET/POST | Text-to-speech via Vertex AI; GET streams OGG/Opus progressively to browser audio |
 | `/api/stt` | POST | Speech-to-text via Vertex AI (fallback: browser Web Speech API) |
 | `/api/stt/stream` | WebSocket | Browser MediaRecorder Opus chunks with final STT on stop |
 | `/api/entities` | GET | List demo entities grouped by category (for frontend) |

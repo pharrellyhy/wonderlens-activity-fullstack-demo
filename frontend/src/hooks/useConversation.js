@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { startSession, startDeepLinkSession, sendTurn, sendTurnSpeak } from '../utils/api';
+import { startSession, startDeepLinkSession, sendTurn } from '../utils/api';
 import { asset } from '../utils/basePath';
 
 export default function useConversation() {
@@ -21,7 +21,7 @@ export default function useConversation() {
   const [debugHistory, setDebugHistory] = useState([]);
   const photoUrlRef = useRef(null);
   const pendingPhotoIdRef = useRef(null);
-  // Holds the audio stream from the latest /api/turn-speak response
+  // Reserved for inline audio responses; normal turns keep this null so TTS can play progressively via <audio src>.
   const pendingAudioRef = useRef(null);
 
   const clearPhotoUrl = useCallback(() => {
@@ -206,14 +206,12 @@ export default function useConversation() {
     }
   }, [clearPhotoUrl]);
 
-  /**
-   * Send a turn using the combined /api/turn-speak endpoint.
-   * Returns { turnData, audioStream } so the caller can play audio.
-   */
+  /** Send a turn using /api/turn; TTS playback happens progressively via /api/tts. */
   const sendTurnRequest = useCallback(async (text, isSilent, photoId = null) => {
     if (!sessionId || turnPending) return null;
     pendingPhotoIdRef.current = photoId;
     setTurnPending(true);
+    pendingAudioRef.current = null;
 
     // Only add child message for non-empty, non-auto-advance turns
     if (text || isSilent) {
@@ -224,28 +222,11 @@ export default function useConversation() {
     }
 
     try {
-      // Use combined turn+TTS endpoint
-      const { turnData, audioStream } = await sendTurnSpeak(
-        sessionId, text, isSilent, photoId,
-      );
-
-      // Store audio stream for the orchestration hook to play
-      pendingAudioRef.current = { stream: audioStream };
-
-      // Apply turn data (sets messages, screen frame, session state)
-      applyTurnResponse(turnData);
-
-      return turnData;
-    } catch {
-      // Fallback to regular /api/turn on failure
-      try {
-        const data = await sendTurn(sessionId, text, isSilent, photoId);
-        pendingAudioRef.current = null;
-        return applyTurnResponse(data);
-      } catch (fallbackErr) {
-        setError(fallbackErr.message);
-        throw fallbackErr;
-      }
+      const data = await sendTurn(sessionId, text, isSilent, photoId);
+      return applyTurnResponse(data);
+    } catch (err) {
+      setError(err.message);
+      throw err;
     } finally {
       setTurnPending(false);
     }

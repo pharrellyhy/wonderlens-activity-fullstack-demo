@@ -1,6 +1,36 @@
 # Session Handoff
 
-Last updated: 2026-05-08
+Last updated: 2026-05-09
+
+---
+
+## Progressive TTS Playback for Demo Turns
+
+**Problem**: The backend `/api/turn-speak` endpoint streams OGG/Opus bytes, but the normal frontend turn path consumed that `ReadableStream`, buffered all chunks into a `Blob`, and only then played audio. That defeated progressive browser playback and made demo turns feel like non-streaming TTS.
+
+**Solution**: Switched normal turn handling back to `/api/turn` and left `pendingAudioRef` empty, so `useSessionOrchestration` falls through to `useTTS.speak(lastMsg.text, tier)`. That path assigns `GET /api/tts?...` directly to an `<audio>` element, allowing the browser to decode and play the chunked OGG/Opus response progressively. `/api/turn-speak` remains available for compatibility, but it is no longer the preferred frontend demo playback path.
+
+**Edits**:
+- `frontend/src/hooks/useConversation.js` — removed `sendTurnSpeak` from normal turn handling; turns now call `sendTurn` and clear inline audio state.
+- `frontend/tests/useConversationProgressiveTts.test.js` — added regression coverage that turns use `/api/turn`, do not call `/api/turn-speak`, and leave `pendingAudioRef` null.
+- `frontend/tests/useSessionOrchestrationProgressiveTts.test.js` — added regression coverage that a null `pendingAudioRef` uses normal text TTS instead of inline stream playback.
+- `README.md` — clarified that `/api/tts` GET is the progressive browser TTS path and `/api/turn-speak` is retained for compatibility.
+
+**NOT Changed**:
+- Backend `/api/turn-speak` still exists.
+- `useTTS.speakFromStream()` still supports inline stream playback if another caller provides `pendingAudioRef`.
+- No provider/model changes.
+
+**Verification**:
+- Red test first: `npm run test -- useConversationProgressiveTts.test.js` failed because the hook did not call `/api/turn`.
+- `npm run test -- useConversationProgressiveTts.test.js` — 1 passed.
+- `npm run test -- useSessionOrchestrationProgressiveTts.test.js` — 1 passed.
+- `npm run test -- opusSttStream.test.js` — 4 passed.
+- Final simplifier pass: `npm run test -- useConversationProgressiveTts.test.js useSessionOrchestrationProgressiveTts.test.js` — 2 passed.
+- Final focused frontend check: `npm run test -- useConversationProgressiveTts.test.js useSessionOrchestrationProgressiveTts.test.js opusSttStream.test.js` — 6 passed.
+- `npm run lint` — passed.
+- `npm run build` — passed; Vite emitted the existing chunk-size warning.
+- `git diff --check` — passed.
 
 ---
 

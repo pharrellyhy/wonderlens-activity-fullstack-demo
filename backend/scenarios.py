@@ -1,5 +1,6 @@
 """Scenario loader and matcher for WonderLens activities."""
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ logger = setup_logger(__name__)
 
 _SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 _CONTEXT_TEMPLATE_PATH = Path(__file__).parent / "skills" / "activity_context_template.md"
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 # Re-export for backward compatibility (used by director.py, pipeline.py, recipe_loader.py)
 __all__ = ["SCENARIO_CATEGORIES", "load_scenario", "match_scenario", "build_activity_context"]
@@ -29,6 +31,22 @@ def load_scenario(activity_type: str) -> dict[str, Any]:
         return {}
     with open(path) as f:
         return yaml.safe_load(f) or {}
+
+
+def _tokens(text: str) -> list[str]:
+    """Normalize entity keywords and filenames into comparable lowercase tokens."""
+    return _TOKEN_PATTERN.findall(text.lower())
+
+
+def _filename_contains_keyword(filename_stem: str, keyword: str) -> bool:
+    """Return true when a filename contains a keyword as whole tokens."""
+    filename_tokens = _tokens(filename_stem)
+    keyword_tokens = _tokens(keyword)
+    if not filename_tokens or not keyword_tokens or len(keyword_tokens) > len(filename_tokens):
+        return False
+
+    span = len(keyword_tokens)
+    return any(filename_tokens[index : index + span] == keyword_tokens for index in range(len(filename_tokens) - span + 1))
 
 
 def match_scenario(entity: str, features: list[str] | None = None, filename: str = "") -> str:
@@ -61,7 +79,7 @@ def match_scenario(entity: str, features: list[str] | None = None, filename: str
             logger.info(f"Matched scenario from filename '{filename}': {keyword_map[name_lower]}")
             return keyword_map[name_lower]
         for keyword, scenario in keyword_map.items():
-            if keyword in name_lower:
+            if _filename_contains_keyword(name_lower, keyword):
                 logger.info(f"Matched scenario from filename '{filename}': {scenario}")
                 return scenario
 

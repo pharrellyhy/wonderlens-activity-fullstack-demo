@@ -31,6 +31,7 @@ try:
     from .db import init_db, log_session, log_turn, update_session_status
     from .entity_registry import (
         ENTITY_REGISTRY,
+        EntityConfig,
         all_entities_for_api,
         generate_round_items,
         get_entity_or_none,
@@ -83,6 +84,7 @@ except ImportError:
     from db import init_db, log_session, log_turn, update_session_status
     from entity_registry import (
         ENTITY_REGISTRY,
+        EntityConfig,
         all_entities_for_api,
         generate_round_items,
         get_entity_or_none,
@@ -223,7 +225,83 @@ async def start_activity(req: ActivityStartRequest) -> JSONResponse:
         return JSONResponse({"error": "unknown_activity"}, status_code=404)
     if req.interaction_mode != "text":
         return JSONResponse({"error": "unsupported_interaction_mode"}, status_code=422)
-    return JSONResponse({"error": "activity_start_not_implemented"}, status_code=501)
+    return await _start_activity_session(entity_config, req.tier, interaction_mode="text")
+
+
+async def _start_activity_session(
+    entity_config: EntityConfig,
+    tier: str,
+    *,
+    interaction_mode: str,
+    source: str = "activity_text_game",
+) -> JSONResponse:
+    """Start a recipe-backed activity session without photo or upstream context."""
+    start_time = time.perf_counter()
+    settings = get_settings()
+    session_id = str(uuid.uuid4())
+    activity_type = entity_config.activity_type
+
+    try:
+        recipe = load_instruction_recipe(activity_type)
+        state = recipe_to_session_state(
+            recipe,
+            session_id,
+            tier,
+            entity_config.demo_filename,
+            interaction_mode=interaction_mode,
+        )
+
+        if state.template_type == "cat5":
+            state.round_items = generate_round_items(state.activity_type, state.total_rounds)
+
+        await log_session(settings.db_path, session_id, tier, activity_type, source=source)
+
+        script_agent = ScriptAgent()
+        first_turn, _gen_debug = await _generate_with_retry(script_agent, state, is_first_on_step=True)
+
+        state.conversation_history.append(
+            ConversationTurn(role="ai", text=first_turn.dialogue, step=state.current_step, round_number=None)
+        )
+        state.turn_count = 1
+
+        _sessions[session_id] = state
+
+        hook_frame = get_screen_frame(
+            "STEP_1_HOOK",
+            state.template_type,
+            state.creative_slots,
+            {"entity_name": state.entity_name, "ib_key_concepts": state.ib_key_concepts},
+            visual_frames=state.visual_frames or None,
+        )
+        first_turn_data = _build_turn_response(first_turn, hook_frame, "hook", activity_type=state.activity_type)
+        await _log_hook_turn(state, session_id, first_turn.dialogue)
+
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.info(
+            f"Activity text session started: {session_id}, activity={activity_type}, "
+            f"template={state.template_type}, tier={tier}, latency={latency_ms}ms"
+        )
+
+        return JSONResponse(
+            {
+                "session_id": session_id,
+                "vision_result": {"entity": state.entity_name, "category": "", "scene": "", "features": []},
+                "first_turn": first_turn_data,
+                "activity_type": activity_type,
+                "template_type": state.template_type,
+                "session_state": _session_state_dict(state),
+                "photo_url": entity_config.icon_src,
+                "status": "ok",
+                "latency_ms": latency_ms,
+            }
+        )
+    except Exception as exc:
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        logger.error(f"Activity text start failed ({latency_ms}ms): {exc}")
+        return JSONResponse(
+            {"error": str(exc), "status": "error", "latency_ms": latency_ms},
+            status_code=500,
+        )
 
 
 @app.post("/api/start-deep-link")
@@ -1099,11 +1177,13 @@ def _build_state_snapshot(state: SessionStateModel) -> str:
     snapshot: dict = {
         "current_step": state.current_step,
         "current_round": state.current_round,
+        "interaction_mode": state.interaction_mode,
         "collection_phase": state.collection_phase,
         "synthesis_phase": state.synthesis_phase,
         "consecutive_silence": state.consecutive_silence,
         "consecutive_wrong": state.consecutive_wrong,
         "collected_photos": state.collected_photos,
+        "collected_text_items": state.collected_text_items,
         "collected_names": state.collected_names,
         "turn_count": state.turn_count,
         "child_intent": state.child_intent,
@@ -1117,7 +1197,9 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         "current_step": state.current_step,
         "current_round": state.current_round,
         "total_rounds": state.total_rounds,
+        "interaction_mode": state.interaction_mode,
         "collected_photos": state.collected_photos,
+        "collected_text_items": state.collected_text_items,
         "consecutive_silence": state.consecutive_silence,
         "consecutive_wrong": state.consecutive_wrong,
         "invitation_decline_count": state.invitation_decline_count,

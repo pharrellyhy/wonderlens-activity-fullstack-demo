@@ -70,6 +70,7 @@ def recipe_to_session_state(
     session_id: str,
     tier: str,
     filename: str,
+    interaction_mode: Literal["default", "text"] = "default",
 ) -> SessionStateModel:
     """Build a SessionStateModel from an instruction recipe.
 
@@ -114,6 +115,7 @@ def recipe_to_session_state(
         current_step="STEP_1_HOOK",
         current_round=0,
         total_rounds=round_count,
+        interaction_mode=interaction_mode,
         creative_slots=creative_slots,
         entity_name=entity_name,
         entity_attributes=[],

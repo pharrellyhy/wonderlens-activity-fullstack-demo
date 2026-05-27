@@ -23,6 +23,7 @@ except ImportError:
 from .collection import (
     _is_correct_collection_photo,
     _record_correct_collection_pick,
+    record_text_collection_pick,
     resolve_collection_wrong_pick,
     resolve_detail_phase,
 )
@@ -138,6 +139,15 @@ async def resolve_turn(
     if turn_input.text or turn_input.is_silent:
         child_text = turn_input.text if turn_input.text else "..."
         _append_child_turn(state, child_text)
+
+    if (
+        state.interaction_mode == "text"
+        and state.template_type == "cat5"
+        and state.current_step.startswith("STEP_3_COLLECT_")
+        and state.collection_phase == "photo"
+        and turn_input.text
+    ):
+        record_text_collection_pick(state, turn_input.text)
 
     # --- 3a. Turn Director path (feature-flagged) ---
     settings = get_settings()

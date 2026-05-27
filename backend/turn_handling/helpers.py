@@ -121,6 +121,7 @@ def _state_context(state: SessionStateModel) -> dict:
         "key_concepts": state.ib_key_concepts,
         "collection_phase": state.collection_phase,
         "collected_photos": state.collected_photos,
+        "collected_text_items": state.collected_text_items,
         "collected_names": state.collected_names,
         "collected_details": state.collected_details,
         "structured_story": state.structured_story,

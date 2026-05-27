@@ -68,6 +68,19 @@ def _record_correct_collection_pick(state: SessionStateModel, photo_id: str) -> 
     _append_child_turn(state, f"[collected correct item: {_get_item_label(state, photo_id)}]")
 
 
+def record_text_collection_pick(state: SessionStateModel, text: str) -> None:
+    """Record a typed Cat5 collection item in text-only mode."""
+    label = text.strip()
+    if not label:
+        return
+    item_id = f"text_find_{len(state.collected_text_items) + 1}"
+    state.collected_text_items.append(label)
+    state.collected_photos.append(item_id)
+    state.consecutive_wrong = 0
+    state.collection_phase = "detail"
+    state.detail_exchange_count = 0
+
+
 _GENERATED_NAME_PATTERNS = (
     re.compile('["\u201c\u201d]([^"\u201c\u201d]{1,40})["\u201c\u201d]'),
     re.compile(

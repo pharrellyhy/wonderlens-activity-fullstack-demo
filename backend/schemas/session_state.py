@@ -39,9 +39,13 @@ class SessionStateModel(BaseModel):
     current_step: str = Field(description="Current state machine step")
     current_round: int = 0
     total_rounds: int = 3
+    interaction_mode: Literal["default", "text"] = "default"
     creative_slots: Union[Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots]
     conversation_history: list[ConversationTurn] = Field(default_factory=list)
     collected_photos: list[str] = Field(default_factory=list, description="Cat 5 collected photo IDs")
+    collected_text_items: list[str] = Field(
+        default_factory=list, description="Text-mode Cat5 collected item labels"
+    )
     collection_phase: CollectionPhase = Field(default="photo", description="Cat 5 2-phase loop: photo or detail")
     collected_details: list[str] = Field(default_factory=list, description="Cat 5 detail responses per find")
     collected_names: list[str] = Field(default_factory=list, description="Cat 5 character names per find")

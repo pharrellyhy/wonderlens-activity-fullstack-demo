@@ -669,7 +669,10 @@
 
 .activity-card {
   display: grid;
+  grid-template-columns: 2.6rem 1fr;
   gap: 0.22rem;
+  column-gap: 0.65rem;
+  align-items: start;
   border: 1px solid oklch(0.86 0.02 150);
   border-radius: 0.75rem;
   background: oklch(0.99 0.006 150);
@@ -696,6 +699,17 @@
 .activity-game__input input:focus-visible {
   outline: 0.18rem solid oklch(0.72 0.13 165);
   outline-offset: 0.16rem;
+}
+
+.activity-card__icon {
+  grid-row: 1 / span 3;
+  width: 2.45rem;
+  aspect-ratio: 1;
+  border: 1px solid oklch(0.82 0.03 150);
+  border-radius: 0.72rem;
+  object-fit: cover;
+  background: oklch(0.94 0.03 150);
+  box-shadow: inset 0 0 0 0.08rem oklch(0.99 0.004 150 / 0.82);
 }
 
 .activity-card__title {
@@ -753,6 +767,23 @@
   padding-bottom: 0.8rem;
 }
 
+.activity-game__status-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.activity-game__status-icon {
+  width: 2.65rem;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  border: 1px solid oklch(0.8 0.035 150);
+  border-radius: 0.8rem;
+  object-fit: cover;
+  background: oklch(0.94 0.03 150);
+}
+
 .activity-game__status span {
   max-width: 16rem;
   text-align: right;
@@ -788,12 +819,68 @@
 }
 
 .activity-message {
-  max-width: min(34rem, 88%);
+  display: flex;
+  max-width: min(34rem, 92%);
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.activity-message__avatar {
+  display: grid;
+  width: 2rem;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  box-shadow: 0 0.18rem 0.45rem oklch(0.25 0.02 155 / 0.14);
+}
+
+.activity-message__avatar svg {
+  width: 1.08rem;
+  height: 1.08rem;
+}
+
+.activity-message__avatar--ai {
+  border: 1px solid oklch(0.72 0.11 150);
+  background: linear-gradient(145deg, oklch(0.7 0.13 150), oklch(0.64 0.1 195));
+  color: oklch(0.99 0.004 150);
+}
+
+.activity-message__avatar--child {
+  position: relative;
+  border: 1px solid oklch(0.75 0.08 205);
+  background: oklch(0.84 0.08 205);
+}
+
+.activity-message__avatar--child::before,
+.activity-message__avatar--child::after {
+  display: block;
+  border-radius: 999px;
+  background: oklch(0.98 0.006 205);
+  content: "";
+}
+
+.activity-message__avatar--child::before {
+  width: 0.62rem;
+  aspect-ratio: 1;
+  transform: translateY(0.05rem);
+}
+
+.activity-message__avatar--child::after {
+  position: absolute;
+  bottom: 0.32rem;
+  width: 1rem;
+  height: 0.46rem;
+}
+
+.activity-message__bubble {
+  min-width: 0;
   border-radius: 0.8rem;
   padding: 0.62rem 0.72rem;
 }
 
-.activity-message span {
+.activity-message__speaker {
   display: block;
   margin-bottom: 0.16rem;
   color: oklch(0.48 0.035 160);
@@ -812,14 +899,50 @@
 
 .activity-message.is-ai {
   align-self: flex-start;
+}
+
+.activity-message.is-ai .activity-message__bubble {
   background: oklch(0.99 0.006 150);
   border: 1px solid oklch(0.86 0.018 150);
 }
 
 .activity-message.is-child {
   align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.activity-message.is-child .activity-message__bubble {
   background: oklch(0.82 0.075 205);
   border: 1px solid oklch(0.76 0.08 205);
+}
+
+.activity-message.is-child .activity-message__speaker {
+  color: oklch(0.33 0.045 205);
+  text-align: right;
+}
+
+.activity-message__typing {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.2rem;
+}
+
+.activity-message__typing .typing-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: oklch(0.62 0.12 150);
+}
+
+.activity-message__cursor {
+  display: inline-block;
+  width: 0.08rem;
+  height: 0.95rem;
+  margin-left: 0.12rem;
+  transform: translateY(0.13rem);
+  background: oklch(0.62 0.12 150);
+  animation: blink 900ms steps(2, end) infinite;
 }
 
 .activity-transcript__empty {
@@ -906,6 +1029,11 @@
 @keyframes particle-float {
   0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
   50% { transform: translateY(-6px) scale(1.05); opacity: 0.7; }
+}
+
+@keyframes blink {
+  0%, 45% { opacity: 1; }
+  46%, 100% { opacity: 0; }
 }
 
 @keyframes particle-focus {

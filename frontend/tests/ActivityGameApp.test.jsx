@@ -38,6 +38,7 @@ describe('ActivityGameApp', () => {
     render(<ActivityGameApp />);
 
     expect(await screen.findByText('Activity library')).toBeTruthy();
+    expect(await screen.findAllByAltText('Word Echo Practice icon')).toHaveLength(2);
     expect(screen.getAllByText('Word Echo Practice').length).toBeGreaterThan(0);
     expect(screen.queryByLabelText(/Voice input/i)).toBeNull();
     expect(screen.queryByText(/Choose a concept/i)).toBeNull();

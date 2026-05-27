@@ -1,6 +1,7 @@
 export default function ActivityLibrary({
   activities,
   selectedId,
+  assetByActivityId,
   loading,
   onSelect,
   onStart,
@@ -15,6 +16,7 @@ export default function ActivityLibrary({
       <div className="activity-game__list">
         {activities.map((activity) => {
           const selected = activity.id === selectedId;
+          const asset = assetByActivityId?.get(activity.asset_manifest_id) || assetByActivityId?.get(activity.id);
           return (
             <button
               type="button"
@@ -23,6 +25,9 @@ export default function ActivityLibrary({
               onClick={() => onSelect(activity.id)}
               aria-pressed={selected}
             >
+              {asset?.icon ? (
+                <img className="activity-card__icon" src={asset.icon} alt={`${activity.name} icon`} />
+              ) : null}
               <span className="activity-card__title">{activity.name}</span>
               <span className="activity-card__meta">
                 {activity.mechanic} · {activity.tier}

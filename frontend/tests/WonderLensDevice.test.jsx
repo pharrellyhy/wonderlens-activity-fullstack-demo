@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { cwd } from 'node:process';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import WonderLensDevice from '../src/activityGame/WonderLensDevice.jsx';
 
 function cssBlock(selector) {
-  const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8');
+  const css = readFileSync(join(cwd(), 'src/index.css'), 'utf8');
   const start = css.indexOf(`${selector} {`);
   const end = css.indexOf('\n}', start);
   return css.slice(start, end);
@@ -37,6 +38,7 @@ describe('WonderLensDevice', () => {
   });
 
   it('keeps prototype side-control proportions in CSS', () => {
+    expect(cssBlock('.wonderlens-device-shell')).toContain('width: min(22rem, 82vw)');
     expect(cssBlock('.wonderlens-device')).toContain('aspect-ratio: 0.7 / 1');
     expect(cssBlock('.wonderlens-device__left-grip')).toContain('height: 43%');
     expect(cssBlock('.wonderlens-device__left-grip')).toContain('clip-path: polygon(0 0, 100% 2%, 92% 100%, 42% 100%)');

@@ -69,7 +69,11 @@ export default function ActivityGameApp() {
   const selectedAsset = useMemo(
     () => assetManifest.activities.find((entry) => entry.id === selectedActivity?.asset_manifest_id)
       || assetManifest.activities.find((entry) => entry.id === selectedActivity?.id),
-    [selectedActivity],
+    [assetManifest.activities, selectedActivity],
+  );
+  const assetByActivityId = useMemo(
+    () => new Map((assetManifest.activities || []).map((entry) => [entry.id, entry])),
+    [assetManifest.activities],
   );
 
   const beatId = beatIdFromSessionState(sessionState);
@@ -98,6 +102,7 @@ export default function ActivityGameApp() {
       <ActivityLibrary
         activities={activities}
         selectedId={selectedActivity?.id || ''}
+        assetByActivityId={assetByActivityId}
         loading={loading || catalogLoading}
         onSelect={setSelectedId}
         onStart={handleStart}
@@ -105,9 +110,18 @@ export default function ActivityGameApp() {
 
       <section className="activity-game__work" aria-label="Activity text game">
         <div className="activity-game__status">
-          <div>
-            <p>{sessionId ? 'Session active' : 'Text only'}</p>
-            <h2>{selectedActivity?.name || 'Choose an activity'}</h2>
+          <div className="activity-game__status-main">
+            {selectedAsset?.icon ? (
+              <img
+                className="activity-game__status-icon"
+                src={selectedAsset.icon}
+                alt={`${selectedActivity?.name || 'Selected activity'} icon`}
+              />
+            ) : null}
+            <div>
+              <p>{sessionId ? 'Session active' : 'Text only'}</p>
+              <h2>{selectedActivity?.name || 'Choose an activity'}</h2>
+            </div>
           </div>
           {selectedActivity?.core_ib_key_concepts?.length ? (
             <span>Core IB Key Concepts: {selectedActivity.core_ib_key_concepts.join(', ')}</span>

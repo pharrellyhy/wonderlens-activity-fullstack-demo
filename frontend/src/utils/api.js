@@ -31,6 +31,12 @@ export async function fetchActivities() {
   return res.json();
 }
 
+export async function fetchActivityAssetManifest() {
+  const res = await fetch(`${BASE}/activity-assets/activity-assets.manifest.json`);
+  if (!res.ok) throw new Error(`Activity assets failed: ${res.status}`);
+  return res.json();
+}
+
 export async function startActivitySession(activityType, tier = 'T1') {
   const res = await fetch(`${BASE}/api/start-activity`, {
     method: 'POST',

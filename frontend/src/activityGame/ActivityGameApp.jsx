@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import assetManifest from '../../public/activity-assets/activity-assets.manifest.json';
-import { fetchActivities } from '../utils/api';
+import { fetchActivities, fetchActivityAssetManifest } from '../utils/api';
 import { assetForBeat, beatIdFromSessionState } from './activityAssets';
 import ActivityLibrary from './ActivityLibrary.jsx';
 import ActivityTextInput from './ActivityTextInput.jsx';
@@ -23,6 +22,7 @@ function childTokens(messages) {
 
 export default function ActivityGameApp() {
   const [activities, setActivities] = useState([]);
+  const [assetManifest, setAssetManifest] = useState({ activities: [] });
   const [selectedId, setSelectedId] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
@@ -41,10 +41,14 @@ export default function ActivityGameApp() {
     let mounted = true;
     void (async () => {
       try {
-        const data = await fetchActivities();
+        const [data, manifest] = await Promise.all([
+          fetchActivities(),
+          fetchActivityAssetManifest(),
+        ]);
         if (!mounted) return;
         const nextActivities = data.activities || [];
         setActivities(nextActivities);
+        setAssetManifest(manifest);
         setSelectedId(nextActivities[0]?.id || '');
       } catch (err) {
         if (mounted) setCatalogError(err.message);

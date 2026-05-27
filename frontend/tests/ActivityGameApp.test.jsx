@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ActivityGameApp from '../src/activityGame/ActivityGameApp.jsx';
+import manifest from '../public/activity-assets/activity-assets.manifest.json';
 
 vi.mock('../src/utils/api.js', () => ({
   fetchActivities: vi.fn(async () => ({
@@ -17,6 +18,7 @@ vi.mock('../src/utils/api.js', () => ({
       asset_manifest_id: 'activity_word_echo_practice',
     }],
   })),
+  fetchActivityAssetManifest: vi.fn(async () => manifest),
   startActivitySession: vi.fn(),
   sendTurn: vi.fn(),
 }));

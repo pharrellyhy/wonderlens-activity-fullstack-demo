@@ -263,12 +263,12 @@
 .wonderlens-device-shell {
   width: min(22rem, 82vw);
   margin-inline: auto;
-  padding: 1.25rem 1.9rem 1.25rem 1.05rem;
+  padding: 1.25rem 2.5rem 1.25rem 1.25rem;
 }
 
 .wonderlens-device {
   position: relative;
-  aspect-ratio: 0.75 / 1;
+  aspect-ratio: 0.7 / 1;
   width: 100%;
   border-radius: 2.35rem;
   background:
@@ -283,26 +283,31 @@
 
 .wonderlens-device__left-grip {
   position: absolute;
-  left: -1.42rem;
-  top: 20%;
-  width: 1.45rem;
-  height: 33%;
-  border-radius: 0.36rem;
+  left: -8.8%;
+  top: 21%;
+  width: 9%;
+  height: 43%;
+  border-radius: 0.3rem 0.12rem 0.12rem 0.3rem;
   background:
-    linear-gradient(90deg, oklch(0.68 0.14 145), oklch(0.85 0.08 145) 62%, oklch(0.51 0.1 145));
-  box-shadow: inset 0.28rem 0 0.55rem oklch(0.98 0.05 145 / 0.58), 0 0.35rem 0.75rem oklch(0.2 0.01 145 / 0.22);
+    linear-gradient(96deg, oklch(0.62 0.13 145), oklch(0.88 0.09 145) 45%, oklch(0.57 0.11 145));
+  box-shadow:
+    inset 0.22rem 0 0.55rem oklch(0.98 0.05 145 / 0.6),
+    0 0.35rem 0.75rem oklch(0.2 0.01 145 / 0.22);
+  transform: perspective(8rem) rotateY(-8deg);
 }
 
 .wonderlens-device__scroll {
   position: absolute;
-  right: -1.72rem;
-  top: 19%;
-  width: 1.9rem;
-  height: 8.1rem;
+  right: -9%;
+  top: 20%;
+  width: 9.5%;
+  height: 23%;
   border: 0;
   border-radius: 0 999px 999px 0;
   background: linear-gradient(90deg, oklch(0.86 0.08 145), oklch(0.78 0.11 145));
-  box-shadow: inset 0.35rem 0 0.8rem oklch(0.99 0.03 145 / 0.5), 0 0.5rem 1rem oklch(0.22 0.01 145 / 0.2);
+  box-shadow:
+    inset 0.35rem 0 0.8rem oklch(0.99 0.03 145 / 0.5),
+    0 0.5rem 1rem oklch(0.22 0.01 145 / 0.18);
   cursor: pointer;
 }
 
@@ -310,7 +315,7 @@
 .wonderlens-device__scroll::before,
 .wonderlens-device__scroll::after {
   position: absolute;
-  right: -1rem;
+  right: -1.15rem;
   width: 0.72rem;
   height: 0.72rem;
   border-color: oklch(0.91 0.05 145);
@@ -319,7 +324,7 @@
 }
 
 .wonderlens-device__scroll::before {
-  top: 0.18rem;
+  top: -0.08rem;
   border-width: 0.15rem 0 0 0.15rem;
   transform: rotate(45deg);
 }
@@ -327,14 +332,14 @@
 .wonderlens-device__scroll span {
   top: 50%;
   width: 0.9rem;
-  height: 3.7rem;
+  height: 3rem;
   border-width: 0 0.13rem 0 0;
   border-radius: 50%;
   transform: translateY(-50%);
 }
 
 .wonderlens-device__scroll::after {
-  bottom: 0.18rem;
+  bottom: -0.08rem;
   border-width: 0 0.15rem 0.15rem 0;
   transform: rotate(45deg);
 }
@@ -348,8 +353,8 @@
 .wonderlens-device__lens {
   position: absolute;
   left: 50%;
-  top: 7.7%;
-  width: 74%;
+  top: 6.2%;
+  width: 83%;
   aspect-ratio: 1;
   transform: translateX(-50%);
   overflow: hidden;
@@ -363,9 +368,9 @@
 
 .wonderlens-device__small-button {
   position: absolute;
-  right: 12%;
-  top: 65%;
-  width: 14%;
+  right: 7.5%;
+  top: 65.8%;
+  width: 15%;
   aspect-ratio: 1;
   border-radius: 50%;
   background:
@@ -377,9 +382,9 @@
 
 .wonderlens-device__primary {
   position: absolute;
-  left: 59%;
-  bottom: 9.6%;
-  width: 26%;
+  left: 58%;
+  bottom: 5.8%;
+  width: 27%;
   aspect-ratio: 1;
   border: 0.14rem solid oklch(0.73 0.09 145);
   border-radius: 50%;

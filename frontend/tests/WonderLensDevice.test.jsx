@@ -1,6 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import WonderLensDevice from '../src/activityGame/WonderLensDevice.jsx';
+
+function cssBlock(selector) {
+  const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8');
+  const start = css.indexOf(`${selector} {`);
+  const end = css.indexOf('\n}', start);
+  return css.slice(start, end);
+}
 
 describe('WonderLensDevice', () => {
   it('renders preserved device controls and top-right scroll control', () => {
@@ -22,5 +31,13 @@ describe('WonderLensDevice', () => {
     expect(screen.getByText('Word Echo Practice')).toBeTruthy();
     expect(screen.getByText('Repeat after me.')).toBeTruthy();
     expect(screen.getByAltText('Word Echo Practice visual')).toBeTruthy();
+  });
+
+  it('keeps prototype side-control proportions in CSS', () => {
+    expect(cssBlock('.wonderlens-device')).toContain('aspect-ratio: 0.7 / 1');
+    expect(cssBlock('.wonderlens-device__left-grip')).toContain('height: 43%');
+    expect(cssBlock('.wonderlens-device__scroll')).toContain('height: 23%');
+    expect(cssBlock('.wonderlens-device__small-button')).toContain('right: 7.5%');
+    expect(cssBlock('.wonderlens-device__primary')).toContain('bottom: 5.8%');
   });
 });

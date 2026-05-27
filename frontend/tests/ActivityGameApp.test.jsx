@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ActivityGameApp from '../src/activityGame/ActivityGameApp.jsx';
 import manifest from '../public/activity-assets/activity-assets.manifest.json';
@@ -16,6 +16,16 @@ vi.mock('../src/utils/api.js', () => ({
       premise: 'Repeat a word back.',
       core_ib_key_concepts: ['Form'],
       asset_manifest_id: 'activity_word_echo_practice',
+    }, {
+      id: 'activity_animal_sound_imitation',
+      name: 'Animal Sound Imitation',
+      kind: 'activity',
+      category: 'category_1',
+      mechanic: 'motion_voice',
+      tier: 'T1',
+      premise: 'Imitate an animal sound.',
+      core_ib_key_concepts: ['Form'],
+      asset_manifest_id: 'activity_animal_sound_imitation',
     }],
   })),
   fetchActivityAssetManifest: vi.fn(async () => manifest),
@@ -32,5 +42,17 @@ describe('ActivityGameApp', () => {
     expect(screen.queryByLabelText(/Voice input/i)).toBeNull();
     expect(screen.queryByText(/Choose a concept/i)).toBeNull();
     expect(screen.queryByLabelText(/Upload photo/i)).toBeNull();
+  });
+
+  it('uses upper and lower scroll controls to move through activities', async () => {
+    render(<ActivityGameApp />);
+
+    expect(await screen.findByRole('heading', { name: 'Word Echo Practice' })).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Next activity'));
+    expect(screen.getByRole('heading', { name: 'Animal Sound Imitation' })).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Previous activity'));
+    expect(screen.getByRole('heading', { name: 'Word Echo Practice' })).toBeTruthy();
   });
 });

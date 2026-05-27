@@ -7,6 +7,7 @@ export default function WonderLensDevice({
   assetSrc = '',
   savedTokens = [],
   progress = null,
+  onScrollPrevious,
   onScrollNext,
   onPrimaryAction,
 }) {
@@ -15,14 +16,21 @@ export default function WonderLensDevice({
       <div className="wonderlens-device" data-testid="wonderlens-device">
         <div className="wonderlens-device__left-grip" aria-hidden="true" />
 
-        <button
-          type="button"
-          className="wonderlens-device__scroll"
-          aria-label="Scroll activity lens"
-          onClick={onScrollNext}
-        >
-          <span aria-hidden="true" />
-        </button>
+        <div className="wonderlens-device__scroll" role="group" aria-label="Scroll activity lens">
+          <button
+            type="button"
+            className="wonderlens-device__scroll-hit wonderlens-device__scroll-hit--up"
+            aria-label="Previous activity"
+            onClick={onScrollPrevious}
+          />
+          <button
+            type="button"
+            className="wonderlens-device__scroll-hit wonderlens-device__scroll-hit--down"
+            aria-label="Next activity"
+            onClick={onScrollNext}
+          />
+          <span className="wonderlens-device__scroll-arc" aria-hidden="true" />
+        </div>
 
         <div className="wonderlens-device__lens">
           <ActivityLens

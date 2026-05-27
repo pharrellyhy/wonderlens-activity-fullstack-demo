@@ -85,6 +85,14 @@ export default function ActivityGameApp() {
     await startActivity(selectedActivity.id, selectedActivity.tier || 'T1');
   }, [selectedActivity, startActivity]);
 
+  const selectRelativeActivity = useCallback((offset) => {
+    if (!activities.length) return;
+    const currentIndex = activities.findIndex((activity) => activity.id === selectedActivity?.id);
+    const baseIndex = currentIndex === -1 ? 0 : currentIndex;
+    const nextIndex = (baseIndex + offset + activities.length) % activities.length;
+    setSelectedId(activities[nextIndex].id);
+  }, [activities, selectedActivity?.id]);
+
   return (
     <main className="activity-game">
       <ActivityLibrary
@@ -124,12 +132,8 @@ export default function ActivityGameApp() {
           assetSrc={assetSrc}
           savedTokens={savedTokens}
           progress={progress}
-          onScrollNext={() => {
-            if (!activities.length) return;
-            const currentIndex = activities.findIndex((activity) => activity.id === selectedActivity?.id);
-            const next = activities[(currentIndex + 1) % activities.length];
-            setSelectedId(next.id);
-          }}
+          onScrollPrevious={() => selectRelativeActivity(-1)}
+          onScrollNext={() => selectRelativeActivity(1)}
           onPrimaryAction={handleStart}
         />
       </section>

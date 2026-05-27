@@ -299,9 +299,9 @@
 
 .wonderlens-device__scroll {
   position: absolute;
-  right: -7.4%;
+  right: -8.8%;
   top: 23%;
-  width: 10.2%;
+  width: 8.2%;
   height: 14.3%;
   border: 0;
   border-radius: 0 999px 999px 0;
@@ -311,10 +311,30 @@
   box-shadow:
     inset 0.22rem 0 0.65rem oklch(0.99 0.03 145 / 0.48),
     0 0.45rem 0.9rem oklch(0.22 0.01 145 / 0.16);
+  display: grid;
+  grid-template-rows: 1fr 1fr;
   cursor: pointer;
 }
 
-.wonderlens-device__scroll span,
+.wonderlens-device__scroll-hit {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wonderlens-device__scroll-hit--up {
+  border-radius: 0 999px 0 0;
+}
+
+.wonderlens-device__scroll-hit--down {
+  border-radius: 0 0 999px 0;
+}
+
+.wonderlens-device__scroll-arc,
 .wonderlens-device__scroll::before,
 .wonderlens-device__scroll::after {
   position: absolute;
@@ -332,7 +352,7 @@
   transform: rotate(45deg);
 }
 
-.wonderlens-device__scroll span {
+.wonderlens-device__scroll-arc {
   top: 50%;
   width: 0.9rem;
   height: 3rem;
@@ -347,7 +367,7 @@
   transform: rotate(45deg);
 }
 
-.wonderlens-device__scroll:focus-visible,
+.wonderlens-device__scroll-hit:focus-visible,
 .wonderlens-device__primary:focus-visible {
   outline: 0.2rem solid oklch(0.7 0.14 170);
   outline-offset: 0.22rem;
@@ -496,11 +516,18 @@
   max-width: 12rem;
   margin: 0;
   overflow: hidden;
+  border: 1px solid oklch(0.95 0.02 150 / 0.24);
+  border-radius: 0.72rem;
+  background: oklch(0.16 0.018 155 / 0.82);
+  box-shadow: 0 0.45rem 0.9rem oklch(0.04 0.006 150 / 0.36);
+  color: oklch(0.98 0.01 150);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
+  padding: 0.48rem 0.56rem;
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.22;
+  text-shadow: none;
 }
 
 .activity-lens__tokens {

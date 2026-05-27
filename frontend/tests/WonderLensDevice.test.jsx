@@ -20,6 +20,7 @@ describe('WonderLensDevice', () => {
         progress={{ current: 1, total: 3 }}
         assetSrc="/activity-assets/activity_word_echo_practice/intro.png"
         savedTokens={['ready']}
+        onScrollPrevious={vi.fn()}
         onScrollNext={vi.fn()}
         onPrimaryAction={vi.fn()}
       />,
@@ -27,6 +28,8 @@ describe('WonderLensDevice', () => {
 
     expect(screen.getByTestId('wonderlens-device')).toBeTruthy();
     expect(screen.getByLabelText('Scroll activity lens')).toBeTruthy();
+    expect(screen.getByLabelText('Previous activity')).toBeTruthy();
+    expect(screen.getByLabelText('Next activity')).toBeTruthy();
     expect(screen.getByLabelText('Start or restart activity')).toBeTruthy();
     expect(screen.getByText('Word Echo Practice')).toBeTruthy();
     expect(screen.getByText('Repeat after me.')).toBeTruthy();
@@ -37,9 +40,11 @@ describe('WonderLensDevice', () => {
     expect(cssBlock('.wonderlens-device')).toContain('aspect-ratio: 0.7 / 1');
     expect(cssBlock('.wonderlens-device__left-grip')).toContain('height: 43%');
     expect(cssBlock('.wonderlens-device__left-grip')).toContain('clip-path: polygon(0 0, 100% 2%, 92% 100%, 42% 100%)');
-    expect(cssBlock('.wonderlens-device__scroll')).toContain('right: -7.4%');
+    expect(cssBlock('.wonderlens-device__scroll')).toContain('right: -8.8%');
+    expect(cssBlock('.wonderlens-device__scroll')).toContain('width: 8.2%');
     expect(cssBlock('.wonderlens-device__scroll')).toContain('height: 14.3%');
     expect(cssBlock('.wonderlens-device__scroll')).toContain('border-radius: 0 999px 999px 0');
+    expect(cssBlock('.activity-lens__text')).toContain('background: oklch(0.16 0.018 155 / 0.82)');
     expect(cssBlock('.wonderlens-device__small-button')).toContain('right: 7.5%');
     expect(cssBlock('.wonderlens-device__primary')).toContain('bottom: 5.8%');
   });

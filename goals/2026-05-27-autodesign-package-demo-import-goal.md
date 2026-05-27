@@ -57,6 +57,25 @@ behavior.
 - Preserve the current horizontal screen as debug/reviewer mode.
 - Browser-test at least one imported Cat1 and one imported Cat5 activity.
 
+## Delegated Agent Rule
+
+The user explicitly requested delegated-agent rules for this goal.
+
+Use sub-agents only for independent exploration, implementation, verification,
+or code review with disjoint ownership. Keep tightly coupled importer,
+runtime-state, and frontend integration work local to the main agent unless
+the ownership boundary is clear. The main agent remains responsible for
+sequencing, integrating returned work, resolving conflicts, running final
+checks, committing, and reporting.
+
+Good delegation candidates:
+
+- inspect the current game parser, converter scripts, and fixture patterns;
+- audit frontend device/screen components and activity selection surfaces;
+- design importer/support-gate test cases;
+- verify asset resolver behavior and reference-bound provenance handling;
+- run independent browser or code review after integration.
+
 ## Execution Rules
 
 - Work in `wonderlens-activity-fullstack-demo`.
@@ -172,5 +191,5 @@ fixture coverage, remaining risks, and commit hashes.
 ## Goal Invocation
 
 ```text
-/goal Implement goals/2026-05-27-autodesign-package-demo-import-goal.md. Stop only when its completion gate is satisfied or a blocker is documented.
+/goal Implement goals/2026-05-27-autodesign-package-demo-import-goal.md. The user explicitly requests delegated-agent work for independent exploration, implementation, verification, and code review where ownership is disjoint. Stop only when its completion gate is satisfied or a blocker is documented.
 ```

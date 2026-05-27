@@ -36,7 +36,9 @@ describe('WonderLensDevice', () => {
   it('keeps prototype side-control proportions in CSS', () => {
     expect(cssBlock('.wonderlens-device')).toContain('aspect-ratio: 0.7 / 1');
     expect(cssBlock('.wonderlens-device__left-grip')).toContain('height: 43%');
-    expect(cssBlock('.wonderlens-device__scroll')).toContain('height: 23%');
+    expect(cssBlock('.wonderlens-device__left-grip')).toContain('clip-path: polygon(0 0, 100% 2%, 82% 100%, 24% 100%)');
+    expect(cssBlock('.wonderlens-device__scroll')).toContain('height: 14.3%');
+    expect(cssBlock('.wonderlens-device__scroll')).toContain('border-radius: 0 999px 999px 0');
     expect(cssBlock('.wonderlens-device__small-button')).toContain('right: 7.5%');
     expect(cssBlock('.wonderlens-device__primary')).toContain('bottom: 5.8%');
   });

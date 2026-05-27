@@ -25,6 +25,22 @@ export async function sendTurn(sessionId, text, isSilent, photoId = null) {
   return res.json();
 }
 
+export async function fetchActivities() {
+  const res = await fetch(`${BASE}/api/activities`);
+  if (!res.ok) throw new Error(`Activities failed: ${res.status}`);
+  return res.json();
+}
+
+export async function startActivitySession(activityType, tier = 'T1') {
+  const res = await fetch(`${BASE}/api/start-activity`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activity_type: activityType, tier, interaction_mode: 'text' }),
+  });
+  if (!res.ok) throw new Error(`Activity start failed: ${res.status}`);
+  return res.json();
+}
+
 /**
  * Combined turn + TTS endpoint. Streams Script Agent output with pipelined TTS.
  *

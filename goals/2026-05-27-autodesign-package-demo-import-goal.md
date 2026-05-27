@@ -32,6 +32,9 @@ behavior.
 - Do not mark unsupported mechanics playable.
 - Do not remove the horizontal reviewer/debug mode.
 - Do not treat catalog clicks as production camera validation.
+- Do not accept random generated images for reference-bound real-world assets
+  such as constellations, artworks, maps, scientific diagrams, cultural
+  artifacts, species, historical objects, or named places.
 - Do not require live provider credentials for ordinary importer, parser, or UI
   tests.
 - Do not edit secrets, `.env`, credentials, or machine-local config.
@@ -45,6 +48,8 @@ behavior.
   equivalent additive loader path.
 - Bind activity and entity explicitly in the imported demo instance.
 - Resolve `asset_manifest.yaml` into browser-safe asset paths.
+- Validate reference-bound asset provenance and block or degrade activities
+  whose required factual assets are missing or unverified.
 - Gate supported, degraded, and unsupported mechanics.
 - Update activity selection to show support status, entity binding, and asset
   readiness.
@@ -104,6 +109,8 @@ stop and create or request the pinned fixture before implementation.
   honestly.
 - Missing required assets fail import or block playability; optional missing
   assets use declared fallback behavior.
+- Reference-bound assets display only approved/verified files or block/degrade
+  the activity with an explicit reason.
 - Device preview mode renders the prototype-inspired shell and round screen
   without overlapping text.
 - Horizontal debug mode remains available.

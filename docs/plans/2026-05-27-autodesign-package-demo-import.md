@@ -150,6 +150,10 @@ The resolver should support:
 - placeholder or fallback rendering when an optional asset is missing;
 - hard failure when a required supported asset has neither file, generation
   prompt, nor fallback.
+- hard failure when a reference-bound asset lacks approved source/provenance
+  metadata or a verified file. Constellations, artworks, maps, scientific
+  diagrams, cultural artifacts, species, historical objects, named places, and
+  similar factual references must not be replaced by random generated images.
 
 Do not crop a six-image contact sheet at runtime as the normal path. A contact
 sheet may be used as a review reference or temporary fixture only when clearly
@@ -241,6 +245,8 @@ Expected outcome:
 - Manifest paths resolve to browser-safe public URLs.
 - Required assets are present or fail import with a useful error.
 - Optional missing assets use declared fallback behavior.
+- Reference-bound assets preserve the approved source identity and surface
+  provenance or verification status for reviewers.
 
 ### Demo Runtime And API State
 
@@ -339,6 +345,9 @@ This plan is complete when:
 - entity binding is explicit;
 - generated game frontmatter parses and runs through existing Cat1/Cat5 flows;
 - assets resolve from `asset_manifest.yaml` into browser-safe URLs;
+- reference-bound assets are accepted only when source/provenance and verified
+  files are present, or the activity is blocked/degraded with an explicit
+  reason;
 - unsupported and degraded mechanics are gated honestly;
 - activity selection reflects support and asset readiness;
 - device preview mode matches the prototype direction and keeps horizontal

@@ -27,6 +27,9 @@ lens/screen, mint left grip, mint top-right scroll control, small gray button, a
 - Add only the minimum Cat3 flow support needed for Guided Drawing.
 - Keep the v1 UI text-only: typed input and AI text output only.
 - Do not show microphone, TTS, audio, photo upload, or camera controls in v1.
+- Generate style-consistent static activity display assets with Codex's internal imagegen workflow during implementation,
+  then store the selected assets and manifest in the repo.
+- Do not generate activity display assets invisibly at runtime.
 - Use the word "activity" in product UI and docs for selectable items. Use "concept" only for educational fields such
   as "Core IB Key Concepts".
 
@@ -129,6 +132,45 @@ The v1 device is mostly representational, but its physical controls should map t
   - It is secondary and must not compete with the text input.
 
 The text input remains the only way to send child responses in v1.
+
+## Activity Display Assets
+
+The exported activity bundle includes visual exports, but they are not sufficient as final in-device assets. They are
+not style-consistent with the provided WonderLens device appearance, and some files are contact-sheet style images with
+multiple small phase panels inside one image.
+
+V1 should include static display assets for activity identity and in-device phase display. These are visual support for
+the activity, not user input or AI output controls. "Text-only" means the child interacts through typed text only.
+
+Asset generation requirements:
+
+- Use Codex's internal imagegen skill/tooling during implementation, not a separate app API or backend runtime API.
+- Generate assets before or during development, then copy selected outputs into committed project paths.
+- Keep original generated outputs outside the repo untouched unless copied into the project intentionally.
+- Store final selected assets under a clear path such as `frontend/public/activity-assets/<activity_id>/`.
+- Add a visible manifest mapping each activity to its icon, phase images, fallback label, and intended screen usage.
+- Use exported visual assets only as semantic/reference material, not as final UI assets when they conflict with the
+  device style.
+- Use a shared WonderLens asset prompt/style guide so all activity assets share the device's soft white, mint,
+  rounded-toy material language.
+- Avoid in-image text wherever possible. Activity titles and prompts should be rendered by the UI for accessibility and
+  localization.
+- If a generated asset is missing or fails to load, the lens must show an honest text fallback instead of implying an
+  image is present.
+
+Recommended v1 asset set:
+
+- One activity icon/thumbnail per activity for the activity library.
+- Three lens phase images per activity: intro/setup, active play, and recap/payoff.
+- If a specific activity needs finer granularity, add extra phase images in the manifest without changing UI code.
+
+Asset generation must be inspectable:
+
+- The prompts or prompt templates should live in the repo.
+- Generated file paths should be listed in the manifest.
+- Regeneration steps should be documented in the implementation plan or a follow-up authoring guide.
+- The running activity game should only render assets already present in the repo or served from the local frontend
+  public path.
 
 ## Backend Architecture
 
@@ -252,7 +294,7 @@ Operator requirements:
 - No TTS or audio playback.
 - No image upload.
 - No camera/photo recognition.
-- No generated image assets for each activity.
+- No runtime image generation for activity assets.
 - No replacement of existing Cat1/Cat5 turn flow.
 - No broad frontend redesign outside the standalone activity game route/surface.
 - No dependency upgrades.
@@ -298,6 +340,8 @@ Most relevant design references:
 - The brief uses "activity" for product vocabulary and reserves "concept" for IB metadata only.
 - The device proportions and top-right scroll control are explicit requirements.
 - The v1 scope is text-only even though the repo supports STT, TTS, and photo upload elsewhere.
+- Static activity display assets are now explicitly in scope, with build-time Codex imagegen generation and visible
+  manifests rather than runtime generation.
 - Existing Cat1/Cat5 runtime behavior is preserved.
 - Cat3 is scoped as the only new flow gap.
 - Future activity authoring is included as a design requirement, not left as an afterthought.

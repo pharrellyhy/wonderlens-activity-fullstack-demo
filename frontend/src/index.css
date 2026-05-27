@@ -531,9 +531,11 @@
 /* Standalone activity text game */
 .activity-game {
   display: grid;
+  height: 100dvh;
   min-height: 100dvh;
   grid-template-columns: minmax(15rem, 19rem) minmax(18rem, 1fr) minmax(18rem, 25rem);
   gap: 1rem;
+  overflow: hidden;
   padding: 1rem;
   background:
     radial-gradient(circle at 8% 12%, oklch(0.96 0.045 145), transparent 24rem),
@@ -593,7 +595,9 @@
 
 .activity-game__list {
   display: grid;
+  flex: 1;
   gap: 0.5rem;
+  min-height: 0;
   overflow: auto;
   padding-right: 0.2rem;
 }
@@ -708,7 +712,7 @@
 
 .activity-transcript__messages {
   display: flex;
-  min-height: 15rem;
+  min-height: 10rem;
   flex: 1;
   flex-direction: column;
   gap: 0.55rem;
@@ -810,7 +814,9 @@
 
 @media (max-width: 760px) {
   .activity-game {
+    height: auto;
     grid-template-columns: 1fr;
+    overflow: visible;
     padding: 0.7rem;
   }
 

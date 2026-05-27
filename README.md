@@ -2,6 +2,8 @@
 
 A split-view interactive browser demo with a multi-agent backend that validates the WonderLens agent architecture spec. Users select a photo of a toy or nature object, then a multi-agent pipeline generates a structured JSON recipe that drives a guided, voice-enabled activity for young children (ages 2–8).
 
+The repo also includes a standalone activity text game at `/?view=activities`. It uses the same backend turn engine, but starts from authored activity exports and supports typed child input/output only.
+
 ## Architecture
 
 ```
@@ -58,6 +60,8 @@ npm run dev   # Vite dev server on port 5173
 
 Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` requests to the backend on port 8000.
 
+For the standalone activity text game, open [http://localhost:5173/?view=activities](http://localhost:5173/?view=activities).
+
 ### Environment Variables
 
 | Variable | Description |
@@ -108,6 +112,7 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 │   ├── entity_registry.py   # Single source of truth for all entity config
 │   ├── recipe_loader.py     # Recipe loading + session state builder
 │   ├── state_machine.py     # Step progression + screen frame selection
+│   ├── activity_catalog.py  # Standalone activity catalog helpers
 │   ├── game_loader.py       # Game *.md loader
 │   ├── game_parser.py       # YAML frontmatter parser
 │   ├── scenarios.py         # Scenario registry
@@ -120,8 +125,11 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 │   ├── stt_stream.py        # Browser Opus STT WebSocket protocol
 │   └── tts.py               # Text-to-speech (Vertex AI)
 ├── frontend/
+│   ├── public/
+│   │   └── activity-assets/ # Static standalone activity display assets
 │   └── src/
 │       ├── App.jsx         # Main React app
+│       ├── activityGame/   # Standalone activity text game UI
 │       ├── components/     # UI components
 │       ├── widgets/        # Device screen widgets
 │       ├── hooks/          # React hooks
@@ -136,6 +144,8 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/start` | POST | Start session — runs agent pipeline, returns recipe + first turn |
+| `/api/activities` | GET | List standalone authored activities |
+| `/api/start-activity` | POST | Start a standalone text activity from an authored activity id |
 | `/api/start-deep-link` | POST | Start session from an upstream app deep link |
 | `/api/turn` | POST | Process user turn — returns dialogue + screen frame |
 | `/api/turn-speak` | POST | Combined turn + TTS — streams JSON header + PCM audio |
@@ -154,7 +164,20 @@ Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` request
 | **Visual** | Rule-based | ~10ms | Selects screen widgets, assigns assets, sequences frames |
 | **Assembler** | Merge + validate | — | Combines Script + Visual into a validated JSON recipe |
 
-Demo entities use pre-authored instruction recipes — the Script Agent generates contextual responses per turn guided by step instructions with goals and constraints. Custom photo uploads run the full pipeline. Entity configuration is centralized in `entity_registry.py` with startup validation.
+Demo entities and standalone activities use pre-authored instruction recipes — the Script Agent generates contextual responses per turn guided by step instructions with goals and constraints. Custom photo uploads run the full pipeline. Entity configuration is centralized in `entity_registry.py` with startup validation.
+
+## Standalone Activity Text Game
+
+The activity game is available at `/?view=activities`. It currently includes 12 authored activities generated from the activity export packet:
+
+- Text-only child input/output: no microphone, TTS controls, photo upload, or camera-recognition controls in this surface.
+- Activity selection from `/api/activities`.
+- Session start through `/api/start-activity` with `interaction_mode: "text"`.
+- Normal turn progression through `/api/turn`.
+- Cat1, Cat3, and Cat5 activity flows, including the new Cat3 guided-build path.
+- Static display art from `frontend/public/activity-assets/`, mapped to runtime beats in `activity-assets.manifest.json`.
+
+See `docs/activity-authoring.md` for the reusable workflow for adding new activities and assets.
 
 ## Demo Activities
 

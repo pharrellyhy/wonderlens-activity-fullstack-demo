@@ -1,6 +1,35 @@
 # Session Handoff
 
-Last updated: 2026-05-08
+Last updated: 2026-05-27
+
+---
+
+## Standalone Activity Text Game
+
+**Problem**: The exported WonderLens activity packet needed a standalone frontend game that matches the prototype device appearance, runs inside this repo's feature worktree, calls the existing demo backend, and supports typed input/output only for now. The previous runtime had Cat1 and Cat5 flows, but not the Cat3 guided-build flow needed by the exported activities.
+
+**Solution**: Added a standalone `/?view=activities` React surface with an activity library, transcript, typed response form, and a WonderLens device companion. The device preserves the white/mint prototype proportions, includes the top-right scroll rocker, and uses committed static beat assets generated with Codex imagegen. Backend support now exposes the 12 authored activities, starts text sessions through the existing Script Agent path, and adds Cat3 flow support.
+
+**Edits**:
+- `backend/activity_catalog.py`, `backend/server.py` — added `GET /api/activities` and `POST /api/start-activity`.
+- `backend/games/activity_*.md` — added 12 authored activity recipes from the export packet.
+- `backend/schemas/creative_slots.py`, `backend/game_parser.py`, `backend/state_machine.py`, `backend/turn_handling/*`, `backend/agents/script_agent.py`, `backend/skills/step_instructions/cat3_*.md` — added Cat3 guided-build support.
+- `backend/schemas/session_state.py`, `backend/recipe_loader.py`, `backend/turn_handling/collection.py` — added text interaction mode and Cat5 typed collection support.
+- `frontend/src/activityGame/*`, `frontend/src/App.jsx`, `frontend/src/index.css`, `frontend/src/utils/api.js` — added the standalone activity UI, text-session hook, and prototype device frame.
+- `frontend/public/activity-assets/` — added static activity icons and per-beat display assets with `activity-assets.manifest.json`.
+- `docs/activity-authoring.md`, `docs/plans/2026-05-27-activity-text-game.md`, `docs/superpowers/specs/2026-05-27-activity-text-game-design.md` — documented the design and reuse workflow.
+
+**NOT Changed**:
+- The original photo-upload, STT, TTS, and full split-view demo remains reachable at `/`.
+- The standalone activity game intentionally does not render mic, TTS, speech, camera, or photo-upload controls.
+- Static display assets are committed files; runtime does not call an image generation API for them.
+
+**Verification**:
+- `uv run pytest backend/tests/test_activity_text_game_api.py backend/tests/test_activity_text_game_definitions.py backend/tests/test_activity_text_game_cat3.py backend/tests/test_activity_text_game_turns.py -q` — 8 passed.
+- `npm test -- tests/activityAssets.test.js tests/useActivityTextSession.test.jsx tests/WonderLensDevice.test.jsx tests/ActivityGameApp.test.jsx` — 7 passed.
+- `npm run build` — passed; Vite emitted the existing large chunk warning.
+- Live backend started from the feature worktree while sourcing the original backend `.env` and Google credential JSON. `GET /api/activities`, Cat1 start, Cat3 start, Cat5 start, and a typed Cat3 `/api/turn` smoke call all returned `status: ok`.
+- Browser verification at `http://127.0.0.1:5173/?view=activities` confirmed 12 activities, no forbidden voice/photo controls, no "concept" selection wording, visible text input, full device visibility at 1280x720, visible top-right scroll rocker, working scroll selection, working activity start, typed child message display, and no app console warnings/errors.
 
 ---
 

@@ -75,12 +75,8 @@ def test_activity_catalog_returns_exported_activities() -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["count"] == 12
-    assert body["activities"][0]["kind"] == "activity"
-    assert {activity["id"] for activity in body["activities"]} >= {
-        "activity_phoneme_treasure_hunt",
-        "activity_guided_drawing",
-    }
+    assert body["count"] == len(body["activities"])
+    assert isinstance(body["activities"], list)
     assert "Choose a concept" not in str(body)
 
 
@@ -206,7 +202,7 @@ Run:
 uv run pytest backend/tests/test_activity_text_game_api.py::test_start_activity_rejects_unknown_activity -q
 ```
 
-Expected: PASS.
+Expected: PASS for the API shell. The exact 12-activity catalog assertion is added in Task 3, after the activity files exist.
 
 **Step 5: Commit**
 

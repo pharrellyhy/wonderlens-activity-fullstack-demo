@@ -35,6 +35,15 @@ class TestMatchScenario:
     def test_filename_fallback_matches_keyword(self) -> None:
         assert match_scenario("unknown", [], filename="ladybug.jpg") == "polka_dot_patrol"
 
+    def test_filename_fallback_matches_whole_keyword_token(self) -> None:
+        assert match_scenario("unknown", [], filename="lion_upload.png") == "brave_things_hunt_lion"
+
+    def test_filename_fallback_does_not_match_keyword_inside_longer_token(self) -> None:
+        assert match_scenario("unknown", [], filename="live_dandelion_upload.png") == "fluffy_expedition_dandelion"
+
+    def test_filename_fallback_matches_multi_token_keyword(self) -> None:
+        assert match_scenario("unknown", [], filename="green_apple_upload.png") == "apple_what_happens_next_green_apple"
+
     def test_filename_fallback_ignores_short_unrelated_name(self) -> None:
         assert match_scenario("unknown", [], filename="c.jpg") == "mood_changer_dog"
 

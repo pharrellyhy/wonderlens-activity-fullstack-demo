@@ -4,6 +4,42 @@ Last updated: 2026-05-27
 
 ---
 
+## Scenario Filename Token Matching
+
+**Problem**: Custom-upload filename fallback matched scenario keywords as raw
+substrings. During live validation, `live_dandelion_upload.png` routed to the
+lion activity because `lion` appears inside `dandelion`, even though the vision
+provider correctly identified the uploaded image as a dandelion.
+
+**Solution**: Kept the existing entity-name substring behavior, but made
+filename fallback stricter. Filename stems and keywords are now normalized into
+lowercase alphanumeric tokens, and filename fallback only matches whole-token
+keywords or contiguous multi-token keyword phrases.
+
+**Edits**:
+- `backend/scenarios.py` - added token normalization helpers and changed the
+  filename fallback matcher to use whole-token comparisons.
+- `tests/test_scenarios.py` - added regressions for `live_dandelion_upload.png`,
+  `lion_upload.png`, and a multi-token `green_apple_upload.png` filename.
+
+**NOT Changed**:
+- Existing entity string substring matching, such as `stuffed dog toy`, is
+  unchanged.
+- No provider, vision, or activity registry behavior was changed.
+
+**Verification**:
+- Red test first: `tests/test_scenarios.py::TestMatchScenario::test_filename_fallback_does_not_match_keyword_inside_longer_token`
+  failed with `brave_things_hunt_lion`.
+- `PYTHONDONTWRITEBYTECODE=1 uv run pytest tests/test_scenarios.py::TestMatchScenario -q -p no:cacheprovider` - 15 passed.
+- `PYTHONDONTWRITEBYTECODE=1 uv run pytest tests/test_scenarios.py tests/test_entity_registry.py tests/test_api.py::TestStartEndpoint -q -p no:cacheprovider` - 72 passed, 1 skipped.
+- `uv run ruff check backend/scenarios.py tests/test_scenarios.py` - passed.
+- `git diff --check` - passed.
+- Direct matcher smoke confirmed `live_dandelion_upload.png -> fluffy_expedition_dandelion`,
+  `lion_upload.png -> brave_things_hunt_lion`, and
+  `green_apple_upload.png -> apple_what_happens_next_green_apple`.
+
+---
+
 ## Autodesign Package Demo Import
 
 **Problem**: The fullstack demo could not consume the new autodesign demo
@@ -379,40 +415,3 @@ uv run python tools/capture_synthesis_baselines.py && git diff --stat tests/fixt
 - Import smoke tests: progressive delivery, caption threading, brace-escape, `_build_achievement_prompt`, `_condense_caption` edge cases, `TurnDirective` dict / string / default / alias / merge all pass
 - `cd frontend && npx vite build` — clean (85 modules)
 - LLM regression test: the exact failing `TurnDirective` payload from the playtest log now parses correctly with `screen_widget="binary_choice"`, `screen_widget_params={"options": [...]}`
-
----
-
-## Scene-by-Scene Story Images + Achievement Image
-
-**Problem**: Cat5 story synthesis delivered a single monolithic text story with no visual accompaniment. The story felt disconnected from the collection experience — no illustrations, no scene-by-scene pacing, and the celebrate step used a generic explorer map instead of showing the characters together.
-
-**Solution**: Added Imagen 3 watercolor illustration generation (3 scene images + 1 achievement image) to the Cat5 synthesis flow. Stories are now structured as 3 scenes delivered turn-by-turn with auto-advance, each with a narration + generated illustration. The celebrate step shows a generated achievement image of all characters together. Graceful fallback: if structured generation or Imagen fails, the monolithic story path is preserved.
-
-**Edits**:
-- `backend/image_gen.py` — NEW: Imagen 3 module with dual-auth (Vertex AI / API key), parallel generation, base64 data URL output, retry on rate-limit
-- `backend/config.py` — Added `imagen_model` and `imagen_enabled` settings
-- `backend/.env.example` — Added Imagen 3 comment block
-- `backend/schemas/structured_story.py` — NEW: `StoryScene` and `StructuredStory` Pydantic models
-- `backend/schemas/__init__.py` — Exported new schemas
-- `backend/schemas/session_state.py` — Added `structured_story` and `current_scene` fields
-- `backend/skills/step_instructions/cat5_step4_synthesis__story_generation.md` — Restructured from monolithic prose to 3-scene JSON output with image descriptions
-- `backend/turn_handling/synthesis.py` — Added `_generate_structured_story()` (LLM → JSON parse → parallel Imagen), `_deliver_scene()` (deterministic auto-advance), modified `_generate_and_advance()` with structured-first fallback
-- `backend/turn_handling/helpers.py` — Added `structured_story` to `_state_context`
-- `backend/state_machine.py` — Added Cat5 celebrate step achievement_image widget override before explorer map return
-- `backend/skills/step_instructions/cat5_step5_celebrate.md` — Updated widget reference to achievement_image
-- `frontend/src/widgets/StoryScene.jsx` — NEW: Scene progress dots + watercolor illustration
-- `frontend/src/widgets/StoryLoading.jsx` — NEW: Animated loading state during generation
-- `frontend/src/widgets/AchievementImage.jsx` — NEW: Achievement illustration with character names + IB concepts
-- `frontend/src/components/DeviceScreen.jsx` — Registered 3 new widgets in WIDGET_MAP + getFrameKey
-
-**NOT Changed**:
-- Existing monolithic story path (fully preserved as fallback)
-- Cat1 activities (no scene images)
-- Turn Director, intent classification, state machine transitions
-- Frontend conversation flow, TTS/STT pipeline
-- Agent pipeline (Director → Script → Visual → Assembler)
-
-**Verification**:
-- `uv run ruff check . && uv run ruff format --check .` — PASS
-- `uv run pytest -x -q --ignore=tests/test_ai_quality.py` — 36 passed (2 pre-existing failures excluded: `test_muted_tts_path_does_not_play_outros_twice`, `test_device_screen_keeps_widget_area_centered_on_tall_viewports`)
-- `npx vite build` — clean (82 modules)

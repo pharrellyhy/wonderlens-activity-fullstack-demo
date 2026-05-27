@@ -22,6 +22,11 @@ export default function ActivityLens({
   const total = progress?.total || sessionState?.total_rounds || 3;
   const current = progress?.current ?? sessionState?.current_round ?? 0;
   const visibleTokens = savedTokens.slice(-3);
+  const textDensity = latestAiText.length > 180
+    ? 'is-dense'
+    : latestAiText.length > 100
+      ? 'is-compact'
+      : '';
 
   return (
     <div className="activity-lens">
@@ -39,7 +44,7 @@ export default function ActivityLens({
           {mechanic ? <span className="activity-lens__mechanic">{mechanic}</span> : null}
         </div>
         <ProgressDots current={current} total={total} />
-        {latestAiText ? <p className="activity-lens__text">{latestAiText}</p> : null}
+        {latestAiText ? <p className={`activity-lens__text ${textDensity}`.trim()}>{latestAiText}</p> : null}
         {visibleTokens.length ? (
           <div className="activity-lens__tokens" aria-label="Saved child text">
             {visibleTokens.map((token, index) => (

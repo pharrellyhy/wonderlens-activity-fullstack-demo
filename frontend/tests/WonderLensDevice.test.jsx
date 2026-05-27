@@ -16,7 +16,7 @@ describe('WonderLensDevice', () => {
     render(
       <WonderLensDevice
         activity={{ name: 'Word Echo Practice', mechanic: 'remember' }}
-        latestAiText="Repeat after me."
+        latestAiText="Repeat after me. Now try the long gentle echo again with your clearest voice so the device can keep showing the whole prompt."
         progress={{ current: 1, total: 3 }}
         assetSrc="/activity-assets/activity_word_echo_practice/intro.png"
         savedTokens={['ready']}
@@ -32,7 +32,7 @@ describe('WonderLensDevice', () => {
     expect(screen.getByLabelText('Next activity')).toBeTruthy();
     expect(screen.getByLabelText('Start or restart activity')).toBeTruthy();
     expect(screen.getByText('Word Echo Practice')).toBeTruthy();
-    expect(screen.getByText('Repeat after me.')).toBeTruthy();
+    expect(screen.getByText(/Repeat after me/).className).toContain('is-compact');
     expect(screen.getByAltText('Word Echo Practice visual')).toBeTruthy();
   });
 
@@ -45,6 +45,10 @@ describe('WonderLensDevice', () => {
     expect(cssBlock('.wonderlens-device__scroll')).toContain('height: 14.3%');
     expect(cssBlock('.wonderlens-device__scroll')).toContain('border-radius: 0 999px 999px 0');
     expect(cssBlock('.activity-lens__text')).toContain('background: oklch(0.16 0.018 155 / 0.82)');
+    expect(cssBlock('.activity-lens__text')).toContain('overflow-y: auto');
+    expect(cssBlock('.activity-lens__text')).not.toContain('-webkit-line-clamp');
+    expect(cssBlock('.activity-lens__text.is-compact')).toContain('font-size: 0.7rem');
+    expect(cssBlock('.activity-lens__text.is-dense')).toContain('font-size: 0.64rem');
     expect(cssBlock('.wonderlens-device__small-button')).toContain('right: 7.5%');
     expect(cssBlock('.wonderlens-device__primary')).toContain('bottom: 5.8%');
   });

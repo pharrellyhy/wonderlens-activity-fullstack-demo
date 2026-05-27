@@ -512,22 +512,44 @@
 }
 
 .activity-lens__text {
-  display: -webkit-box;
   max-width: 12rem;
+  max-height: 6.9rem;
   margin: 0;
-  overflow: hidden;
+  overflow-y: auto;
   border: 1px solid oklch(0.95 0.02 150 / 0.24);
   border-radius: 0.72rem;
   background: oklch(0.16 0.018 155 / 0.82);
   box-shadow: 0 0.45rem 0.9rem oklch(0.04 0.006 150 / 0.36);
   color: oklch(0.98 0.01 150);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
   padding: 0.48rem 0.56rem;
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.22;
+  scrollbar-color: oklch(0.82 0.08 145 / 0.72) transparent;
+  scrollbar-width: thin;
   text-shadow: none;
+}
+
+.activity-lens__text.is-compact {
+  max-height: 7.35rem;
+  font-size: 0.7rem;
+  line-height: 1.18;
+}
+
+.activity-lens__text.is-dense {
+  max-height: 7.7rem;
+  font-size: 0.64rem;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.activity-lens__text::-webkit-scrollbar {
+  width: 0.26rem;
+}
+
+.activity-lens__text::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: oklch(0.82 0.08 145 / 0.72);
 }
 
 .activity-lens__tokens {
@@ -560,6 +582,14 @@
 
   .activity-lens__text {
     font-size: 0.72rem;
+  }
+
+  .activity-lens__text.is-compact {
+    font-size: 0.66rem;
+  }
+
+  .activity-lens__text.is-dense {
+    font-size: 0.6rem;
   }
 }
 

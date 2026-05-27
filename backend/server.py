@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 try:
     from . import feedback_storage
+    from .activity_catalog import activity_summaries, is_text_game_activity
     from .agents.pipeline import initialize_session
     from .agents.script_agent import ScriptAgent
     from .character_sounds import pick_fallback_cue, validate_character_sfx
@@ -32,6 +33,7 @@ try:
         ENTITY_REGISTRY,
         all_entities_for_api,
         generate_round_items,
+        get_entity_or_none,
         is_demo_entity,
         lookup_by_entity_name,
         validate_registry,
@@ -73,6 +75,7 @@ try:
     from .vision import analyze_image
 except ImportError:
     import feedback_storage
+    from activity_catalog import activity_summaries, is_text_game_activity
     from agents.pipeline import initialize_session
     from agents.script_agent import ScriptAgent
     from character_sounds import pick_fallback_cue, validate_character_sfx
@@ -82,6 +85,7 @@ except ImportError:
         ENTITY_REGISTRY,
         all_entities_for_api,
         generate_round_items,
+        get_entity_or_none,
         is_demo_entity,
         lookup_by_entity_name,
         validate_registry,
@@ -184,6 +188,12 @@ class DeepLinkStartRequest(BaseModel):
     conversation_context: list[UpstreamConversationTurn] = Field(default_factory=list)
 
 
+class ActivityStartRequest(BaseModel):
+    activity_type: str
+    tier: str = "T1"
+    interaction_mode: str = "text"
+
+
 # --- Endpoints ---
 
 
@@ -196,6 +206,24 @@ async def health() -> dict:
 async def list_entities() -> JSONResponse:
     """Return all demo entities grouped by category for the frontend."""
     return JSONResponse({"categories": all_entities_for_api()})
+
+
+@app.get("/api/activities")
+async def list_activities() -> JSONResponse:
+    """Return standalone text-game activities for the frontend."""
+    summaries = [activity.model_dump() for activity in activity_summaries()]
+    return JSONResponse({"count": len(summaries), "activities": summaries})
+
+
+@app.post("/api/start-activity")
+async def start_activity(req: ActivityStartRequest) -> JSONResponse:
+    """Start a standalone activity text-game session."""
+    entity_config = get_entity_or_none(req.activity_type)
+    if not entity_config or not is_text_game_activity(entity_config):
+        return JSONResponse({"error": "unknown_activity"}, status_code=404)
+    if req.interaction_mode != "text":
+        return JSONResponse({"error": "unsupported_interaction_mode"}, status_code=422)
+    return JSONResponse({"error": "activity_start_not_implemented"}, status_code=501)
 
 
 @app.post("/api/start-deep-link")

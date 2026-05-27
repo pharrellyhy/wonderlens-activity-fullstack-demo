@@ -62,6 +62,9 @@ class EntityConfig(BaseModel):
     plain_description: str = ""
     steps_summary: list[str] = []
     play_rounds: int | None = None
+    activity_set: str = ""
+    source_export_id: str = ""
+    mechanic: str = ""
 
 
 # --- Registry data (populated by game_loader at import time) ---
@@ -115,6 +118,11 @@ def get_entity(activity_type: str) -> EntityConfig:
     if not entity:
         raise KeyError(f"Unknown activity type: {activity_type}")
     return entity
+
+
+def get_entity_or_none(activity_type: str) -> EntityConfig | None:
+    """Look up an entity config by activity type, returning None if missing."""
+    return _BY_ACTIVITY_TYPE.get(activity_type)
 
 
 def get_creative_slots(activity_type: str) -> CreativeSlots:
@@ -216,6 +224,9 @@ def _build_entity_summary(entity: EntityConfig) -> dict:
         "role_title": slots.role_title,
         "plain_description": entity.plain_description,
         "steps_summary": entity.steps_summary,
+        "activity_set": entity.activity_set,
+        "source_export_id": entity.source_export_id,
+        "mechanic": entity.mechanic,
     }
 
     if isinstance(slots, Cat1CreativeSlots):

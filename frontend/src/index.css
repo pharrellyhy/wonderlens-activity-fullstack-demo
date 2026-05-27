@@ -45,6 +45,176 @@
   border: 1px solid color-mix(in srgb, var(--color-sky) 30%, transparent);
 }
 
+.prototype-device {
+  --prototype-shell: oklch(94% 0.018 80);
+  --prototype-shell-edge: oklch(82% 0.028 82);
+  --prototype-mint: oklch(80% 0.09 178);
+  --prototype-screen: oklch(18% 0.025 205);
+  position: relative;
+  width: min(100%, 23rem, 48dvh);
+  max-height: 100%;
+  aspect-ratio: 1.08;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 1.2rem 1.8rem color-mix(in srgb, var(--color-forest-dark) 16%, transparent));
+}
+
+.prototype-device--compact {
+  width: min(100%, 17rem, 38dvh);
+}
+
+.prototype-device__face {
+  width: 86%;
+  aspect-ratio: 1;
+  border-radius: 2.4rem;
+  background:
+    radial-gradient(circle at 35% 24%, color-mix(in srgb, var(--prototype-shell) 96%, white), var(--prototype-shell) 58%),
+    var(--prototype-shell);
+  border: 1px solid var(--prototype-shell-edge);
+  box-shadow:
+    inset 0 0.35rem 0.8rem color-mix(in srgb, white 62%, transparent),
+    inset 0 -0.65rem 1rem color-mix(in srgb, var(--prototype-shell-edge) 42%, transparent);
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.prototype-device__screen {
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 42%, oklch(25% 0.032 210), var(--prototype-screen));
+  border: 0.45rem solid oklch(26% 0.02 210);
+  box-shadow:
+    inset 0 0 1.1rem color-mix(in srgb, black 28%, transparent),
+    0 0.45rem 0.8rem color-mix(in srgb, var(--prototype-shell-edge) 30%, transparent);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.prototype-device__side,
+.prototype-device__button {
+  position: absolute;
+  background: var(--prototype-mint);
+  border: 1px solid color-mix(in srgb, var(--prototype-mint) 70%, var(--prototype-screen));
+  box-shadow: inset 0 0.2rem 0.35rem color-mix(in srgb, white 45%, transparent);
+}
+
+.prototype-device__side {
+  left: 0.15rem;
+  top: 37%;
+  width: 1.5rem;
+  height: 4.8rem;
+  border-radius: 1.1rem;
+}
+
+.prototype-device__button {
+  right: 0.6rem;
+  top: 18%;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+}
+
+.prototype-device__controls {
+  position: absolute;
+  bottom: 1.15rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.prototype-device__controls span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--prototype-mint);
+}
+
+.round-device-preview {
+  width: 100%;
+  height: 100%;
+  padding: 14%;
+  color: oklch(96% 0.012 95);
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  align-items: center;
+  justify-items: center;
+  gap: 0.45rem;
+  text-align: center;
+}
+
+.round-device-preview__status {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.round-device-preview__title {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+.round-device-preview__speak {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--prototype-mint) 26%, transparent);
+  padding: 0.1rem 0.35rem;
+  color: oklch(91% 0.052 178);
+}
+
+.round-device-preview__image {
+  width: 64%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: oklch(94% 0.018 95);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: 0 0.35rem 0.7rem color-mix(in srgb, black 22%, transparent);
+}
+
+.round-device-preview__image img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+}
+
+.round-device-preview p {
+  max-width: 12ch;
+  max-height: 2.3em;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 0.72rem;
+  line-height: 1.12;
+  font-weight: 700;
+}
+
+.round-device-preview__dots {
+  display: flex;
+  gap: 0.28rem;
+}
+
+.round-device-preview__dot {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, white 24%, transparent);
+}
+
+.round-device-preview__dot--filled {
+  background: var(--prototype-mint);
+}
+
 
 /* Easing tokens — natural deceleration curves */
 :root {

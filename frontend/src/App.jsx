@@ -7,6 +7,8 @@ import PhotoSelector from './components/PhotoSelector';
 import PhotoGallery from './components/PhotoGallery';
 import RetryButton from './components/RetryButton';
 import ToyCameraFrame from './components/ToyCameraFrame';
+import PrototypeDeviceFrame from './components/PrototypeDeviceFrame';
+import RoundDevicePreview from './components/RoundDevicePreview';
 import ModePill from './components/feedback/ModePill';
 import FeedbackFlagButton from './components/feedback/FeedbackFlagButton';
 import FeedbackQuickFlag from './components/feedback/FeedbackQuickFlag';
@@ -95,6 +97,7 @@ function deriveFeedbackActivity({ templateType, activityType }) {
 function App() {
   const [tier, setTier] = useState('T0');
   const [debugOpen, setDebugOpen] = useState(false);
+  const [deviceViewMode, setDeviceViewMode] = useState('prototype');
 
   // Tester-feedback mode state — parallel surface gated by appMode.
   const [appMode, setAppMode] = useState(() => getInitialAppMode());
@@ -383,31 +386,74 @@ function App() {
           }
           aria-label="Device screen"
         >
-          <ToyCameraFrame videoMode={!!currentClipUrl}>
-            {showPhotoGallery ? (
-              <PhotoGallery
-                onPhotoSelect={sendPhotoCollection}
-                collectedPhotos={sessionState?.collected_photos || []}
-                totalToCollect={sessionState?.total_rounds || 3}
-                wrongPhotoId={lastWrongPhotoId}
-                items={sessionState?.current_round_items || []}
-                criterion={sessionState?.collection_criterion || ''}
-              />
-            ) : (
-              <DeviceScreen
-                screenFrame={screenFrame}
-                photoUrl={photoUrl}
-                sessionState={sessionState}
-                clipUrl={currentClipUrl}
-                isOneShot={isOneShot}
-                onClipEnded={onClipEnded}
-                animationState={animationState}
-                currentScenario={currentScenario}
-                isSpeaking={isSpeaking}
-                activityType={activityType}
-              />
+          <div className="mb-2 flex justify-end">
+            <div className="inline-flex rounded-full border border-[var(--color-forest)]/20 bg-white/75 p-0.5" aria-label="Device preview mode">
+              <button
+                type="button"
+                onClick={() => setDeviceViewMode('prototype')}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${deviceViewMode === 'prototype' ? 'bg-[var(--color-forest)] text-white' : 'text-[var(--color-forest-dark)] hover:bg-[var(--color-forest)]/10'}`}
+              >
+                Prototype
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeviceViewMode('debug')}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${deviceViewMode === 'debug' ? 'bg-[var(--color-forest)] text-white' : 'text-[var(--color-forest-dark)] hover:bg-[var(--color-forest)]/10'}`}
+              >
+                Debug
+              </button>
+            </div>
+          </div>
+          {deviceViewMode === 'prototype' ? (
+            <div className="h-[calc(100%-2.25rem)] min-h-0 flex flex-col items-center justify-center gap-2">
+              <PrototypeDeviceFrame compact={showPhotoGallery}>
+                <RoundDevicePreview
+                  screenFrame={screenFrame}
+                  photoUrl={photoUrl}
+                  sessionState={sessionState}
+                  isSpeaking={isSpeaking}
+                />
+              </PrototypeDeviceFrame>
+              {showPhotoGallery && (
+                <div className="w-full max-w-xl min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--color-forest)]/15 bg-white/80">
+                  <PhotoGallery
+                    onPhotoSelect={sendPhotoCollection}
+                    collectedPhotos={sessionState?.collected_photos || []}
+                    totalToCollect={sessionState?.total_rounds || 3}
+                    wrongPhotoId={lastWrongPhotoId}
+                    items={sessionState?.current_round_items || []}
+                    criterion={sessionState?.collection_criterion || ''}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <ToyCameraFrame videoMode={!!currentClipUrl}>
+              {showPhotoGallery ? (
+                <PhotoGallery
+                  onPhotoSelect={sendPhotoCollection}
+                  collectedPhotos={sessionState?.collected_photos || []}
+                  totalToCollect={sessionState?.total_rounds || 3}
+                  wrongPhotoId={lastWrongPhotoId}
+                  items={sessionState?.current_round_items || []}
+                  criterion={sessionState?.collection_criterion || ''}
+                />
+              ) : (
+                <DeviceScreen
+                  screenFrame={screenFrame}
+                  photoUrl={photoUrl}
+                  sessionState={sessionState}
+                  clipUrl={currentClipUrl}
+                  isOneShot={isOneShot}
+                  onClipEnded={onClipEnded}
+                  animationState={animationState}
+                  currentScenario={currentScenario}
+                  isSpeaking={isSpeaking}
+                  activityType={activityType}
+                />
+              )}
+            </ToyCameraFrame>
             )}
-          </ToyCameraFrame>
         </section>
 
         {/* BOTTOM — Conversation (takes all remaining space) */}

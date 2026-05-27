@@ -1,0 +1,27 @@
+dashboard_fragment:
+  session:
+    axis: connection
+    angle: pattern
+    mechanic: sort
+    entity_role: catalyst
+    focal_attribute: "child_made_grouping_rule"
+    entry_rung: "{runtime_entry_rung}"
+    exit_rung: "{runtime_exit_rung}"
+    outcome: "{runtime_outcome}"
+
+  contributes_to:
+    curiosity_radial:
+      axis: connection
+      angle: pattern
+    exploration_matrix:
+      cell: "sort by child-made rule"
+    key_concepts_exposure:
+      Connection:
+        angle: pattern
+      Form:
+        angle: pattern
+    atl_skills_trail:
+      - classification
+      - logical_reasoning
+      - communication
+      - organization

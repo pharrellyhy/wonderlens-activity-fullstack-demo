@@ -6,6 +6,7 @@ These tests mock the LLM/Vision/TTS calls and test the full request → response
 import io
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -194,8 +195,34 @@ class TestEntitiesEndpoint:
         assert len(categories) == 2
         assert categories[0]["id"] == "cat1"
         assert categories[1]["id"] == "cat5"
-        assert len(categories[0]["photos"]) == 3
-        assert len(categories[1]["photos"]) == 2
+        cat1_ids = {photo["id"] for photo in categories[0]["photos"]}
+        cat5_ids = {photo["id"] for photo in categories[1]["photos"]}
+        assert {"cat", "dog", "dinosaur"}.issubset(cat1_ids)
+        assert {"dandelion", "ladybug"}.issubset(cat5_ids)
+        assert "dream_whisperer_cat__cat" in cat1_ids
+        assert "fluffy_expedition_dandelion__dandelion" in cat5_ids
+
+    def test_entities_include_imported_autodesign_metadata(self, client: TestClient) -> None:
+        resp = client.get("/api/entities")
+        assert resp.status_code == 200
+        data = resp.json()
+        photos_by_id = {photo["id"]: photo for category in data["categories"] for photo in category["photos"]}
+
+        imported_cat = photos_by_id["dream_whisperer_cat__cat"]
+        assert imported_cat["filename"] == "dream_whisperer_cat__cat.png"
+        assert imported_cat["entity_id"] == "cat"
+        assert imported_cat["src"].startswith("/activity-assets/dream_whisperer_cat__cat/")
+        assert imported_cat["summary"]["source"] == "autodesign"
+        assert imported_cat["summary"]["support_status"] == "supported"
+        assert imported_cat["summary"]["asset_readiness"] == "ready"
+        assert imported_cat["summary"]["entity_binding"]["entity_id"] == "cat"
+
+        degraded_demo = photos_by_id["concept_phoneme_hunt_collect__ball"]
+        assert degraded_demo["src"].startswith("/activity-assets/concept_phoneme_hunt_collect__ball/")
+        assert degraded_demo["summary"]["support_status"] == "degraded"
+        assert degraded_demo["summary"]["degraded_reasons"]
+
+        assert "concept_tiny_curator_sort__parameterized_objects" not in photos_by_id
 
     def test_entities_photo_structure(self, client: TestClient) -> None:
         resp = client.get("/api/entities")
@@ -205,6 +232,7 @@ class TestEntitiesEndpoint:
                 assert "id" in photo
                 assert "label" in photo
                 assert "src" in photo
+                assert "filename" in photo
 
     def test_entities_include_game_summary(self, client: TestClient) -> None:
         resp = client.get("/api/entities")
@@ -256,6 +284,120 @@ class TestStartEndpoint:
         assert data["template_type"] == "cat1"
         assert data["first_turn"]["dialogue"] == "[excited] What a cozy dog friend!"
         assert data["session_state"]["current_step"] == "STEP_1_HOOK"
+        mock_vision.assert_not_called()
+        mock_initialize_session.assert_not_called()
+
+    @patch("server.initialize_session", side_effect=AssertionError("live pipeline should be bypassed"))
+    @patch("server.analyze_image", side_effect=AssertionError("vision should be bypassed"))
+    def test_start_session_routes_curated_and_imported_demo_filenames_independently(
+        self,
+        mock_vision: AsyncMock,
+        mock_initialize_session: AsyncMock,
+        client: TestClient,
+    ) -> None:
+        hook_turn = TurnResponse(
+            dialogue="[excited] Ready?",
+            tone_marker="excited",
+            screen_widget="photo_display",
+            screen_widget_params={"description": "Photo", "entity": "cat"},
+            screen_animation="sparkle_highlight",
+            sfx_cue="wonder_chime",
+        )
+
+        with patch("server.ScriptAgent.generate_turn", new=AsyncMock(return_value=hook_turn)):
+            curated_resp = client.post(
+                "/api/start",
+                files={"photo": ("cat.png", io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100), "image/png")},
+                data={"tier": "T0"},
+            )
+            imported_resp = client.post(
+                "/api/start",
+                files={
+                    "photo": (
+                        "dream_whisperer_cat__cat.png",
+                        io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100),
+                        "image/png",
+                    )
+                },
+                data={"tier": "T0"},
+            )
+
+        assert curated_resp.status_code == 200
+        assert imported_resp.status_code == 200
+        assert curated_resp.json()["activity_type"] == "dream_whisperer_cat"
+        assert imported_resp.json()["activity_type"] == "dream_whisperer_cat__cat"
+        mock_vision.assert_not_called()
+        mock_initialize_session.assert_not_called()
+
+    @patch("server.initialize_session", side_effect=AssertionError("live pipeline should be bypassed"))
+    @patch("server.analyze_image", side_effect=AssertionError("vision should be bypassed"))
+    def test_start_session_blocks_demo_with_missing_required_assets(
+        self,
+        mock_vision: AsyncMock,
+        mock_initialize_session: AsyncMock,
+        client: TestClient,
+    ) -> None:
+        blocked_entity = SimpleNamespace(
+            activity_type="dream_whisperer_cat__cat",
+            support_status="supported",
+            asset_readiness="partial",
+            asset_readiness_detail={"required_missing": ["entity_hero"]},
+            support_reasons=[],
+            degraded_reasons=[],
+        )
+        fake_photo = io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+
+        with (
+            patch("server.get_entity", return_value=blocked_entity),
+            patch("server.load_instruction_recipe", side_effect=AssertionError("blocked demo should not load recipe")),
+        ):
+            resp = client.post(
+                "/api/start",
+                files={"photo": ("dream_whisperer_cat__cat.png", fake_photo, "image/png")},
+                data={"tier": "T0"},
+            )
+
+        assert resp.status_code == 400
+        data = resp.json()
+        assert data["status"] == "error"
+        assert data["error"] == "Demo activity is not playable"
+        assert data["asset_readiness_detail"]["required_missing"] == ["entity_hero"]
+        mock_vision.assert_not_called()
+        mock_initialize_session.assert_not_called()
+
+    @patch("server.initialize_session", side_effect=AssertionError("live pipeline should be bypassed"))
+    @patch("server.analyze_image", side_effect=AssertionError("vision should be bypassed"))
+    def test_start_session_blocks_unsupported_demo(
+        self,
+        mock_vision: AsyncMock,
+        mock_initialize_session: AsyncMock,
+        client: TestClient,
+    ) -> None:
+        blocked_entity = SimpleNamespace(
+            activity_type="dream_whisperer_cat__cat",
+            support_status="unsupported",
+            asset_readiness="ready",
+            asset_readiness_detail={},
+            support_reasons=["Unsupported mechanic"],
+            degraded_reasons=[],
+        )
+        fake_photo = io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+
+        with (
+            patch("server.get_entity", return_value=blocked_entity),
+            patch("server.load_instruction_recipe", side_effect=AssertionError("unsupported demo should not load recipe")),
+        ):
+            resp = client.post(
+                "/api/start",
+                files={"photo": ("dream_whisperer_cat__cat.png", fake_photo, "image/png")},
+                data={"tier": "T0"},
+            )
+
+        assert resp.status_code == 400
+        data = resp.json()
+        assert data["status"] == "error"
+        assert data["support_status"] == "unsupported"
+        assert data["support_reasons"] == ["Unsupported mechanic"]
         mock_vision.assert_not_called()
         mock_initialize_session.assert_not_called()
 

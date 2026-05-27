@@ -53,9 +53,9 @@ def _build_entity_config(data: dict) -> EntityConfig:
         activity_type=data["activity_type"],
         category=category,
         entity_name=entity_name,
-        demo_filename=f"{entity_name}.png",
+        demo_filename=data.get("demo_filename", f"{entity_name}.png"),
         display_label=data["display_label"],
-        icon_src=f"/icons/{entity_name}.png",
+        icon_src=data.get("icon_src", f"/icons/{entity_name}.png"),
         keywords=data.get("keywords", []),
         feature_keywords=data.get("feature_keywords", []),
         creative_slots=creative_slots,
@@ -67,6 +67,15 @@ def _build_entity_config(data: dict) -> EntityConfig:
         plain_description=data.get("plain_description", ""),
         steps_summary=data.get("steps_summary", []),
         play_rounds=data.get("play_rounds"),
+        template_type=data.get("template_type", "cat5" if category == "category_5" else "cat1"),
+        source="autodesign" if "autodesign" in data else "curated",
+        support_status=(data.get("demo_support") or {}).get("status", "supported"),
+        support_level=(data.get("demo_support") or {}).get("support_level", "full"),
+        support_reasons=(data.get("demo_support") or {}).get("unsupported_reasons", []),
+        degraded_reasons=(data.get("demo_support") or {}).get("degraded_reasons", []),
+        asset_readiness=(data.get("asset_readiness") or {}).get("status", "ready"),
+        asset_readiness_detail=data.get("asset_readiness", {}),
+        entity_binding=data.get("entity_binding", {}),
     )
 
 

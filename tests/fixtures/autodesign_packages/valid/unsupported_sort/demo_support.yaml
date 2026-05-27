@@ -1,0 +1,21 @@
+activity_id: concept_tiny_curator_sort
+version: 1
+demo_support:
+  status: unsupported
+  ui_template: none
+  support_level: unsupported
+  entity_bindings:
+    - entity_id: parameterized_objects
+      display_label: Child-selected objects
+      source_entity_exemplar: observable_thing
+      default: true
+  requires:
+    generated_assets: false
+    real_camera: true
+    runtime_judgment: true
+    device_round_screen: true
+  unsupported_reasons:
+    - Sorting requires UI state for grouping/ranking objects that the current Cat1/Cat5 demo primitives do not implement.
+  degraded_reasons: []
+  consumer_notes:
+    fullstack_demo: Do not expose this package as playable until a sorting/grouping UI exists.

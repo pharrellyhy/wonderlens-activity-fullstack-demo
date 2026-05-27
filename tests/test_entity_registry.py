@@ -39,7 +39,8 @@ class TestEntityRegistry:
             assert len(entity.feature_keywords) > 0
 
     def test_all_loadable_games_are_registered(self) -> None:
-        assert len(ENTITY_REGISTRY) == 18
+        games_dir = Path(__file__).parent.parent / "backend" / "games"
+        assert len(ENTITY_REGISTRY) == len(list(games_dir.glob("*.md")))
 
     def test_cat5_entities_have_collection_catalogs(self) -> None:
         for entity in ENTITY_REGISTRY:
@@ -112,7 +113,12 @@ class TestLookupFunctions:
             for kw in entity.keywords:
                 assert kw in keyword_map
         for entity in ENTITY_REGISTRY:
-            assert keyword_map[entity.entity_name] == entity.activity_type
+            matching_activity_types = {
+                candidate.activity_type for candidate in ENTITY_REGISTRY if candidate.entity_name == entity.entity_name
+            }
+            assert keyword_map[entity.entity_name] in matching_activity_types
+        assert keyword_map["cat"] == "dream_whisperer_cat"
+        assert keyword_map["dandelion"] == "fluffy_expedition_dandelion"
 
     def test_feature_keyword_map(self) -> None:
         fkw_map = get_feature_keyword_map()
@@ -164,11 +170,18 @@ class TestAllEntitiesForApi:
 
     def test_cat1_has_three_photos(self) -> None:
         result = all_entities_for_api()
-        assert len(result[0]["photos"]) == 3
+        photo_ids = {photo["id"] for photo in result[0]["photos"]}
+        assert photo_ids == {"cat", "dog", "dinosaur", "dream_whisperer_cat__cat"}
 
     def test_cat5_has_two_photos(self) -> None:
         result = all_entities_for_api()
-        assert len(result[1]["photos"]) == 2
+        photo_ids = {photo["id"] for photo in result[1]["photos"]}
+        assert photo_ids == {
+            "concept_phoneme_hunt_collect__ball",
+            "dandelion",
+            "fluffy_expedition_dandelion__dandelion",
+            "ladybug",
+        }
 
     def test_photo_structure(self) -> None:
         result = all_entities_for_api()

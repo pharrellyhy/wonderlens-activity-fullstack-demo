@@ -1,0 +1,77 @@
+activity_id: concept_constellation_star_count_enumerate
+version: 1
+source_entity_exemplar: approved_star_pattern_card
+template_type: cat1
+pillar: Discovery
+game_style: field_experiment
+entity: '{runtime_entity}'
+entity_class: []
+entity_binding: parameterized
+tier_range:
+  primary: T1
+  span:
+  - T0
+  - T1
+  - T2
+  elasticity: neighbor
+category: category_1
+attributes:
+- visible_star_count
+- quantity
+key_concepts:
+- Form
+- Connection
+related_concepts:
+- count
+- pattern
+- group
+- evidence
+atl_skills:
+- counting
+- observation
+- focus
+transdisciplinary_theme: How_The_World_Works
+subject_tags:
+- math
+- science
+kud:
+  know:
+  - A star pattern can be estimated, counted, and checked by position
+  - visible_star_count is the focus of the activity
+  understand:
+  - Form helps children count each visible star in the pattern
+  - Connection helps children compare estimate, final count, and top-bottom grouping
+  do:
+  - make a quick estimate
+  - count visible stars one by one
+  - compare which part of the pattern has more
+progression:
+  topic_axis: form
+  difficulty_level: 2
+  next_step_hint: Try one new answer or explain the reason in more detail next time.
+  reward_hook: Earned the Star Count Scout badge
+caregiver_role:
+- scaffold
+- co-explorer
+activity_signature:
+  observation_angle: quantity
+  mechanic: enumerate
+  entity_role: reference
+  bridge_prerequisites:
+    primary:
+    - quantity
+    secondary:
+    - form
+    - enumerate
+  focal_attribute: visible_star_count
+  intro: The child practices enumerate through Star Pattern Counter.
+  preview_label: Star Pattern Counter
+  preview_prompt: Ready to be the Star Count Scout?
+  role_pivot_note: The runtime entity starts the activity but the package remains
+    concept-led and parameterized.
+matchability:
+  entity_class_filter: []
+  tier_support:
+    T0: true
+    T1: true
+    T2: true

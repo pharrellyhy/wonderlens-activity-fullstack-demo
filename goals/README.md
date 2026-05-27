@@ -20,4 +20,4 @@ blocker, mark it `Blocked` and include a brief reason.
 
 | Goal | Status | Notes |
 |---|---|---|
-| [2026-05-27-autodesign-package-demo-import-goal.md](2026-05-27-autodesign-package-demo-import-goal.md) | Planned | Consumes the autodesign demo contract in fullstack demo after merge or pinned fixture. |
+| [2026-05-27-autodesign-package-demo-import-goal.md](2026-05-27-autodesign-package-demo-import-goal.md) | Completed | Imported pinned autodesign packages, resolved assets, gated support states, and added prototype preview UI. |

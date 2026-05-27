@@ -62,6 +62,15 @@ class EntityConfig(BaseModel):
     plain_description: str = ""
     steps_summary: list[str] = []
     play_rounds: int | None = None
+    template_type: str = ""
+    source: str = "curated"
+    support_status: str = "supported"
+    support_level: str = "full"
+    support_reasons: list[str] = []
+    degraded_reasons: list[str] = []
+    asset_readiness: str = "ready"
+    asset_readiness_detail: dict = {}
+    entity_binding: dict = {}
 
 
 # --- Registry data (populated by game_loader at import time) ---
@@ -97,10 +106,11 @@ def _rebuild_lookups() -> None:
         _BY_ACTIVITY_TYPE[entity.activity_type] = entity
         _BY_DEMO_FILENAME[entity.demo_filename.lower()] = entity
         SCENARIO_CATEGORIES[entity.activity_type] = entity.category
-        # Always register entity_name as a keyword for direct matching
-        _KEYWORD_MAP[entity.entity_name] = entity.activity_type
+        # Keep the first keyword owner so imported demos with the same bound
+        # entity do not steal curated filename/vision matches like cat.png.
+        _KEYWORD_MAP.setdefault(entity.entity_name, entity.activity_type)
         for kw in entity.keywords:
-            _KEYWORD_MAP[kw] = entity.activity_type
+            _KEYWORD_MAP.setdefault(kw, entity.activity_type)
         for fkw in entity.feature_keywords:
             if fkw not in _FEATURE_KEYWORD_MAP:
                 _FEATURE_KEYWORD_MAP[fkw] = entity.activity_type
@@ -135,6 +145,12 @@ def get_category(activity_type: str) -> str:
 def is_demo_entity(filename: str) -> bool:
     """Check if the filename matches a demo entity."""
     return filename.lower() in _BY_DEMO_FILENAME
+
+
+def activity_type_for_filename(filename: str) -> str | None:
+    """Return the exact demo activity type for a filename, if registered."""
+    entity = _BY_DEMO_FILENAME.get(filename.lower())
+    return entity.activity_type if entity else None
 
 
 def entity_name_for_filename(filename: str) -> str:
@@ -216,6 +232,15 @@ def _build_entity_summary(entity: EntityConfig) -> dict:
         "role_title": slots.role_title,
         "plain_description": entity.plain_description,
         "steps_summary": entity.steps_summary,
+        "source": entity.source,
+        "support_status": entity.support_status,
+        "support_level": entity.support_level,
+        "support_reasons": entity.support_reasons,
+        "degraded_reasons": entity.degraded_reasons,
+        "asset_readiness": entity.asset_readiness,
+        "asset_readiness_detail": entity.asset_readiness_detail,
+        "entity_binding": entity.entity_binding,
+        "template_type": entity.template_type,
     }
 
     if isinstance(slots, Cat1CreativeSlots):
@@ -264,7 +289,9 @@ def all_entities_for_api() -> list[dict]:
     """Return entity data structured for the frontend /api/entities endpoint."""
     categories: dict[str, dict] = {}
     for entity in ENTITY_REGISTRY:
-        if entity.entity_name not in _DEMO_ENTITIES:
+        is_curated_demo = entity.entity_name in _DEMO_ENTITIES and entity.source != "autodesign"
+        is_imported_demo = entity.source == "autodesign" and entity.support_status != "unsupported"
+        if not is_curated_demo and not is_imported_demo:
             continue
         cat_id = "cat1" if entity.category == "category_1" else "cat5"
         if cat_id not in categories:
@@ -284,9 +311,15 @@ def all_entities_for_api() -> list[dict]:
                 }
         categories[cat_id]["photos"].append(
             {
-                "id": entity.entity_name,
+                "id": entity.activity_type if entity.source == "autodesign" else entity.entity_name,
                 "label": entity.display_label,
                 "src": entity.icon_src,
+                "filename": entity.demo_filename,
+                "activity_type": entity.activity_type,
+                "entity_id": entity.entity_name,
+                "source": entity.source,
+                "support_status": entity.support_status,
+                "asset_readiness": entity.asset_readiness,
                 "summary": _build_entity_summary(entity),
             }
         )

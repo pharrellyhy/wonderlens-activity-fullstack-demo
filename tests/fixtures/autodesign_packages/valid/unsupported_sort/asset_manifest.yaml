@@ -1,0 +1,31 @@
+activity_id: concept_tiny_curator_sort
+entity_id: parameterized_objects
+version: 1
+style_id: wonderlens_device_mint_soft_3d
+palette:
+  shell: warm porcelain off-white
+  screen: green-tinted near black
+  primary_accent: soft mint green
+  secondary_accent: pale sage
+  shadow: cool gray green
+screen_targets:
+  round_device_screen:
+    aspect_ratio: "1:1"
+    crop_shape: circle
+    master_size: 1024
+    safe_area: central 72 percent circle
+assets:
+  - id: curator_placeholder_badge
+    role: badge
+    label: Tiny Curator placeholder badge
+    requiredness: fallback
+    accuracy_mode: illustrative
+    source_strategy: generated_illustrative
+    transformation_policy: generate_new
+    prompt_en: Soft 3D mint-and-porcelain placeholder badge with simple grouped object shapes, no text, no watermark.
+    variants:
+      - id: badge_512
+        target: round_device_screen
+        size: 512x512
+        path:
+    fallback_behavior: Hide the badge because the activity is not playable in the demo.

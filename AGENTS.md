@@ -65,8 +65,16 @@ Key files/locations (current and near-term):
 4. Stop on failing checks, summarize root cause, then fix incrementally.
 5. Show concise diffs and list exactly what was verified.
 6. Use a git worktree for code changes by default, and switch into that worktree before editing files or running implementation commands. The exception is doc-only or config-only edits, which may be made in the current checkout when appropriate.
-7. When creating a git worktree, place it under `.worktrees/` at the project root using the convention `.worktrees/{feat,docs,fix,refactor,styele,test,chore}/<worktree-name>`.
+7. When creating a git worktree, place it under `.worktrees/` at the project root using the convention `.worktrees/{feat,docs,fix,refactor,style,test,chore}/<worktree-name>`.
 8. When working in plan mode or discussing design / implementation plans, write the plan to `docs/plans/` before making code changes. Use the project plan naming convention and make the plan detailed enough for a fresh session to execute.
+9. Auto-commit after file changes:
+   - After completing a task that edits, creates, deletes, or moves files, run the narrowest relevant validation first.
+   - If validation passes, stage and commit the intended task changes before declaring completion.
+   - Include untracked files that were created for the task.
+   - Do not include unrelated user edits or unrelated generated files in the commit unless the user explicitly asks to commit all changes.
+   - Do not commit when validation fails, when the user explicitly asks not to commit, or when a required decision is blocked.
+   - Do not push unless the user explicitly asks to push.
+   - Use the conventional commit rules in section 6.
 
 ## 6) Commit and Pull Request Messages
 

@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "style": "wonderlens-soft-mint-device",
+  "activities": [
+    {
+      "id": "activity_phoneme_treasure_hunt",
+      "source_export_id": "concept_phoneme_hunt_collect",
+      "icon": "/activity-assets/activity_phoneme_treasure_hunt/icon.png",
+      "fallback_label": "Phoneme Treasure Hunt",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_phoneme_treasure_hunt/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_phoneme_treasure_hunt/rules.png", "usage": "mission" },
+        { "id": "round_1", "src": "/activity-assets/activity_phoneme_treasure_hunt/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_phoneme_treasure_hunt/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_phoneme_treasure_hunt/round_3.png", "usage": "round" },
+        { "id": "synthesis", "src": "/activity-assets/activity_phoneme_treasure_hunt/synthesis.png", "usage": "synthesis" },
+        { "id": "recap", "src": "/activity-assets/activity_phoneme_treasure_hunt/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_partial_reveal_guess",
+      "source_export_id": "concept_partial_reveal_deduce",
+      "icon": "/activity-assets/activity_partial_reveal_guess/icon.png",
+      "fallback_label": "Partial Reveal Guess",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_partial_reveal_guess/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_partial_reveal_guess/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_partial_reveal_guess/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_partial_reveal_guess/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_partial_reveal_guess/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_partial_reveal_guess/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_animal_sound_imitation",
+      "source_export_id": "concept_animal_sound_motion_voice",
+      "icon": "/activity-assets/activity_animal_sound_imitation/icon.png",
+      "fallback_label": "Animal Sound Imitation",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_animal_sound_imitation/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_animal_sound_imitation/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_animal_sound_imitation/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_animal_sound_imitation/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_animal_sound_imitation/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_animal_sound_imitation/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_word_echo_practice",
+      "source_export_id": "concept_word_echo_remember",
+      "icon": "/activity-assets/activity_word_echo_practice/icon.png",
+      "fallback_label": "Word Echo Practice",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_word_echo_practice/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_word_echo_practice/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_word_echo_practice/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_word_echo_practice/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_word_echo_practice/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_word_echo_practice/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_emotion_reader",
+      "source_export_id": "concept_emotion_reader_care",
+      "icon": "/activity-assets/activity_emotion_reader/icon.png",
+      "fallback_label": "Emotion Reader",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_emotion_reader/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_emotion_reader/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_emotion_reader/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_emotion_reader/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_emotion_reader/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_emotion_reader/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_constellation_star_count",
+      "source_export_id": "concept_constellation_star_count_enumerate",
+      "icon": "/activity-assets/activity_constellation_star_count/icon.png",
+      "fallback_label": "Constellation Star Count",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_constellation_star_count/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_constellation_star_count/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_constellation_star_count/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_constellation_star_count/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_constellation_star_count/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_constellation_star_count/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_career_decision_role_play",
+      "source_export_id": "concept_career_decision_decide",
+      "icon": "/activity-assets/activity_career_decision_role_play/icon.png",
+      "fallback_label": "Career Decision Role Play",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_career_decision_role_play/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_career_decision_role_play/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_career_decision_role_play/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_career_decision_role_play/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_career_decision_role_play/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_career_decision_role_play/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_vegetable_sort",
+      "source_export_id": "concept_vegetable_sort_sort",
+      "icon": "/activity-assets/activity_vegetable_sort/icon.png",
+      "fallback_label": "Vegetable Sort",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_vegetable_sort/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_vegetable_sort/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_vegetable_sort/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_vegetable_sort/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_vegetable_sort/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_vegetable_sort/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_travel_planner",
+      "source_export_id": "concept_travel_planner_predict",
+      "icon": "/activity-assets/activity_travel_planner/icon.png",
+      "fallback_label": "Travel Planner",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_travel_planner/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_travel_planner/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_travel_planner/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_travel_planner/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_travel_planner/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_travel_planner/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_guided_drawing",
+      "source_export_id": "concept_guided_drawing_probe",
+      "icon": "/activity-assets/activity_guided_drawing/icon.png",
+      "fallback_label": "Guided Drawing",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_guided_drawing/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_guided_drawing/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_guided_drawing/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_guided_drawing/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_guided_drawing/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_guided_drawing/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_story_challenge_unlock",
+      "source_export_id": "concept_story_unlock_probe",
+      "icon": "/activity-assets/activity_story_challenge_unlock/icon.png",
+      "fallback_label": "Story Challenge Unlock",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_story_challenge_unlock/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_story_challenge_unlock/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_story_challenge_unlock/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_story_challenge_unlock/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_story_challenge_unlock/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_story_challenge_unlock/recap.png", "usage": "closing" }
+      ]
+    },
+    {
+      "id": "activity_recognition_pop_challenge",
+      "source_export_id": "concept_recognition_pop_probe",
+      "icon": "/activity-assets/activity_recognition_pop_challenge/icon.png",
+      "fallback_label": "Recognition Pop Challenge",
+      "beats": [
+        { "id": "intro", "src": "/activity-assets/activity_recognition_pop_challenge/intro.png", "usage": "hook" },
+        { "id": "rules", "src": "/activity-assets/activity_recognition_pop_challenge/rules.png", "usage": "setup" },
+        { "id": "round_1", "src": "/activity-assets/activity_recognition_pop_challenge/round_1.png", "usage": "round" },
+        { "id": "round_2", "src": "/activity-assets/activity_recognition_pop_challenge/round_2.png", "usage": "round" },
+        { "id": "round_3", "src": "/activity-assets/activity_recognition_pop_challenge/round_3.png", "usage": "round" },
+        { "id": "recap", "src": "/activity-assets/activity_recognition_pop_challenge/recap.png", "usage": "closing" }
+      ]
+    }
+  ]
+}

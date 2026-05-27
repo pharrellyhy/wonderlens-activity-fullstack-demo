@@ -1,0 +1,20 @@
+activity_id: invalid_reference_bound_missing_source
+version: 1
+demo_support:
+  status: supported
+  ui_template: cat1_dialogue
+  support_level: full
+  entity_bindings:
+    - entity_id: orion
+      display_label: Orion
+      source_entity_exemplar: orion
+      default: true
+  requires:
+    generated_assets: true
+    real_camera: false
+    runtime_judgment: false
+    device_round_screen: true
+  unsupported_reasons: []
+  degraded_reasons: []
+  consumer_notes:
+    fullstack_demo: Invalid fixture.

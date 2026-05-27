@@ -1,6 +1,79 @@
 # Session Handoff
 
-Last updated: 2026-05-08
+Last updated: 2026-05-27
+
+---
+
+## Autodesign Package Demo Import
+
+**Problem**: The fullstack demo could not consume the new autodesign demo
+package contract, so generated activities, entity binding, package assets,
+support state, and prototype-style preview UI were disconnected from the
+existing Cat1/Cat5 runtime.
+
+**Solution**: Added a deterministic package importer that converts supported
+autodesign packages into generated game frontmatter plus browser-safe copied
+assets. Runtime and frontend selection now expose entity binding, support
+status, asset readiness, degraded gating, and start-time playability checks.
+The play view defaults to a prototype-style round device screen and keeps the
+existing horizontal reviewer/debug mode.
+
+**Edits**:
+- `backend/autodesign_importer.py`, `scripts/import_autodesign_package.py` -
+  new importer, CLI, asset resolver, contract validation, and support gating.
+- `backend/games/*__*.md`, `frontend/public/activity-assets/` - generated
+  imported Cat1/Cat5/degraded fixture demos and package-local assets.
+- `backend/entity_registry.py`, `backend/game_parser.py`, `backend/server.py`
+  - imported metadata parsing, registry exposure, and start-time playability
+  blocking.
+- `frontend/src/App.jsx`, `frontend/src/components/PhotoSelector.jsx`,
+  `frontend/src/components/GameDetailView.jsx`,
+  `frontend/src/components/PrototypeDeviceFrame.jsx`,
+  `frontend/src/components/RoundDevicePreview.jsx`, `frontend/src/index.css`
+  - support filters, detail/readiness UI, prototype device preview, compact
+  Cat5 collection layout, and debug mode preservation.
+- `tests/test_autodesign_importer.py`, `tests/test_api.py`,
+  `tests/test_entity_registry.py`, `tests/test_device_screen_layout.py`,
+  `frontend/tests/*Autodesign.test.jsx`,
+  `frontend/tests/prototypeDeviceFrame.test.jsx`,
+  `tests/fixtures/autodesign_packages/` - backend, frontend, and contract
+  fixture coverage pinned to autodesign commit
+  `72b97241b4f3bd235fe23df91f2fb3aa08ce8b47`.
+
+**NOT Changed**:
+- No autodesign repo files were modified.
+- No Cat3, drawing, coloring, sorting, building, tournament, or certificate
+  runtime was implemented.
+- No live provider credentials, `.env`, secrets, or machine-local config were
+  changed.
+- Catalog clicks remain demo scaffolding only; they are not production camera
+  validation.
+
+**Verification**:
+- `uv run python scripts/import_autodesign_package.py ... --source-commit 72b97241b4f3bd235fe23df91f2fb3aa08ce8b47` - imported supported Cat1,
+  supported Cat5, and degraded Cat5 fixtures; skipped unsupported sorting with
+  an explicit reason.
+- `PYTHONDONTWRITEBYTECODE=1 uv run pytest -q -p no:cacheprovider` - 529
+  passed, 7 skipped.
+- `PYTHONDONTWRITEBYTECODE=1 uv run pytest tests/test_autodesign_importer.py tests/test_entity_registry.py tests/test_api.py -q -p no:cacheprovider` - 82
+  passed, 1 skipped after regeneration.
+- `cd frontend && npm run lint` - passed.
+- `cd frontend && npm run build` - passed with the existing Vite large chunk
+  warning.
+- `cd frontend && npm run test -- --run` - 7 files passed, 31 tests passed.
+- `git diff --check` - passed.
+- Autodesign contract validator against `tests/fixtures/autodesign_packages/valid`
+  - `OK demo package contract: 4 package(s)`.
+- Absolute-path sweep over generated games, assets, fixtures, importer, and CLI
+  - no matches.
+- PNG inspection confirmed all generated public assets are real 256 x 256 PNGs.
+- Browser smoke used local Chrome via Playwright because the in-app Browser
+  connector had no active browser instances. Backend ran on `127.0.0.1:8001`
+  with deterministic turn-generation stubs, Vite ran on `127.0.0.1:5174`, and
+  screenshots were written to `/tmp/wonderlens-autodesign-selection.png`,
+  `/tmp/wonderlens-autodesign-cat1-round.png`,
+  `/tmp/wonderlens-autodesign-cat5-gallery.png`, and
+  `/tmp/wonderlens-autodesign-debug.png`.
 
 ---
 
@@ -343,90 +416,3 @@ uv run python tools/capture_synthesis_baselines.py && git diff --stat tests/fixt
 - `uv run ruff check . && uv run ruff format --check .` — PASS
 - `uv run pytest -x -q --ignore=tests/test_ai_quality.py` — 36 passed (2 pre-existing failures excluded: `test_muted_tts_path_does_not_play_outros_twice`, `test_device_screen_keeps_widget_area_centered_on_tall_viewports`)
 - `npx vite build` — clean (82 modules)
-
----
-
-## Edu Team Content Feedback (5 Issues)
-
-**Problem**: Edu team reviewed demo sessions (feedback in `edu_team_feedback_0406.txt`) and identified five content quality issues: (1) narrow answer acceptance treating creative responses as wrong, (2) directive language in templates, (3) story activities lacking follow-through after naming, (4) scavenger hunt instructions too complex for T0, (5) closing summaries too long with no visual recall.
-
-**Solution**: Created content design principles doc (`P1-P5`), then systematically applied across Turn Director rules, step instructions, game definitions, tier rules, and frontend. Approach B from spec — shared principles + systematic pass, no architecture changes.
-
-**Edits**:
-- `backend/skills/content_design_rules.md` — NEW: 5 content design principles (accept creative answers, invitational framing, concrete before abstract, story continuity, show don't summarize)
-- `backend/agents/turn_director.py` — Split `wrong/unexpected` into `unexpected-but-on-topic` (advance) and `off-topic` (stay) in both `_CAT1_ROUND_RULES_VOICE_ACTING` and `_CAT1_ROUND_RULES_STORYTELLING`
-- `backend/skills/turn_director_system.md` — Added `## Answer Acceptance` section
-- `backend/agents/script_agent.py:644` — Reframed `acceptable_themes` label to "Theme examples (for inspiration — any on-topic answer is valid)"
-- `backend/skills/step_instructions/cat1_step3_round.md` — Renamed "Wrong/unexpected" to "Off-topic", expanded "Good/creative" to include unexpected-but-on-topic
-- `backend/tier_rules.yaml` — Expanded `forbidden_directives` in all 3 tiers with `Touch.../Describe.../Show me.../Try to.../Find...`
-- `backend/games/fluffy_expedition_dandelion.md` — Rewrote `detail_question_template` to invitational; dropped "Find" from `collection_criterion`
-- 8 more game `.md` files — Dropped "Find" imperative from `collection_criterion`
-- `backend/skills/step_instructions/cat5_step3_collect.md` — Added story bridge to last-round rule 6; added T0 entity anchoring + stuck scaffolding sub-rules to rule 2
-- `backend/skills/step_instructions/cat5_step4_synthesis.md` — Reworked INVITE phase: T0 gets story starter, T1/T2 gets character bridge
-- `backend/skills/step_instructions/cat5_step5_celebrate.md` — Changed screen widget to `photo_recall_grid`
-- `backend/skills/step_instructions/cat5_step6_closing.md` — Full rewrite with tier-specific density limits (T0: 2 elements/20 words, T1: 3/35, T2: 4/50)
-- `frontend/src/widgets/PhotoRecallGrid.jsx` — NEW: Photo grid with character name labels for celebrate/closing steps
-- `frontend/src/components/DeviceScreen.jsx` — Registered `photo_recall_grid` widget
-
-**NOT Changed**:
-- Turn Director architecture (LLM pipeline, TurnDirective schema, state machine)
-- `acceptable_themes` field name in schema (only prompt label changed)
-- Scoring/evaluation (follows separately)
-- Frontend conversation flow, TTS/STT
-- `backend/turn_handling/` package
-
-**Verification**:
-- `uv run ruff check agents/script_agent.py agents/turn_director.py` — PASS
-- `uv run pytest -x -q --ignore=tests/test_ai_quality.py` — 19 passed
-- `npx vite build` — clean (79 modules)
-
----
-
-## Review Follow-Up: Production Simplification Inside turn_handling/
-
-**Problem**: After stabilizing the decomposition test surface, the production `backend/turn_handling/` package still had a couple of extraction-era duplications that made the code noisier than necessary. In `invitation.py`, the “generate a re-invite and return it” path was duplicated for both first-decline and substantive/off-topic cases. In `rounds.py`, the deterministic Cat5 photo-prompt return block appeared twice with the same append/result wiring. These were not correctness bugs, but they were exactly the kind of low-signal repetition that makes later changes riskier.
-
-**Solution**: Kept behavior unchanged and simplified only the duplicated local paths. `invitation.py` now uses one local helper for the shared re-invite generation/result flow, and `rounds.py` now uses one local helper for deterministic collection photo-prompt responses. No branching rules, state transitions, or response semantics changed.
-
-**Edits**:
-- `backend/turn_handling/invitation.py` — extracted `_generate_reinvite_result()` to collapse the duplicated non-terminal STEP_2 re-invite path
-- `backend/turn_handling/rounds.py` — extracted `_photo_prompt_result()` to collapse the duplicated deterministic Cat5 photo-phase response path
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/turn_handling/core.py`, `backend/turn_handling/collection.py`, `backend/turn_handling/synthesis.py`, `backend/turn_handling/directive.py` — reviewed again and left unchanged in this pass
-- State-machine behavior, turn advancement order, and deterministic acceptance/photo prompt content — unchanged
-- Test fixtures from the previous review follow-up — kept as-is
-- Frontend code — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py -q` — PASS (`77 passed`)
-- `uv run pytest tests/test_turn_handler.py tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py tests/test_api.py tests/test_server_visual.py -q` — PASS (`116 passed`)
-- `uv run ruff check backend/turn_handling/invitation.py backend/turn_handling/rounds.py tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py` — PASS
-- `uv run ruff format --check backend/turn_handling/invitation.py backend/turn_handling/rounds.py tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py` — PASS
-
----
-
-## Review Follow-Up: Stabilize Legacy turn_handling Tests
-
-**Problem**: Picking up the `turn_handler.py` decomposition work showed that the newly updated legacy-path tests no longer matched the repo's runtime defaults. `backend/config.yaml` currently enables `turn_director_enabled`, so focused tests that were meant to exercise the classic `turn_handling.core.resolve_turn()` path were accidentally entering the directive path, making real Turn Director calls and even trying to log to the demo DB. Two other test expectations had also drifted: the synthesis-failure regression patched the wrong `get_settings()` function after the module split, and the Step 2 acceptance API/visual tests still mocked `ScriptAgent.generate_turn()` even though invitation acceptance now uses deterministic celebration templates instead of the speaker path.
-
-**Solution**: Kept production turn-handling code unchanged and fixed the review surface instead. The touched legacy tests now explicitly disable `turn_director_enabled` in their local fixtures so they exercise the decomposed classic path they are written for. I also updated the synthesis regression to patch `turn_handling.generation.get_settings()`, aligned the Step 2 acceptance API assertion with deterministic `_ACCEPTANCE_CELEBRATIONS`, removed no-op `generate_turn()` mocks from the visual-frame acceptance tests, and fixed the stale `turn_handler` wording in `scripts/scoring.py`.
-
-**Edits**:
-- `tests/test_turn_handler.py` — added an autouse legacy-path settings stub (`turn_director_enabled=False`) and corrected the synthesis classifier-failure patch target to `turn_handling.generation.get_settings`
-- `tests/test_api.py` — disabled Turn Director in the temp-client fixture; aligned the invitation-acceptance assertion with `_ACCEPTANCE_CELEBRATIONS` instead of an unused speaker mock
-- `tests/test_server_visual.py` — disabled Turn Director in the temp-client fixture and removed unused `ScriptAgent.generate_turn()` mocks from Step 2 acceptance visual tests
-- `scripts/scoring.py` — updated the stale comment to refer to `turn_handling` validators
-- `HANDOFF.md` — added this review follow-up entry
-
-**NOT Changed**:
-- `backend/turn_handling/` production modules — reviewed and left unchanged in this follow-up
-- `backend/server.py` import changes — reviewed and kept as-is
-- `backend/config.yaml` — still enables Turn Director for normal runtime; the isolation is test-scoped only
-- Frontend code — unchanged
-
-**Verification**:
-- `uv run pytest tests/test_turn_handler.py tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py tests/test_api.py tests/test_server_visual.py -q` — PASS (`116 passed`)
-- `uv run ruff check backend/turn_handling backend/server.py scripts/scoring.py tests/test_turn_handler.py tests/test_debug_payload.py tests/test_intent_classifier.py tests/test_deep_link.py tests/test_api.py tests/test_server_visual.py` — PASS
-- `uv run ruff format --check tests/test_turn_handler.py tests/test_api.py tests/test_server_visual.py scripts/scoring.py` — PASS

@@ -1,0 +1,21 @@
+activity_id: concept_phoneme_hunt_collect
+version: 1
+demo_support:
+  status: degraded
+  ui_template: cat5_judgment
+  support_level: catalog_simulated_judgment
+  entity_bindings:
+    - entity_id: ball
+      display_label: Ball
+      source_entity_exemplar: ball
+      default: true
+  requires:
+    generated_assets: true
+    real_camera: false
+    runtime_judgment: true
+    device_round_screen: true
+  unsupported_reasons: []
+  degraded_reasons:
+    - The demo uses catalog choices and text explanation for beginning-sound judgment instead of real camera/ASR validation.
+  consumer_notes:
+    fullstack_demo: Show the limitation before play and do not claim production vision validation.

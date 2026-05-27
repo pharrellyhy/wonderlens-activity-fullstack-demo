@@ -1,0 +1,34 @@
+recap_payload:
+  entity: "{runtime_entity}"
+  tier: "{runtime_tier}"
+  age_years: "{runtime_age}"
+
+  what_we_noticed: pattern
+  what_we_did: collected
+  entity_role: catalyst
+
+  focal_attribute:
+    token: "beginning_b_sound"
+    child_label: "/b/ beginning sound"
+    badge_emoji_none: true
+
+  highlight_moment: "You found three treasures that start with /b/."
+
+  finds:
+    - {label: "{find_1}", photo: "{photo_1}"}
+    - {label: "{find_2}", photo: "{photo_2}"}
+    - {label: "{find_3}", photo: "{photo_3}"}
+
+  difficulty_level: 2
+  next_step_hint: "Next time, try a new first sound."
+
+  caregiver_observed: scaffold
+  reward_badge: b_sound_scout
+
+rendered:
+  title: "You were a Sound Treasure Scout today!"
+  line_1: "You listened for /b/."
+  line_2: "You collected 3 /b/ treasures."
+  line_3: "Different things shared one first sound."
+  badge: "B-Sound Scout"
+  next: "Next time, try a new first sound."

@@ -1,0 +1,36 @@
+activity_id: invalid_reference_bound_missing_source
+entity_id: orion
+version: 1
+style_id: wonderlens_device_mint_soft_3d
+palette:
+  shell: warm porcelain off-white
+  screen: green-tinted near black
+  primary_accent: soft mint green
+screen_targets:
+  round_device_screen:
+    aspect_ratio: "1:1"
+    crop_shape: circle
+    master_size: 1024
+    safe_area: central 72 percent circle
+assets:
+  - id: orion_reference_card
+    role: story_scene
+    label: Orion constellation reference
+    requiredness: required
+    accuracy_mode: reference_bound
+    source_strategy: redraw_from_verified_data
+    transformation_policy: simplified_redraw
+    prompt_en: Random cute constellation image in mint style.
+    reference_policy:
+      source_required: true
+      allowed_sources:
+        - approved_internal_reference
+      verification_required: true
+      verification_notes: Must preserve real Orion star placement.
+    sources: []
+    variants:
+      - id: round_512
+        target: round_device_screen
+        size: 512x512
+        path:
+    fallback_behavior: Use voice-only explanation.

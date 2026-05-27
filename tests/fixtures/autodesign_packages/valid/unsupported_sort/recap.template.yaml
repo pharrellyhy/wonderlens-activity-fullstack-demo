@@ -1,0 +1,38 @@
+recap_payload:
+  entity: "{child_selected_objects}"
+  tier: "{runtime_tier}"
+  age_years: "{runtime_age}"
+
+  what_we_noticed: pattern
+  what_we_did: sorted
+  entity_role: catalyst
+
+  focal_attribute:
+    token: "child_made_grouping_rule"
+    child_label: "{child_made_grouping_rule}"
+    badge_emoji_none: true
+
+  highlight_moment: "You made a tiny exhibit and explained the rule that connected your objects."
+
+  exhibit:
+    label: "{child_made_grouping_rule}"
+    objects:
+      - {label: "{object_1}", photo: "{photo_1}"}
+      - {label: "{object_2}", photo: "{photo_2}"}
+      - {label: "{object_3}", photo: "{photo_3}"}
+      - {label: "{object_4_optional}", photo: "{photo_4_optional}"}
+
+  evidence_sentence: "{child_explanation}"
+  difficulty_level: 3
+  next_step_hint: "Next time, sort the same objects by a second rule."
+
+  caregiver_observed: co-explorer
+  reward_badge: tiny_curator
+
+rendered:
+  title: "You were a Tiny Curator today!"
+  line_1: "You chose objects for a tiny exhibit."
+  line_2: "Your gallery rule was: {child_made_grouping_rule}."
+  line_3: "You explained your evidence: {child_explanation}."
+  badge: "Tiny Curator"
+  next: "Next time, sort the same objects by a second rule."

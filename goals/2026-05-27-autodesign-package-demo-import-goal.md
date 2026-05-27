@@ -4,6 +4,10 @@
 
 Plan-backed.
 
+## Status
+
+Completed on 2026-05-27.
+
 ## Objective
 
 Implement fullstack-demo support for importing autodesign activity packages
@@ -187,6 +191,20 @@ Do not mark achieved until:
 
 Final response must include changed files, checks run, browser verification,
 fixture coverage, remaining risks, and commit hashes.
+
+## Completion Notes
+
+- Producer contract was verified against latest autodesign `main` at
+  `72b97241b4f3bd235fe23df91f2fb3aa08ce8b47`.
+- Cat1 and Cat5 supported fixtures import and start through existing runtime
+  flows.
+- Reference-bound assets require approved source strategy, transformation
+  policy, reference policy, source provenance, and verified package files.
+- Unsupported mechanics remain non-playable, and required missing assets block
+  start.
+- Prototype round device preview and horizontal debug mode were browser smoke
+  tested with local deterministic turn-generation stubs because live provider
+  credentials are not required for importer/UI verification.
 
 ## Goal Invocation
 

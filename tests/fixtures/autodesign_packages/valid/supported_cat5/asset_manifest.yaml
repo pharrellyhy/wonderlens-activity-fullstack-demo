@@ -1,0 +1,71 @@
+activity_id: fluffy_expedition_dandelion
+entity_id: dandelion
+version: 1
+style_id: wonderlens_device_mint_soft_3d
+palette:
+  shell: warm porcelain off-white
+  screen: green-tinted near black
+  primary_accent: soft mint green
+  secondary_accent: pale sage
+  shadow: cool gray green
+screen_targets:
+  round_device_screen:
+    aspect_ratio: "1:1"
+    crop_shape: circle
+    master_size: 1024
+    safe_area: central 72 percent circle
+  horizontal_debug_screen:
+    aspect_ratio: "16:9"
+    master_size: 1280x720
+  catalog_grid:
+    aspect_ratio: "1:1"
+    master_size: 512
+assets:
+  - id: dandelion_entity_hero
+    role: entity
+    label: Dandelion puff
+    requiredness: required
+    accuracy_mode: illustrative
+    source_strategy: generated_illustrative
+    transformation_policy: generate_new
+    prompt_en: Soft 3D educational toy illustration of a white dandelion puff, mint green and warm porcelain palette, rounded friendly shapes, clean centered subject, gentle studio lighting, no text, no watermark, designed for a small round screen.
+    variants:
+      - id: round_512
+        target: round_device_screen
+        size: 512x512
+        path: assets/dandelion.png
+    fallback_behavior: Show the Dandelion label and a soft puff outline.
+  - id: fuzzy_moss
+    role: collection_correct
+    label: Fuzzy moss
+    collection_catalog_id: fuzzy_moss
+    requiredness: required
+    accuracy_mode: illustrative
+    source_strategy: generated_illustrative
+    transformation_policy: generate_new
+    prompt_en: Soft 3D educational toy illustration of a small fuzzy moss patch, mint green and warm porcelain palette, large centered subject, no text, no watermark.
+    variants:
+      - id: icon_256
+        target: catalog_grid
+        size: 256x256
+        path: assets/fuzzy_moss.png
+      - id: round_512
+        target: round_device_screen
+        size: 512x512
+        path: assets/fuzzy_moss.png
+    fallback_behavior: Replace this card with a voice prompt asking for something soft or fuzzy.
+  - id: smooth_pebble
+    role: collection_distractor
+    label: Smooth pebble
+    collection_catalog_id: smooth_pebble
+    requiredness: optional
+    accuracy_mode: illustrative
+    source_strategy: generated_illustrative
+    transformation_policy: generate_new
+    prompt_en: Soft 3D educational toy illustration of a smooth gray pebble, warm porcelain and mint palette, centered simple object, no text, no watermark.
+    variants:
+      - id: icon_256
+        target: catalog_grid
+        size: 256x256
+        path: assets/smooth_pebble.png
+    fallback_behavior: Hide the distractor and keep only correct fuzzy choices.

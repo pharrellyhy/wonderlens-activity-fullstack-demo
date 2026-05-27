@@ -1,0 +1,63 @@
+activity_id: concept_tiny_curator_sort
+version: 1
+source_entity_exemplar: "{child_selected_object_set}"
+template_type: cat5
+pillar: Adventure
+game_style: quest_collector
+
+entity: "{child_selected_objects}"
+entity_class: []
+entity_binding: parameterized
+tier_range:
+  primary: T2
+  span: [T1, T2]
+  elasticity: "neighbor"
+
+category: objects
+attributes: ["{child_made_grouping_rule}", arrangement, classification]
+key_concepts: [Connection, Form]
+related_concepts: [classification, evidence, rule, relationship]
+atl_skills: [classification, logical_reasoning, communication, organization]
+transdisciplinary_theme: How_We_Organize_Ourselves
+subject_tags: [math, arts, language]
+
+kud:
+  know:
+    - "objects can be grouped by a rule"
+    - "one object can belong for more than one reason"
+    - "a curator label explains why a group belongs together"
+  understand:
+    - "Connection helps us explain why separate objects belong in one set"
+    - "Form helps us notice features that support a grouping rule"
+  do:
+    - "choose three or four objects for one exhibit"
+    - "arrange the objects to show the rule"
+    - "name and explain the child-made grouping rule"
+
+progression:
+  topic_axis: connection
+  difficulty_level: 3
+  next_step_hint: "Next time, sort the same objects by a second rule."
+  reward_hook: "Earned the Tiny Curator badge"
+
+caregiver_role: [co-explorer, scaffold]
+
+activity_signature:
+  observation_angle: pattern
+  mechanic: sort
+  entity_role: catalyst
+  bridge_prerequisites:
+    primary: [pattern, function, material]
+    secondary: [color, shape]
+  focal_attribute: "child_made_grouping_rule"
+  intro: "The child chooses nearby objects, arranges them as a tiny exhibit, and explains the rule that connects them."
+  preview_label: "Make a tiny exhibit"
+  preview_prompt: "Pick objects that belong together, then tell the gallery rule."
+  role_pivot_note: "The starting place or object set becomes a gallery shelf for the child's own grouping rule."
+
+matchability:
+  entity_class_filter: []
+  tier_support:
+    T0: false
+    T1: true
+    T2: true

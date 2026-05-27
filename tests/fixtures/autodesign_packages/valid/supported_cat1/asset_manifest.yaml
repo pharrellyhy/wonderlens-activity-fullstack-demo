@@ -1,0 +1,52 @@
+activity_id: dream_whisperer_cat
+entity_id: cat
+version: 1
+style_id: wonderlens_device_mint_soft_3d
+palette:
+  shell: warm porcelain off-white
+  screen: green-tinted near black
+  primary_accent: soft mint green
+  secondary_accent: pale sage
+  shadow: cool gray green
+screen_targets:
+  round_device_screen:
+    aspect_ratio: "1:1"
+    crop_shape: circle
+    master_size: 1024
+    safe_area: central 72 percent circle
+  horizontal_debug_screen:
+    aspect_ratio: "16:9"
+    master_size: 1280x720
+assets:
+  - id: entity_hero
+    role: entity
+    label: Cat
+    requiredness: required
+    accuracy_mode: illustrative
+    source_strategy: generated_illustrative
+    transformation_policy: generate_new
+    prompt_en: Soft 3D educational toy illustration of a peaceful sleepy cat, mint green and warm porcelain palette, rounded friendly shapes, subtle plastic material, clean centered subject, gentle studio lighting, no text, no watermark, designed for a small round screen.
+    variants:
+      - id: round_512
+        target: round_device_screen
+        size: 512x512
+        path: assets/cat.png
+      - id: landscape_1280x720
+        target: horizontal_debug_screen
+        size: 1280x720
+        path: assets/cat.png
+    fallback_behavior: Show the Cat label and a neutral moon badge shape.
+  - id: dream_badge
+    role: badge
+    label: Dream Whisperer badge
+    requiredness: optional
+    accuracy_mode: illustrative
+    source_strategy: generated_illustrative
+    transformation_policy: generate_new
+    prompt_en: Soft 3D mint-and-porcelain toy badge with a tiny sleeping cat silhouette and moon shape, centered for a round device screen, no text, no watermark.
+    variants:
+      - id: badge_512
+        target: round_device_screen
+        size: 512x512
+        path: assets/reflection_badge.png
+    fallback_behavior: Use the default mint badge without custom art.

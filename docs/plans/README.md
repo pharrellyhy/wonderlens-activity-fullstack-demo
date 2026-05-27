@@ -20,4 +20,4 @@ materially implemented. Keep notes concise and evidence-based.
 
 | Plan | Status | Notes |
 |---|---|---|
-| [2026-05-27-autodesign-package-demo-import.md](2026-05-27-autodesign-package-demo-import.md) | Planned | Imports autodesign packages into the demo, resolves assets, gates mechanics, and adds prototype-style device preview. |
+| [2026-05-27-autodesign-package-demo-import.md](2026-05-27-autodesign-package-demo-import.md) | Completed | Imported pinned autodesign packages, resolved assets, gated mechanics, and added prototype-style device preview. |

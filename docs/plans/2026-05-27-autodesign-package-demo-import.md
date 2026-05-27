@@ -2,7 +2,7 @@
 
 Date: 2026-05-27
 
-Status: Planned
+Status: Completed
 
 ## Goal
 
@@ -326,6 +326,29 @@ Browser verification is required after the device UI changes:
 - verify unsupported activities are hidden or disabled;
 - verify round device preview and horizontal debug mode both render;
 - capture screenshots or describe artifact paths.
+
+## Implementation Notes
+
+Completed on 2026-05-27 against the merged autodesign producer contract at
+`72b97241b4f3bd235fe23df91f2fb3aa08ce8b47`.
+
+The importer now consumes package fixtures, writes deterministic generated game
+frontmatter under `backend/games/`, resolves browser-safe assets under
+`frontend/public/activity-assets/`, and gates supported, degraded, blocked, and
+unsupported package states before play starts. Cat1 dialogue and Cat5
+collection fixtures import as playable demos; a reference-bound Cat5 judgment
+fixture imports as degraded only when the asset provenance contract is
+satisfied; an unsupported sorting fixture is skipped with an explicit reason.
+
+Generated `step_instructions` come from the matching curated base game
+frontmatter when the package `activity_id` already exists in `backend/games/`.
+If no curated base exists, the importer emits deterministic default step
+instructions for the supported template.
+
+Frontend selection now shows entity binding, support status, asset readiness,
+and degraded gating. Runtime start is blocked for unsupported demos and demos
+with required missing assets. The default play surface uses the prototype-style
+round device frame, while horizontal debug mode remains available.
 
 ## Non-Goals
 

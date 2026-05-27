@@ -9,6 +9,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 import httpx
 from fastapi import FastAPI, File, Form, UploadFile, WebSocket, WebSocketDisconnect
@@ -30,8 +31,10 @@ try:
     from .db import init_db, log_session, log_turn, update_session_status
     from .entity_registry import (
         ENTITY_REGISTRY,
+        activity_type_for_filename,
         all_entities_for_api,
         generate_round_items,
+        get_entity,
         is_demo_entity,
         lookup_by_entity_name,
         validate_registry,
@@ -80,8 +83,10 @@ except ImportError:
     from db import init_db, log_session, log_turn, update_session_status
     from entity_registry import (
         ENTITY_REGISTRY,
+        activity_type_for_filename,
         all_entities_for_api,
         generate_round_items,
+        get_entity,
         is_demo_entity,
         lookup_by_entity_name,
         validate_registry,
@@ -160,6 +165,31 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-PCM-Size"],
 )
+
+
+def _demo_playability_error(entity_config: Any) -> JSONResponse | None:
+    """Return a start-blocking response when a registered demo is not playable."""
+    support_status = getattr(entity_config, "support_status", "supported")
+    asset_readiness = getattr(entity_config, "asset_readiness", "ready")
+    asset_detail = getattr(entity_config, "asset_readiness_detail", {}) or {}
+    required_missing = asset_detail.get("required_missing") or []
+
+    if support_status != "unsupported" and asset_readiness != "blocked" and not required_missing:
+        return None
+
+    return JSONResponse(
+        {
+            "status": "error",
+            "error": "Demo activity is not playable",
+            "activity_type": getattr(entity_config, "activity_type", ""),
+            "support_status": support_status,
+            "asset_readiness": asset_readiness,
+            "asset_readiness_detail": asset_detail,
+            "support_reasons": getattr(entity_config, "support_reasons", []),
+            "degraded_reasons": getattr(entity_config, "degraded_reasons", []),
+        },
+        status_code=400,
+    )
 
 
 # --- Request models ---
@@ -314,10 +344,16 @@ async def start_session(
 
         # 2. Match scenario from filename (instant — no LLM needed)
         filename = photo.filename or ""
-        activity_type = match_scenario("unknown", [], filename=filename)
+        demo_activity_type = activity_type_for_filename(filename)
+        activity_type = demo_activity_type or match_scenario("unknown", [], filename=filename)
 
         # --- Instruction recipe path (demo entities) ---
-        if is_demo_entity(filename):
+        if demo_activity_type and is_demo_entity(filename):
+            entity_config = get_entity(activity_type)
+            playability_error = _demo_playability_error(entity_config)
+            if playability_error:
+                return playability_error
+
             recipe = load_instruction_recipe(activity_type)
             state = recipe_to_session_state(recipe, session_id, tier, filename)
 
@@ -368,6 +404,9 @@ async def start_session(
                     "first_turn": first_turn_data,
                     "activity_type": activity_type,
                     "template_type": state.template_type,
+                    "support_status": entity_config.support_status,
+                    "asset_readiness": entity_config.asset_readiness,
+                    "degraded_reasons": entity_config.degraded_reasons,
                     "session_state": _session_state_dict(state),
                     "status": "ok",
                     "latency_ms": latency_ms,

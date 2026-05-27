@@ -1,0 +1,25 @@
+recap_payload:
+  entity: '{runtime_entity}'
+  tier: '{runtime_tier}'
+  age_years: '{runtime_age}'
+  what_we_noticed: quantity
+  what_we_did: enumerate
+  entity_role: reference
+  focal_attribute:
+    token: visible_star_count
+    child_label: visible star count
+    badge_emoji_none: true
+  highlight_moment: The estimate flips into a counted star map, showing how careful
+    counting checks a first guess.
+  difficulty_level: 2
+  next_step_hint: Try one new answer or explain why next time.
+  caregiver_observed: co-explorer
+  reward_badge: star_count_scout
+rendered:
+  title: You were a Star Count Scout today!
+  line_1: You estimated, counted, and checked the star pattern.
+  line_2: The estimate flips into a counted star map, showing how careful counting
+    checks a first guess.
+  line_3: Your careful count checked the first guess.
+  badge: Star Count Scout
+  next: Try a new answer next time.

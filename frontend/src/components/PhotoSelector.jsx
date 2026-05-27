@@ -9,9 +9,64 @@ const CATEGORY_ICONS = {
   cat5: MagnifyingGlassIcon,
 };
 
+function prefixedAssetPath(path) {
+  if (!path || path.startsWith(BASE) || path.startsWith('data:')) return path;
+  return `${BASE}${path}`;
+}
+
+function normalizeCategories(dataCategories) {
+  return (dataCategories || []).map((cat) => ({
+    ...cat,
+    photos: (cat.photos || []).map((photo) => ({
+      ...photo,
+      src: prefixedAssetPath(photo.src),
+      summary: {
+        ...(photo.summary || {}),
+        collectible_previews: (photo.summary?.collectible_previews || []).map((item) => ({
+          ...item,
+          image: prefixedAssetPath(item.image),
+        })),
+      },
+    })),
+  }));
+}
+
+function photoFilename(photo) {
+  return photo.filename || photo.demo_filename || `${photo.id}.png`;
+}
+
+function photoSupportStatus(photo) {
+  return photo.summary?.support_status || photo.support_status || 'supported';
+}
+
+function photoTemplate(photo, categoryId) {
+  return photo.summary?.template_type || photo.template_type || categoryId;
+}
+
+function photoEntity(photo) {
+  return photo.summary?.entity_binding?.entity_id || photo.entity_id || photo.id;
+}
+
+function requiredMissingAssets(photo) {
+  return photo.summary?.asset_readiness_detail?.required_missing || [];
+}
+
+function isPlayable(photo) {
+  return (
+    photoSupportStatus(photo) !== 'unsupported' &&
+    photo.summary?.asset_readiness !== 'blocked' &&
+    requiredMissingAssets(photo).length === 0
+  );
+}
+
 export default function PhotoSelector({ onPhotoSelect, isLoading, onOpenGallery }) {
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [includeDegraded, setIncludeDegraded] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [templateFilter, setTemplateFilter] = useState('all');
+  const [supportFilter, setSupportFilter] = useState('all');
+  const [entityFilter, setEntityFilter] = useState('');
 
   useEffect(() => {
     let isActive = true;
@@ -23,23 +78,7 @@ export default function PhotoSelector({ onPhotoSelect, isLoading, onOpenGallery 
       })
       .then((data) => {
         if (isActive && data.categories && data.categories.length > 0) {
-          // Prefix asset paths from backend with BASE so they route through the proxy
-          for (const cat of data.categories) {
-            for (const photo of cat.photos || []) {
-              if (photo.src && !photo.src.startsWith(BASE)) {
-                photo.src = `${BASE}${photo.src}`;
-              }
-              const previews = photo.summary?.collectible_previews;
-              if (previews) {
-                for (const item of previews) {
-                  if (item.image && !item.image.startsWith(BASE)) {
-                    item.image = `${BASE}${item.image}`;
-                  }
-                }
-              }
-            }
-          }
-          setCategories(data.categories);
+          setCategories(normalizeCategories(data.categories));
         }
       })
       .catch(() => {
@@ -52,12 +91,13 @@ export default function PhotoSelector({ onPhotoSelect, isLoading, onOpenGallery 
   }, []);
 
   const handlePhotoClick = async (photo) => {
-    if (isLoading) return;
+    if (isLoading || !isPlayable(photo)) return;
+    const filename = photoFilename(photo);
     try {
       const res = await fetch(photo.src);
       if (!res.ok) throw new Error('Demo photo unavailable');
       const blob = await res.blob();
-      const file = new File([blob], `${photo.id}.png`, { type: blob.type || 'image/png' });
+      const file = new File([blob], filename, { type: blob.type || 'image/png' });
       onPhotoSelect(file);
     } catch {
       // Create fallback image with label text — read colors from CSS tokens
@@ -74,11 +114,32 @@ export default function PhotoSelector({ onPhotoSelect, isLoading, onOpenGallery 
       ctx.textBaseline = 'middle';
       ctx.fillText(photo.label[0], 200, 200);
       canvas.toBlob((blob) => {
-        const file = new File([blob], `${photo.id}.png`, { type: 'image/png' });
+        const file = new File([blob], filename, { type: 'image/png' });
         onPhotoSelect(file);
       }, 'image/png');
     }
   };
+
+  const filteredCategories = categories
+    .filter((cat) => categoryFilter === 'all' || cat.id === categoryFilter)
+    .map((cat) => {
+      const photos = (cat.photos || []).filter((photo) => {
+        const support = photoSupportStatus(photo);
+        if (support === 'unsupported') return false;
+        if (support === 'degraded' && !includeDegraded && supportFilter !== 'degraded') {
+          return false;
+        }
+        if (supportFilter !== 'all' && supportFilter !== support) return false;
+        if (templateFilter !== 'all' && photoTemplate(photo, cat.id) !== templateFilter) return false;
+        if (entityFilter.trim()) {
+          const entityText = `${photoEntity(photo)} ${photo.label} ${photo.activity_type || ''}`.toLowerCase();
+          if (!entityText.includes(entityFilter.trim().toLowerCase())) return false;
+        }
+        return true;
+      });
+      return { ...cat, photos };
+    })
+    .filter((cat) => cat.photos.length > 0);
 
   if (selectedPhoto) {
     return (
@@ -115,7 +176,70 @@ export default function PhotoSelector({ onPhotoSelect, isLoading, onOpenGallery 
         </div>
       ) : (
         <>
-          {categories.map((cat, catIdx) => {
+          <div className="w-full max-w-lg mb-5 rounded-xl border border-[var(--color-forest)]/10 bg-white/70 p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-[11px] font-medium text-gray-500">
+                Category
+                <select
+                  aria-label="Category filter"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--color-forest)]/20 bg-white px-2 py-1 text-xs text-[var(--color-forest-dark)]"
+                >
+                  <option value="all">All</option>
+                  <option value="cat1">Cat 1</option>
+                  <option value="cat5">Cat 5</option>
+                </select>
+              </label>
+              <label className="text-[11px] font-medium text-gray-500">
+                Template
+                <select
+                  aria-label="Template filter"
+                  value={templateFilter}
+                  onChange={(e) => setTemplateFilter(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--color-forest)]/20 bg-white px-2 py-1 text-xs text-[var(--color-forest-dark)]"
+                >
+                  <option value="all">All</option>
+                  <option value="cat1">Cat 1</option>
+                  <option value="cat5">Cat 5</option>
+                </select>
+              </label>
+              <label className="text-[11px] font-medium text-gray-500">
+                Support
+                <select
+                  aria-label="Support filter"
+                  value={supportFilter}
+                  onChange={(e) => setSupportFilter(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--color-forest)]/20 bg-white px-2 py-1 text-xs text-[var(--color-forest-dark)]"
+                >
+                  <option value="all">All playable</option>
+                  <option value="supported">Supported</option>
+                  <option value="degraded">Degraded</option>
+                </select>
+              </label>
+              <label className="text-[11px] font-medium text-gray-500">
+                Entity
+                <input
+                  aria-label="Entity filter"
+                  value={entityFilter}
+                  onChange={(e) => setEntityFilter(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--color-forest)]/20 bg-white px-2 py-1 text-xs text-[var(--color-forest-dark)]"
+                  placeholder="cat"
+                />
+              </label>
+            </div>
+            <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
+              <input
+                type="checkbox"
+                checked={includeDegraded}
+                onChange={(e) => setIncludeDegraded(e.target.checked)}
+                className="h-3.5 w-3.5 accent-[var(--color-forest)]"
+              />
+              Include degraded
+            </label>
+          </div>
+
+          {filteredCategories.map((cat, catIdx) => {
             const Icon = CATEGORY_ICONS[cat.id] || BinocularsIcon;
             return (
               <div key={cat.id} className="w-full max-w-lg mb-6 max-[380px]:mb-4">
@@ -130,22 +254,36 @@ export default function PhotoSelector({ onPhotoSelect, isLoading, onOpenGallery 
 
                 {/* Photo cards */}
                 <div className="grid grid-cols-3 gap-3 max-[380px]:gap-2 mb-4 max-[380px]:mb-3">
-                  {cat.photos.map((photo) => (
-                    <button
-                      key={photo.id}
-                      onClick={() => setSelectedPhoto(photo)}
-                      className="group relative w-full aspect-square rounded-2xl max-[380px]:rounded-xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02]"
-                    >
-                      <img
-                        src={photo.src}
-                        alt={photo.label}
-                        className="w-full h-full object-cover"
-                      />
-                      <span className="absolute bottom-0 inset-x-0 text-xs max-[380px]:text-[10px] text-center text-[var(--color-forest-dark)] bg-white/90 py-1 max-[380px]:py-0.5 truncate font-medium">
-                        {photo.label}
-                      </span>
-                    </button>
-                  ))}
+                  {cat.photos.map((photo) => {
+                    const playable = isPlayable(photo);
+                    return (
+                      <button
+                        key={photo.id}
+                        onClick={() => setSelectedPhoto(photo)}
+                        aria-disabled={!playable}
+                        className={`group relative w-full aspect-square rounded-2xl max-[380px]:rounded-xl overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-[1.02] ${playable ? '' : 'opacity-65 cursor-help hover:scale-100'}`}
+                      >
+                        <img
+                          src={photo.src}
+                          alt={photo.label}
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute bottom-0 inset-x-0 text-xs max-[380px]:text-[10px] text-center text-[var(--color-forest-dark)] bg-white/90 py-1 max-[380px]:py-0.5 truncate font-medium">
+                          {photo.label}
+                        </span>
+                        {photo.summary?.source === 'autodesign' && (
+                          <span className="absolute left-1.5 top-1.5 rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-bold text-[var(--color-forest-dark)]">
+                            {photoSupportStatus(photo) === 'degraded' ? 'Degraded' : 'Imported'}
+                          </span>
+                        )}
+                        {photo.summary?.asset_readiness && photo.summary.asset_readiness !== 'ready' && (
+                          <span className="absolute right-1.5 top-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+                            {photo.summary.asset_readiness}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Vine divider between categories */}

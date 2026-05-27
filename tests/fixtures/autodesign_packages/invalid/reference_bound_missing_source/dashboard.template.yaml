@@ -1,0 +1,25 @@
+dashboard_fragment:
+  session:
+    axis: form
+    angle: quantity
+    mechanic: enumerate
+    entity_role: reference
+    focal_attribute: visible_star_count
+    entry_rung: '{runtime_entry_rung}'
+    exit_rung: '{runtime_exit_rung}'
+    outcome: '{runtime_outcome}'
+  contributes_to:
+    curiosity_radial:
+      axis: form
+      angle: quantity
+    exploration_matrix:
+      cell: enumerate by quantity
+    key_concepts_exposure:
+      Form:
+        angle: quantity
+      Connection:
+        angle: quantity
+    atl_skills_trail:
+    - counting
+    - observation
+    - focus

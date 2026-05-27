@@ -1,0 +1,63 @@
+activity_id: concept_phoneme_hunt_collect
+version: 1
+source_entity_exemplar: ball
+template_type: cat5
+pillar: Adventure
+game_style: quest_collector
+
+entity: any_everyday_object
+entity_class: [observable_thing]
+entity_binding: agnostic
+tier_range:
+  primary: T1
+  span: [T0, T1]
+  elasticity: "neighbor"
+
+category: language
+attributes: [beginning_b_sound, spoken_word]
+key_concepts: [Form, Connection]
+related_concepts: [sound_pattern, beginning_sound, classification, evidence]
+atl_skills: [language_expression, observation, classification]
+transdisciplinary_theme: How_We_Express_Ourselves
+subject_tags: [language]
+
+kud:
+  know:
+    - "words can start with the same sound"
+    - "the /b/ sound begins words like ball, book, and banana"
+    - "spoken names can be used as a collection rule"
+  understand:
+    - "spoken words have form through their sounds"
+    - "different objects can connect through the same first sound"
+  do:
+    - "listen for the /b/ beginning sound"
+    - "find and photograph three /b/ treasures"
+    - "explain why each treasure belongs on the sound map"
+
+progression:
+  topic_axis: form
+  difficulty_level: 2
+  next_step_hint: "Next time, try a different beginning sound or compare two first sounds."
+  reward_hook: "Earned the B-Sound Scout badge"
+
+caregiver_role: [scaffold, co-explorer]
+
+activity_signature:
+  observation_angle: pattern
+  mechanic: collect
+  entity_role: catalyst
+  bridge_prerequisites:
+    primary: [pattern]
+    secondary: [sound, language, category]
+  focal_attribute: "beginning_b_sound"
+  intro: "The child finds three everyday treasures whose names begin with the /b/ sound."
+  preview_label: "Find /b/ treasures"
+  preview_prompt: "Let's use your sound ears and find things that start with /b/."
+  role_pivot_note: "The starting object or mode only launches the sound hunt; the child then collects examples by beginning sound."
+
+matchability:
+  entity_class_filter: []
+  tier_support:
+    T0: true
+    T1: true
+    T2: false

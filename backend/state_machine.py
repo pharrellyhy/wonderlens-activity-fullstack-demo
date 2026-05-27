@@ -8,10 +8,10 @@ from typing import Literal, Union
 
 try:
     from .schemas import ExplorerMapCharacter, ExplorerMapState, ScreenFrame
-    from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from .schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
 except ImportError:
     from schemas import ExplorerMapCharacter, ExplorerMapState, ScreenFrame
-    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
 
 # --- Step Constants ---
 
@@ -30,6 +30,13 @@ CAT5_STEP_4_SYNTHESIS = "STEP_4_SYNTHESIS"
 CAT5_STEP_5_CELEBRATE = "STEP_5_CELEBRATE"
 CAT5_STEP_6_CLOSING = "STEP_6_CLOSING"
 
+# Cat 3 steps
+CAT3_STEP_1_HOOK = "STEP_1_HOOK"
+CAT3_STEP_2_SETUP = "STEP_2_SETUP"
+CAT3_STEP_3_BUILD = "STEP_3_BUILD"  # Appended with round number at runtime
+CAT3_STEP_4_CELEBRATE = "STEP_4_CELEBRATE"
+CAT3_STEP_5_CLOSING = "STEP_5_CLOSING"
+
 # Shared
 EARLY_EXIT = "EARLY_EXIT"
 ENDED = "ENDED"
@@ -37,7 +44,7 @@ ENDED = "ENDED"
 
 def _parse_round_step(step: str) -> tuple[str, int]:
     """Parse 'STEP_3_ROUND_2' into ('STEP_3_ROUND', 2)."""
-    for prefix in ("STEP_3_ROUND_", "STEP_3_COLLECT_"):
+    for prefix in ("STEP_3_ROUND_", "STEP_3_COLLECT_", "STEP_3_BUILD_"):
         if step.startswith(prefix):
             try:
                 return prefix.rstrip("_"), int(step[len(prefix) :])
@@ -48,7 +55,7 @@ def _parse_round_step(step: str) -> tuple[str, int]:
 
 def next_step(
     current_step: str,
-    template_type: Literal["cat1", "cat5"],
+    template_type: Literal["cat1", "cat3", "cat5"],
     current_round: int,
     total_rounds: int,
 ) -> str:
@@ -58,6 +65,8 @@ def next_step(
 
     if template_type == "cat1":
         return _next_step_cat1(current_step, current_round, total_rounds)
+    if template_type == "cat3":
+        return _next_step_cat3(current_step, current_round, total_rounds)
     return _next_step_cat5(current_step, current_round, total_rounds)
 
 
@@ -74,6 +83,23 @@ def _next_step_cat1(current_step: str, current_round: int, total_rounds: int) ->
     if current_step == CAT1_STEP_4_CELEBRATE:
         return CAT1_STEP_5_CLOSING
     if current_step == CAT1_STEP_5_CLOSING:
+        return ENDED
+    return ENDED
+
+
+def _next_step_cat3(current_step: str, current_round: int, total_rounds: int) -> str:
+    if current_step == CAT3_STEP_1_HOOK:
+        return CAT3_STEP_2_SETUP
+    if current_step == CAT3_STEP_2_SETUP:
+        return "STEP_3_BUILD_1"
+    if current_step.startswith("STEP_3_BUILD_"):
+        _, rnd = _parse_round_step(current_step)
+        if rnd >= total_rounds:
+            return CAT3_STEP_4_CELEBRATE
+        return f"STEP_3_BUILD_{rnd + 1}"
+    if current_step == CAT3_STEP_4_CELEBRATE:
+        return CAT3_STEP_5_CLOSING
+    if current_step == CAT3_STEP_5_CLOSING:
         return ENDED
     return ENDED
 
@@ -115,6 +141,8 @@ def step_needs_user_input(step: str) -> bool:
     auto_advance_steps = {
         CAT1_STEP_4_CELEBRATE,
         CAT1_STEP_5_CLOSING,
+        CAT3_STEP_4_CELEBRATE,
+        CAT3_STEP_5_CLOSING,
         CAT5_STEP_5_CELEBRATE,
         CAT5_STEP_6_CLOSING,
     }
@@ -125,7 +153,7 @@ def _match_visual_frame(step: str, visual_frames: list[ScreenFrame]) -> ScreenFr
     """Try to match a Visual Agent frame by mapping step to trigger."""
     if step == "STEP_1_HOOK":
         trigger = "on_enter"
-    elif step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
+    elif step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_") or step.startswith("STEP_3_BUILD_"):
         _, rnd = _parse_round_step(step)
         trigger = f"on_round_{rnd}"
     elif step in ("STEP_4_CELEBRATE", "STEP_5_CELEBRATE"):
@@ -168,7 +196,7 @@ def _build_cat5_detail_frame(context: dict, entity: str, round_number: int) -> S
 
 
 def _build_cat5_progress_widget_params(
-    context: dict, creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots]
+    context: dict, creative_slots: Union[Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots]
 ) -> dict:
     """Build widget params for Cat5 collection progress."""
     collected_count = len(context.get("collected_photos", []))
@@ -184,10 +212,10 @@ def _with_round_context(
     frame: ScreenFrame,
     step: str,
     context: dict,
-    creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots],
+    creative_slots: Union[Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots],
 ) -> ScreenFrame:
     """Return a copy of a matched frame enriched with round-specific widget params."""
-    if not (step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_")):
+    if not (step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_") or step.startswith("STEP_3_BUILD_")):
         return frame
 
     _, round_number = _parse_round_step(step)
@@ -203,7 +231,7 @@ def _with_round_context(
 def _build_explorer_map_frame(
     step: str,
     context: dict,
-    creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots],
+    creative_slots: Union[Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots],
     entity: str,
     key_concepts: list[str],
 ) -> ScreenFrame:
@@ -298,8 +326,8 @@ def _build_explorer_map_frame(
 
 def get_screen_frame(
     step: str,
-    template_type: Literal["cat1", "cat5"],
-    creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots],
+    template_type: Literal["cat1", "cat3", "cat5"],
+    creative_slots: Union[Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots],
     context: dict,
     visual_frames: list[ScreenFrame] | None = None,
     celebration_frame: ScreenFrame | None = None,
@@ -360,6 +388,46 @@ def get_screen_frame(
     # Cat 5: use Explorer's Map for the primary activity flow.
     if template_type == "cat5":
         return _build_explorer_map_frame(step, context, creative_slots, entity, key_concepts)
+
+    # Cat 3: guided build flow
+    if template_type == "cat3":
+        if step == "STEP_2_SETUP":
+            return ScreenFrame(
+                widget="character_display",
+                widget_params={"description": "Guided build setup", "entity": entity, "roundNumber": 0},
+                animation="appear",
+                trigger="on_enter",
+            )
+        if step.startswith("STEP_3_BUILD_"):
+            _, rnd = _parse_round_step(step)
+            build_step = ""
+            if isinstance(creative_slots, Cat3CreativeSlots) and rnd - 1 < len(creative_slots.build_steps):
+                build_step = creative_slots.build_steps[rnd - 1]
+            return ScreenFrame(
+                widget="character_display",
+                widget_params={
+                    "description": build_step or f"Build step {rnd} for {entity}",
+                    "roundNumber": rnd,
+                    "entity": entity,
+                },
+                animation="scene_transition" if rnd > 1 else "gentle_pulse",
+                trigger=f"on_round_{rnd}",
+            )
+        if step == "STEP_4_CELEBRATE":
+            role_title = creative_slots.role_title if isinstance(creative_slots, Cat3CreativeSlots) else "Builder"
+            return ScreenFrame(
+                widget="badge_award",
+                widget_params={"title": role_title, "concepts": key_concepts, "entity": entity},
+                animation="celebration_burst",
+                trigger="on_correct",
+            )
+        if step == "STEP_5_CLOSING":
+            return ScreenFrame(
+                widget="badge_award",
+                widget_params={"title": "IB Concepts", "concepts": key_concepts, "entity": entity},
+                animation="badge_reveal",
+                trigger="on_correct",
+            )
 
     # Cat 1: celebration frame override
     if celebration_frame and step in {"STEP_4_CELEBRATE", "STEP_5_CELEBRATE"}:
@@ -435,6 +503,7 @@ def get_step_name(step: str) -> str:
         "STEP_1_HOOK": "Transition Bridge (Hook)",
         "STEP_2_RULES": "Game Rules Introduction",
         "STEP_2_MISSION": "Mission Briefing",
+        "STEP_2_SETUP": "Build Setup",
         "STEP_4_CELEBRATE": "Celebration",
         "STEP_4_SYNTHESIS": "Collection Synthesis",
         "STEP_5_CELEBRATE": "Celebration",
@@ -451,4 +520,7 @@ def get_step_name(step: str) -> str:
     if step.startswith("STEP_3_COLLECT_"):
         _, rnd = _parse_round_step(step)
         return f"Collection Round {rnd}"
+    if step.startswith("STEP_3_BUILD_"):
+        _, rnd = _parse_round_step(step)
+        return f"Build Round {rnd}"
     return step

@@ -78,7 +78,12 @@ def recipe_to_session_state(
     """
     activity_type = recipe.activity_type
     category = SCENARIO_CATEGORIES.get(activity_type, "category_1")
-    template_type: Literal["cat1", "cat5"] = "cat5" if category == "category_5" else "cat1"
+    if category == "category_5":
+        template_type: Literal["cat1", "cat3", "cat5"] = "cat5"
+    elif category == "category_3":
+        template_type = "cat3"
+    else:
+        template_type = "cat1"
 
     creative_slots = get_creative_slots(activity_type)
     entity_name = entity_name_for_filename(filename)

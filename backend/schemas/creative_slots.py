@@ -67,12 +67,34 @@ class Cat1CreativeSlots(BaseModel):
         "sound_imitation",
         "prediction_game",
         "helper_hotline",
+        "deduce",
+        "motion_voice",
+        "remember",
+        "care",
+        "enumerate",
+        "decide",
+        "sort",
+        "predict",
+        "imagine",
+        "compare",
     ] = Field(description="Game mechanic chosen based on entity category")
     metaphor: str = Field(description="Playful imaginative frame for the entity")
     role_title: str = Field(description="Fun title awarded to the child at the end")
     round_scenarios: list[str] = Field(description="One scenario per dialogue round, escalating in complexity")
     escalation_axis: str = Field(description="How rounds increase in difficulty")
     observation_detail: str = Field(description="Specific visual detail from the photo to anchor the hook")
+
+
+class Cat3CreativeSlots(BaseModel):
+    """Creative slots for Category 3 guided build activities."""
+
+    game_mechanic: Literal["build"] = Field(description="Guided build mechanic")
+    metaphor: str = Field(description="Playful frame for the build")
+    role_title: str = Field(description="Fun title awarded to the child")
+    build_materials: list[str] = Field(default_factory=list, description="Suggested child materials")
+    build_steps: list[str] = Field(description="One build step per round")
+    escalation_axis: str = Field(description="How build rounds increase in complexity")
+    observation_detail: str = Field(description="Specific visual or thematic detail that anchors the hook")
 
 
 class Cat5CreativeSlots(BaseModel):
@@ -102,4 +124,4 @@ class Cat5CreativeSlots(BaseModel):
     )
 
 
-CreativeSlots = Union[Cat1CreativeSlots, Cat5CreativeSlots]
+CreativeSlots = Union[Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots]

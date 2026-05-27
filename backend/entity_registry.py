@@ -10,9 +10,9 @@ from pathlib import Path
 from pydantic import BaseModel
 
 try:
-    from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots, CreativeSlots
+    from .schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots, CreativeSlots
 except ImportError:
-    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots, CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots, CreativeSlots
 
 try:
     from .logger import setup_logger
@@ -262,6 +262,21 @@ def _build_entity_summary(entity: EntityConfig) -> dict:
                 "synthesis_type": slots.synthesis_type,
                 "observation_angle": slots.observation_angle,
                 "collectible_previews": previews,
+            }
+        )
+    elif isinstance(slots, Cat3CreativeSlots):
+        summary.update(
+            {
+                "metaphor": slots.metaphor,
+                "game_mechanic": slots.game_mechanic,
+                "round_count": entity.play_rounds if entity.play_rounds is not None else len(slots.build_steps),
+                "round_scenarios": slots.build_steps,
+                "escalation_axis": slots.escalation_axis,
+                "collection_criterion": None,
+                "collection_count": None,
+                "synthesis_type": None,
+                "observation_angle": None,
+                "collectible_previews": None,
             }
         )
 

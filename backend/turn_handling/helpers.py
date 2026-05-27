@@ -47,12 +47,12 @@ logger = setup_logger(__name__)
 
 def _is_invitation_step(step: str) -> bool:
     """Return True for STEP_2 invitation steps (rules or mission briefing)."""
-    return step in {"STEP_2_RULES", "STEP_2_MISSION"}
+    return step in {"STEP_2_RULES", "STEP_2_MISSION", "STEP_2_SETUP"}
 
 
 def _is_round_step(step: str) -> bool:
     """Return True for any STEP_3 round or collection step."""
-    return step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_")
+    return step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_") or step.startswith("STEP_3_BUILD_")
 
 
 def _is_closing_step(step: str) -> bool:
@@ -93,7 +93,7 @@ def _advance_state(state: SessionStateModel) -> None:
 def _sync_round_from_step(state: SessionStateModel) -> None:
     """Keep current_round aligned with the active round/collect step."""
     step = state.current_step
-    for prefix in ("STEP_3_ROUND_", "STEP_3_COLLECT_"):
+    for prefix in ("STEP_3_ROUND_", "STEP_3_COLLECT_", "STEP_3_BUILD_"):
         if step.startswith(prefix):
             try:
                 state.current_round = int(step[len(prefix) :])
@@ -172,9 +172,9 @@ def _get_response_type(step: str) -> str:
     """Map a step to a response type string."""
     if step == "STEP_1_HOOK":
         return "hook"
-    if step in ("STEP_2_RULES", "STEP_2_MISSION"):
+    if step in ("STEP_2_RULES", "STEP_2_MISSION", "STEP_2_SETUP"):
         return "rules"
-    if step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
+    if step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_") or step.startswith("STEP_3_BUILD_"):
         return "round"
     if step in ("STEP_4_CELEBRATE", "STEP_5_CELEBRATE"):
         return "celebration"

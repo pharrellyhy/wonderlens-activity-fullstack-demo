@@ -7,13 +7,13 @@ import yaml
 
 try:
     from .entity_registry import CollectionCatalog, CollectionItem, EntityConfig
-    from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from .schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from .schemas.recipe import InstructionRecipe, RecipeMetadata
     from .schemas.step_instruction import RoundInstruction, StepGoal, StepInstruction
     from .schemas.visual_composition import ScreenFrame
 except ImportError:
     from entity_registry import CollectionCatalog, CollectionItem, EntityConfig
-    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from schemas.recipe import InstructionRecipe, RecipeMetadata
     from schemas.step_instruction import RoundInstruction, StepGoal, StepInstruction
     from schemas.visual_composition import ScreenFrame
@@ -38,6 +38,8 @@ def _build_entity_config(data: dict) -> EntityConfig:
         if "story_scaffold" in data:
             slots_data["story_scaffold"] = data["story_scaffold"]
         creative_slots = Cat5CreativeSlots(**slots_data)
+    elif category == "category_3":
+        creative_slots = Cat3CreativeSlots(**slots_data)
     else:
         creative_slots = Cat1CreativeSlots(**slots_data)
 
@@ -67,6 +69,9 @@ def _build_entity_config(data: dict) -> EntityConfig:
         plain_description=data.get("plain_description", ""),
         steps_summary=data.get("steps_summary", []),
         play_rounds=data.get("play_rounds"),
+        activity_set=data.get("activity_set", ""),
+        source_export_id=data.get("source_export_id", ""),
+        mechanic=data.get("mechanic", slots_data.get("game_mechanic", "")),
     )
 
 

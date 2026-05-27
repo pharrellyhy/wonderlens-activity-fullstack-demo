@@ -18,7 +18,7 @@ try:
     from ..config import get_settings
     from ..db import log_agent_call
     from ..logger import setup_logger
-    from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from ..schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from ..schemas.session_state import SessionStateModel
     from ..schemas.step_instruction import RoundInstruction, StepGoal
     from ..schemas.turn_directive import TurnDirective
@@ -30,7 +30,7 @@ except ImportError:
     from config import get_settings
     from db import log_agent_call
     from logger import setup_logger
-    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import SessionStateModel
     from schemas.step_instruction import RoundInstruction, StepGoal
     from schemas.turn_directive import TurnDirective
@@ -106,6 +106,12 @@ def _map_step_to_example_group(step: str, template_type: str) -> str | None:
     if step in ("STEP_5_CELEBRATE", "STEP_6_CLOSING"):
         return "cat5_celebrate_closing"
     return None
+
+
+def _template_type_label(template_type: str) -> str:
+    """Return the human-readable category label for a template type."""
+    labels = {"cat1": "Category 1", "cat3": "Category 3", "cat5": "Category 5"}
+    return labels.get(template_type, "Category")
 
 
 _PERSONALITIES_PATH = Path(__file__).parent.parent / "skills" / "personalities.yaml"
@@ -443,10 +449,11 @@ def _load_step_instructions(state: SessionStateModel) -> str:
         "STEP_1_HOOK": f"{template_type}_step1_hook.md",
         "STEP_2_RULES": "cat1_step2_rules.md",
         "STEP_2_MISSION": "cat5_step2_mission.md",
-        "STEP_4_CELEBRATE": "cat1_step4_celebrate.md",
+        "STEP_2_SETUP": "cat3_step2_setup.md",
+        "STEP_4_CELEBRATE": f"{template_type}_step4_celebrate.md",
         "STEP_4_SYNTHESIS": "cat5_step4_synthesis.md",
         "STEP_5_CELEBRATE": "cat5_step5_celebrate.md",
-        "STEP_5_CLOSING": "cat1_step5_closing.md",
+        "STEP_5_CLOSING": f"{template_type}_step5_closing.md",
         "STEP_6_CLOSING": "cat5_step6_closing.md",
         "EARLY_EXIT": "early_exit.md",
     }
@@ -458,6 +465,8 @@ def _load_step_instructions(state: SessionStateModel) -> str:
         filename = "cat1_step3_round.md"
     elif step.startswith("STEP_3_COLLECT_"):
         filename = "cat5_step3_collect.md"
+    elif step.startswith("STEP_3_BUILD_"):
+        filename = "cat3_step3_build.md"
 
     if not filename:
         return f"Current step: {step}. Generate an appropriate response."
@@ -475,7 +484,7 @@ def _load_step_instructions(state: SessionStateModel) -> str:
         text = _filter_synthesis_phase(text, state.synthesis_phase)
 
     fragment_prefix = step
-    if step.startswith(("STEP_3_ROUND_", "STEP_3_COLLECT_")):
+    if step.startswith(("STEP_3_ROUND_", "STEP_3_COLLECT_", "STEP_3_BUILD_")):
         fragment_prefix = step.rsplit("_", maxsplit=1)[0]
 
     # Synthesis step: load phase-specific fragment instead of synthesis_type fragment
@@ -555,6 +564,25 @@ def _load_step_instructions(state: SessionStateModel) -> str:
         tier_sentence_counts = {"T0": "7-8", "T1": "9-11", "T2": "12-14"}
         replacements["{story_sentence_count}"] = tier_sentence_counts.get(state.tier, "9-11")
 
+    elif isinstance(slots, Cat3CreativeSlots):
+        replacements.update(
+            {
+                "{game_mechanic}": slots.game_mechanic,
+                "{metaphor}": slots.metaphor,
+                "{role_title}": slots.role_title,
+                "{build_materials}": ", ".join(slots.build_materials) if slots.build_materials else "paper and pencil",
+                "{escalation_axis}": slots.escalation_axis,
+                "{observation_detail}": slots.observation_detail,
+            }
+        )
+        round_idx = max(0, state.current_round - 1)
+        if round_idx < len(slots.build_steps):
+            replacements["{round_scenario}"] = slots.build_steps[round_idx]
+            replacements["{build_step}"] = slots.build_steps[round_idx]
+        else:
+            replacements["{round_scenario}"] = "Continue the guided build with one small step."
+            replacements["{build_step}"] = "Continue the guided build with one small step."
+
     for key, value in replacements.items():
         text = text.replace(key, value)
 
@@ -612,9 +640,9 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
 
     if step == "STEP_1_HOOK":
         goal_source = instructions.hook
-    elif step in ("STEP_2_RULES", "STEP_2_MISSION"):
+    elif step in ("STEP_2_RULES", "STEP_2_MISSION", "STEP_2_SETUP"):
         goal_source = instructions.transition
-    elif step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_"):
+    elif step.startswith("STEP_3_ROUND_") or step.startswith("STEP_3_COLLECT_") or step.startswith("STEP_3_BUILD_"):
         round_num = int(step.rsplit("_", maxsplit=1)[-1])
         round_idx = round_num - 1
         if 0 <= round_idx < len(instructions.rounds):
@@ -807,7 +835,7 @@ def _build_system_prompt(state: SessionStateModel) -> str:
         "{scene}": state.scene or "not specified",
         "{photo_feature_anchors}": photo_feature_anchors,
         "{character_sound_list}": get_sound_list_for_prompt(state.activity_type),
-        "{template_type}": f"Category {'1' if state.template_type == 'cat1' else '5'} ({state.template_type})",
+        "{template_type}": f"{_template_type_label(state.template_type)} ({state.template_type})",
         "{current_step}": f"{state.current_step} — {get_step_name(state.current_step)}",
         "{current_round}": str(state.current_round),
         "{total_rounds}": str(state.total_rounds),

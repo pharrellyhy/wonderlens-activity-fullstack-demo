@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 CollectionPhase = Literal["photo", "detail"]
 
-from .creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+from .creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
 from .recipe import InstructionRecipe
 from .structured_story import StructuredStory
 from .turn_directive import StoryElement
@@ -34,12 +34,12 @@ class SessionStateModel(BaseModel):
 
     session_id: str
     tier: str
-    template_type: Literal["cat1", "cat5"]
+    template_type: Literal["cat1", "cat3", "cat5"]
     activity_type: str
     current_step: str = Field(description="Current state machine step")
     current_round: int = 0
     total_rounds: int = 3
-    creative_slots: Union[Cat1CreativeSlots, Cat5CreativeSlots]
+    creative_slots: Union[Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots]
     conversation_history: list[ConversationTurn] = Field(default_factory=list)
     collected_photos: list[str] = Field(default_factory=list, description="Cat 5 collected photo IDs")
     collection_phase: CollectionPhase = Field(default="photo", description="Cat 5 2-phase loop: photo or detail")

@@ -161,8 +161,11 @@ Asset generation requirements:
 Recommended v1 asset set:
 
 - One activity icon/thumbnail per activity for the activity library.
-- Three lens phase images per activity: intro/setup, active play, and recap/payoff.
-- If a specific activity needs finer granularity, add extra phase images in the manifest without changing UI code.
+- Lens phase images should match the activity's runtime beats rather than a fixed count.
+- Typical activity beats are intro/bridge, rules/setup, each core round, magic moment/synthesis, and closing/recap.
+- The manifest should allow any number of beat images per activity, keyed by stable beat ids such as `intro`, `rules`,
+  `round_1`, `round_2`, `round_3`, `synthesis`, and `recap`.
+- If a beat does not have a usable image, the UI should fall back to the nearest activity-level image plus rendered text.
 
 Asset generation must be inspectable:
 

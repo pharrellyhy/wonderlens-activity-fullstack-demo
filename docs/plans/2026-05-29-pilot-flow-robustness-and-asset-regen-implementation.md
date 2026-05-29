@@ -18,6 +18,7 @@
 - Frontend tests run from `frontend/` via `npm run test -- <name>`; lint via `npm run lint`.
 - Commit at every task with conventional-commit messages. **Never attribute Claude/AI** as author or co-author.
 - After each stream, run `code-reviewer` + `code-simplifier` before declaring it done (project rule); update `HANDOFF.md`.
+- **Live-API verification:** source the main-repo `backend/.env` + `backend/.elaborate-baton-480304-r8-a8a39bcb34f1.json` (see the goal file's Live Provider Credential Rule) and run `scripts/run_activity_text_smoke.py --timeout 120` against the **live provider** as part of verification — do not rely on mocked unit tests alone. Never print or commit secret values.
 
 ## File Structure
 

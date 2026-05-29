@@ -88,22 +88,23 @@ Delegated agents must not edit secrets, run destructive git, edit the same file 
 
 ## Live Provider Credential Rule
 
-Live smoke and browser verification need backend provider credentials. Source them without exposing values:
+All testing and verification must hit the **live provider** (not mocked-only). The credential files live in the **main repo's `backend/`** (verified present there; the worktree has none of its own). Source them before running the backend, tests, or live smoke, without exposing values:
 
 ```bash
-MAIN_REPO_ROOT="/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend"
+REPO_BACKEND="/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend"
 set -a
-source "$MAIN_REPO_ROOT/.env"
+source "$REPO_BACKEND/.env"
 set +a
-export GOOGLE_APPLICATION_CREDENTIALS="$(ls "$MAIN_REPO_ROOT"/.elaborate-baton-*.json | head -n 1)"
+export GOOGLE_APPLICATION_CREDENTIALS="$REPO_BACKEND/.elaborate-baton-480304-r8-a8a39bcb34f1.json"
 ```
 
-Do not echo, print, edit, copy, or commit any secret value. The autonomous completion gate (below) does NOT depend on live credentials — it uses offline automated checks only.
+Do not echo, print, edit, copy, or commit any secret value. The autonomous completion gate includes the live smoke, so credentials must be sourced before the verification phase.
 
 ## Preconditions
 
 - The worktree and both source docs (plan + spec) exist.
 - Backend `uv` tooling, `frontend/package.json`, `scripts/build_activity_screen_assets.py`, and `scripts/run_activity_text_smoke.py` are available.
+- Live provider credentials exist in the main repo `backend/` (`.env` + `.elaborate-baton-480304-r8-a8a39bcb34f1.json`) for live-provider testing.
 - Codex CLI is available for Stream 3 art (reached via the `codex:codex-rescue` runtime); its outputs land in `~/.codex/generated_images/`.
 - Reuse or intentionally restart any running servers; leave none unexpectedly running at completion.
 
@@ -158,7 +159,13 @@ Repository:
 git diff --check
 ```
 
-Human-gated full acceptance (not part of the autonomous gate): per-pilot art sign-off in the browser; live smoke `uv run python scripts/run_activity_text_smoke.py --timeout 120` after sourcing credentials; Cat1/Cat3/Cat5 browser walkthrough at `http://127.0.0.1:5173/?view=activities`.
+Live verification (REQUIRED — source credentials per the Live Provider Credential Rule first, then run against the live provider and surface output; do not substitute mocks):
+
+```bash
+uv run python scripts/run_activity_text_smoke.py --timeout 120
+```
+
+Human-gated full acceptance (not part of the autonomous gate): per-pilot art sign-off in the browser; Cat1/Cat3/Cat5 browser walkthrough at `http://127.0.0.1:5173/?view=activities`.
 
 ## Final Completion Gate
 
@@ -168,14 +175,15 @@ Autonomous completion (transcript-provable) is reached when, with command output
 - the backend Streams-1+2 suite, the asset-contract test, the full backend suite, and backend ruff all pass (the only allowed red is the pre-existing, out-of-scope `test_representative_activity_layout_contracts_match_touchless_goal` carousel-vs-picker case — call it out if seen);
 - `npm run test`, `npm run lint`, and `npm run build` pass in `frontend/`;
 - `git diff --check` is clean;
+- the live smoke (`scripts/run_activity_text_smoke.py --timeout 120`) passes against the **live provider** with credentials sourced and output shown in the conversation;
 - Stream 3's non-art scaffolding (manifest celebrate/closing beats, representative-gated `_required_beat_ids`, dropped pilot `ITEM_CROPS`, placeholder rasters) is in place and the asset-contract test is green.
 
-Then **stop and hand off** the human-gated remainder: Stream 3 image-art generation + per-pilot sign-off, live smoke, and browser walkthrough. Do not mark the goal `Completed` until that human acceptance also passes; record it as `Active` with the autonomous gate met until then.
+Then **stop and hand off** the human-gated remainder: Stream 3 image-art generation + per-pilot sign-off, and the Cat1/Cat3/Cat5 browser walkthrough. Do not mark the goal `Completed` until that human acceptance also passes; record it as `Active` with the autonomous gate met until then.
 
 ## Goal Invocation
 
 Run in Claude Code goal mode (requires v2.1.139+), or Codex `/goal`. The autonomous loop targets Streams 1+2 and 4 plus Stream 3 scaffolding; image art stays human-gated.
 
 ```text
-/goal Implement goals/2026-05-29-pilot-flow-robustness-and-asset-regen-goal.md — read it and its Design Source plan fully and obey the Hard Constraints, Mandatory Ordering, and human-gated Stream 3 art rule. Done when all Stream 1+2 and Stream 4 tasks are complete and, with command output shown in the conversation: `uv run pytest backend/tests/test_finalize_frame.py backend/tests/test_finalize_frame_sync.py backend/tests/test_finalize_validators.py backend/tests/test_activity_text_game_turns.py backend/tests/test_activity_source_fidelity.py backend/tests/test_activity_text_game_cat3.py backend/tests/test_generation_text_mode.py backend/tests/test_generation_fallback.py -q` passes; `cd backend && uv run pytest ../tests/test_activity_text_game_asset_contract.py -q && uv run pytest -q && cd ..` passes (the carousel-vs-picker case is the only allowed pre-existing red); backend ruff is clean; `cd frontend && npm run test && npm run lint && npm run build` passes; and `git diff --check` is clean. For Stream 3, complete only the non-art scaffolding and STOP for human art sign-off — do not auto-approve generated images. Or stop after 60 turns and report the blocker.
+/goal Implement goals/2026-05-29-pilot-flow-robustness-and-asset-regen-goal.md — read it and its Design Source plan fully and obey the Hard Constraints, Mandatory Ordering, and human-gated Stream 3 art rule. Done when all Stream 1+2 and Stream 4 tasks are complete and, with command output shown in the conversation: `uv run pytest backend/tests/test_finalize_frame.py backend/tests/test_finalize_frame_sync.py backend/tests/test_finalize_validators.py backend/tests/test_activity_text_game_turns.py backend/tests/test_activity_source_fidelity.py backend/tests/test_activity_text_game_cat3.py backend/tests/test_generation_text_mode.py backend/tests/test_generation_fallback.py -q` passes; `cd backend && uv run pytest ../tests/test_activity_text_game_asset_contract.py -q && uv run pytest -q && cd ..` passes (the carousel-vs-picker case is the only allowed pre-existing red); backend ruff is clean; `cd frontend && npm run test && npm run lint && npm run build` passes; and `git diff --check` is clean; and `uv run python scripts/run_activity_text_smoke.py --timeout 120` passes against the live provider (source the main-repo backend `.env` and `.elaborate-baton-480304-r8-a8a39bcb34f1.json` first) with output shown. For Stream 3, complete only the non-art scaffolding and STOP for human art sign-off — do not auto-approve generated images. Or stop after 60 turns and report the blocker.
 ```

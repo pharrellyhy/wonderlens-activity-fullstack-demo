@@ -75,7 +75,7 @@ Deterministic by default; at most one corrective regen on failure; deterministic
 Per pilot, full beat set (incl. new `celebrate`/`closing`) + item sprites:
 
 1. Enumerate assets from the expanded manifest (beats + items).
-2. Draft each prompt = subject (beat/recipe + manifest item id) + the style contract (`frontend/public/activity-assets/prompts/wonderlens-activity-style.md` + the autodesign `docs/activity_asset_generation_workflow.md` style section).
+2. Draft each prompt = subject (beat/recipe + manifest item id) + the style contract (`frontend/public/activity-assets/prompts/wonderlens-activity-style.md` + the autodesign `docs/activity_asset_generation_workflow.md` style section) + the **visual reference image** `frontend/public/activity-assets/prompts/style-reference-flat-nordic.png` (muted salmon + dusty blue, oatmeal/sage/mustard accents, arc eyes, pale cheeks, sparse dash/circle marks, soft pencil grain; items/characters on clean white, scenes full-bleed painterly). Pass the reference to Codex (path + extracted descriptors) so outputs match it.
 3. Drive Codex via `codex:codex-rescue` → candidate PNGs in `~/.codex/generated_images/` (1254², downscaled to 512 by the builder).
 4. Inspect candidates (Read tool renders images) and select the best on-style one: square ≥512, no text/letters/logos/borders/vignette/black corners; centered subject + clean white padding for items; full-bleed for scenes with content in the lens-safe center.
 5. Copy selected into `frontend/public/activity-assets/<id>/` (scenes) and `.../items/` (sprites).

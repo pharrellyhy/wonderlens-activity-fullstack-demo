@@ -70,6 +70,7 @@ export default function ActivityGameApp() {
     turnPending,
     error,
     templateType,
+    screenFrame,
     startActivity,
     sendMessage,
     sendCollectionItem,
@@ -119,7 +120,7 @@ export default function ActivityGameApp() {
     [selectedAsset],
   );
 
-  const beatId = beatIdFromSessionState(sessionState);
+  const beatId = beatIdFromSessionState(sessionState, screenFrame);
   const assetSrc = selectedAsset ? assetForBeat(selectedAsset, beatId) : '';
   const baseScreenLayout = selectedAsset ? screenLayoutForBeat(selectedAsset, beatId) : null;
   const sessionActive = Boolean(sessionId);

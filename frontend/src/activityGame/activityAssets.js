@@ -78,10 +78,22 @@ function roundIdFromStep(step, fallbackRound) {
   return `round_${stepRound || fallbackRound || 1}`;
 }
 
-export function beatIdFromSessionState(sessionState) {
+const STEP_BEAT_TABLE = {
+  STEP_1_HOOK: 'intro',
+  STEP_2_RULES: 'rules',
+  STEP_2_MISSION: 'rules',
+  STEP_2_SETUP: 'rules',
+  STEP_4_SYNTHESIS: 'synthesis',
+  STEP_4_CELEBRATE: 'celebrate',
+  STEP_5_CELEBRATE: 'celebrate',
+  STEP_5_CLOSING: 'closing',
+  STEP_6_CLOSING: 'closing',
+  EARLY_EXIT: 'closing',
+};
+
+export function beatIdFromSessionState(sessionState, screenFrame) {
+  if (screenFrame?.beat) return screenFrame.beat;
   const step = sessionState?.current_step || '';
-  if (step === 'STEP_1_HOOK') return 'intro';
-  if (step === 'STEP_2_RULES' || step === 'STEP_2_MISSION' || step === 'STEP_2_SETUP') return 'rules';
   if (
     step.startsWith('STEP_3_ROUND_') ||
     step.startsWith('STEP_3_COLLECT_') ||
@@ -89,7 +101,5 @@ export function beatIdFromSessionState(sessionState) {
   ) {
     return roundIdFromStep(step, sessionState?.current_round);
   }
-  if (step.includes('SYNTHESIS')) return 'synthesis';
-  if (step.includes('CELEBRATE') || step.includes('CLOSING')) return 'recap';
-  return 'intro';
+  return STEP_BEAT_TABLE[step] || 'intro';
 }

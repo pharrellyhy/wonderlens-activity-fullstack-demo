@@ -14,7 +14,8 @@ const publicRoot = join(cwd(), 'public');
 const assetRoot = join(publicRoot, 'activity-assets');
 const stylePromptPath = join(assetRoot, 'prompts', 'wonderlens-activity-style.md');
 const STANDARD_BEATS = ['intro', 'rules', 'round_1', 'round_2', 'round_3', 'recap'];
-const CAT5_BEATS = ['intro', 'rules', 'round_1', 'round_2', 'round_3', 'synthesis', 'recap'];
+const PILOT_STANDARD_BEATS = ['intro', 'rules', 'round_1', 'round_2', 'round_3', 'celebrate', 'closing'];
+const CAT5_BEATS = ['intro', 'rules', 'round_1', 'round_2', 'round_3', 'synthesis', 'celebrate', 'closing'];
 const LAYOUT_MODES = ['single', 'singleText', 'choice2', 'choice3', 'picker'];
 const REPRESENTATIVE_ACTIVITY_IDS = new Set([
   'activity_career_decision_role_play',
@@ -72,7 +73,12 @@ describe('activity asset manifest', () => {
     expect(activitiesWithAssets(manifest)).toHaveLength(12);
     for (const entry of manifest.activities) {
       expect(entry.icon).toMatch(/^\/activity-assets\//);
-      const expectedBeats = entry.id === 'activity_phoneme_treasure_hunt' ? CAT5_BEATS : STANDARD_BEATS;
+      const expectedBeats =
+        entry.id === 'activity_phoneme_treasure_hunt'
+          ? CAT5_BEATS
+          : REPRESENTATIVE_ACTIVITY_IDS.has(entry.id)
+            ? PILOT_STANDARD_BEATS
+            : STANDARD_BEATS;
       expect(entry.beats.map((beat) => beat.id)).toEqual(expectedBeats);
       expectPublicAssetExists(entry.icon);
       for (const beat of entry.beats) {
@@ -259,20 +265,23 @@ describe('activity asset manifest', () => {
     }
   });
 
-  it('maps session steps to variable beat ids', () => {
+  it('maps session steps to distinct beat ids without collapsing celebrate and closing', () => {
     expect(beatIdFromSessionState({ current_step: 'STEP_1_HOOK' })).toBe('intro');
     expect(beatIdFromSessionState({ current_step: 'STEP_2_RULES' })).toBe('rules');
     expect(beatIdFromSessionState({ current_step: 'STEP_2_MISSION' })).toBe('rules');
     expect(beatIdFromSessionState({ current_step: 'STEP_2_SETUP' })).toBe('rules');
     expect(beatIdFromSessionState({ current_step: 'STEP_3_ROUND_3', current_round: 3 })).toBe('round_3');
-    expect(beatIdFromSessionState({ current_step: 'STEP_3_ROUND_3' })).toBe('round_3');
-    expect(beatIdFromSessionState({ current_step: 'STEP_3_ROUND_3', current_round: 1 })).toBe('round_3');
     expect(beatIdFromSessionState({ current_step: 'STEP_3_COLLECT_1', current_round: 1 })).toBe('round_1');
     expect(beatIdFromSessionState({ current_step: 'STEP_3_BUILD_2', current_round: 2 })).toBe('round_2');
     expect(beatIdFromSessionState({ current_step: 'STEP_4_SYNTHESIS' })).toBe('synthesis');
-    expect(beatIdFromSessionState({ current_step: 'STEP_4_CELEBRATE' })).toBe('recap');
-    expect(beatIdFromSessionState({ current_step: 'STEP_5_CELEBRATE' })).toBe('recap');
-    expect(beatIdFromSessionState({ current_step: 'STEP_5_CLOSING' })).toBe('recap');
-    expect(beatIdFromSessionState({ current_step: 'STEP_6_CLOSING' })).toBe('recap');
+    expect(beatIdFromSessionState({ current_step: 'STEP_4_CELEBRATE' })).toBe('celebrate');
+    expect(beatIdFromSessionState({ current_step: 'STEP_5_CELEBRATE' })).toBe('celebrate');
+    expect(beatIdFromSessionState({ current_step: 'STEP_5_CLOSING' })).toBe('closing');
+    expect(beatIdFromSessionState({ current_step: 'STEP_6_CLOSING' })).toBe('closing');
+    expect(beatIdFromSessionState({ current_step: 'EARLY_EXIT' })).toBe('closing');
+  });
+
+  it('prefers the backend screen_frame.beat when present', () => {
+    expect(beatIdFromSessionState({ current_step: 'STEP_5_CELEBRATE' }, { beat: 'closing' })).toBe('closing');
   });
 });

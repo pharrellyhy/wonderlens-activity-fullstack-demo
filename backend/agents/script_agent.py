@@ -20,7 +20,7 @@ try:
     from ..logger import setup_logger
     from ..schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from ..schemas.session_state import SessionStateModel
-    from ..schemas.step_instruction import RoundInstruction, StepGoal
+    from ..schemas.step_instruction import RoundInstruction, StepGoal, StepInstruction
     from ..schemas.turn_directive import TurnDirective
     from ..schemas.turn_plan import TurnPlan
     from ..schemas.turn_response import TurnResponse
@@ -32,7 +32,7 @@ except ImportError:
     from logger import setup_logger
     from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import SessionStateModel
-    from schemas.step_instruction import RoundInstruction, StepGoal
+    from schemas.step_instruction import RoundInstruction, StepGoal, StepInstruction
     from schemas.turn_directive import TurnDirective
     from schemas.turn_plan import TurnPlan
     from schemas.turn_response import TurnResponse
@@ -396,6 +396,11 @@ def _build_directive_speaker_prompt(state: SessionStateModel, directive: TurnDir
         constraints.append(
             "- Do NOT ask binary choice questions (like 'X or Y?') unless the direction explicitly asks for one."
         )
+    if state.interaction_mode == "text" and state.activity_type == "activity_recognition_pop_challenge":
+        constraints.append(
+            "- Text-only recognition mode: ask the child to type, name, say, or describe the matching picture. "
+            "NEVER say point, tap, click, touch, card, or cards."
+        )
 
     replacements = {
         "{tier}": state.tier,
@@ -412,6 +417,33 @@ def _build_directive_speaker_prompt(state: SessionStateModel, directive: TurnDir
         template = template.replace(key, value)
 
     return template
+
+
+def _enforce_text_only_dialogue(state: SessionStateModel, dialogue: str) -> str:
+    """Normalize generated recognition prompts that accidentally imply non-text input."""
+    if state.interaction_mode != "text" or state.activity_type != "activity_recognition_pop_challenge":
+        return dialogue
+
+    replacements = (
+        (r"\bpoint\s+out\b", "name"),
+        (r"\bpoint\s+to\b", "type"),
+        (r"\bpoint\b", "type"),
+        (r"\btap\b", "type"),
+        (r"\bclick\b", "type"),
+        (r"\btouching\b", "looking at"),
+        (r"\btouch\b", "look at"),
+        (r"\bcards\b", "pictures"),
+        (r"\bcard\b", "picture"),
+    )
+    for pattern, replacement in replacements:
+        dialogue = re.sub(pattern, replacement, dialogue, flags=re.IGNORECASE)
+
+    lower_dialogue = dialogue.lower()
+    text_choice_cues = ("?", "type", "write", "name", "tell me", "describe", "which", "what", "choose", "pick", "say")
+    if not any(cue in lower_dialogue for cue in text_choice_cues):
+        dialogue = f"{dialogue.rstrip()} Please type the matching picture name or a short description."
+
+    return dialogue
 
 
 _PHASE_SECTION_RE = re.compile(
@@ -666,6 +698,8 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
         f"Suggested emotion tag: [{goal_source.emotion_tag}]",
     ]
 
+    _append_source_fidelity_lines(lines, instructions, goal_source)
+
     if isinstance(goal_source, RoundInstruction):
         lines.append(f"Scenario: {goal_source.scenario}")
         if goal_source.acceptable_themes:
@@ -701,6 +735,63 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
             )
 
     return "\n".join(lines)
+
+
+def _append_source_fidelity_lines(
+    lines: list[str], instructions: StepInstruction, goal_source: StepGoal | RoundInstruction
+) -> None:
+    """Append source-package dialogue contracts when an imported activity provides them."""
+    source_contract = goal_source.source_contract
+    has_step_contract = any(
+        [
+            source_contract.runtime_instruction,
+            source_contract.example_ai_line,
+            source_contract.child_responses.ideal,
+            source_contract.child_responses.unexpected,
+            source_contract.child_responses.no_response,
+            source_contract.ai_followups.ideal,
+            source_contract.ai_followups.unexpected,
+            source_contract.ai_followups.no_response,
+            source_contract.screen,
+        ]
+    )
+    if not instructions.source_intent_lock and not instructions.runtime_detail_floor_notes and not has_step_contract:
+        return
+
+    lines.append("")
+    lines.append("### Source Package Fidelity:")
+    if instructions.source_intent_lock:
+        lines.append(f"Source intent lock: {instructions.source_intent_lock}")
+    if instructions.runtime_detail_floor_notes:
+        lines.append("Runtime detail floor notes:")
+        for note in instructions.runtime_detail_floor_notes:
+            lines.append(f"- {note}")
+
+    if not has_step_contract:
+        return
+
+    lines.append(
+        "Use this source dialogue contract to preserve intent; adapt wording to the child response "
+        "and current interaction mode."
+    )
+    if source_contract.runtime_instruction:
+        lines.append(f"Runtime instruction: {source_contract.runtime_instruction}")
+    if source_contract.example_ai_line:
+        lines.append(f'Example AI line: "{source_contract.example_ai_line}"')
+    if source_contract.child_responses.ideal:
+        lines.append(f"Ideal child response: {source_contract.child_responses.ideal}")
+    if source_contract.child_responses.unexpected:
+        lines.append(f"Unexpected child response: {source_contract.child_responses.unexpected}")
+    if source_contract.child_responses.no_response:
+        lines.append(f"No-response child branch: {source_contract.child_responses.no_response}")
+    if source_contract.ai_followups.ideal:
+        lines.append(f"Ideal follow-up: {source_contract.ai_followups.ideal}")
+    if source_contract.ai_followups.unexpected:
+        lines.append(f"Unexpected follow-up: {source_contract.ai_followups.unexpected}")
+    if source_contract.ai_followups.no_response:
+        lines.append(f"No-response follow-up: {source_contract.ai_followups.no_response}")
+    if source_contract.screen:
+        lines.append(f"Screen contract: {source_contract.screen}")
 
 
 def _get_suggested_emotion_tag(state: SessionStateModel) -> str:
@@ -1068,6 +1159,7 @@ class ScriptAgent:
             if directive.character_sfx:
                 turn.character_sfx = list(directive.character_sfx)
             _clean_dialogue(turn, state)
+            turn.dialogue = _enforce_text_only_dialogue(state, turn.dialogue)
 
             logger.info(
                 "Directive Speaker: step=%s action=%s latency=%dms",
@@ -1147,6 +1239,7 @@ class ScriptAgent:
                 screen_widget_params={},
             )
             _clean_dialogue(turn, state)
+            turn.dialogue = _enforce_text_only_dialogue(state, turn.dialogue)
 
             logger.info(f"Speaker turn: step={state.current_step}, round={state.current_round}, latency={latency_ms}ms")
             await log_agent_call(state.session_id, "speaker", latency_ms, True)

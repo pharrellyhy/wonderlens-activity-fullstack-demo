@@ -2,11 +2,20 @@ import ActivityLens from './ActivityLens.jsx';
 
 export default function WonderLensDevice({
   activity,
-  latestAiText = '',
   sessionState = null,
   assetSrc = '',
-  savedTokens = [],
+  screenLayout = null,
   progress = null,
+  isWaiting = false,
+  interaction = null,
+  selectionLocked = false,
+  scrollDisabled = selectionLocked,
+  scrollPreviousLabel = 'Previous activity',
+  scrollNextLabel = 'Next activity',
+  scrollControlLabel = 'Pick',
+  primaryLabel = 'Start',
+  primaryAriaLabel = 'Start or restart activity',
+  primaryDisabled = false,
   onScrollPrevious,
   onScrollNext,
   onPrimaryAction,
@@ -20,26 +29,32 @@ export default function WonderLensDevice({
           <button
             type="button"
             className="wonderlens-device__scroll-hit wonderlens-device__scroll-hit--up"
-            aria-label="Previous activity"
+            aria-label={scrollPreviousLabel}
+            disabled={scrollDisabled}
             onClick={onScrollPrevious}
           />
           <button
             type="button"
             className="wonderlens-device__scroll-hit wonderlens-device__scroll-hit--down"
-            aria-label="Next activity"
+            aria-label={scrollNextLabel}
+            disabled={scrollDisabled}
             onClick={onScrollNext}
           />
           <span className="wonderlens-device__scroll-arc" aria-hidden="true" />
+          <span className="wonderlens-device__control-label wonderlens-device__control-label--scroll" aria-hidden="true">
+            {scrollControlLabel}
+          </span>
         </div>
 
         <div className="wonderlens-device__lens">
           <ActivityLens
             activity={activity}
-            latestAiText={latestAiText}
             sessionState={sessionState}
             assetSrc={assetSrc}
-            savedTokens={savedTokens}
+            screenLayout={screenLayout}
             progress={progress}
+            isWaiting={isWaiting}
+            interaction={interaction}
           />
         </div>
 
@@ -48,9 +63,15 @@ export default function WonderLensDevice({
         <button
           type="button"
           className="wonderlens-device__primary"
-          aria-label="Start or restart activity"
+          aria-label={primaryAriaLabel}
+          disabled={primaryDisabled}
           onClick={onPrimaryAction}
-        />
+        >
+          <span className="wonderlens-device__primary-arrow" aria-hidden="true" />
+        </button>
+        <span className="wonderlens-device__control-label wonderlens-device__control-label--primary" aria-hidden="true">
+          {primaryLabel}
+        </span>
       </div>
     </div>
   );

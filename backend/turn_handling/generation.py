@@ -12,7 +12,7 @@ import httpx
 from openai import AsyncOpenAI
 
 try:
-    from ..agents.script_agent import ScriptAgent, ScriptAgentError
+    from ..agents.script_agent import ScriptAgent, ScriptAgentError, _enforce_text_only_dialogue
     from ..config import get_settings
     from ..logger import setup_logger
     from ..schemas.child_intent import ChildIntentClassification
@@ -21,7 +21,7 @@ try:
     from ..schemas.turn_response import TurnResponse
     from .types import GenerationDebugInfo
 except ImportError:
-    from agents.script_agent import ScriptAgent, ScriptAgentError
+    from agents.script_agent import ScriptAgent, ScriptAgentError, _enforce_text_only_dialogue
     from config import get_settings
     from logger import setup_logger
     from schemas.child_intent import ChildIntentClassification
@@ -336,6 +336,94 @@ def get_retry_stats() -> dict[str, dict[str, int]]:
     return dict(_retry_stats)
 
 
+def _activity_title(activity_type: str) -> str:
+    """Convert an activity id into a readable fallback title."""
+    title = activity_type.removeprefix("activity_").replace("_", " ")
+    return title.title()
+
+
+def _clean_fallback_goal(goal: str, activity_title: str) -> str:
+    """Make authored step goals readable as child-facing fallback copy."""
+    goal = goal.strip().rstrip(".")
+    for prefix in ("Open ", "Explain that ", "Ask ", "Tell "):
+        if goal.startswith(prefix):
+            goal = goal[len(prefix) :].strip()
+            break
+    if goal.lower().startswith(activity_title.lower()):
+        remainder = goal[len(activity_title) :].strip()
+        if remainder.startswith("by "):
+            return f"we will work on {remainder[3:]}"
+        if remainder.startswith("with "):
+            return f"we will start with {remainder[5:]}"
+    return goal
+
+
+def _fallback_step_goal(state: SessionStateModel):
+    recipe = state.instruction_recipe
+    if recipe is None:
+        return None
+
+    instructions = recipe.step_instructions
+    step = state.current_step
+    if step == "STEP_1_HOOK":
+        return instructions.hook
+    if step in {"STEP_2_RULES", "STEP_2_MISSION", "STEP_2_SETUP"}:
+        return instructions.transition
+    if step.startswith("STEP_3"):
+        round_index = max(state.current_round - 1, 0)
+        if round_index < len(instructions.rounds):
+            return instructions.rounds[round_index]
+    if "SYNTHESIS" in step and instructions.synthesis is not None:
+        return instructions.synthesis
+    if "CELEBRATE" in step:
+        return instructions.celebrate
+    if "CLOSING" in step:
+        return instructions.closing
+    return instructions.hook
+
+
+def _fallback_screen_frame(state: SessionStateModel):
+    if "CELEBRATE" in state.current_step or "CLOSING" in state.current_step:
+        return state.celebration_frame
+    if state.current_step.startswith("STEP_3"):
+        frame_index = min(max(state.current_round, 1), len(state.visual_frames) - 1)
+        return state.visual_frames[frame_index] if state.visual_frames else None
+    return state.visual_frames[0] if state.visual_frames else None
+
+
+def _source_fidelity_fallback_response(state: SessionStateModel) -> TurnResponse:
+    """Create a recipe-grounded fallback when the provider is unavailable."""
+    step_goal = _fallback_step_goal(state)
+    tone = getattr(step_goal, "emotion_tag", "gentle")
+    title = _activity_title(state.activity_type)
+    role_title = getattr(state.creative_slots, "role_title", "helper")
+    goal_text = _clean_fallback_goal(getattr(step_goal, "goal", f"start {title}"), title)
+
+    scenario = getattr(step_goal, "scenario", "")
+    scenario_text = f" This round is about {scenario}." if scenario else ""
+    dialogue = f"[{tone}] {title} is ready: {goal_text}.{scenario_text} You are the {role_title}. What should we try?"
+
+    frame = _fallback_screen_frame(state)
+    return TurnResponse(
+        dialogue=dialogue,
+        tone_marker=tone,
+        screen_widget=frame.widget if frame else "photo_display",
+        screen_widget_params=frame.widget_params if frame else {"entity": state.entity_name},
+        screen_animation=frame.animation if frame else "gentle_pulse",
+        sfx_cue=frame.sfx_cue if frame else None,
+        stay_on_step=True,
+        character_state="encouraging",
+    )
+
+
+def _enforce_text_only_interaction(state: SessionStateModel, response: TurnResponse) -> TurnResponse:
+    """Normalize generated choice prompts that accidentally imply non-text input."""
+    dialogue = _enforce_text_only_dialogue(state, response.dialogue)
+    if dialogue == response.dialogue:
+        return response
+    return response.model_copy(update={"dialogue": dialogue})
+
+
 async def _generate_with_retry(
     script_agent: ScriptAgent,
     state: SessionStateModel,
@@ -397,18 +485,12 @@ async def _generate_with_retry(
                 continue
             # Final attempt failed — use fallback
             logger.error(f"Script Agent failed {_MAX_GENERATION_ATTEMPTS} times, using fallback")
-            state.status = "error"
-            fallback_response = TurnResponse(
-                dialogue="[gentle] That was so much fun! Would you like to play again next time? See you soon!",
-                tone_marker="gentle",
-                screen_widget="badge_award",
-                screen_widget_params={"title": "Great job!", "concepts": [], "entity": state.entity_name},
-                screen_animation="badge_reveal",
-                sfx_cue="badge_awarded",
-            )
+            fallback_response = _source_fidelity_fallback_response(state)
+            fallback_response = _enforce_text_only_interaction(state, fallback_response)
             return fallback_response, _make_debug("error_fallback")
 
         attempt_ms = int((time.perf_counter() - attempt_start) * 1000)
+        response = _enforce_text_only_interaction(state, response)
         last_response = response
 
         # Plan-aware validation: diagnose planner vs speaker issues

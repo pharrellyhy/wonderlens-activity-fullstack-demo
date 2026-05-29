@@ -50,7 +50,7 @@ try:
     from .recipe_loader import load_instruction_recipe, recipe_to_session_state
     from .scenarios import load_scenario, match_scenario
     from .schemas import ScreenFrame
-    from .schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from .schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from .schemas.feedback import FeedbackPayload
     from .schemas.session_state import ConversationTurn, SessionStateModel, UpstreamConversationTurn
     from .schemas.turn_response import TurnResponse
@@ -103,7 +103,7 @@ except ImportError:
     from recipe_loader import load_instruction_recipe, recipe_to_session_state
     from scenarios import load_scenario, match_scenario
     from schemas import ScreenFrame
-    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from schemas.feedback import FeedbackPayload
     from schemas.session_state import ConversationTurn, SessionStateModel, UpstreamConversationTurn
     from schemas.turn_response import TurnResponse
@@ -1215,6 +1215,17 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         round_idx = max(0, state.current_round - 1)
         if round_idx < len(state.creative_slots.round_scenarios):
             result["current_scenario"] = state.creative_slots.round_scenarios[round_idx]
+
+    # Expose Cat 3 guided build context
+    if (
+        state.template_type == "cat3"
+        and isinstance(state.creative_slots, Cat3CreativeSlots)
+        and state.current_step.startswith("STEP_3_BUILD_")
+    ):
+        round_idx = _step_round_number(state.current_step) - 1
+        result["build_materials"] = state.creative_slots.build_materials
+        if 0 <= round_idx < len(state.creative_slots.build_steps):
+            result["current_build_step"] = state.creative_slots.build_steps[round_idx]
 
     # Expose Cat 5 collection context
     if state.template_type == "cat5" and isinstance(state.creative_slots, Cat5CreativeSlots):

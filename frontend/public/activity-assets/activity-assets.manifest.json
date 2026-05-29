@@ -1,6 +1,20 @@
 {
   "version": 1,
   "style": "wonderlens-soft-mint-device",
+  "screen_style": {
+    "name": "flat-nordic-vector",
+    "safe_area": {
+      "canvas": 480,
+      "safe": 380,
+      "center": 300
+    },
+    "layouts": [
+      "single",
+      "choice2",
+      "choice3",
+      "carousel"
+    ]
+  },
   "activities": [
     {
       "id": "activity_phoneme_treasure_hunt",
@@ -8,13 +22,215 @@
       "icon": "/activity-assets/activity_phoneme_treasure_hunt/icon.png",
       "fallback_label": "Phoneme Treasure Hunt",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_phoneme_treasure_hunt/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_phoneme_treasure_hunt/rules.png", "usage": "mission" },
-        { "id": "round_1", "src": "/activity-assets/activity_phoneme_treasure_hunt/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_phoneme_treasure_hunt/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_phoneme_treasure_hunt/round_3.png", "usage": "round" },
-        { "id": "synthesis", "src": "/activity-assets/activity_phoneme_treasure_hunt/synthesis.png", "usage": "synthesis" },
-        { "id": "recap", "src": "/activity-assets/activity_phoneme_treasure_hunt/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/rules.png",
+          "usage": "mission",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "choice3",
+            "selection": "device-scroll",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/round_1.png",
+              "fit": "cover"
+            },
+            "items": [
+              {
+                "id": "ball",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/ball.png",
+                "shape": "circle",
+                "label": "Ball"
+              },
+              {
+                "id": "cup",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/cup.png",
+                "shape": "circle",
+                "label": "Cup"
+              },
+              {
+                "id": "book",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/book.png",
+                "shape": "circle",
+                "label": "Book"
+              }
+            ]
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "choice3",
+            "selection": "device-scroll",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/round_2.png",
+              "fit": "cover"
+            },
+            "items": [
+              {
+                "id": "banana",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/banana.png",
+                "shape": "circle",
+                "label": "Banana"
+              },
+              {
+                "id": "spoon",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/spoon.png",
+                "shape": "circle",
+                "label": "Spoon"
+              },
+              {
+                "id": "leaf",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/leaf.png",
+                "shape": "circle",
+                "label": "Leaf"
+              }
+            ]
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "choice3",
+            "selection": "device-scroll",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/round_3.png",
+              "fit": "cover"
+            },
+            "items": [
+              {
+                "id": "basket",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/basket.png",
+                "shape": "circle",
+                "label": "Basket"
+              },
+              {
+                "id": "toy_car",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/toy_car.png",
+                "shape": "circle",
+                "label": "Car"
+              },
+              {
+                "id": "sock",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/sock.png",
+                "shape": "circle",
+                "label": "Sock"
+              }
+            ]
+          }
+        },
+        {
+          "id": "synthesis",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/synthesis.png",
+          "usage": "synthesis",
+          "layout": {
+            "mode": "carousel",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/synthesis.png",
+              "fit": "cover"
+            },
+            "items": [
+              {
+                "id": "ball",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/ball.png",
+                "shape": "circle",
+                "label": "Ball"
+              },
+              {
+                "id": "book",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/book.png",
+                "shape": "circle",
+                "label": "Book"
+              },
+              {
+                "id": "banana",
+                "src": "/activity-assets/activity_phoneme_treasure_hunt/items/banana.png",
+                "shape": "circle",
+                "label": "Banana"
+              }
+            ]
+          }
+        },
+        {
+          "id": "recap",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/recap.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/recap.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -93,12 +309,120 @@
       "icon": "/activity-assets/activity_career_decision_role_play/icon.png",
       "fallback_label": "Career Decision Role Play",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_career_decision_role_play/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_career_decision_role_play/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_career_decision_role_play/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_career_decision_role_play/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_career_decision_role_play/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_career_decision_role_play/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_career_decision_role_play/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_career_decision_role_play/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_career_decision_role_play/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_career_decision_role_play/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_career_decision_role_play/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_career_decision_role_play/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_career_decision_role_play/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_career_decision_role_play/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_career_decision_role_play/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_career_decision_role_play/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "recap",
+          "src": "/activity-assets/activity_career_decision_role_play/recap.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_career_decision_role_play/recap.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -135,12 +459,120 @@
       "icon": "/activity-assets/activity_guided_drawing/icon.png",
       "fallback_label": "Guided Drawing",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_guided_drawing/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_guided_drawing/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_guided_drawing/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_guided_drawing/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_guided_drawing/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_guided_drawing/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_guided_drawing/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_guided_drawing/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_guided_drawing/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_guided_drawing/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_guided_drawing/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_guided_drawing/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_guided_drawing/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_guided_drawing/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_guided_drawing/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_guided_drawing/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "recap",
+          "src": "/activity-assets/activity_guided_drawing/recap.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_guided_drawing/recap.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {

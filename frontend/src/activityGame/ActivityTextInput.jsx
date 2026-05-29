@@ -1,14 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-export default function ActivityTextInput({ disabled, onSend }) {
+export default function ActivityTextInput({ disabled, finished = false, onSend }) {
   const [value, setValue] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!disabled && !finished) {
+      inputRef.current?.focus();
+    }
+  }, [disabled, finished]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     const text = value.trim();
-    if (!text || disabled) return;
+    if (!text || disabled || finished) return;
     setValue('');
-    await onSend(text);
+    try {
+      await onSend(text);
+    } finally {
+      if (!finished) {
+        const focusInput = () => inputRef.current?.focus();
+        if (typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(focusInput);
+        } else {
+          focusInput();
+        }
+      }
+    }
   };
 
   return (
@@ -17,14 +35,19 @@ export default function ActivityTextInput({ disabled, onSend }) {
       <div>
         <input
           id="activity-text-input"
+          ref={inputRef}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          disabled={disabled}
-          placeholder="Type a response"
+          disabled={disabled || finished}
+          placeholder={finished ? 'Activity finished' : 'Type a response'}
           autoComplete="off"
         />
-        <button type="submit" disabled={disabled || !value.trim()}>
-          Send
+        <button
+          type="submit"
+          disabled={disabled || finished || !value.trim()}
+          aria-label="Send message"
+        >
+          <span aria-hidden="true">→</span>
         </button>
       </div>
     </form>

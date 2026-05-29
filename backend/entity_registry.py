@@ -87,6 +87,14 @@ _KEYWORD_MAP: dict[str, str] = {}
 SCENARIO_CATEGORIES: dict[str, str] = {}
 _FEATURE_KEYWORD_MAP: dict[str, str] = {}
 
+_FIXED_COLLECTION_ROUND_ITEM_IDS = {
+    "activity_phoneme_treasure_hunt": [
+        ["ball", "cup", "book"],
+        ["banana", "spoon", "leaf"],
+        ["basket", "toy_car", "sock"],
+    ]
+}
+
 
 def _rebuild_lookups() -> None:
     """Rebuild all derived lookup dicts from the current ENTITY_REGISTRY."""
@@ -178,12 +186,46 @@ def lookup_by_entity_name(entity_name: str) -> EntityConfig | None:
     return None
 
 
+def _fixed_collection_round_items(
+    activity_type: str, catalog: CollectionCatalog, total_rounds: int
+) -> list[list[dict]] | None:
+    """Return approved deterministic round choices for representative Cat5 pilots."""
+    fixed_round_ids = _FIXED_COLLECTION_ROUND_ITEM_IDS.get(activity_type)
+    if not fixed_round_ids:
+        return None
+
+    item_by_id = {
+        item.id: {**item.model_dump(), "correct": True}
+        for item in catalog.correct
+    }
+    item_by_id.update(
+        {
+            item.id: {**item.model_dump(), "correct": False}
+            for item in catalog.distractors
+        }
+    )
+
+    rounds: list[list[dict]] = []
+    for round_ids in fixed_round_ids[:total_rounds]:
+        if any(item_id not in item_by_id for item_id in round_ids):
+            logger.warning("Fixed Cat5 round item missing from catalog for %s", activity_type)
+            return None
+        rounds.append([{**item_by_id[item_id]} for item_id in round_ids])
+
+    return rounds if len(rounds) == total_rounds else None
+
+
 def generate_round_items(activity_type: str, total_rounds: int) -> list[list[dict]]:
     """Generate per-round item sets: 1 correct + 2 distractors per round."""
     entity = _BY_ACTIVITY_TYPE.get(activity_type)
     if not entity or not entity.collection_catalog:
         return []
     catalog = entity.collection_catalog
+
+    fixed_rounds = _fixed_collection_round_items(activity_type, catalog, total_rounds)
+    if fixed_rounds is not None:
+        return fixed_rounds
+
     correct = [item.model_dump() for item in catalog.correct]
     distractors = [item.model_dump() for item in catalog.distractors]
     random.shuffle(correct)

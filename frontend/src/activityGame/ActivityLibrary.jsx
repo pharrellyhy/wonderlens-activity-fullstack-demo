@@ -3,14 +3,16 @@ export default function ActivityLibrary({
   selectedId,
   assetByActivityId,
   loading,
+  selectionLocked = false,
+  sessionActive = false,
   onSelect,
-  onStart,
+  onExit,
 }) {
   return (
     <aside className="activity-game__library" aria-label="Activity library">
       <div className="activity-game__section-head">
-        <h1>Activity library</h1>
-        <span>{activities.length} activities</span>
+        <h1>Activities</h1>
+        <span className="activity-game__library-add" aria-hidden="true">+</span>
       </div>
 
       <div className="activity-game__list">
@@ -24,6 +26,7 @@ export default function ActivityLibrary({
               className={selected ? 'activity-card is-selected' : 'activity-card'}
               onClick={() => onSelect(activity.id)}
               aria-pressed={selected}
+              disabled={selectionLocked}
             >
               {asset?.icon ? (
                 <img className="activity-card__icon" src={asset.icon} alt={`${activity.name} icon`} />
@@ -32,20 +35,17 @@ export default function ActivityLibrary({
               <span className="activity-card__meta">
                 {activity.mechanic} · {activity.tier}
               </span>
-              <span className="activity-card__premise">{activity.premise}</span>
+              {selected ? <span className="activity-card__status" aria-hidden="true" /> : null}
             </button>
           );
         })}
       </div>
 
-      <button
-        type="button"
-        className="activity-game__start"
-        onClick={onStart}
-        disabled={loading || !selectedId}
-      >
-        Start activity
-      </button>
+      {sessionActive ? (
+        <button type="button" className="activity-game__exit" onClick={onExit} disabled={loading}>
+          Exit activity
+        </button>
+      ) : null}
     </aside>
   );
 }

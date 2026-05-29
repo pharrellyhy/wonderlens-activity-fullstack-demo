@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CompassIcon } from '../icons';
 
 const STREAM_INTERVAL_MS = 24;
@@ -48,9 +48,13 @@ function MessageAvatar({ role }) {
   return <span className="activity-message__avatar activity-message__avatar--child" aria-label="Child profile" />;
 }
 
-function MessageText({ text, streaming }) {
+function MessageText({ text, streaming, onStreamUpdate }) {
   const displayed = useTypewriterText(text, streaming);
   const isStreaming = streaming && displayed.length < text.length;
+
+  useEffect(() => {
+    if (streaming) onStreamUpdate?.();
+  }, [displayed, onStreamUpdate, streaming]);
 
   return (
     <p>
@@ -77,6 +81,7 @@ function PendingMessage({ label }) {
 }
 
 export default function ActivityTranscript({ messages, loading, turnPending }) {
+  const messagesRef = useRef(null);
   const latestAiIndex = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
       if (messages[index].role === 'ai') return index;
@@ -84,6 +89,19 @@ export default function ActivityTranscript({ messages, loading, turnPending }) {
     return -1;
   }, [messages]);
   const waitingLabel = loading ? 'WonderLens is starting' : 'WonderLens is thinking';
+  const scrollToBottom = useCallback(() => {
+    const node = messagesRef.current;
+    if (!node) return;
+    if (typeof node.scrollTo === 'function') {
+      node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
+    } else {
+      node.scrollTop = node.scrollHeight;
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [loading, messages, scrollToBottom, turnPending]);
 
   return (
     <section className="activity-game__transcript" aria-label="Activity transcript">
@@ -92,7 +110,7 @@ export default function ActivityTranscript({ messages, loading, turnPending }) {
         <span>{turnPending ? 'thinking' : loading ? 'starting' : 'ready'}</span>
       </div>
 
-      <div className="activity-transcript__messages">
+      <div className="activity-transcript__messages" ref={messagesRef}>
         {messages.length ? messages.map((message, index) => (
           <div
             key={`${message.role}-${index}-${message.text}`}
@@ -101,7 +119,11 @@ export default function ActivityTranscript({ messages, loading, turnPending }) {
             <MessageAvatar role={message.role} />
             <div className="activity-message__bubble">
               <span className="activity-message__speaker">{message.role === 'child' ? 'You' : 'WonderLens'}</span>
-              <MessageText text={message.text} streaming={message.role === 'ai' && index === latestAiIndex} />
+              <MessageText
+                text={message.text}
+                streaming={message.role === 'ai' && index === latestAiIndex}
+                onStreamUpdate={scrollToBottom}
+              />
             </div>
           </div>
         )) : (

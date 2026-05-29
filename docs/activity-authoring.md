@@ -20,7 +20,9 @@ Static assets live under `frontend/public/activity-assets/<activity_id>/` and ar
 
 Each activity has an `icon.png` and one file per runtime beat. Cat1 and Cat3 usually use `intro`, `rules`, `round_1`, `round_2`, `round_3`, and `recap`. Cat5 activities can add `synthesis`.
 
-Generate source art with Codex built-in imagegen using `frontend/public/activity-assets/prompts/wonderlens-activity-style.md`. Copy selected outputs from `/Users/pharrelly/.codex/generated_images/...` into the project, keeping the originals in place.
+Generate source art with Codex built-in imagegen using `frontend/public/activity-assets/prompts/wonderlens-activity-style.md`. Source art should be square and full-bleed: keep the important subject inside a central circular safe area, but do not bake in a circular mask, rim, vignette, black corner, transparent margin, or white margin. The device clips the square image into the circular lens at runtime.
+
+Copy selected outputs from `/Users/pharrelly/.codex/generated_images/...` into the project, keeping the originals in place. Resize and center-crop each committed PNG to `512x512` before listing it in the manifest.
 
 Runtime code must not call an image generation API for these display assets. It only reads the committed manifest and static PNGs.
 

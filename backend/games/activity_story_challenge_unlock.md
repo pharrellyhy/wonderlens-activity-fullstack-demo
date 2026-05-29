@@ -10,98 +10,194 @@ tier: T1
 ib_theme: "How We Express Ourselves"
 ib_key_concept: Form
 concepts_earned: [Form, Perspective]
-keywords: [story, challenge, unlock, imagine, gate]
-feature_keywords: [story gate, choice, character, unlock]
-photo_features: [story path, locked gates, character card]
+keywords: [story, challenge, unlock, fox, moon door, owl, bonjour]
+feature_keywords: [moon door, owl bridge, star word, color challenge]
+photo_features: [fox story path, moon door, sleepy owl bridge, star word page]
 play_rounds: 3
-plain_description: "The child moves through a short story by solving simple imagination challenges that unlock the next scene."
+plain_description: "A fox unlocks story gates with a moon-door color, a quiet owl sound, and the word bonjour."
 steps_summary:
   - "Become a Story Gate Opener."
-  - "Solve three imagination gates in sequence."
-  - "Choose how the character moves forward."
+  - "Open the moon door with silver, white, or blue."
+  - "Wake the owl bridge with a quiet hoo-hoo."
+  - "Echo bonjour for the star page."
   - "Earn the Story Gate Opener badge."
 creative_slots:
   game_mechanic: imagine
-  metaphor: "A story path with tiny gates that open when the child adds an idea."
+  metaphor: "A fox story path with three tiny locks: moon color, owl sound, and star word."
   role_title: Story Gate Opener
   round_scenarios:
-    - "Unlock the first gate by naming a friendly character."
-    - "Unlock the second gate by choosing what the character sees."
-    - "Unlock the final gate by deciding how the character helps."
-  escalation_axis: "character idea to scene detail to helpful perspective"
-  observation_detail: "a locked story gate waiting for one imagination key"
+    - "The fox reaches a moon door that opens with silver, white, or blue."
+    - "The fox finds a sleepy owl bridge that wakes with a quiet hoo-hoo."
+    - "The fox reaches a star page that asks for the echo word bonjour."
+  escalation_axis: "color unlock to quiet sound unlock to word echo unlock"
+  observation_detail: "moon door colors, a sleepy owl bridge, and a glowing star word page"
 step_instructions:
   hook:
-    goal: "Open Story Challenge Unlock and invite the child to unlock a tiny story."
+    goal: "Open Story Challenge Unlock with the fox, the locked story path, and the first moon-door cue."
     constraint: "T1 max 3 sentences, end with an imagination question."
     emotion_tag: curious
   transition:
-    goal: "Explain that each round needs one typed idea to open the next story gate."
-    constraint: "T1 max 3 sentences, include one sample key idea."
+    goal: "Explain that each round needs one tiny response to unlock the fox's next story gate."
+    constraint: "T1 max 3 sentences, name color, sound, and word as the three kinds of keys. Use story_unlock_cards_01 when available; if not, use voice-only story choices and do not claim a screen element unlocked."
     emotion_tag: playful
   rounds:
     - round_number: 1
-      goal: "Ask the child to name or choose the story character."
-      scenario: "first story gate character"
-      constraint: "T1 max 3 sentences, accept any safe character idea."
+      goal: "Tell the fox-at-the-moon-door beat and ask for silver, white, or blue to open it."
+      scenario: "unlock the moon door"
+      constraint: "T1 max 3 sentences, keep the allowed color choices clear and accept named or shown colors."
       emotion_tag: encouraging
-      acceptable_themes: [character, friend, name, story, gate]
-      escalation_note: "character setup"
+      acceptable_themes: [silver, white, blue, moon, door, color]
+      escalation_note: "first unlock uses a moon-door color challenge"
     - round_number: 2
-      goal: "Ask what the character sees after the gate opens."
-      scenario: "second story gate scene detail"
-      constraint: "T1 max 3 sentences, invite one visible detail."
+      goal: "Continue to the sleepy owl bridge and ask for a quiet hoo-hoo or gentle hello."
+      scenario: "wake the owl bridge"
+      constraint: "T1 max 3 sentences, keep the owl sound soft and offer hoo-hoo or hello owl."
       emotion_tag: curious
-      acceptable_themes: [see, place, tree, door, path]
-      escalation_note: "scene detail"
+      acceptable_themes: [owl, hoo, quiet, hello, bridge, soft]
+      escalation_note: "second unlock uses a gentle animal sound"
     - round_number: 3
-      goal: "Ask how the character helps or solves the final challenge."
-      scenario: "final story gate helpful choice"
-      constraint: "T1 max 3 sentences, connect the idea to perspective."
+      goal: "Continue to the star page and ask the child to echo bonjour."
+      scenario: "echo the star word"
+      constraint: "T1 max 3 sentences, say bonjour slowly and accept a small echo attempt."
       emotion_tag: proud
-      acceptable_themes: [help, choose, solve, friend, open]
-      escalation_note: "perspective choice"
+      acceptable_themes: [bonjour, bon, jour, echo, star, word]
+      escalation_note: "final unlock uses a word echo"
   celebrate:
-    goal: "Award Story Gate Opener and recap the unlocked story path."
+    goal: "Award Story Gate Opener and recap the moon color, owl sound, and bonjour word tokens."
     constraint: "T1 max 3 sentences."
     emotion_tag: proud
   closing:
-    goal: "Name Form and Perspective through story details and character choices."
+    goal: "Name Form and Perspective through the fox story gates and the child's three unlock responses."
     constraint: "T1 max 3 sentences, warm goodbye."
     emotion_tag: warm
   early_exit:
-    goal: "Gently close and save the story idea for next time."
+    goal: "Gently close and save the fox's current story gate for next time."
     constraint: "T1 max 3 sentences, no pressure."
     emotion_tag: gentle
+source_dialogue:
+  source_intent_lock: 'Preserve the sequence: story beat, paused gate, small child challenge such as finding a color, making an animal sound, or echoing a word, then unlocked next story beat. Do not generate standalone challenges without story narration.'
+  runtime_detail_floor_notes:
+  - Use `Runtime AI instruction` plus `Example AI line` so runtime can adapt wording while preserving intent.
+  - Do not claim unsupported sensing, recoloring, pose detection, cleanup verification, OCR, or hidden state.
+  - Keep the repeated child action aligned to `imagine`.
+  - 'Preserve this source sequence: Preserve the sequence: story beat, paused gate, small child challenge such as finding a color, making an animal sound, or echoing a word, then unlocked next story beat. Do not generate standalone challenges without story narration.'
+  hook:
+    runtime_instruction: Open from the source trigger and name the child's role in this activity.
+    example_ai_line: 'I found a small mission for us: Story Challenge Unlock. I will guide one step at a time.'
+    child_responses:
+      ideal: The child accepts the story gate unlocker role, notices the starter cue, or names something connected to the moon door color challenge.
+      unexpected: Child asks for another game, starts the story unlock response before the Story Challenge Unlock mission is framed, or follows an unrelated topic.
+      no_response: Child watches the Story Challenge Unlock title/trigger card without taking the story gate unlocker role yet.
+    ai_followups:
+      ideal: Name the story gate unlocker role, connect it to the starter cue, and preview the first story unlock response.
+      unexpected: Acknowledge the request, return to the Story Challenge Unlock promise, and offer the smallest supported first action.
+      no_response: '[wait 2s] Point to the Story Challenge Unlock role card and first token, then model one tiny in-frame response.'
+    screen: Shows title, child role, source trigger, and empty progress tokens.
+  transition:
+    runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
+    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    child_responses:
+      ideal: The child agrees to the story unlock response loop for Story Challenge Unlock or asks for the easiest version.
+      unexpected: Child tries to skip the moon door color challenge, ignore the required rule/asset, or count a different kind of response.
+      no_response: Child looks at the Story Challenge Unlock rule strip without confirming how to start the first turn.
+    ai_followups:
+      ideal: Restate the Story Challenge Unlock loop as AI prompt, child story unlock response, saved token, and show the first response slot.
+      unexpected: Keep the rule tied to the moon door color challenge, name the supported fallback, and offer one allowed first turn.
+      no_response: '[wait 2s] Read the Story Challenge Unlock rule in one sentence and ask for yes, a point, or the first chance to give the story unlock response.'
+    screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `story_unlock_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If unlock UI is unavailable, use voice-only story choices and do not claim a screen element has unlocked.'
+  rounds:
+  - round_number: 1
+    source_contract:
+      runtime_instruction: Tell the story beat before the task, then pause for a color challenge.
+      example_ai_line: The fox reaches a moon door. Can you name or show silver, white, or blue so it opens?
+      child_responses:
+        ideal: The child names or shows silver, white, or blue for the moon door.
+        unexpected: Child answers before the moon-door story pause, gives an unrelated color/object, or tries to open the door without the color challenge.
+        no_response: Child watches the locked moon door without naming or showing a moon-color item.
+      ai_followups:
+        ideal: Open the moon door, narrate the fox stepping through, and save the color token.
+        unexpected: Return to the moon-door cliffhanger, repeat the allowed colors, and ask for one named or shown color.
+        no_response: '[wait 2s] Point to the moon door colors, model "blue opens it," and invite the child to say or show one color.'
+      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `story_unlock_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If unlock UI is unavailable, use voice-only story choices and do not claim a screen element has unlocked.'
+  - round_number: 2
+    source_contract:
+      runtime_instruction: Continue the story, then pause for a soft animal sound challenge.
+      example_ai_line: The fox finds a sleepy owl bridge. Can you make a quiet hoo-hoo?
+      child_responses:
+        ideal: The child makes a soft owl sound or says a gentle hello to wake the bridge.
+        unexpected: Child shouts, switches animals, or talks about the bridge without trying the owl sound challenge.
+        no_response: Child stays on the sleepy owl bridge card without making a sound or greeting.
+      ai_followups:
+        ideal: Wake the owl bridge softly, narrate the fox crossing, and save the sound token.
+        unexpected: Keep the sleepy-owl scene, lower the volume target, and offer "hoo-hoo" or "hello owl" as the two safe responses.
+        no_response: '[wait 2s] Make one quiet "hoo-hoo" example, then ask the child to copy it or whisper hello.'
+      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `story_unlock_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If unlock UI is unavailable, use voice-only story choices and do not claim a screen element has unlocked.'
+  - round_number: 3
+    source_contract:
+      runtime_instruction: Continue to the final gate, then ask for one echo word.
+      example_ai_line: A star page asks for bonjour. Can you echo bonjour?
+      child_responses:
+        ideal: The child echoes "bonjour" or tries a close pronunciation for the star page.
+        unexpected: Child answers with a different word, asks to skip the word gate, or treats the page as a quiz answer instead of an echo.
+        no_response: Child looks at the star-word page without repeating the word.
+      ai_followups:
+        ideal: Let the star page glow, repeat the echoed word once in the story, and save the word token.
+        unexpected: Stay in the final gate scene, say the target word again slowly, and accept a tiny echo attempt.
+        no_response: '[wait 2s] Say "bon-jour" in two beats and invite the child to copy just one beat if needed.'
+      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `story_unlock_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If unlock UI is unavailable, use voice-only story choices and do not claim a screen element has unlocked.'
+  celebrate:
+    runtime_instruction: Reveal the outcome caused by the child's saved turns and recap concrete choices.
+    example_ai_line: 'Your turns made the board light up: first we started, then we tried, then we finished the mission.'
+    child_responses:
+      ideal: The child notices how the star-word echo challenge changed the Story Challenge Unlock board or names a favorite saved turn.
+      unexpected: Child asks to restart before seeing the Story Challenge Unlock payoff or ignores how the saved story unlock response turns connect.
+      no_response: Child watches the Story Challenge Unlock reveal without commenting on the saved turns.
+    ai_followups:
+      ideal: Tie the reveal to the child's story unlock response turns, name one concrete saved token, and invite a short reflection.
+      unexpected: Hold the Story Challenge Unlock reveal, point to the saved turn that matters, and ask what changed because of it.
+      no_response: '[wait 2s] Narrate one before/after change from the Story Challenge Unlock board, then offer two favorite-turn choices.'
+    screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
+  closing:
+    runtime_instruction: Close with the two key concepts and one parent-reviewable recap.
+    example_ai_line: Today you practiced Form and Perspective. You used your own answer to move the activity forward.
+    child_responses:
+      ideal: The child names a favorite Story Challenge Unlock moment, asks to play again, or watches the story challenge unlock recap badge.
+      unexpected: Child shifts topic before the recap names the story unlock response skill or Form and Perspective.
+      no_response: Child stays on the Story Challenge Unlock recap badge without responding.
+    ai_followups:
+      ideal: Offer a next-time variation using the same imagine mechanic and the story challenge unlock frame.
+      unexpected: Close Story Challenge Unlock first, name the practiced story unlock response, and then offer one next-round seed.
+      no_response: '[wait 2s] Read the Story Challenge Unlock badge in one sentence and end with one concrete next-time invitation.'
+    screen: Recap badge lists title, mechanic `imagine`, focal attribute `story_challenge_unlock`, and next-step hint.
 screen_frames:
   - widget: photo_display
     widget_params:
-      description: "Story path with three small locked gates"
+      description: "Fox story path with moon door, owl bridge, and star word locks"
     animation: sparkle_highlight
     trigger: on_enter
-    widget_label: "Story Path"
+    widget_label: "Fox Path"
     animation_label: "Gate glow"
   - widget: character_display
     widget_params:
-      description: "First gate opens for a character idea"
+      description: "Moon door opens with silver, white, or blue"
     animation: gentle_pulse
     trigger: on_round_1
-    widget_label: "Gate 1"
-    animation_label: "First unlock"
+    widget_label: "Moon Door"
+    animation_label: "Color unlock"
   - widget: character_display
     widget_params:
-      description: "Second gate opens to reveal a scene detail"
+      description: "Sleepy owl bridge wakes with a quiet hoo-hoo"
     animation: scene_transition
     trigger: on_round_2
-    widget_label: "Gate 2"
-    animation_label: "Scene unlock"
+    widget_label: "Owl Bridge"
+    animation_label: "Sound unlock"
   - widget: character_display
     widget_params:
-      description: "Final gate opens after a helpful choice"
+      description: "Star page glows after the child echoes bonjour"
     animation: gentle_pulse
     trigger: on_round_3
-    widget_label: "Gate 3"
-    animation_label: "Final unlock"
+    widget_label: "Star Word"
+    animation_label: "Word unlock"
 celebration_frame:
   widget: badge_award
   widget_params:

@@ -13,6 +13,10 @@ function aiMessageFromTurn(turn) {
   };
 }
 
+function isTerminalStatus(status) {
+  return status === 'completed' || status === 'exited' || status === 'error';
+}
+
 export default function useActivityTextSession() {
   const [messages, setMessages] = useState([]);
   const [sessionId, setSessionId] = useState(null);
@@ -24,8 +28,11 @@ export default function useActivityTextSession() {
   const [activityType, setActivityType] = useState('');
   const [templateType, setTemplateType] = useState('');
   const sessionIdRef = useRef(null);
+  const sessionStatusRef = useRef('');
+  const requestGenerationRef = useRef(0);
 
   const reset = useCallback(() => {
+    requestGenerationRef.current += 1;
     setMessages([]);
     setSessionId(null);
     sessionIdRef.current = null;
@@ -36,11 +43,20 @@ export default function useActivityTextSession() {
     setError(null);
     setActivityType('');
     setTemplateType('');
+    sessionStatusRef.current = '';
   }, []);
 
-  const applyTurn = useCallback((data) => {
+  const isCurrentRequest = useCallback((expectedGeneration, expectedSessionId = null) => (
+    expectedGeneration === requestGenerationRef.current
+    && (!expectedSessionId || sessionIdRef.current === expectedSessionId)
+  ), []);
+
+  const applyTurn = useCallback((data, expectedGeneration = requestGenerationRef.current, expectedSessionId = null) => {
+    if (!isCurrentRequest(expectedGeneration, expectedSessionId)) return null;
+
     if (data.session_state) {
       setSessionState(data.session_state);
+      sessionStatusRef.current = data.session_state.status || '';
     }
     if (data.turn?.screen_frame) {
       setScreenFrame(data.turn.screen_frame);
@@ -50,9 +66,11 @@ export default function useActivityTextSession() {
       setMessages((prev) => [...prev, aiMessage]);
     }
     return data;
-  }, []);
+  }, [isCurrentRequest]);
 
   const startActivity = useCallback(async (nextActivityType, tier = 'T1') => {
+    const requestGeneration = requestGenerationRef.current + 1;
+    requestGenerationRef.current = requestGeneration;
     setLoading(true);
     setTurnPending(false);
     setError(null);
@@ -66,11 +84,13 @@ export default function useActivityTextSession() {
 
     try {
       const data = await startActivitySession(nextActivityType, tier);
+      if (!isCurrentRequest(requestGeneration)) return null;
       setSessionId(data.session_id);
       sessionIdRef.current = data.session_id;
       setActivityType(data.activity_type || nextActivityType);
       setTemplateType(data.template_type || '');
       setSessionState(data.session_state || null);
+      sessionStatusRef.current = data.session_state?.status || '';
       if (data.first_turn?.screen_frame) {
         setScreenFrame(data.first_turn.screen_frame);
       }
@@ -78,17 +98,24 @@ export default function useActivityTextSession() {
       setMessages(firstMessage ? [firstMessage] : []);
       return data;
     } catch (err) {
-      setError(err.message);
-      throw err;
+      if (isCurrentRequest(requestGeneration)) {
+        setError(err.message);
+        throw err;
+      }
+      return null;
     } finally {
-      setLoading(false);
+      if (isCurrentRequest(requestGeneration)) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [isCurrentRequest]);
 
   const sendMessage = useCallback(async (text) => {
     const trimmed = text.trim();
     const activeSessionId = sessionIdRef.current || sessionId;
-    if (!activeSessionId || !trimmed || turnPending) return null;
+    const status = sessionStatusRef.current || sessionState?.status;
+    const requestGeneration = requestGenerationRef.current;
+    if (!activeSessionId || !trimmed || turnPending || isTerminalStatus(status)) return null;
 
     setTurnPending(true);
     setError(null);
@@ -96,14 +123,46 @@ export default function useActivityTextSession() {
 
     try {
       const data = await sendTurn(activeSessionId, trimmed, false);
-      return applyTurn(data);
+      return applyTurn(data, requestGeneration, activeSessionId);
     } catch (err) {
-      setError(err.message);
-      throw err;
+      if (isCurrentRequest(requestGeneration, activeSessionId)) {
+        setError(err.message);
+        throw err;
+      }
+      return null;
     } finally {
-      setTurnPending(false);
+      if (isCurrentRequest(requestGeneration, activeSessionId)) {
+        setTurnPending(false);
+      }
     }
-  }, [applyTurn, sessionId, turnPending]);
+  }, [applyTurn, isCurrentRequest, sessionId, sessionState?.status, turnPending]);
+
+  const sendCollectionItem = useCallback(async (photoId, label = '') => {
+    const activeSessionId = sessionIdRef.current || sessionId;
+    const status = sessionStatusRef.current || sessionState?.status;
+    const selectedLabel = label || photoId;
+    const requestGeneration = requestGenerationRef.current;
+    if (!activeSessionId || !photoId || turnPending || isTerminalStatus(status)) return null;
+
+    setTurnPending(true);
+    setError(null);
+    setMessages((prev) => [...prev, { role: 'child', text: selectedLabel }]);
+
+    try {
+      const data = await sendTurn(activeSessionId, '', false, photoId);
+      return applyTurn(data, requestGeneration, activeSessionId);
+    } catch (err) {
+      if (isCurrentRequest(requestGeneration, activeSessionId)) {
+        setError(err.message);
+        throw err;
+      }
+      return null;
+    } finally {
+      if (isCurrentRequest(requestGeneration, activeSessionId)) {
+        setTurnPending(false);
+      }
+    }
+  }, [applyTurn, isCurrentRequest, sessionId, sessionState?.status, turnPending]);
 
   return {
     messages,
@@ -117,6 +176,7 @@ export default function useActivityTextSession() {
     templateType,
     startActivity,
     sendMessage,
+    sendCollectionItem,
     reset,
   };
 }

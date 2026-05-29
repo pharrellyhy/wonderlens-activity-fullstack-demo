@@ -93,12 +93,7 @@ function deriveFeedbackActivity({ templateType, activityType }) {
   };
 }
 
-function App() {
-  const view = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('view');
-  if (view === 'activities') {
-    return <ActivityGameApp />;
-  }
-
+function MainApp() {
   const [tier, setTier] = useState('T0');
   const [debugOpen, setDebugOpen] = useState(false);
 
@@ -618,6 +613,15 @@ function App() {
       )}
     </div>
   );
+}
+
+function App() {
+  const view = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('view');
+  if (view === 'activities') {
+    return <ActivityGameApp />;
+  }
+
+  return <MainApp />;
 }
 
 export default App;

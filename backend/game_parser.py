@@ -75,19 +75,46 @@ def _build_entity_config(data: dict) -> EntityConfig:
     )
 
 
-def _build_step_instruction(si_data: dict) -> StepInstruction:
+def _with_source_contract(step_data: dict, source_contract: dict | None) -> dict:
+    """Return step data enriched with a source dialogue contract when available."""
+    if not source_contract:
+        return step_data
+    enriched = dict(step_data)
+    enriched["source_contract"] = source_contract
+    return enriched
+
+
+def _find_round_source_contract(source_dialogue: dict, round_number: int) -> dict:
+    """Find the source dialogue contract for a round number."""
+    for round_contract in source_dialogue.get("rounds", []):
+        if round_contract.get("round_number") == round_number:
+            return round_contract.get("source_contract", {})
+    return {}
+
+
+def _build_step_instruction(si_data: dict, source_dialogue: dict | None = None) -> StepInstruction:
     """Build a StepInstruction from the step_instructions frontmatter dict."""
-    rounds = [RoundInstruction(**r) for r in si_data["rounds"]]
-    synthesis = StepGoal(**si_data["synthesis"]) if "synthesis" in si_data else None
+    source_dialogue = source_dialogue or {}
+    rounds = [
+        RoundInstruction(
+            **_with_source_contract(round_data, _find_round_source_contract(source_dialogue, round_data["round_number"]))
+        )
+        for round_data in si_data["rounds"]
+    ]
+    synthesis = None
+    if "synthesis" in si_data:
+        synthesis = StepGoal(**_with_source_contract(si_data["synthesis"], source_dialogue.get("synthesis")))
 
     return StepInstruction(
-        hook=StepGoal(**si_data["hook"]),
-        transition=StepGoal(**si_data["transition"]),
+        hook=StepGoal(**_with_source_contract(si_data["hook"], source_dialogue.get("hook"))),
+        transition=StepGoal(**_with_source_contract(si_data["transition"], source_dialogue.get("transition"))),
         rounds=rounds,
-        celebrate=StepGoal(**si_data["celebrate"]),
-        closing=StepGoal(**si_data["closing"]),
+        celebrate=StepGoal(**_with_source_contract(si_data["celebrate"], source_dialogue.get("celebrate"))),
+        closing=StepGoal(**_with_source_contract(si_data["closing"], source_dialogue.get("closing"))),
         synthesis=synthesis,
         early_exit=StepGoal(**si_data["early_exit"]),
+        source_intent_lock=source_dialogue.get("source_intent_lock", ""),
+        runtime_detail_floor_notes=source_dialogue.get("runtime_detail_floor_notes", []),
     )
 
 
@@ -116,7 +143,7 @@ def parse_game_file(path: Path) -> tuple[EntityConfig, InstructionRecipe]:
 
     entity_config = _build_entity_config(data)
 
-    step_instructions = _build_step_instruction(data["step_instructions"])
+    step_instructions = _build_step_instruction(data["step_instructions"], data.get("source_dialogue"))
 
     entity_name = data["entity_name"]
     screen_frames = []

@@ -1,6 +1,40 @@
 # Session Handoff
 
-Last updated: 2026-05-27
+Last updated: 2026-05-29
+
+---
+
+## Autodesign Runtime Beat Import
+
+**Problem**: Fresh autodesign E2E packages imported and played, but generated
+game frontmatter still used generic default `step_instructions` instead of the
+rich `Runtime AI instruction` beats in `prod.md`. The backend aggregate check
+also failed after legitimate e2e imports because two entity registry tests
+asserted exact curated-only photo sets.
+
+**Solution**: The autodesign importer now parses five-part runtime beats from
+`prod.md` into hook, transition, round, celebrate, and closing
+`step_instructions`, preserving goal, constraint, tone, progress evidence,
+branch behavior, and source/frame guardrails. Cat1 `play_rounds` now follows
+the parsed runtime rounds. Entity registry tests now require curated baseline
+IDs without forbidding imported validation activities.
+
+**Edits**:
+- `backend/autodesign_importer.py`
+- `tests/test_autodesign_importer.py`
+- `tests/test_entity_registry.py`
+
+**NOT Changed**:
+- No unsupported mechanics were made playable.
+- No provider credentials, `.env`, generated validation imports, or
+  production data were committed.
+
+**Verification**:
+- Red test first: `PYTHONDONTWRITEBYTECODE=1 uv run pytest tests/test_autodesign_importer.py::test_runtime_ai_instructions_import_to_step_instructions -q -p no:cacheprovider`
+  initially kept the generic hook, then passed after the importer parser.
+- `PYTHONDONTWRITEBYTECODE=1 uv run ruff check backend/autodesign_importer.py tests/test_autodesign_importer.py tests/test_entity_registry.py` - passed.
+- `PYTHONDONTWRITEBYTECODE=1 uv run pytest tests/test_autodesign_importer.py tests/test_entity_registry.py tests/test_api.py -q -p no:cacheprovider` - 83 passed, 1 skipped.
+- `cd frontend && npm test -- --run` - 7 files passed, 31 tests passed.
 
 ---
 

@@ -457,6 +457,15 @@ def _build_game_frontmatter(
     data["asset_readiness"] = asset_readiness
     data["asset_manifest"] = resolved_manifest
 
+    runtime_step_instructions = _step_instructions_from_runtime_beats(
+        package_dir=package_dir,
+        existing=data["step_instructions"],
+    )
+    if runtime_step_instructions:
+        data["step_instructions"] = runtime_step_instructions
+        if category == "category_1":
+            data["play_rounds"] = len(runtime_step_instructions["rounds"])
+
     if category == "category_5":
         _apply_cat5_assets(data, resolved_manifest, tag_block, status)
 
@@ -709,6 +718,123 @@ def _cat1_round_instruction(number: int, scenario: str) -> dict:
         "acceptable_themes": ["story", "feeling", "idea", "imagine"],
         "escalation_note": f"dialogue round {number}",
     }
+
+
+def _step_instructions_from_runtime_beats(package_dir: Path, existing: dict) -> dict | None:
+    prod_path = package_dir / "prod.md"
+    if not prod_path.exists():
+        return None
+
+    beats = _runtime_instruction_beats(prod_path.read_text(encoding="utf-8"))
+    if len(beats) < 5:
+        return None
+
+    result = dict(existing)
+    result["hook"] = _step_goal_from_runtime_beat(beats[0])
+    result["transition"] = _step_goal_from_runtime_beat(beats[1])
+    result["rounds"] = [
+        _round_from_runtime_beat(index, beat) for index, beat in enumerate(beats[2:-2], start=1)
+    ]
+    result["celebrate"] = _step_goal_from_runtime_beat(beats[-2])
+    result["closing"] = _step_goal_from_runtime_beat(beats[-1])
+    return result
+
+
+def _runtime_instruction_beats(prod_text: str) -> list[dict]:
+    beats: list[dict] = []
+    round_scenario = ""
+    for line in prod_text.splitlines():
+        stripped = line.strip()
+        round_match = re.match(r"^\*\*Round\s+\d+\s*(?:--|[-–—])\s*(?P<scenario>[^:*]+):\*\*$", stripped)
+        if round_match:
+            round_scenario = _collapse_whitespace(round_match.group("scenario"))
+            continue
+
+        if not stripped.startswith("**Runtime AI instruction:**"):
+            continue
+
+        instruction = stripped.removeprefix("**Runtime AI instruction:**").strip()
+        beats.append({"fields": _runtime_instruction_fields(instruction), "scenario": round_scenario})
+        round_scenario = ""
+    return beats
+
+
+def _runtime_instruction_fields(instruction: str) -> dict[str, str]:
+    labels = [
+        "Goal",
+        "Constraint",
+        "Tone",
+        "Progress evidence",
+        "Branch behavior",
+        "Frame/source guardrail",
+    ]
+    positions: list[tuple[str, int, int]] = []
+    for label in labels:
+        match = re.search(rf"(?:^|\s){re.escape(label)}:\s*", instruction)
+        if match:
+            positions.append((label, match.start(), match.end()))
+    positions.sort(key=lambda item: item[1])
+
+    fields: dict[str, str] = {}
+    for index, (label, _start, value_start) in enumerate(positions):
+        value_end = positions[index + 1][1] if index + 1 < len(positions) else len(instruction)
+        fields[label] = _collapse_whitespace(instruction[value_start:value_end].strip(" ."))
+    return fields
+
+
+def _step_goal_from_runtime_beat(beat: dict) -> dict:
+    fields = beat["fields"]
+    goal = fields.get("Goal") or "Follow the activity runtime beat."
+    progress = fields.get("Progress evidence")
+    guardrail = fields.get("Frame/source guardrail")
+    if progress:
+        goal = _join_sentence(goal, f"Progress evidence: {progress}.")
+    if guardrail:
+        goal = _join_sentence(goal, f"Guardrail: {guardrail}.")
+
+    constraint = fields.get("Constraint") or "Keep the response brief and age-appropriate."
+    branch = fields.get("Branch behavior")
+    if branch:
+        constraint = _join_sentence(constraint, f"Branch behavior: {branch}.")
+
+    return {
+        "goal": goal,
+        "constraint": constraint,
+        "emotion_tag": _emotion_tag(fields.get("Tone")),
+    }
+
+
+def _round_from_runtime_beat(number: int, beat: dict) -> dict:
+    step_goal = _step_goal_from_runtime_beat(beat)
+    scenario = beat.get("scenario") or f"runtime beat {number}"
+    return {
+        "round_number": number,
+        "goal": step_goal["goal"],
+        "scenario": scenario,
+        "constraint": step_goal["constraint"],
+        "emotion_tag": step_goal["emotion_tag"],
+        "acceptable_themes": ["activity", "evidence", "response"],
+        "escalation_note": f"runtime beat {number}",
+    }
+
+
+def _emotion_tag(tone: str | None) -> str:
+    if not tone:
+        return "warm"
+    token = re.split(r"[\s,;/]+| and | with ", tone.strip().lower(), maxsplit=1)[0]
+    normalized = re.sub(r"[^a-z0-9_]+", "_", token).strip("_")
+    return normalized or "warm"
+
+
+def _collapse_whitespace(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _join_sentence(prefix: str, suffix: str) -> str:
+    normalized = prefix.rstrip()
+    if normalized.endswith((".", "!", "?")):
+        return f"{normalized} {suffix}"
+    return f"{normalized}. {suffix}"
 
 
 def _default_screen_frames(category: str, entity_id: str, slots: dict) -> list[dict]:

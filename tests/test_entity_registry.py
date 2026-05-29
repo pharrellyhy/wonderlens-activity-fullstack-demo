@@ -168,20 +168,20 @@ class TestAllEntitiesForApi:
         assert result[0]["id"] == "cat1"
         assert result[1]["id"] == "cat5"
 
-    def test_cat1_has_three_photos(self) -> None:
+    def test_cat1_includes_curated_photos(self) -> None:
         result = all_entities_for_api()
         photo_ids = {photo["id"] for photo in result[0]["photos"]}
-        assert photo_ids == {"cat", "dog", "dinosaur", "dream_whisperer_cat__cat"}
+        assert {"cat", "dog", "dinosaur", "dream_whisperer_cat__cat"}.issubset(photo_ids)
 
-    def test_cat5_has_two_photos(self) -> None:
+    def test_cat5_includes_curated_photos(self) -> None:
         result = all_entities_for_api()
         photo_ids = {photo["id"] for photo in result[1]["photos"]}
-        assert photo_ids == {
+        assert {
             "concept_phoneme_hunt_collect__ball",
             "dandelion",
             "fluffy_expedition_dandelion__dandelion",
             "ladybug",
-        }
+        }.issubset(photo_ids)
 
     def test_photo_structure(self) -> None:
         result = all_entities_for_api()

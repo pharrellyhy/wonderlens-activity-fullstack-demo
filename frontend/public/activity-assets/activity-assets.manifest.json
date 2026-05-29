@@ -214,8 +214,27 @@
           }
         },
         {
-          "id": "recap",
-          "src": "/activity-assets/activity_phoneme_treasure_hunt/recap.png",
+          "id": "celebrate",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_phoneme_treasure_hunt/closing.png",
           "usage": "closing",
           "layout": {
             "mode": "single",
@@ -226,7 +245,7 @@
               "center": 300
             },
             "background": {
-              "src": "/activity-assets/activity_phoneme_treasure_hunt/recap.png",
+              "src": "/activity-assets/activity_phoneme_treasure_hunt/closing.png",
               "fit": "cover"
             },
             "items": []
@@ -406,8 +425,27 @@
           }
         },
         {
-          "id": "recap",
-          "src": "/activity-assets/activity_career_decision_role_play/recap.png",
+          "id": "celebrate",
+          "src": "/activity-assets/activity_career_decision_role_play/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_career_decision_role_play/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_career_decision_role_play/closing.png",
           "usage": "closing",
           "layout": {
             "mode": "single",
@@ -418,7 +456,7 @@
               "center": 300
             },
             "background": {
-              "src": "/activity-assets/activity_career_decision_role_play/recap.png",
+              "src": "/activity-assets/activity_career_decision_role_play/closing.png",
               "fit": "cover"
             },
             "items": []
@@ -556,8 +594,27 @@
           }
         },
         {
-          "id": "recap",
-          "src": "/activity-assets/activity_guided_drawing/recap.png",
+          "id": "celebrate",
+          "src": "/activity-assets/activity_guided_drawing/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_guided_drawing/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_guided_drawing/closing.png",
           "usage": "closing",
           "layout": {
             "mode": "single",
@@ -568,7 +625,7 @@
               "center": 300
             },
             "background": {
-              "src": "/activity-assets/activity_guided_drawing/recap.png",
+              "src": "/activity-assets/activity_guided_drawing/closing.png",
               "fit": "cover"
             },
             "items": []

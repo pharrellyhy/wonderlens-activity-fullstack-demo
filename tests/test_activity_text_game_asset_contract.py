@@ -34,6 +34,9 @@ def _required_beat_ids(activity_id: str, category: str) -> list[str]:
     assert recipe is not None
 
     round_ids = [f"round_{index}" for index in range(1, recipe.metadata.round_count + 1)]
+    if activity_id in REPRESENTATIVE_ACTIVITY_IDS:
+        tail = ["synthesis", "celebrate", "closing"] if category == "category_5" else ["celebrate", "closing"]
+        return ["intro", "rules", *round_ids, *tail]
     if category == "category_5":
         return ["intro", "rules", *round_ids, "synthesis", "recap"]
     return ["intro", "rules", *round_ids, "recap"]
@@ -60,7 +63,7 @@ def _layout_asset_paths(layout: dict) -> list[str]:
 
 def _near_black_ratio(image: Image.Image) -> float:
     data = image.convert("RGB").tobytes()
-    black_pixels = sum(1 for index in range(0, len(data), 3) if max(data[index:index + 3]) <= 8)
+    black_pixels = sum(1 for index in range(0, len(data), 3) if max(data[index : index + 3]) <= 8)
     return black_pixels / (image.width * image.height)
 
 
@@ -151,10 +154,7 @@ def test_phoneme_runtime_round_items_match_approved_touchless_sets() -> None:
         assert [[item["id"] for item in round_items] for round_items in rounds] == expected_rounds
 
     rounds = generate_round_items("activity_phoneme_treasure_hunt", 3)
-    assert [
-        {item["id"] for item in round_items if item["correct"]}
-        for round_items in rounds
-    ] == [
+    assert [{item["id"] for item in round_items if item["correct"]} for round_items in rounds] == [
         {"ball", "book"},
         {"banana"},
         {"basket"},

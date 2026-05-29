@@ -91,7 +91,12 @@ def _advance_state(state: SessionStateModel) -> None:
 
 
 def _sync_round_from_step(state: SessionStateModel) -> None:
-    """Keep current_round aligned with the active round/collect step."""
+    """Keep current_round aligned with the active step.
+
+    Round/collect/build steps set ``current_round`` from the step suffix.
+    Non-round steps (hook, rules, synthesis, celebrate, closing) clear it to 0
+    so round-keyed frame lookups do not go stale (spec §4 cause 2).
+    """
     step = state.current_step
     for prefix in ("STEP_3_ROUND_", "STEP_3_COLLECT_", "STEP_3_BUILD_"):
         if step.startswith(prefix):
@@ -100,6 +105,7 @@ def _sync_round_from_step(state: SessionStateModel) -> None:
             except ValueError:
                 pass
             return
+    state.current_round = 0
 
 
 def _step_round_number(step: str) -> int:

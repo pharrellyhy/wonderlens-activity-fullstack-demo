@@ -23,6 +23,7 @@ except ImportError:
     from state_machine import is_terminal, next_step, step_needs_user_input
 
 from .debug import _build_debug_payload
+from .finalize import derive_frame
 from .generation import _generate_with_retry, _has_completion_language
 from .helpers import (
     _advance_state,
@@ -31,7 +32,6 @@ from .helpers import (
     _collection_photo_prompt,
     _ended_result,
     _get_response_type,
-    _get_screen_frame,
     _is_closing_step,
     _is_round_step,
     _should_auto_advance,
@@ -66,7 +66,7 @@ async def resolve_round(
         state.turn_count += 1
         return TurnResult(
             turn_response=turn_response,
-            screen_frame=_get_screen_frame(state),
+            screen_frame=derive_frame(state, "stay"),
             auto_advance=False,
             response_type=_get_response_type(state.current_step),
             error_exit=False,
@@ -112,7 +112,7 @@ async def resolve_round(
 
         return TurnResult(
             turn_response=turn_response,
-            screen_frame=_get_screen_frame(state),
+            screen_frame=derive_frame(state, "advance"),
             auto_advance=_should_auto_advance(state),
             response_type=_get_response_type(state.current_step),
             error_exit=state.status == "error",
@@ -225,7 +225,7 @@ async def resolve_round(
     state.turn_count += 1
     return TurnResult(
         turn_response=turn_response,
-        screen_frame=_get_screen_frame(state),
+        screen_frame=derive_frame(state, "advance" if not turn_response.stay_on_step else "stay"),
         auto_advance=auto_advance or _should_auto_advance(state),
         response_type=_get_response_type(state.current_step),
         error_exit=state.status == "error",

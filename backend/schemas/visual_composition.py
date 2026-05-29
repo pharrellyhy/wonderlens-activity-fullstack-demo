@@ -14,6 +14,7 @@ class ScreenFrame(BaseModel):
     sfx_label: str | None = Field(default=None, description="Human-readable SFX description")
     animation_label: str | None = Field(default=None, description="Human-readable animation description")
     widget_label: str | None = Field(default=None, description="Human-readable widget description")
+    beat: str | None = Field(default=None, description="Asset beat id matching the line spoken now")
 
 
 class VisualComposition(BaseModel):

@@ -194,6 +194,8 @@ def _ended_result(state: SessionStateModel) -> TurnResult:
     retry_stats = _get_retry_stats()
     if retry_stats:
         logger.info("session_retry_stats: %s", retry_stats)
+    frame = _get_screen_frame(state)
+    frame.beat = "closing"
     return TurnResult(
         turn_response=TurnResponse(
             dialogue="",
@@ -201,7 +203,7 @@ def _ended_result(state: SessionStateModel) -> TurnResult:
             screen_widget="photo_display",
             screen_widget_params={},
         ),
-        screen_frame=_get_screen_frame(state),
+        screen_frame=frame,
         auto_advance=False,
         response_type="ended",
         error_exit=False,

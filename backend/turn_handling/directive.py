@@ -39,6 +39,7 @@ except ImportError:
 
 from .collection import _record_collection_detail
 from .debug import _build_debug_payload
+from .finalize import derive_frame
 from .generation import _generate_with_retry
 from .helpers import (
     _CONFIRM_WORDS,
@@ -46,7 +47,6 @@ from .helpers import (
     _advance_state,
     _append_ai_turn,
     _get_response_type,
-    _get_screen_frame,
     _is_celebrate_step,
     _is_closing_step_directive,
     _is_invitation_step,
@@ -415,9 +415,7 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
                 )
             elif isinstance(state.creative_slots, Cat3CreativeSlots):
                 first_step = (
-                    state.creative_slots.build_steps[0]
-                    if state.creative_slots.build_steps
-                    else "Draw one big circle."
+                    state.creative_slots.build_steps[0] if state.creative_slots.build_steps else "Draw one big circle."
                 )
                 materials = " and ".join(state.creative_slots.build_materials) or "your drawing materials"
                 direction = (
@@ -1124,10 +1122,11 @@ async def _resolve_turn_with_directive(
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
 
-            # Snapshot the celebrate screen frame BEFORE advancing — otherwise
-            # _get_screen_frame(state) would return the STEP_6_CLOSING frame
-            # (concept_reveal) and the achievement image would never render.
-            celebrate_screen_frame = _get_screen_frame(state)
+            # Frame must match the celebrate line spoken now, not the closing
+            # step we advance into below. Derive on the celebrate step first —
+            # otherwise the frame would carry the STEP_6_CLOSING (concept_reveal)
+            # beat and the achievement image would never render.
+            celebrate_frame = derive_frame(state, "advance")
 
             # Advance to closing now, so the next auto-advance turn
             # arrives at STEP_6_CLOSING instead of looping at celebrate.
@@ -1139,7 +1138,7 @@ async def _resolve_turn_with_directive(
             # leave the frontend stuck on the celebrate frame forever.
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=celebrate_screen_frame,
+                screen_frame=celebrate_frame,
                 auto_advance=True,
                 response_type="celebrate",
                 error_exit=False,
@@ -1166,9 +1165,10 @@ async def _resolve_turn_with_directive(
             else:
                 turn_response.screen_widget = "achievement_image"
 
-        # Snapshot screen frame BEFORE advancing — closing advances to ENDED
-        # which has no matching widget and would fall through to ExplorerMap.
-        pre_advance_frame = _get_screen_frame(state) if is_closing else None
+        # Closing frame must match the closing line — derive before the advance
+        # to ENDED (which has no matching widget and would fall through to the
+        # ExplorerMap).
+        closing_frame = derive_frame(state, "advance") if is_closing else None
 
         _advance_state(state)
 
@@ -1184,7 +1184,7 @@ async def _resolve_turn_with_directive(
             state.status = "completed"
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=pre_advance_frame or _get_screen_frame(state),
+                screen_frame=closing_frame or derive_frame(state, "advance"),
                 auto_advance=False,
                 response_type="closing",
                 error_exit=False,
@@ -1223,7 +1223,7 @@ async def _resolve_turn_with_directive(
 
     return TurnResult(
         turn_response=turn_response,
-        screen_frame=_get_screen_frame(state),
+        screen_frame=derive_frame(state, action),
         auto_advance=auto_advance,
         response_type=response_type,
         error_exit=state.status == "error",

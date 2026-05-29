@@ -29,6 +29,7 @@ from .collection import (
 )
 from .debug import _build_debug_payload
 from .directive import _get_turn_directive, _resolve_turn_with_directive
+from .finalize import derive_frame
 from .generation import _classify_child_intent, _generate_with_retry
 from .helpers import (
     _CONFIRM_WORDS,
@@ -39,7 +40,6 @@ from .helpers import (
     _append_child_turn,
     _ended_result,
     _get_response_type,
-    _get_screen_frame,
     _is_closing_step,
     _should_auto_advance,
 )
@@ -128,7 +128,7 @@ async def resolve_turn(
         _append_ai_turn(state, turn_response.dialogue)
         return TurnResult(
             turn_response=turn_response,
-            screen_frame=_get_screen_frame(state),
+            screen_frame=derive_frame(state, "exit"),
             auto_advance=False,
             response_type="graceful_exit",
             error_exit=state.status == "error",
@@ -168,7 +168,7 @@ async def resolve_turn(
                     _append_ai_turn(state, turn_response.dialogue)
                     return TurnResult(
                         turn_response=turn_response,
-                        screen_frame=_get_screen_frame(state),
+                        screen_frame=derive_frame(state, "exit"),
                         auto_advance=False,
                         response_type="graceful_exit",
                         error_exit=state.status == "error",
@@ -269,7 +269,7 @@ async def resolve_turn(
         state.turn_count += 1
         return TurnResult(
             turn_response=turn_response,
-            screen_frame=_get_screen_frame(state),
+            screen_frame=derive_frame(state, state.last_directive_action or "stay"),
             auto_advance=False,
             response_type=_get_response_type(state.current_step),
             error_exit=state.status == "error",
@@ -284,7 +284,7 @@ async def resolve_turn(
             state.turn_count += 1
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=_get_screen_frame(state),
+                screen_frame=derive_frame(state, state.last_directive_action or "stay"),
                 auto_advance=False,
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
@@ -298,14 +298,13 @@ async def resolve_turn(
             state.turn_count += 1
             return TurnResult(
                 turn_response=turn_response,
-                screen_frame=_get_screen_frame(state),
+                screen_frame=derive_frame(state, state.last_directive_action or "stay"),
                 auto_advance=False,
                 response_type=_get_response_type(state.current_step),
                 error_exit=state.status == "error",
                 debug=_debug(gen_debug, turn_response),
             )
         response_type = _get_response_type(state.current_step)
-        screen_frame = _get_screen_frame(state)
         _append_ai_turn(state, turn_response.dialogue)
         _advance_state(state)
         state.turn_count += 1
@@ -313,7 +312,7 @@ async def resolve_turn(
             state.status = "completed"
         return TurnResult(
             turn_response=turn_response,
-            screen_frame=screen_frame,
+            screen_frame=derive_frame(state, "advance"),
             auto_advance=not is_terminal(state.current_step) and not step_needs_user_input(state.current_step),
             response_type=response_type,
             error_exit=state.status == "error",
@@ -333,7 +332,7 @@ async def resolve_turn(
             state.status = "completed"
         return TurnResult(
             turn_response=turn_response,
-            screen_frame=_get_screen_frame(state),
+            screen_frame=derive_frame(state, state.last_directive_action or "stay"),
             auto_advance=_should_auto_advance(state),
             response_type=_get_response_type(state.current_step),
             error_exit=state.status == "error",
@@ -343,12 +342,12 @@ async def resolve_turn(
     # Not yet generated (e.g. Cat5 celebrate after synthesis) — generate then advance
     turn_response, gen_debug = await _generate_with_retry(script_agent, state)
     response_type = _get_response_type(state.current_step)
-    screen_frame = _get_screen_frame(state)
     _append_ai_turn(state, turn_response.dialogue)
     state.turn_count += 1
 
     if _is_closing_step(state.current_step):
         state.status = "completed"
+        screen_frame = derive_frame(state, "advance")
         _advance_state(state)
         return TurnResult(
             turn_response=turn_response,
@@ -365,7 +364,7 @@ async def resolve_turn(
 
     return TurnResult(
         turn_response=turn_response,
-        screen_frame=screen_frame,
+        screen_frame=derive_frame(state, "advance"),
         auto_advance=not is_terminal(state.current_step) and not step_needs_user_input(state.current_step),
         response_type=response_type,
         error_exit=state.status == "error",

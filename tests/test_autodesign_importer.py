@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from autodesign_importer import AutodesignImportError, import_autodesign_package
 from game_parser import parse_game_file
 
@@ -74,6 +73,56 @@ def test_supported_cat1_package_imports_to_parseable_frontmatter(tmp_path: Path)
     entity_variant_path = data["asset_manifest"]["assets"]["entity_hero"]["variants"][0]["path"]
     assert entity_variant_path.startswith("activity-assets/dream_whisperer_cat__cat/")
     assert not Path(entity_variant_path).is_absolute()
+
+
+def test_runtime_ai_instructions_import_to_step_instructions(tmp_path: Path) -> None:
+    package_dir = _package_copy("valid/supported_cat1", tmp_path)
+    (package_dir / "prod.md").write_text(
+        """# Orion Number Reveal
+
+#### Step 1: Choose A Number
+
+**Runtime AI instruction:** Goal: ask the child to choose one number before any constellation image appears. Constraint: T1 max two sentences; offer simple choices and do not show the Orion card yet. Tone: mysterious and warm. Progress evidence: child chooses a number or accepts the modeled number. Branch behavior: handle ideal, unexpected, and no response differently. Frame/source guardrail: number choice comes before reveal and is not a count-the-image task.
+
+#### Step 2: Reveal The Real Orion Card
+
+**Runtime AI instruction:** Goal: display the package-local reference-bound Orion asset after the number choice. Constraint: T1 max two sentences; reveal only asset_id=orion_seven_star_card and do not ask the child to count the stars. Tone: wonder-filled and careful. Progress evidence: child looks at the card or points to a guide star. Branch behavior: handle ideal, unexpected, and no response differently. Frame/source guardrail: preserve verified source layout.
+
+#### Step 3: Tell Orion Background
+
+**Round 1 -- Orion Background Reveal:**
+
+**Runtime AI instruction:** Goal: tell one short background fact after the reveal and connect it to the visible card. Constraint: T1 max two short sentences; include only stable background information. Tone: gentle teacher with wonder. Progress evidence: child listens, repeats Orion, or points to the pattern. Branch behavior: handle ideal, unexpected, and no response differently. Frame/source guardrail: do not replace background information with a counting challenge.
+
+#### Step 4: Celebration
+
+**Runtime AI instruction:** Goal: celebrate that the child chose first and then discovered a real constellation card. Constraint: one or two short sentences; mention the chosen number only as the opener. Tone: proud and wonder-filled. Progress evidence: child acknowledges the number or Orion. Branch behavior: handle ideal, unexpected, and no response differently. Frame/source guardrail: do not convert celebration into counting.
+
+#### Step 5: Closing
+
+**Runtime AI instruction:** Goal: recap the number choice, real Orion reveal, and background fact. Constraint: max two short sentences; no new constellation or counting prompt. Tone: gentle closing. Progress evidence: child says goodbye, Orion, number, or listens quietly. Branch behavior: handle ideal, unexpected, and no response differently. Frame/source guardrail: close with source-faithful Orion context intact.
+""",
+        encoding="utf-8",
+    )
+    games_dir, assets_dir = _import_output_roots(tmp_path)
+
+    result = import_autodesign_package(
+        package_dir,
+        games_dir=games_dir,
+        activity_assets_dir=assets_dir,
+        source_commit=PINNED_COMMIT,
+    )
+
+    _, recipe = parse_game_file(result.game_path)
+    instructions = recipe.step_instructions
+
+    assert instructions.hook.goal.startswith("ask the child to choose one number")
+    assert "do not show the Orion card yet" in instructions.hook.constraint
+    assert instructions.transition.goal.startswith("display the package-local reference-bound Orion asset")
+    assert instructions.rounds[0].scenario == "Orion Background Reveal"
+    assert instructions.rounds[0].goal.startswith("tell one short background fact")
+    assert instructions.celebrate.goal.startswith("celebrate that the child chose first")
+    assert instructions.closing.goal.startswith("recap the number choice")
 
 
 def test_supported_cat5_package_imports_catalog_assets(tmp_path: Path) -> None:

@@ -276,7 +276,7 @@ refs
 data
 scripts/output
 images
-docs/weekly-report
+docs/weekly-report/
 
 *.mp4
 

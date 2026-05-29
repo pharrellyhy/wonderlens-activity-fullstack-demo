@@ -84,3 +84,20 @@ def test_cat3_help_repeats_last_requested_build_step_when_state_has_just_advance
     assert directive is not None
     assert directive.action == "stay"
     assert "add two small ears or petals" in directive.response_direction.lower()
+
+
+def test_cat3_setup_confirmation_cues_first_fixed_build_step() -> None:
+    recipe = load_instruction_recipe("activity_guided_drawing")
+    state = recipe_to_session_state(recipe, "s4", "T1", "guided_drawing")
+    state.current_step = "STEP_2_SETUP"
+    state.current_round = 0
+
+    directive = _fast_path_directive("yes", state)
+
+    assert directive is not None
+    assert directive.action == "advance"
+    direction = directive.response_direction.lower()
+    assert "draw one big circle" in direction
+    assert "done" in direction
+    assert "help" in direction
+    assert "what shape would you like" not in direction

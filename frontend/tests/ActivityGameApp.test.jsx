@@ -326,7 +326,7 @@ describe('ActivityGameApp', () => {
     expect((await screen.findByRole('option', { name: 'Done' })).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('false');
     expect(document.querySelector('.activity-lens__build-panel--compact')).toBeTruthy();
-    expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(false);
+    expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(true);
     expect(screen.queryByText('Draw one simple line or shape to start the picture.')).toBeNull();
     expect(screen.queryByText('paper + pencil')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();

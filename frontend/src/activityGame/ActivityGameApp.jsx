@@ -177,7 +177,7 @@ export default function ActivityGameApp() {
     { label: 'Done', value: 'done' },
     { label: 'Help', value: 'help' },
   ], []);
-  const inputDisabled = !sessionId || loading || turnPending || sessionFinished || showCat5Selection;
+  const inputDisabled = !sessionId || loading || turnPending || sessionFinished || showCat5Selection || showCat3Build;
   const activeCat5ItemIndex = currentRoundItems.length
     ? Math.min(cat5ItemIndex, currentRoundItems.length - 1)
     : 0;

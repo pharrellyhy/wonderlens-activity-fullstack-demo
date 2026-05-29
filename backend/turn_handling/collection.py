@@ -68,17 +68,41 @@ def _record_correct_collection_pick(state: SessionStateModel, photo_id: str) -> 
     _append_child_turn(state, f"[collected correct item: {_get_item_label(state, photo_id)}]")
 
 
-def record_text_collection_pick(state: SessionStateModel, text: str) -> None:
-    """Record a typed Cat5 collection item in text-only mode."""
+def _requires_letter_b_word(state: SessionStateModel) -> bool:
+    """Return True when text collection must satisfy the letter-B phoneme rule."""
+    if not isinstance(state.creative_slots, Cat5CreativeSlots):
+        return False
+    criterion = state.creative_slots.collection_criterion.lower()
+    return state.activity_type == "activity_phoneme_treasure_hunt" or (
+        "letter b" in criterion or "start with b" in criterion or "starts with b" in criterion
+    )
+
+
+def _starts_with_letter_b(text: str) -> bool:
+    """Return True when the typed candidate's meaningful first word starts with b."""
+    words = [word for word in re.findall(r"[a-z]+", text.lower()) if word not in {"a", "an", "the"}]
+    return bool(words and words[0].startswith("b"))
+
+
+def record_text_collection_pick(state: SessionStateModel, text: str) -> bool:
+    """Record a typed Cat5 collection item in text-only mode.
+
+    Returns:
+        True when the text was accepted and stored; False when it should stay
+        in the photo/selection phase for corrective feedback.
+    """
     label = text.strip()
     if not label:
-        return
+        return False
+    if _requires_letter_b_word(state) and not _starts_with_letter_b(label):
+        return False
     item_id = f"text_find_{len(state.collected_text_items) + 1}"
     state.collected_text_items.append(label)
     state.collected_photos.append(item_id)
     state.consecutive_wrong = 0
     state.collection_phase = "detail"
     state.detail_exchange_count = 0
+    return True
 
 
 _GENERATED_NAME_PATTERNS = (

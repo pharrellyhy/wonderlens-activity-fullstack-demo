@@ -5,7 +5,6 @@ from schemas.turn_directive import TurnDirective
 from schemas.turn_response import TurnResponse
 from turn_handling.generation import _enforce_text_only_interaction
 
-
 TEXT_ONLY_REPRESENTATIVE_ACTIVITIES = (
     ("activity_career_decision_role_play", "career_decision_role_play"),
     ("activity_guided_drawing", "guided_drawing"),
@@ -141,6 +140,21 @@ def test_text_mode_sanitizes_device_words_for_representative_activities() -> Non
         assert "click" not in dialogue
         assert "card" not in dialogue
         assert "token" not in dialogue
+
+
+def test_phoneme_text_mode_normalizes_b_sound_language_to_b_starting_words() -> None:
+    state = _text_state("activity_phoneme_treasure_hunt", "phoneme_treasure_hunt")
+
+    dialogue = _enforce_text_only_dialogue(
+        state,
+        "[excited] Look all around and tell me the first B thing you see with the B sound!",
+    )
+
+    lower_dialogue = dialogue.lower()
+    assert "b sound" not in lower_dialogue
+    assert "b thing" not in lower_dialogue
+    assert "letter b start" in lower_dialogue
+    assert "b word or b object" in lower_dialogue
 
 
 def test_directive_prompt_bans_physical_input_language_for_representative_activities() -> None:

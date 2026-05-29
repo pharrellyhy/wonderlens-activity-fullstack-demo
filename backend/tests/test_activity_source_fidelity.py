@@ -235,6 +235,44 @@ def test_career_acceptance_fast_path_uses_decision_prompt_not_emotion_prompt() -
     assert "reacts" not in direction
 
 
+def test_career_hook_confirmation_stays_on_rules_not_first_decision() -> None:
+    recipe = get_demo_recipe("activity_career_decision_role_play")
+    assert recipe is not None
+    state = recipe_to_session_state(recipe, "career-hook-session", "T1", "career_decision_role_play")
+    state.current_step = "STEP_1_HOOK"
+    state.current_round = 0
+
+    directive = _fast_path_directive("sure", state)
+
+    assert directive is not None
+    assert directive.action == "advance"
+    direction = directive.response_direction.lower()
+    assert "choice loop" in direction
+    assert "ready" in direction
+    assert "send help" not in direction
+    assert "water hose" not in direction
+    assert "cooking oil" not in direction
+
+
+def test_phoneme_hook_confirmation_stays_on_rules_not_first_find() -> None:
+    recipe = get_demo_recipe("activity_phoneme_treasure_hunt")
+    assert recipe is not None
+    state = recipe_to_session_state(recipe, "phoneme-hook-session", "T1", "phoneme_treasure_hunt")
+    state.current_step = "STEP_1_HOOK"
+    state.current_round = 0
+
+    directive = _fast_path_directive("yes", state)
+
+    assert directive is not None
+    assert directive.action == "advance"
+    direction = directive.response_direction.lower()
+    assert "rule" in direction
+    assert "starts with letter b" in direction
+    assert "ready" in direction
+    assert "first b word" not in direction
+    assert "tell me the first" not in direction
+
+
 def test_career_uncertainty_stays_on_current_bounded_decision() -> None:
     recipe = get_demo_recipe("activity_career_decision_role_play")
     assert recipe is not None

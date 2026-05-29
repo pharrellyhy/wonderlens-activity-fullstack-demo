@@ -445,6 +445,15 @@ def _enforce_text_only_dialogue(state: SessionStateModel, dialogue: str) -> str:
     for pattern, replacement in replacements:
         dialogue = re.sub(pattern, replacement, dialogue, flags=re.IGNORECASE)
 
+    if state.activity_type == "activity_phoneme_treasure_hunt":
+        phoneme_replacements = (
+            (r"\bstarts?\s+with\s+the\s+b\s+sound\b", "starts with letter B"),
+            (r"\bb\s+sound\b", "letter B start"),
+            (r"\bb\s+thing\b", "B word or B object"),
+        )
+        for pattern, replacement in phoneme_replacements:
+            dialogue = re.sub(pattern, replacement, dialogue, flags=re.IGNORECASE)
+
     if state.activity_type != "activity_recognition_pop_challenge":
         return dialogue
 

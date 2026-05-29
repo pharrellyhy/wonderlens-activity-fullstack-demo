@@ -4,6 +4,36 @@ Last updated: 2026-05-29
 
 ---
 
+## Live Pilot Flow Regression Fixes
+
+**Problem**: Manual testing still found step/state drift in the three representative pilots. Career Decision Role Play asked the first firefighter decision while the backend state was still on the rules step, so later answers repeated or jumped between the wrong scenarios and assets. Guided Drawing could still ask an open-ended "what shape" setup question. Phoneme Treasure Hunt asked for B words before the Cat5 picker state was active, leaving the scroll control disabled, and could accept `screen` as a B word.
+
+**Solution**: Added deterministic hook-confirmation fast paths so hook acceptance advances only into the transition/rules/setup step and does not ask the first actionable round yet. Tightened Cat3 setup confirmation to cue the fixed first build step, disabled the transcript input while Cat3 Done/Help device controls are active, rejected non-B typed phoneme finds before collection, and normalized phoneme wording away from "B sound/B thing" language.
+
+**Edits**:
+- `backend/turn_handling/directive.py` — added hook-confirmation transition guards, Cat3 setup direction, and non-B phoneme correction fast path.
+- `backend/turn_handling/collection.py` — made text collection return accepted/rejected and reject non-B words for the phoneme pilot.
+- `backend/agents/script_agent.py` — normalized generated phoneme dialogue from "B sound/B thing" to B-starting-word language.
+- `frontend/src/activityGame/ActivityGameApp.jsx` — disables free text while Cat3 Done/Help device selection is active.
+- Focused backend/frontend regressions were added for the above cases.
+
+**NOT Changed**:
+- No assets were regenerated.
+- No new interaction modes, audio, camera, or upload paths were added.
+- The live backend provider/API path remains unchanged.
+
+**Verification**:
+- `cd backend && uv run pytest tests/test_activity_source_fidelity.py tests/test_generation_text_mode.py tests/test_activity_text_game_cat3.py tests/test_activity_text_game_turns.py -q` — 29 passed.
+- `cd backend && uv run ruff check agents/script_agent.py turn_handling/directive.py turn_handling/collection.py tests/test_activity_source_fidelity.py tests/test_activity_text_game_cat3.py tests/test_activity_text_game_turns.py tests/test_generation_text_mode.py` — passed.
+- `cd frontend && npm test -- tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityAssets.test.js` — 27 passed.
+- `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx tests/ActivityGameApp.test.jsx` — passed.
+- `cd frontend && npm run build` — passed; Vite emitted the existing large chunk warning.
+- `git diff --check` — passed.
+- Restarted backend/frontend from this worktree with backend-root `.env` and Google credential JSON sourced for live API access.
+- Live API walkthrough passed: Career `sure -> yes -> i dont know -> send help` stayed aligned through rules, round 1, and round 2; Guided `sure -> yes` cued `Draw one big circle`; Phoneme `yes -> yes` exposed `Ball,Cup,Book` at `STEP_3_COLLECT_1`, and typed `screen` was rejected with no collected item.
+
+---
+
 ## Three-Activity Flow and Layout Fixes
 
 **Problem**: The corrective goal for the three representative activities still had open behavior and layout defects: Career Decision Role Play could drift on uncertainty and expose device-bound wording, Guided Drawing could act like an open-ended drawing prompt with an intrusive selector, and Phoneme Treasure Hunt could drift from B-word collection while showing a weak grid/recap experience.

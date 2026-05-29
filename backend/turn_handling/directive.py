@@ -125,6 +125,61 @@ _CAT1_DECIDE_NON_ANSWER_DIRECTIONS = {
 }
 
 
+def _is_phoneme_b_hunt(state: SessionStateModel) -> bool:
+    """Return True for the letter-B phoneme collection pilot."""
+    if not isinstance(state.creative_slots, Cat5CreativeSlots):
+        return False
+    criterion = state.creative_slots.collection_criterion.lower()
+    return state.activity_type == "activity_phoneme_treasure_hunt" or (
+        "letter b" in criterion or "start with b" in criterion or "starts with b" in criterion
+    )
+
+
+def _starts_with_letter_b(text: str) -> bool:
+    """Return True when the typed candidate's meaningful first word starts with b."""
+    words = [word for word in re.findall(r"[a-z]+", text.lower()) if word not in {"a", "an", "the"}]
+    return bool(words and words[0].startswith("b"))
+
+
+def _build_hook_confirmation_directive(state: SessionStateModel) -> TurnDirective | None:
+    """Advance from hook into the rules/setup step without asking the first round yet."""
+    if isinstance(state.creative_slots, Cat1CreativeSlots) and state.creative_slots.game_mechanic == "decide":
+        direction = (
+            "Celebrate the child becoming the Firefighter Helper. Explain the choice loop: "
+            "you give one firefighter prompt, the child makes one safety choice, and one helper marker lights up. "
+            "Ask if they are ready for the first safety choice. Do NOT ask the first decision yet."
+        )
+    elif isinstance(state.creative_slots, Cat3CreativeSlots):
+        materials = " and ".join(state.creative_slots.build_materials) or "drawing materials"
+        direction = (
+            f"Celebrate the child becoming the Guided Artist. Explain the loop: you give one small drawing step, "
+            f"the child tries it with {materials}, then they choose Done or Help. "
+            "Ask if they are ready for the first drawing step. Do NOT ask what shape they want to draw."
+        )
+    elif _is_phoneme_b_hunt(state):
+        direction = (
+            "Celebrate the child becoming a Sound Treasure Hunter. Explain the rule: each turn saves one word "
+            "or object whose name starts with letter B. Give one tiny example like ball, then ask if they are ready "
+            "to begin. Do NOT ask them to tell you the first item yet."
+        )
+    elif isinstance(state.creative_slots, Cat5CreativeSlots):
+        criterion = state.creative_slots.collection_criterion
+        direction = (
+            f"Celebrate readiness briefly. Explain the collection rule: each turn saves one item matching "
+            f"this criterion: {criterion}. Ask if they are ready to begin. Do NOT ask for the first item yet."
+        )
+    else:
+        return None
+
+    return TurnDirective(
+        action="advance",
+        reasoning="Child confirmed the hook; move to transition/setup without starting the first round.",
+        response_direction=direction,
+        emotion_tag="celebrating",
+        max_sentences=3,
+    )
+
+
 def _pick_stuck_default(state: SessionStateModel) -> tuple[str, str]:
     """Pick a playful (name, detail) fallback for a stuck child at detail phase.
 
@@ -220,6 +275,9 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
     Context-dependent: "yes" means different things at different steps.
     Returns None when LLM classification is needed.
     """
+    if normalized_text in _CONFIRM_WORDS and state.current_step == "STEP_1_HOOK":
+        return _build_hook_confirmation_directive(state)
+
     if normalized_text in _NON_ANSWER_PHRASES and _is_cat1_decide_round(state):
         direction = _CAT1_DECIDE_NON_ANSWER_DIRECTIONS.get(
             state.current_round,
@@ -229,6 +287,29 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
             action="stay",
             reasoning="Child is unsure during a Cat1 decision round; stay on the current bounded choice.",
             response_direction=direction,
+            emotion_tag="gentle",
+            stay_on_step=True,
+            max_sentences=2,
+        )
+
+    if (
+        normalized_text
+        and _is_phoneme_b_hunt(state)
+        and state.current_step.startswith("STEP_3_COLLECT_")
+        and state.collection_phase == "photo"
+        and normalized_text not in _CONFIRM_WORDS
+        and normalized_text not in _DECLINE_WORDS
+        and normalized_text not in _NON_ANSWER_PHRASES
+        and not _starts_with_letter_b(normalized_text)
+    ):
+        return TurnDirective(
+            action="stay",
+            reasoning="Child gave a non-B word during the phoneme collection round.",
+            response_direction=(
+                f'The child answered "{normalized_text}", which does not start with letter B. '
+                "Do not save it. Gently say it does not start with B, then ask them to choose or name a word "
+                "that starts with letter B."
+            ),
             emotion_tag="gentle",
             stay_on_step=True,
             max_sentences=2,
@@ -331,6 +412,18 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
                     f"Celebrate acceptance briefly. This is a verbal/imagination game — the child "
                     f'stays with the photo on screen. Present the first scenario: "{scenario}". '
                     f"{question_guidance}"
+                )
+            elif isinstance(state.creative_slots, Cat3CreativeSlots):
+                first_step = (
+                    state.creative_slots.build_steps[0]
+                    if state.creative_slots.build_steps
+                    else "Draw one big circle."
+                )
+                materials = " and ".join(state.creative_slots.build_materials) or "your drawing materials"
+                direction = (
+                    f"Celebrate readiness briefly. Cue the first fixed build step exactly: {first_step} "
+                    f"Ask the child to try it with {materials}, then choose Done when the step is complete "
+                    "or Help if they want the step repeated. Do NOT ask what shape they want to draw."
                 )
             else:
                 direction = "Celebrate acceptance and introduce the first round of the activity."

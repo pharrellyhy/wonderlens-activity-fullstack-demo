@@ -271,14 +271,28 @@ def _append_child_turn(state: SessionStateModel, text: str, *, include_round_num
     )
 
 
-def _append_ai_turn(state: SessionStateModel, dialogue: str) -> None:
-    """Record AI response in conversation history and trim to limit."""
+def _append_ai_turn(
+    state: SessionStateModel,
+    dialogue: str,
+    *,
+    step: str | None = None,
+    round_number: int | None = None,
+) -> None:
+    """Record AI response in conversation history and trim to limit.
+
+    ``step``/``round_number`` default to the live state, but callers that
+    advance the state before recording (the directive advance path) pass the
+    pre-advance values so the AI line is attributed to the step it was spoken
+    for, keeping the history step labels the next turn's prompt reads correct.
+    """
+    resolved_step = step if step is not None else state.current_step
+    resolved_round = round_number if round_number is not None else state.current_round
     state.conversation_history.append(
         ConversationTurn(
             role="ai",
             text=dialogue,
-            step=state.current_step,
-            round_number=state.current_round if state.current_round > 0 else None,
+            step=resolved_step,
+            round_number=resolved_round if resolved_round > 0 else None,
         )
     )
     if len(state.conversation_history) > _HISTORY_LIMIT:

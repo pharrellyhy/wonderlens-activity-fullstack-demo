@@ -1073,6 +1073,12 @@ async def _resolve_turn_with_directive(
     auto_advance = False
     response_type = _get_response_type(state.current_step)
     stay_on_step = False
+    # Step/round the spoken line belongs to. The advance branch generates the
+    # line for the current step and then advances, so it captures these before
+    # ``_advance_state`` and the shared append below records the line against
+    # the pre-advance step (None falls back to the live step for stay/exit).
+    appended_step: str | None = None
+    appended_round: int | None = None
     turn_response: TurnResponse | None = None
 
     if action == "advance":
@@ -1169,6 +1175,10 @@ async def _resolve_turn_with_directive(
         # ExplorerMap).
         closing_frame = derive_frame(state, "advance") if is_closing else None
 
+        # The line was generated for this (pre-advance) step — record it there.
+        appended_step = state.current_step
+        appended_round = state.current_round
+
         _advance_state(state)
 
         # When the last collection round advances into STEP_4_SYNTHESIS,
@@ -1181,7 +1191,7 @@ async def _resolve_turn_with_directive(
 
         if is_terminal(state.current_step):
             state.status = "completed"
-            _append_ai_turn(state, turn_response.dialogue)
+            _append_ai_turn(state, turn_response.dialogue, step=appended_step, round_number=appended_round)
             return TurnResult(
                 turn_response=turn_response,
                 screen_frame=closing_frame or derive_frame(state, "advance"),
@@ -1227,7 +1237,7 @@ async def _resolve_turn_with_directive(
         script_agent=script_agent,
         do_not_suggest_items=directive.do_not_suggest_items,
     )
-    _append_ai_turn(state, turn_response.dialogue)
+    _append_ai_turn(state, turn_response.dialogue, step=appended_step, round_number=appended_round)
     return TurnResult(
         turn_response=turn_response,
         screen_frame=screen_frame,

@@ -325,7 +325,7 @@ describe('ActivityGameApp', () => {
 
     expect((await screen.findByRole('option', { name: 'Done' })).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('false');
-    expect(document.querySelector('.activity-lens__build-panel--compact')).toBeTruthy();
+    expect(screen.getByRole('listbox', { name: 'Crown picker' })).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(true);
     expect(screen.queryByText('Draw one simple line or shape to start the picture.')).toBeNull();
     expect(screen.queryByText('paper + pencil')).toBeNull();
@@ -366,5 +366,116 @@ describe('ActivityGameApp', () => {
     expect(screen.queryByLabelText('Next device option')).toBeNull();
     expect(document.querySelector('.activity-screen-layout--picker')).toBeNull();
     expect(screen.getByAltText('Career Decision Role Play visual').getAttribute('src')).toContain('round_2.png');
+  });
+
+  it('uses a crown picker to browse and start activities from the library', async () => {
+    render(<ActivityGameApp />);
+
+    expect(await screen.findByRole('heading', { name: 'Word Echo Practice' })).toBeTruthy();
+    const listbox = screen.getByRole('listbox', { name: 'Crown picker' });
+    expect(listbox).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Word Echo Practice' }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    expect(screen.getByRole('heading', { name: 'Animal Sound Imitation' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Animal Sound Imitation' }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(listbox, { key: 'ArrowUp' });
+    expect(screen.getByRole('heading', { name: 'Word Echo Practice' })).toBeTruthy();
+  });
+
+  it('drives Cat3 Done/Help through the crown picker', async () => {
+    vi.mocked(startActivitySession).mockResolvedValue({
+      session_id: 'cat3',
+      activity_type: 'activity_guided_drawing',
+      template_type: 'cat3',
+      session_state: {
+        status: 'active',
+        template_type: 'cat3',
+        current_step: 'STEP_3_BUILD_1',
+        current_round: 1,
+        total_rounds: 3,
+        current_build_step: 'Draw one simple line or shape to start the picture.',
+        build_materials: ['paper', 'pencil'],
+      },
+      first_turn: { dialogue: 'Make the first mark.', response_type: 'round' },
+    });
+    vi.mocked(sendTurn).mockResolvedValue({
+      session_state: {
+        status: 'active',
+        template_type: 'cat3',
+        current_step: 'STEP_3_BUILD_1',
+        current_round: 1,
+        total_rounds: 3,
+        current_build_step: 'Draw one simple line or shape to start the picture.',
+        build_materials: ['paper', 'pencil'],
+      },
+      turn: { dialogue: 'I can help with that step.', response_type: 'round' },
+    });
+
+    render(<ActivityGameApp />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Guided Drawing/i }));
+    fireEvent.click(screen.getByLabelText('Start activity'));
+
+    expect((await screen.findByRole('option', { name: 'Done' })).getAttribute('aria-selected')).toBe('true');
+    const listbox = screen.getByRole('listbox', { name: 'Crown picker' });
+
+    fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(vi.mocked(sendTurn)).toHaveBeenCalledWith('cat3', 'help', false);
+    expect(await screen.findByText('I can help with that step.')).toBeTruthy();
+  });
+
+  it('drives Cat5 item selection through the crown picker', async () => {
+    vi.mocked(startActivitySession).mockResolvedValue({
+      session_id: 'cat5',
+      activity_type: 'activity_phoneme_treasure_hunt',
+      template_type: 'cat5',
+      session_state: {
+        status: 'active',
+        template_type: 'cat5',
+        current_step: 'STEP_3_COLLECT_1',
+        current_round: 1,
+        total_rounds: 3,
+        collection_phase: 'photo',
+        collected_photos: [],
+        current_round_items: [
+          { id: 'ball', label: 'Ball', image: '/activity-assets/activity_phoneme_treasure_hunt/items/ball.png' },
+          { id: 'cup', label: 'Cup', image: '/activity-assets/activity_phoneme_treasure_hunt/items/cup.png' },
+          { id: 'book', label: 'Book', image: '/activity-assets/activity_phoneme_treasure_hunt/items/book.png' },
+        ],
+      },
+      first_turn: { dialogue: 'Pick the B word.', response_type: 'round' },
+    });
+    vi.mocked(sendTurn).mockResolvedValue({
+      session_state: {
+        status: 'active',
+        template_type: 'cat5',
+        current_step: 'STEP_3_COLLECT_1',
+        current_round: 1,
+        total_rounds: 3,
+        collection_phase: 'detail',
+        collected_photos: ['cup'],
+      },
+      turn: { dialogue: 'Cup it is.', response_type: 'detail' },
+    });
+
+    render(<ActivityGameApp />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Phoneme Treasure Hunt/i }));
+    fireEvent.click(screen.getByLabelText('Start activity'));
+
+    expect((await screen.findByRole('option', { name: 'Ball' })).getAttribute('aria-selected')).toBe('true');
+    const listbox = screen.getByRole('listbox', { name: 'Crown picker' });
+
+    fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    expect(screen.getByRole('option', { name: 'Cup' }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(vi.mocked(sendTurn)).toHaveBeenCalledWith('cat5', '', false, 'cup');
+    expect(await screen.findByText('Cup it is.')).toBeTruthy();
   });
 });

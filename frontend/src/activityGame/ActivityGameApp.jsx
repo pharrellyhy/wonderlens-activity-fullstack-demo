@@ -4,6 +4,7 @@ import { assetForBeat, beatIdFromSessionState, screenLayoutForBeat } from './act
 import ActivityLibrary from './ActivityLibrary.jsx';
 import ActivityTextInput from './ActivityTextInput.jsx';
 import ActivityTranscript from './ActivityTranscript.jsx';
+import CrownPicker from './CrownPicker.jsx';
 import useActivityTextSession from './useActivityTextSession.js';
 import WonderLensDevice from './WonderLensDevice.jsx';
 
@@ -196,12 +197,9 @@ export default function ActivityGameApp() {
     : showCat5CollectedItems
       ? collectionScreenLayout(baseScreenLayout, collectedItems, collectedSummaryIndex, 'none')
       : baseScreenLayout;
-  const lensInteraction = showCat3Build ? {
-    type: 'cat3-build',
-    options: cat3Options,
-    selectedIndex: cat3OptionIndex,
-    disabled: loading || turnPending,
-  } : null;
+  // The crown picker owns the Cat3 Done/Help selection surface, so the in-lens
+  // build panel no longer renders an interactive control.
+  const lensInteraction = null;
   const progress = {
     current: sessionState?.current_round || 0,
     total: sessionState?.total_rounds || 3,
@@ -243,8 +241,8 @@ export default function ActivityGameApp() {
     await sendMessage(option.value);
   }, [cat3OptionIndex, cat3Options, loading, sendMessage, turnPending]);
 
-  const confirmCat5Item = useCallback(async () => {
-    const item = currentRoundItems[activeCat5ItemIndex] || currentRoundItems[0];
+  const confirmCat5Item = useCallback(async (itemIndex = activeCat5ItemIndex) => {
+    const item = currentRoundItems[itemIndex] || currentRoundItems[0];
     if (!item || loading || turnPending) return;
     await sendCollectionItem(item.id, item.label);
   }, [activeCat5ItemIndex, currentRoundItems, loading, sendCollectionItem, turnPending]);
@@ -261,11 +259,41 @@ export default function ActivityGameApp() {
     : showCat5Selection
       ? () => selectCat5Item(1)
       : () => selectRelativeActivity(1);
-  const handlePrimaryAction = showCat3Build
-    ? confirmCat3Option
+  const handlePrimaryAction = useCallback(() => {
+    if (showCat3Build) void confirmCat3Option();
+    else if (showCat5Selection) void confirmCat5Item();
+    else void handleStart();
+  }, [confirmCat3Option, confirmCat5Item, handleStart, showCat3Build, showCat5Selection]);
+
+  const libraryItems = useMemo(
+    () => activities.map((activity) => ({ id: activity.id, label: activity.name })),
+    [activities],
+  );
+  const libraryIndex = Math.max(0, activities.findIndex((activity) => activity.id === selectedActivity?.id));
+
+  const crownItems = showCat3Build
+    ? cat3Options.map((option) => ({ id: option.value, label: option.label }))
     : showCat5Selection
-      ? confirmCat5Item
-      : handleStart;
+      ? currentRoundItems.map((item) => ({ id: item.id, label: item.label, image: item.image }))
+      : libraryItems;
+  const crownIndex = showCat3Build
+    ? cat3OptionIndex
+    : showCat5Selection
+      ? activeCat5ItemIndex
+      : libraryIndex;
+  const crownDisabled = isDeviceOptionMode
+    ? loading || turnPending
+    : sessionActive || loading || catalogLoading;
+  const crownStep = useCallback((direction) => {
+    if (showCat3Build) selectCat3Option(direction);
+    else if (showCat5Selection) selectCat5Item(direction);
+    else selectRelativeActivity(direction);
+  }, [selectCat3Option, selectCat5Item, selectRelativeActivity, showCat3Build, showCat5Selection]);
+  const crownConfirm = useCallback((focusedIndex) => {
+    if (showCat3Build) void confirmCat3Option();
+    else if (showCat5Selection) void confirmCat5Item(focusedIndex);
+    else void handleStart();
+  }, [confirmCat3Option, confirmCat5Item, handleStart, showCat3Build, showCat5Selection]);
 
   return (
     <main className="activity-game">
@@ -306,6 +334,14 @@ export default function ActivityGameApp() {
               />
             ) : null}
           </div>
+          <CrownPicker
+            items={crownItems}
+            index={crownIndex}
+            onStep={crownStep}
+            onConfirm={crownConfirm}
+            disabled={crownDisabled}
+            confirmLabel={isDeviceOptionMode ? 'Select' : 'Start'}
+          />
           <WonderLensDevice
             activity={selectedActivity}
             sessionState={sessionState}

@@ -32,8 +32,8 @@ export default function CrownPicker({
   const velocityRef = useRef(0);
   const accumulatorRef = useRef(0);
   const frameRef = useRef(0);
+  const settleRef = useRef(null);
   const onStepRef = useRef(onStep);
-  onStepRef.current = onStep;
 
   const stopMomentum = useCallback(() => {
     if (frameRef.current) {
@@ -57,7 +57,7 @@ export default function CrownPicker({
     accumulatorRef.current += velocityRef.current;
     drainDetents();
     if (Math.abs(velocityRef.current) > MOMENTUM_MIN) {
-      frameRef.current = window.requestAnimationFrame(settle);
+      frameRef.current = window.requestAnimationFrame(settleRef.current);
     } else {
       accumulatorRef.current = 0;
       velocityRef.current = 0;
@@ -75,9 +75,9 @@ export default function CrownPicker({
     }
     velocityRef.current = event.deltaY;
     if (!frameRef.current) {
-      frameRef.current = window.requestAnimationFrame(settle);
+      frameRef.current = window.requestAnimationFrame(settleRef.current);
     }
-  }, [disabled, drainDetents, settle, total]);
+  }, [disabled, drainDetents, total]);
 
   const step = useCallback((direction) => {
     if (disabled || total <= 1) return;
@@ -99,6 +99,11 @@ export default function CrownPicker({
     }
   }, [disabled, focusedIndex, onConfirm, step, total]);
 
+  useEffect(() => {
+    onStepRef.current = onStep;
+    settleRef.current = settle;
+  });
+
   useEffect(() => stopMomentum, [stopMomentum]);
 
   return (
@@ -119,11 +124,13 @@ export default function CrownPicker({
             className={`crown-picker__option ${offsetClass(itemIndex, focusedIndex)}`}
             role="option"
             aria-selected={itemIndex === focusedIndex ? 'true' : 'false'}
+            aria-label={item.label || item.id || undefined}
           >
             {item.image || item.src ? (
               <img className="crown-picker__option-image" src={item.image || item.src} alt="" aria-hidden="true" />
-            ) : null}
-            <span className="crown-picker__option-label">{item.label || item.id || ''}</span>
+            ) : (
+              <span className="crown-picker__option-label">{item.label || item.id || ''}</span>
+            )}
           </li>
         ))}
       </ul>

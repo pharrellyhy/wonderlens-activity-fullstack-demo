@@ -717,7 +717,7 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
         f"Suggested emotion tag: [{goal_source.emotion_tag}]",
     ]
 
-    _append_source_fidelity_lines(lines, instructions, goal_source)
+    _append_source_fidelity_lines(lines, instructions, goal_source, state)
 
     if isinstance(goal_source, RoundInstruction):
         lines.append(f"Scenario: {goal_source.scenario}")
@@ -757,7 +757,10 @@ def _build_instruction_overlay(state: SessionStateModel) -> str:
 
 
 def _append_source_fidelity_lines(
-    lines: list[str], instructions: StepInstruction, goal_source: StepGoal | RoundInstruction
+    lines: list[str],
+    instructions: StepInstruction,
+    goal_source: StepGoal | RoundInstruction,
+    state: SessionStateModel,
 ) -> None:
     """Append source-package dialogue contracts when an imported activity provides them."""
     source_contract = goal_source.source_contract
@@ -796,7 +799,8 @@ def _append_source_fidelity_lines(
     if source_contract.runtime_instruction:
         lines.append(f"Runtime instruction: {source_contract.runtime_instruction}")
     if source_contract.example_ai_line:
-        lines.append(f'Example AI line: "{source_contract.example_ai_line}"')
+        safe_example = _enforce_text_only_dialogue(state, source_contract.example_ai_line)
+        lines.append(f'Example AI line: "{safe_example}"')
     if source_contract.child_responses.ideal:
         lines.append(f"Ideal child response: {source_contract.child_responses.ideal}")
     if source_contract.child_responses.unexpected:

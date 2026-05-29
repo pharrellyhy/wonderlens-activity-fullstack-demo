@@ -51,6 +51,8 @@ _COMPLETION_PATTERNS = re.compile(
     r"|(?:found|got|collected)\s+them\s+all"
     r"|finish(?:ed|es)?\s+(?:our|the)\s+(?:mission|collection|patrol)"
     r"|perfect\s+final"
+    r"|(?:all|every)\s+\d+\s+(?:spotted|found|collected|done)"
+    r"|(?:the\s+)?(?:search|hunt|patrol)\s+is\s+(?:over|complete|done)"
     r")\b"
 )
 
@@ -401,7 +403,15 @@ def _source_fidelity_fallback_response(state: SessionStateModel) -> TurnResponse
 
     scenario = getattr(step_goal, "scenario", "")
     scenario_text = f" This round is about {scenario}." if scenario else ""
-    dialogue = f"[{tone}] {title} is ready: {goal_text}.{scenario_text} You are the {role_title}. What should we try?"
+    names = ", ".join(state.collected_names) if state.collected_names else ""
+    crew = ""
+    if names and (
+        "CELEBRATE" in state.current_step or "CLOSING" in state.current_step or "SYNTHESIS" in state.current_step
+    ):
+        crew = f" with {names}"
+    dialogue = (
+        f"[{tone}] {title} is ready: {goal_text}{crew}.{scenario_text} You are the {role_title}. What should we try?"
+    )
 
     frame = _fallback_screen_frame(state)
     return TurnResponse(
@@ -440,7 +450,6 @@ async def _generate_with_retry(
         A tuple of (TurnResponse, GenerationDebugInfo) capturing the response
         and diagnostic telemetry about the generation process.
     """
-    last_response: TurnResponse | None = None
     retry_plan: TurnPlan | None = None
     attempts_log: list[dict] = []
 
@@ -491,7 +500,6 @@ async def _generate_with_retry(
 
         attempt_ms = int((time.perf_counter() - attempt_start) * 1000)
         response = _enforce_text_only_interaction(state, response)
-        last_response = response
 
         # Plan-aware validation: diagnose planner vs speaker issues
         plan_hint = ""
@@ -557,15 +565,17 @@ async def _generate_with_retry(
                     )
                 )
 
-    # All attempts failed validation — return the last response anyway
+    # All attempts failed validation — return the deterministic recipe fallback
+    # (Stream 2 D) rather than the last (possibly bad) line.
     _record_retry_stat(state.current_step, exhausted=True)
     logger.warning(
-        "script_generation: step=%s attempts=%d tier=%s validation=exhausted",
+        "script_generation: step=%s attempts=%d tier=%s validation=exhausted -> deterministic fallback",
         state.current_step,
         _MAX_GENERATION_ATTEMPTS,
         state.tier,
     )
     # Clean up any corrective hints from history
     state.conversation_history = [t for t in state.conversation_history if not t.text.startswith("CORRECTION:")]
-    assert last_response is not None, "At least one attempt must succeed or return fallback"
-    return last_response, _make_debug("exhausted")
+    fallback_response = _source_fidelity_fallback_response(state)
+    fallback_response = _enforce_text_only_interaction(state, fallback_response)
+    return fallback_response, _make_debug("exhausted")

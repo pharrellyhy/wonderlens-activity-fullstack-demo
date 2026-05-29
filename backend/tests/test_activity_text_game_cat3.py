@@ -3,10 +3,17 @@
 from pathlib import Path
 
 from game_parser import parse_game_file
-from schemas.creative_slots import Cat3CreativeSlots
-from schemas.session_state import SessionStateModel
+from recipe_loader import load_instruction_recipe, recipe_to_session_state
+from schemas.session_state import ConversationTurn
 from server import _session_state_dict
 from state_machine import next_step, step_needs_user_input
+from turn_handling.directive import _fast_path_directive
+
+EXPECTED_GUIDED_DRAWING_STEPS = [
+    "Draw one big circle.",
+    "Add two small ears or petals.",
+    "Add one face/detail and say it is done.",
+]
 
 
 def test_cat3_state_machine_steps() -> None:
@@ -19,7 +26,7 @@ def test_cat3_state_machine_steps() -> None:
 
 
 def test_guided_drawing_game_parses_as_cat3() -> None:
-    path = Path("backend/games/activity_guided_drawing.md")
+    path = Path(__file__).parents[1] / "games" / "activity_guided_drawing.md"
 
     entity, recipe = parse_game_file(path)
 
@@ -30,31 +37,50 @@ def test_guided_drawing_game_parses_as_cat3() -> None:
 
 
 def test_cat3_build_round_state_exposes_materials_and_current_build_step() -> None:
-    state = SessionStateModel(
-        session_id="s1",
-        tier="T1",
-        template_type="cat3",
-        activity_type="activity_guided_drawing",
-        current_step="STEP_3_BUILD_2",
-        current_round=2,
-        total_rounds=3,
-        interaction_mode="text",
-        creative_slots=Cat3CreativeSlots(
-            game_mechanic="build",
-            metaphor="Grow a drawing one small step at a time.",
-            role_title="Guided Artist",
-            build_materials=["paper", "pencil"],
-            build_steps=[
-                "Draw one simple line or shape to start the picture.",
-                "Add one small detail that changes what the picture could become.",
-                "Choose one finishing mark and describe the finished drawing.",
-            ],
-            escalation_axis="single mark to changed drawing to finished recap",
-            observation_detail="a first line or shape that can change into a drawing",
-        ),
-    )
+    recipe = load_instruction_recipe("activity_guided_drawing")
+    state = recipe_to_session_state(recipe, "s1", "T1", "guided_drawing")
+    state.current_step = "STEP_3_BUILD_2"
+    state.current_round = 2
 
     payload = _session_state_dict(state)
 
     assert payload["build_materials"] == ["paper", "pencil"]
-    assert payload["current_build_step"] == "Add one small detail that changes what the picture could become."
+    assert state.creative_slots.build_steps == EXPECTED_GUIDED_DRAWING_STEPS
+    assert payload["current_build_step"] == "Add two small ears or petals."
+
+
+def test_cat3_help_stays_on_current_build_step() -> None:
+    recipe = load_instruction_recipe("activity_guided_drawing")
+    state = recipe_to_session_state(recipe, "s2", "T1", "guided_drawing")
+    state.current_step = "STEP_3_BUILD_2"
+    state.current_round = 2
+
+    directive = _fast_path_directive("help", state)
+
+    assert directive is not None
+    assert directive.action == "stay"
+    assert directive.stay_on_step is True
+    direction = directive.response_direction.lower()
+    assert "add two small ears or petals" in direction
+    assert "same step" in direction
+
+
+def test_cat3_help_repeats_last_requested_build_step_when_state_has_just_advanced() -> None:
+    recipe = load_instruction_recipe("activity_guided_drawing")
+    state = recipe_to_session_state(recipe, "s3", "T1", "guided_drawing")
+    state.current_step = "STEP_3_BUILD_1"
+    state.current_round = 1
+    state.conversation_history.append(
+        ConversationTurn(
+            role="ai",
+            text="Now we can add two tiny ears or petals to our round shape.",
+            step="STEP_3_BUILD_1",
+            round_number=1,
+        )
+    )
+
+    directive = _fast_path_directive("help", state)
+
+    assert directive is not None
+    assert directive.action == "stay"
+    assert "add two small ears or petals" in directive.response_direction.lower()

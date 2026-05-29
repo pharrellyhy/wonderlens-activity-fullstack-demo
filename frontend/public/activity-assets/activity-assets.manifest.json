@@ -10,9 +10,10 @@
     },
     "layouts": [
       "single",
+      "singleText",
       "choice2",
       "choice3",
-      "carousel"
+      "picker"
     ]
   },
   "activities": [
@@ -179,7 +180,7 @@
           "src": "/activity-assets/activity_phoneme_treasure_hunt/synthesis.png",
           "usage": "synthesis",
           "layout": {
-            "mode": "carousel",
+            "mode": "picker",
             "selection": "none",
             "safeArea": {
               "canvas": 480,

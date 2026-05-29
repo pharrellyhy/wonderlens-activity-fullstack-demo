@@ -4,6 +4,36 @@ Last updated: 2026-05-29
 
 ---
 
+## Three-Activity Flow and Layout Fixes
+
+**Problem**: The corrective goal for the three representative activities still had open behavior and layout defects: Career Decision Role Play could drift on uncertainty and expose device-bound wording, Guided Drawing could act like an open-ended drawing prompt with an intrusive selector, and Phoneme Treasure Hunt could drift from B-word collection while showing a weak grid/recap experience.
+
+**Solution**: Tightened the three source recipes and text-mode speaker guardrails, added Cat1 decision-round uncertainty fast paths, normalized runtime layouts to `single`, `singleText`, `choice2`, `choice3`, and `picker`, implemented a crown-style picker for three-plus Cat5 choices, made Cat5 synthesis/celebration derive from `sessionState.collected_photos`, and moved Cat3 `Done`/`Help` into a compact scroll/select strip.
+
+**Edits**:
+- `backend/games/activity_career_decision_role_play.md`, `activity_guided_drawing.md`, `activity_phoneme_treasure_hunt.md` — aligned child-facing source intent for firefighter decisions, fixed guided drawing steps, and B-starting phoneme collection.
+- `backend/agents/script_agent.py`, `backend/agents/turn_director.py`, `backend/turn_handling/directive.py` — added text-only device-word sanitation and Cat1 decision-round uncertainty handling.
+- `frontend/src/activityGame/activityAssets.js`, `ActivityGameApp.jsx`, `ActivityLens.jsx`, `frontend/src/index.css` — added picker normalization/rendering, compact Cat3 control strip, passive Cat1 screen sync, and state-derived Cat5 recap.
+- `backend/tests/test_activity_source_fidelity.py`, `test_generation_text_mode.py`, `test_activity_text_game_cat3.py`, `frontend/tests/ActivityGameApp.test.jsx`, `WonderLensDevice.test.jsx`, `activityAssets.test.js`, `scripts/run_activity_text_smoke.py` — added focused regressions and live smoke assertions.
+
+**NOT Changed**:
+- No scene assets were regenerated or replaced.
+- The standalone activity game remains text-only: no STT, TTS, mic, camera, photo upload, or image-recognition controls were added.
+- Runtime still uses committed static assets and the existing backend provider APIs.
+
+**Verification**:
+- `cd backend && uv run pytest tests/test_activity_source_fidelity.py tests/test_generation_text_mode.py tests/test_activity_text_game_cat3.py -q` — 23 passed.
+- `cd backend && uv run ruff check agents/turn_director.py turn_handling/directive.py turn_handling/helpers.py tests/test_activity_source_fidelity.py tests/test_activity_text_game_cat3.py` — passed.
+- `cd frontend && npm test -- tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityAssets.test.js` — 27 passed.
+- `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx src/activityGame/activityAssets.js tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityAssets.test.js` — passed.
+- `cd frontend && npm run build` — passed; Vite emitted the existing large chunk warning.
+- `git diff --check` — passed.
+- Restarted backend from this worktree while sourcing the backend-root `.env` and Google credential JSON path without printing secret values.
+- `uv run python scripts/run_activity_text_smoke.py --timeout 120` — 12 passed, 0 failed.
+- Browser verification at `http://127.0.0.1:5173/?view=activities` passed for Career Decision Role Play, Guided Drawing, and Phoneme Treasure Hunt. Career used the bounded firefighter decision with no picker; Guided Drawing repeated the ears/petals step through the compact scroll/select Help path; Phoneme Treasure Hunt used B-word prompting, crown picker selection, and recapped the selected `Book`, `Banana`, `Basket` items.
+
+---
+
 ## Three-Activity Asset and Touchless Control Implementation
 
 **Problem**: The approved representative pilot needed to move from plan to verified implementation: flat Nordic runtime assets for the three selected activities, Cat5 touchless item selection through the device controls, Cat1/Cat3 behavior preservation, and all-activity live smoke before declaring the goal complete.
@@ -243,28 +273,3 @@ Last updated: 2026-05-29
 - `npm run lint` — passed.
 - `npm run build` — passed; Vite emitted the existing large chunk warning.
 - Browser verification at `http://localhost:5173/?view=activities` against the restarted backend confirmed Cat3 build controls appear with typed input enabled, Cat5 screen item selection appears with typed input disabled, item selection writes the selected label into the transcript, and the live backend response is handled by yielding back to text input once the current item is recorded.
-
----
-
-## Activity Source Dialogue Fidelity Layer
-
-**Problem**: The converted `backend/games/activity_*.md` files loaded and preserved source keywords, but dropped the richer source-package dialogue contracts that made the original full demo feel better: runtime instructions, example AI lines, child response branches, AI follow-ups, source intent locks, and screen/fallback contracts.
-
-**Solution**: Added a source-dialogue fidelity layer to the imported activity recipes. Each converted activity now carries a `source_dialogue` block generated from its matching autodesign `prod.md` and `spec.md`. The parser maps those blocks into typed recipe models, and the Script Agent overlay now passes the current step's source intent, example line, branches, follow-ups, and screen contract into the dialogue prompt while still respecting the current interaction mode.
-
-**Edits**:
-- `backend/games/activity_*.md` — added source intent/detail-floor notes plus per-step `source_dialogue` contracts for all 12 imported activities.
-- `backend/schemas/step_instruction.py`, `backend/game_parser.py` — added typed source branch/step contracts and parser mapping.
-- `backend/agents/script_agent.py` — added source fidelity details to the activity-specific prompt overlay.
-- `backend/tests/test_activity_source_fidelity.py` — added regressions proving imported activities preserve source dialogue contracts and the career firefighter round overlay includes them.
-
-**NOT Changed**:
-- No interaction-mode changes yet; Cat3/Cat5 screen interaction work remains next.
-- The standalone activity game remains text-only.
-- Existing non-imported demo games continue to load with empty/default source contracts.
-
-**Verification**:
-- `uv run ruff check backend/schemas/step_instruction.py backend/game_parser.py backend/agents/script_agent.py backend/tests/test_activity_source_fidelity.py` — passed.
-- `uv run pytest backend/tests/test_activity_source_fidelity.py backend/tests/test_generation_text_mode.py tests/test_activity_text_smoke.py -q` — 14 passed.
-- `uv run pytest tests/test_game_parser.py backend/tests/test_activity_text_game_definitions.py backend/tests/test_activity_text_game_api.py backend/tests/test_activity_text_game_cat3.py backend/tests/test_generation_fallback.py tests/test_activity_text_game_asset_contract.py -q` — 54 passed.
-- Manual overlay check confirmed `activity_career_decision_role_play` round 1 now includes the source intent lock, firefighter example AI line, ideal/unexpected/no-response branches, follow-ups, and screen fallback in `_build_instruction_overlay`.

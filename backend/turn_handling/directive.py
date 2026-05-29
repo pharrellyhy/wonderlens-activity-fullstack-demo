@@ -14,7 +14,7 @@ try:
     from ..agents.script_agent import ScriptAgent
     from ..agents.turn_director import TurnDirector
     from ..logger import setup_logger
-    from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from ..schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from ..schemas.session_state import SessionStateModel
     from ..schemas.turn_directive import StoryElement, TurnDirective
     from ..schemas.turn_response import TurnResponse
@@ -27,7 +27,7 @@ except ImportError:
     from agents.script_agent import ScriptAgent
     from agents.turn_director import TurnDirector
     from logger import setup_logger
-    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import SessionStateModel
     from schemas.turn_directive import StoryElement, TurnDirective
     from schemas.turn_response import TurnResponse
@@ -118,6 +118,12 @@ _STUCK_DEFAULTS: dict[str, list[tuple[str, str]]] = {
     "habitat": [("Cozy", "snug and safe"), ("Hidden", "tucked away")],
 }
 
+_CAT1_DECIDE_NON_ANSWER_DIRECTIONS = {
+    1: "That is okay. As the firefighter, should the team send help now, or check first?",
+    2: "That is okay. Which tool is safer for the fire scene: water hose or cooking oil?",
+    3: "That is okay. Should the firefighter check people are safe outside, or run inside alone?",
+}
+
 
 def _pick_stuck_default(state: SessionStateModel) -> tuple[str, str]:
     """Pick a playful (name, detail) fallback for a stuck child at detail phase.
@@ -136,6 +142,44 @@ def _pick_stuck_default(state: SessionStateModel) -> tuple[str, str]:
             return opt
     # All options already used — just cycle by modulo of how many items stuck
     return options[len(state.collected_names) % len(options)]
+
+
+def _is_cat1_decide_round(state: SessionStateModel) -> bool:
+    """Return True when the active turn is a Cat1 decision-role-play round."""
+    return (
+        state.current_step.startswith("STEP_3_ROUND_")
+        and isinstance(state.creative_slots, Cat1CreativeSlots)
+        and state.creative_slots.game_mechanic == "decide"
+    )
+
+
+def _is_cat3_build_round(state: SessionStateModel) -> bool:
+    """Return True when the active turn is a Cat3 guided-build round."""
+    return (
+        state.current_step.startswith("STEP_3_BUILD_")
+        and isinstance(state.creative_slots, Cat3CreativeSlots)
+        and state.creative_slots.game_mechanic == "build"
+    )
+
+
+def _current_build_step(state: SessionStateModel) -> str:
+    """Return the current Cat3 build step text, if available."""
+    if not isinstance(state.creative_slots, Cat3CreativeSlots):
+        return ""
+    latest_ai_text = next((turn.text.lower() for turn in reversed(state.conversation_history) if turn.role == "ai"), "")
+    best_step = ""
+    best_score = 0
+    for step in state.creative_slots.build_steps:
+        words = {word for word in re.findall(r"[a-z]+", step.lower()) if len(word) > 2}
+        score = sum(1 for word in words if word in latest_ai_text)
+        if score > best_score:
+            best_score = score
+            best_step = step
+    if best_score >= 3:
+        return best_step
+    if 1 <= state.current_round <= len(state.creative_slots.build_steps):
+        return state.creative_slots.build_steps[state.current_round - 1]
+    return state.creative_slots.build_steps[0] if state.creative_slots.build_steps else ""
 
 
 def _build_story_direction(state: SessionStateModel, chosen_theme: str = "") -> tuple[str, int]:
@@ -176,6 +220,34 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
     Context-dependent: "yes" means different things at different steps.
     Returns None when LLM classification is needed.
     """
+    if normalized_text in _NON_ANSWER_PHRASES and _is_cat1_decide_round(state):
+        direction = _CAT1_DECIDE_NON_ANSWER_DIRECTIONS.get(
+            state.current_round,
+            "That is okay. Stay in this same decision and choose one of the two safe options.",
+        )
+        return TurnDirective(
+            action="stay",
+            reasoning="Child is unsure during a Cat1 decision round; stay on the current bounded choice.",
+            response_direction=direction,
+            emotion_tag="gentle",
+            stay_on_step=True,
+            max_sentences=2,
+        )
+
+    if normalized_text in _NON_ANSWER_PHRASES and _is_cat3_build_round(state):
+        build_step = _current_build_step(state) or "the current drawing step"
+        return TurnDirective(
+            action="stay",
+            reasoning="Child asked for help during a Cat3 build step; stay on the current step.",
+            response_direction=(
+                f"Stay on this same step. Help the child with: {build_step} "
+                "Repeat it in simpler words and invite them to try only this step."
+            ),
+            emotion_tag="gentle",
+            stay_on_step=True,
+            max_sentences=2,
+        )
+
     # Synthesis: detect delegation phrases ("you tell me", "you do it") → generate story directly
     if state.current_step == "STEP_4_SYNTHESIS" and state.synthesis_phase not in ("invite",):
         if "you tell" in normalized_text or "you do" in normalized_text or "tell me a story" in normalized_text:
@@ -225,12 +297,11 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
         if _is_invitation_step(state.current_step):
             # Build context-aware direction for the NEXT step
             if isinstance(state.creative_slots, Cat5CreativeSlots):
-                angle = state.creative_slots.observation_angle
                 criterion = state.creative_slots.collection_criterion
                 direction = (
                     f"Celebrate acceptance briefly, then invite the child to go find their first "
-                    f"{angle} item. Encourage them to explore and find something that matches: "
-                    f"{criterion}. Do NOT talk about the original photo."
+                    f"item that matches this collection criterion: {criterion}. "
+                    "Do NOT talk about the original photo."
                 )
             elif isinstance(state.creative_slots, Cat1CreativeSlots):
                 # Use the instruction recipe's rich scenario text when available
@@ -241,7 +312,15 @@ def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> Turn
                         scenario = rounds[0].scenario
                 if not scenario and state.creative_slots.round_scenarios:
                     scenario = state.creative_slots.round_scenarios[0]
-                if state.creative_slots.game_mechanic == "storytelling_chain":
+                if state.creative_slots.game_mechanic == "decide":
+                    first_constraint = ""
+                    if state.instruction_recipe and state.instruction_recipe.step_instructions.rounds:
+                        first_constraint = state.instruction_recipe.step_instructions.rounds[0].constraint
+                    question_guidance = (
+                        "Ask the first bounded role decision from the source. "
+                        f"Use this source constraint: {first_constraint}"
+                    )
+                elif state.creative_slots.game_mechanic == "storytelling_chain":
                     question_guidance = (
                         f"Ask ONE question about what the {state.entity_name} "
                         f"sees, finds, or does in the scene — NOT about how it feels."

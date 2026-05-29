@@ -28,6 +28,16 @@ vi.mock('../src/utils/api.js', () => ({
       core_ib_key_concepts: ['Form'],
       asset_manifest_id: 'activity_animal_sound_imitation',
     }, {
+      id: 'activity_career_decision_role_play',
+      name: 'Career Decision Role Play',
+      kind: 'activity',
+      category: 'category_1',
+      mechanic: 'decide',
+      tier: 'T1',
+      premise: 'Make firefighter safety choices.',
+      core_ib_key_concepts: ['Form', 'Responsibility'],
+      asset_manifest_id: 'activity_career_decision_role_play',
+    }, {
       id: 'activity_phoneme_treasure_hunt',
       name: 'Phoneme Treasure Hunt',
       kind: 'activity',
@@ -134,9 +144,10 @@ describe('ActivityGameApp', () => {
         current_round_items: [
           { id: 'ball', label: 'Ball', image: '/activity-assets/activity_phoneme_treasure_hunt/items/ball.png' },
           { id: 'cup', label: 'Cup', image: '/activity-assets/activity_phoneme_treasure_hunt/items/cup.png' },
+          { id: 'book', label: 'Book', image: '/activity-assets/activity_phoneme_treasure_hunt/items/book.png' },
         ],
       },
-      first_turn: { dialogue: 'Pick the sound treasure.', response_type: 'round' },
+      first_turn: { dialogue: 'Pick the B word.', response_type: 'round' },
     });
     vi.mocked(sendTurn).mockResolvedValue({
       session_state: {
@@ -148,7 +159,7 @@ describe('ActivityGameApp', () => {
         collection_phase: 'detail',
         collected_photos: ['ball'],
       },
-      turn: { dialogue: 'Ball works. What sound does it start with?', response_type: 'detail' },
+      turn: { dialogue: 'Ball works. Which B word did you choose?', response_type: 'detail' },
     });
 
     render(<ActivityGameApp />);
@@ -159,6 +170,8 @@ describe('ActivityGameApp', () => {
     expect(await screen.findByText('Ball')).toBeTruthy();
     expect(screen.queryByText('Choose a word that starts with b')).toBeNull();
     expect(screen.getByText('Cup')).toBeTruthy();
+    expect(screen.getByText('Book')).toBeTruthy();
+    expect(document.querySelector('.activity-screen-layout--picker')).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(true);
     expect(screen.queryByRole('button', { name: 'Select: Ball' })).toBeNull();
     expect(document.querySelector('.activity-screen-layout__item.is-selected span')?.textContent).toBe('Ball');
@@ -172,7 +185,56 @@ describe('ActivityGameApp', () => {
     fireEvent.click(screen.getByLabelText('Confirm selected device option'));
 
     expect(vi.mocked(sendTurn)).toHaveBeenCalledWith('cat5', '', false, 'ball');
-    expect(await screen.findByText('Ball works. What sound does it start with?')).toBeTruthy();
+    expect(await screen.findByText('Ball works. Which B word did you choose?')).toBeTruthy();
+  });
+
+  it('uses collected Cat5 item order for synthesis instead of static manifest recap items', async () => {
+    vi.mocked(startActivitySession).mockResolvedValue({
+      session_id: 'cat5',
+      activity_type: 'activity_phoneme_treasure_hunt',
+      template_type: 'cat5',
+      session_state: {
+        status: 'active',
+        template_type: 'cat5',
+        current_step: 'STEP_3_COLLECT_1',
+        current_round: 1,
+        total_rounds: 3,
+        collection_phase: 'photo',
+        collected_photos: [],
+        current_round_items: [
+          { id: 'ball', label: 'Ball', image: '/activity-assets/activity_phoneme_treasure_hunt/items/ball.png' },
+          { id: 'cup', label: 'Cup', image: '/activity-assets/activity_phoneme_treasure_hunt/items/cup.png' },
+          { id: 'book', label: 'Book', image: '/activity-assets/activity_phoneme_treasure_hunt/items/book.png' },
+        ],
+      },
+      first_turn: { dialogue: 'Pick the first B word.', response_type: 'round' },
+    });
+    vi.mocked(sendTurn).mockResolvedValue({
+      session_state: {
+        status: 'active',
+        template_type: 'cat5',
+        current_step: 'STEP_4_SYNTHESIS',
+        current_round: 3,
+        total_rounds: 3,
+        collection_phase: 'photo',
+        collected_photos: ['ball', 'basket', 'banana'],
+      },
+      turn: { dialogue: 'Ready for the B chant.', response_type: 'synthesis' },
+    });
+
+    render(<ActivityGameApp />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Phoneme Treasure Hunt/i }));
+    fireEvent.click(screen.getByLabelText('Start activity'));
+    expect(await screen.findByText('Ball')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Confirm selected device option'));
+
+    expect(await screen.findByText('Ready for the B chant.')).toBeTruthy();
+    const labels = Array.from(
+      document.querySelectorAll('.activity-screen-layout--picker .activity-screen-layout__item span'),
+    ).map((node) => node.textContent);
+    expect(labels).toEqual(['Ball', 'Basket', 'Banana']);
+    expect(labels).not.toContain('Book');
   });
 
   it('unlocks Cat5 text input after a selected item is recorded for the current round', async () => {
@@ -211,7 +273,7 @@ describe('ActivityGameApp', () => {
           { id: 'cup', label: 'Cup', image: '/activity-assets/activity_phoneme_treasure_hunt/items/cup.png' },
         ],
       },
-      turn: { dialogue: 'Ball works. What sound does it start with?', response_type: 'detail' },
+      turn: { dialogue: 'Ball works. Which B word did you choose?', response_type: 'detail' },
     });
 
     render(<ActivityGameApp />);
@@ -221,7 +283,7 @@ describe('ActivityGameApp', () => {
     expect(await screen.findByText('Ball')).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Confirm selected device option'));
 
-    expect(await screen.findByText('Ball works. What sound does it start with?')).toBeTruthy();
+    expect(await screen.findByText('Ball works. Which B word did you choose?')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Select: Ball' })).toBeNull();
     expect(document.querySelector('.activity-screen-layout__item.is-selected span')?.textContent).toBe('Ball');
     expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(false);
@@ -247,13 +309,13 @@ describe('ActivityGameApp', () => {
       session_state: {
         status: 'active',
         template_type: 'cat3',
-        current_step: 'STEP_3_BUILD_2',
-        current_round: 2,
+        current_step: 'STEP_3_BUILD_1',
+        current_round: 1,
         total_rounds: 3,
-        current_build_step: 'Add one small detail that changes the picture.',
+        current_build_step: 'Draw one simple line or shape to start the picture.',
         build_materials: ['paper', 'pencil'],
       },
-      turn: { dialogue: 'Nice. Add one detail now.', response_type: 'round' },
+      turn: { dialogue: 'Try the same first mark again. I can help with that step.', response_type: 'round' },
     });
 
     render(<ActivityGameApp />);
@@ -263,6 +325,8 @@ describe('ActivityGameApp', () => {
 
     expect((await screen.findByRole('option', { name: 'Done' })).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('false');
+    expect(document.querySelector('.activity-lens__build-panel--compact')).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(false);
     expect(screen.queryByText('Draw one simple line or shape to start the picture.')).toBeNull();
     expect(screen.queryByText('paper + pencil')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
@@ -274,6 +338,33 @@ describe('ActivityGameApp', () => {
     fireEvent.click(screen.getByLabelText('Confirm selected device option'));
 
     expect(vi.mocked(sendTurn)).toHaveBeenCalledWith('cat3', 'help', false);
-    expect(await screen.findByText('Nice. Add one detail now.')).toBeTruthy();
+    expect(await screen.findByText('Try the same first mark again. I can help with that step.')).toBeTruthy();
+    expect(screen.getByText('1/3')).toBeTruthy();
+  });
+
+  it('keeps Cat1 career screen passive and synced to the current backend step', async () => {
+    vi.mocked(startActivitySession).mockResolvedValue({
+      session_id: 'career',
+      activity_type: 'activity_career_decision_role_play',
+      template_type: 'cat1',
+      session_state: {
+        status: 'active',
+        template_type: 'cat1',
+        current_step: 'STEP_3_ROUND_2',
+        current_round: 2,
+        total_rounds: 3,
+      },
+      first_turn: { dialogue: 'Firefighter, water hose or cooking oil?', response_type: 'round' },
+    });
+
+    render(<ActivityGameApp />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Career Decision Role Play/i }));
+    fireEvent.click(screen.getByLabelText('Start activity'));
+
+    expect(await screen.findByText('Firefighter, water hose or cooking oil?')).toBeTruthy();
+    expect(screen.queryByLabelText('Next device option')).toBeNull();
+    expect(document.querySelector('.activity-screen-layout--picker')).toBeNull();
+    expect(screen.getByAltText('Career Decision Role Play visual').getAttribute('src')).toContain('round_2.png');
   });
 });

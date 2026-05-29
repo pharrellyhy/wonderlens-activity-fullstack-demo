@@ -569,6 +569,47 @@
   transform: scale(1);
 }
 
+.activity-screen-layout--picker .activity-screen-layout__items {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  width: 78%;
+  max-width: 78%;
+  height: 76%;
+  place-items: center;
+}
+
+.activity-screen-layout--picker .activity-screen-layout__item {
+  grid-area: 1 / 1 / -1 / -1;
+  width: 38%;
+  opacity: 0;
+  transform: scale(0.58);
+}
+
+.activity-screen-layout--picker .activity-screen-layout__item.is-current {
+  z-index: 3;
+  width: 56%;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.activity-screen-layout--picker .activity-screen-layout__item.is-adjacent {
+  z-index: 2;
+  opacity: 0.62;
+}
+
+.activity-screen-layout--picker .activity-screen-layout__item.is-previous {
+  transform: translateY(-66%) scale(0.72);
+}
+
+.activity-screen-layout--picker .activity-screen-layout__item.is-next {
+  transform: translateY(66%) scale(0.72);
+}
+
+.activity-screen-layout--picker .activity-screen-layout__item.is-offscreen {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
 .activity-screen-layout__item {
   position: relative;
   display: grid;
@@ -624,6 +665,23 @@
   text-overflow: ellipsis;
   text-shadow: 0 0.08rem 0.16rem oklch(0.04 0.006 150 / 0.72);
   white-space: nowrap;
+}
+
+.activity-screen-layout__text {
+  position: relative;
+  z-index: 2;
+  max-width: 62%;
+  margin: 0;
+  align-self: end;
+  margin-bottom: 15%;
+  border-radius: 999px;
+  background: oklch(0.98 0.01 145 / 0.86);
+  color: oklch(0.18 0.02 155);
+  font-size: 0.62rem;
+  font-weight: 850;
+  line-height: 1.15;
+  padding: 0.3rem 0.5rem;
+  text-align: center;
 }
 
 @keyframes activity-lens-beat-in {
@@ -755,6 +813,17 @@
   padding: 0.34rem;
 }
 
+.activity-lens__build-panel--compact {
+  align-self: end;
+  width: min(58%, 7rem);
+  max-height: none;
+  margin-bottom: 11%;
+  border-color: oklch(0.9 0.04 145 / 0.48);
+  background: oklch(0.97 0.018 145 / 0.9);
+  box-shadow: 0 0.32rem 0.7rem oklch(0.04 0.006 150 / 0.2);
+  padding: 0.22rem;
+}
+
 .activity-lens__build-option {
   display: grid;
   min-height: 1.85rem;
@@ -766,6 +835,13 @@
   font-size: 0.64rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.activity-lens__build-panel--compact .activity-lens__build-option {
+  min-height: 1.28rem;
+  border-color: oklch(0.74 0.06 145 / 0.38);
+  color: oklch(0.2 0.026 155);
+  font-size: 0.52rem;
 }
 
 .activity-lens__build-option.is-selected {

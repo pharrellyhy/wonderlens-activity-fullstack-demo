@@ -17,7 +17,7 @@ try:
     from ..config import get_settings
     from ..db import log_agent_call
     from ..logger import setup_logger
-    from ..schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from ..schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from ..schemas.session_state import SessionStateModel
     from ..schemas.turn_directive import StoryElement, TurnDirective
     from .script_agent import (
@@ -29,7 +29,7 @@ except ImportError:
     from config import get_settings
     from db import log_agent_call
     from logger import setup_logger
-    from schemas.creative_slots import Cat1CreativeSlots, Cat5CreativeSlots
+    from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import SessionStateModel
     from schemas.turn_directive import StoryElement, TurnDirective
 
@@ -50,12 +50,12 @@ _PROMPT_PATH = Path(__file__).parent.parent / "skills" / "turn_director_system.m
 _CAT5_COLLECTION_RULES = """\
 ### Cat5 Collection Phases
 - Phase=photo, no photo selected yet:
-  action=stay, direction="Invite child to find something {observation_angle}. Use invitational language."
+  action=stay, direction="Invite child to find one item matching the collection criterion. Use the exact collection criterion from state context."
 - Phase=photo, correct photo (child input contains "[collected correct item"):
   action=stay (stay_on_step=true), direction="Celebrate the find! Ask a detail/harvest question based on the story scaffold strategy for round {round_number}."
   sfx_cue="slot_fill_chime" (or "mission_complete_fanfare" if this is the LAST item)
 - Phase=photo, wrong photo (child input contains "[selected wrong photo"):
-  action=stay, direction="Acknowledge warmly in ONE short sentence (e.g., 'Ooh, interesting find!'). Then redirect with ONE invitational sentence toward something {observation_angle}. That's it — just two sentences, no questions about the wrong item, no comparisons, no modeling."
+  action=stay, direction="Acknowledge warmly in ONE short sentence. Then redirect with ONE sentence toward the collection criterion. That's it — just two sentences, no questions about the wrong item, no comparisons, no modeling."
 - Phase=detail, child gave substantive response AND this is NOT the last round:
   action=advance, max_sentences=2, harvest a story_element with the child's words and any character name.
   direction="Celebrate the detail in ONE short sentence. Name the character if synthesis_format is collaborative_story. Reference ALL previous characters by name."
@@ -65,19 +65,19 @@ _CAT5_COLLECTION_RULES = """\
 - Phase=detail, child is off-topic:
   action=stay (stay_on_step=true), direction="Acknowledge, re-ask the detail question with different wording."
 - Phase=detail, silence:
-  action=need_help, direction="Model an answer. For T0: offer a binary choice about the ALREADY FOUND item (e.g., 'Does it feel squishy or smooth?')."
+  action=need_help, direction="Model an answer that matches the collection criterion, then offer two criterion-matching choices for T0."
 
 CRITICAL RULES:
 - NEVER suggest specific items to find (no "leaf", "flower", "blanket", "pillow"). You CANNOT see the child's environment.
 - NEVER suggest specific locations (no "on the floor", "near you", "over there").
-- Binary choices must be about SENSORY QUALITIES of the item already found (e.g., "squishy or smooth?", "fuzzy or silky?"), NOT about specific objects in the environment.
-- When redirecting from a wrong photo, say "something {observation_angle}" — do NOT name what to look for.\
+- Binary choices must stay aligned to the collection criterion, not generic sensory qualities.
+- When redirecting from a wrong photo, repeat the collection criterion — do NOT name a specific place to look.\
 """
 
 _INVITATION_RULES = """\
 ### Invitation (STEP_2_MISSION / STEP_2_RULES)
 - Child confirms (yes, sure, ok, let's go, etc.):
-  action=advance, direction="Celebrate acceptance briefly, then invite the child to go find their first {observation_angle} item. Do NOT talk about the original photo/entity — the child is moving on to explore. Focus on encouraging them to find something new that matches the collection criterion."
+  action=advance, direction="Celebrate acceptance briefly, then invite the child to find their first item matching the collection criterion. Do NOT talk about the original photo/entity — the child is moving on to explore. Focus on the collection criterion."
 - Child declines (no, nah, I don't want to) — first decline:
   action=stay, direction="Re-invite warmly with a different framing."
 - Child declines — second or more:
@@ -126,6 +126,25 @@ CRITICAL Cat1 RULES:
 - Binary choices must be between TWO EMOTIONS (e.g., 'happy or sleepy?', 'brave or scared?'), never actions.\
 """
 
+_CAT1_ROUND_RULES_DECIDE = """\
+### Cat1 Round (Decision Role Play)
+- First turn on this round (no child answer yet):
+  action=stay, direction="Present THIS ROUND'S SCENARIO (from the context above) and ask the exact bounded expert decision for this round."
+- Child chose one of the bounded choices AND this is NOT the last round:
+  action=advance, max_sentences=3, direction="Celebrate the choice in one sentence. Then use a brief transition before presenting the NEXT round's exact decision scenario. End with the next bounded choice."
+- Child chose one of the bounded choices AND this IS the last round:
+  action=advance, max_sentences=2, direction="Celebrate the safety-first choice. Do NOT wrap up or award a title — the celebration step handles that."
+- Child is unsure, says they do not know, or asks for help:
+  action=stay, direction="Stay on THIS SAME round. Say that is okay, then repeat only the current bounded choices."
+- Child gave an off-topic answer:
+  action=stay, direction="Warmly acknowledge, then return to the current professional role and repeat only the current bounded choices."
+
+CRITICAL Cat1 Decision RULES:
+- Do NOT ask about emotions or feelings.
+- Do NOT jump to another round when the child is unsure.
+- Use only the current round's bounded choices.\
+"""
+
 _CAT1_ROUND_RULES_STORYTELLING = """\
 ### Cat1 Round (Storytelling Chain)
 - First turn on this round (no child answer yet):
@@ -147,6 +166,21 @@ CRITICAL Cat1 Storytelling RULES:
 - Ask about what the {entity_name} SEES, FINDS, or DOES — never about how it FEELS.
 - Binary choices must be between TWO CONCRETE THINGS (objects, actions, discoveries), never emotions.
 - Do NOT ask about emotions or feelings (e.g., 'happy or scared?'). Ask about the scene content (e.g., 'a rainbow or some butterflies?').\
+"""
+
+_CAT3_BUILD_RULES = """\
+### Cat3 Build Round
+- Child says done:
+  action=advance, direction="Celebrate the completed current build step, then cue the next exact build step."
+- Child asks for help, is unsure, or gives a non-answer:
+  action=stay, direction="Stay on THIS SAME build step. Repeat or simplify the current build step only."
+- Child gives unrelated input:
+  action=stay, direction="Acknowledge briefly, then return to the current build step."
+
+CRITICAL Cat3 RULES:
+- Do NOT invent a new drawing target.
+- Do NOT advance when the child asks for help.
+- Use only the current build step from state or the source contract.\
 """
 
 _HOOK_RULES = """\
@@ -189,6 +223,9 @@ def _select_step_phase_rules(state: SessionStateModel) -> str:
     if step == "STEP_6_CLOSING":
         return _CLOSING_RULES
 
+    if step.startswith("STEP_3_BUILD_") and isinstance(state.creative_slots, Cat3CreativeSlots):
+        return _CAT3_BUILD_RULES
+
     # Cat1 rounds (STEP_3_ROUND_*) — mechanic-specific rules
     if step.startswith("STEP_3_ROUND_"):
         if (
@@ -196,6 +233,11 @@ def _select_step_phase_rules(state: SessionStateModel) -> str:
             and state.creative_slots.game_mechanic == "storytelling_chain"
         ):
             return _CAT1_ROUND_RULES_STORYTELLING
+        if (
+            isinstance(state.creative_slots, Cat1CreativeSlots)
+            and state.creative_slots.game_mechanic == "decide"
+        ):
+            return _CAT1_ROUND_RULES_DECIDE
         return _CAT1_ROUND_RULES_VOICE_ACTING
 
     return ""

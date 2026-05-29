@@ -1,16 +1,26 @@
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from activity_catalog import activity_summaries
 from agents.script_agent import _build_instruction_overlay
+from agents.turn_director import _select_step_phase_rules
 from game_loader import get_demo_entities, get_demo_recipe
 from recipe_loader import recipe_to_session_state
+from turn_handling.directive import _fast_path_directive
+from turn_handling.helpers import _collection_photo_prompt
 
 SOURCE_PACKAGES_DIR = Path(
     "/Users/pharrelly/codebase/github/wonderlens-activity-autodesign/"
     "runs/20260521_163621_workbook_review_packet_full/activity_packages"
 )
+REPRESENTATIVE_ACTIVITY_IDS = (
+    "activity_career_decision_role_play",
+    "activity_guided_drawing",
+    "activity_phoneme_treasure_hunt",
+)
+CHILD_FACING_DEVICE_WORD_RE = re.compile(r"\b(card|cards|token|tokens|tap|touch|point|click)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -49,7 +59,7 @@ SOURCE_FIDELITY_CONTRACTS = {
         ),
     ),
     "activity_phoneme_treasure_hunt": SourceFidelityContract(
-        required_terms=("target sound", "beginning sound", "word", "phoneme_letter_card_01", "no letter screen"),
+        required_terms=("letter b", "beginning sound", "word", "phoneme_letter_card_01", "no letter screen"),
     ),
     "activity_recognition_pop_challenge": SourceFidelityContract(
         required_terms=(
@@ -106,6 +116,32 @@ def _activity_search_text(activity_id: str) -> str:
     ).lower().replace("-", " ")
 
 
+def _child_facing_source_contract_text(activity_id: str) -> str:
+    recipe = get_demo_recipe(activity_id)
+    assert recipe is not None
+    instructions = recipe.step_instructions
+    steps = [instructions.hook, instructions.transition, *instructions.rounds, instructions.celebrate, instructions.closing]
+    if instructions.synthesis is not None:
+        steps.append(instructions.synthesis)
+
+    fields: list[str] = []
+    for step in steps:
+        source_contract = step.source_contract
+        fields.extend(
+            [
+                source_contract.runtime_instruction,
+                source_contract.example_ai_line,
+                source_contract.child_responses.ideal,
+                source_contract.child_responses.unexpected,
+                source_contract.child_responses.no_response,
+                source_contract.ai_followups.ideal,
+                source_contract.ai_followups.unexpected,
+                source_contract.ai_followups.no_response,
+            ]
+        )
+    return "\n".join(fields)
+
+
 def test_activity_source_packages_exist() -> None:
     for summary in activity_summaries():
         package_dir = SOURCE_PACKAGES_DIR / summary.source_export_id
@@ -124,6 +160,98 @@ def test_activity_recipes_preserve_source_specific_terms() -> None:
 
         for term in contract.forbidden_terms:
             assert term not in recipe_text, f"{activity_id} recipe contains drift term: {term}"
+
+
+def test_representative_child_facing_dialogue_avoids_device_bound_words() -> None:
+    for activity_id in REPRESENTATIVE_ACTIVITY_IDS:
+        child_facing_text = _child_facing_source_contract_text(activity_id)
+
+        match = CHILD_FACING_DEVICE_WORD_RE.search(child_facing_text)
+
+        assert match is None, f"{activity_id} child-facing dialogue contains device-bound word: {match.group(0)}"
+
+
+def test_phoneme_treasure_hunt_is_b_starting_item_hunt_not_object_noise_game() -> None:
+    recipe_text = _activity_search_text("activity_phoneme_treasure_hunt")
+
+    assert "letter b" in recipe_text
+    assert "starts with b" in recipe_text or "start with b" in recipe_text
+    assert "ball" in recipe_text
+    assert "banana" in recipe_text
+    assert "basket" in recipe_text
+    assert "what sound does your word start with" not in recipe_text
+    assert "what sound does it make" not in recipe_text
+    assert "object noise" not in recipe_text
+
+
+def test_phoneme_collection_prompt_uses_letter_b_criterion_not_sensory_form() -> None:
+    recipe = get_demo_recipe("activity_phoneme_treasure_hunt")
+    assert recipe is not None
+    state = recipe_to_session_state(recipe, "phoneme-prompt-session", "T1", "phoneme_treasure_hunt")
+    state.current_step = "STEP_3_COLLECT_1"
+    state.current_round = 1
+    state.collection_phase = "photo"
+
+    response = _collection_photo_prompt(state)
+
+    dialogue = response.dialogue.lower()
+    assert "letter b" in dialogue or "b word" in dialogue
+    assert "start with b" in dialogue or "starts with b" in dialogue
+    assert "wiggly" not in dialogue
+    assert "bumpy" not in dialogue
+    assert "spiky" not in dialogue
+    assert "fingers" not in dialogue
+
+
+def test_phoneme_turn_director_rules_stay_criterion_focused() -> None:
+    recipe = get_demo_recipe("activity_phoneme_treasure_hunt")
+    assert recipe is not None
+    state = recipe_to_session_state(recipe, "phoneme-rules-session", "T1", "phoneme_treasure_hunt")
+    state.current_step = "STEP_3_COLLECT_1"
+    state.current_round = 1
+
+    rules = _select_step_phase_rules(state).lower()
+
+    assert "collection criterion" in rules
+    assert "something {observation_angle}" not in rules
+    assert "squishy or smooth" not in rules
+
+
+def test_career_acceptance_fast_path_uses_decision_prompt_not_emotion_prompt() -> None:
+    recipe = get_demo_recipe("activity_career_decision_role_play")
+    assert recipe is not None
+    state = recipe_to_session_state(recipe, "career-acceptance-session", "T1", "career_decision_role_play")
+    state.current_step = "STEP_2_RULES"
+    state.current_round = 0
+
+    directive = _fast_path_directive("yes", state)
+
+    assert directive is not None
+    direction = directive.response_direction.lower()
+    assert "firefighter" in direction
+    assert "send help" in direction
+    assert "check first" in direction
+    assert "feels" not in direction
+    assert "reacts" not in direction
+
+
+def test_career_uncertainty_stays_on_current_bounded_decision() -> None:
+    recipe = get_demo_recipe("activity_career_decision_role_play")
+    assert recipe is not None
+    state = recipe_to_session_state(recipe, "career-uncertainty-session", "T1", "career_decision_role_play")
+    state.current_step = "STEP_3_ROUND_3"
+    state.current_round = 3
+
+    directive = _fast_path_directive("i don't know", state)
+
+    assert directive is not None
+    assert directive.action in {"stay", "need_help"}
+    assert directive.stay_on_step is True
+    direction = directive.response_direction.lower()
+    assert "check people are safe outside" in direction
+    assert "run inside alone" in direction
+    assert "water hose" not in direction
+    assert "cooking oil" not in direction
 
 
 def test_activity_recipes_preserve_source_dialogue_contracts() -> None:

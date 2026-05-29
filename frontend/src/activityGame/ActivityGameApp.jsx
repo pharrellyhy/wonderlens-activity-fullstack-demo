@@ -16,7 +16,7 @@ function isFinishedSession(sessionState) {
 }
 
 function layoutModeForItems(items) {
-  if (items.length >= 3) return 'choice3';
+  if (items.length >= 3) return 'picker';
   if (items.length === 2) return 'choice2';
   return 'single';
 }
@@ -30,12 +30,28 @@ function collectionScreenLayout(baseLayout, items, selectedIndex = 0, selection 
     selection,
     items: items.map((item, index) => ({
       id: item.id || `item_${index + 1}`,
-      src: item.image || baseLayout?.background?.src || '',
+      src: item.image || item.src || baseLayout?.background?.src || '',
       shape: 'circle',
       label: item.label || item.id || '',
       selected: index === selectedIndex,
     })),
   };
+}
+
+function assetItemCatalog(activityAsset) {
+  const entries = new Map();
+  for (const beat of activityAsset?.beats || []) {
+    for (const item of beat.layout?.items || []) {
+      if (!item.id || entries.has(item.id)) continue;
+      entries.set(item.id, {
+        id: item.id,
+        label: item.label || item.id,
+        image: item.src,
+        src: item.src,
+      });
+    }
+  }
+  return entries;
 }
 
 export default function ActivityGameApp() {
@@ -98,6 +114,10 @@ export default function ActivityGameApp() {
     () => new Map((assetManifest.activities || []).map((entry) => [entry.id, entry])),
     [assetManifest.activities],
   );
+  const selectedAssetItemsById = useMemo(
+    () => assetItemCatalog(selectedAsset),
+    [selectedAsset],
+  );
 
   const beatId = beatIdFromSessionState(sessionState);
   const assetSrc = selectedAsset ? assetForBeat(selectedAsset, beatId) : '';
@@ -108,6 +128,25 @@ export default function ActivityGameApp() {
   const activeTemplateType = sessionState?.template_type || templateType;
   const currentRoundItems = sessionState?.current_round_items || EMPTY_LIST;
   const collectedPhotoIds = sessionState?.collected_photos || EMPTY_LIST;
+  const collectedTextItems = sessionState?.collected_text_items || EMPTY_LIST;
+  const currentRoundItemsById = useMemo(
+    () => new Map(currentRoundItems.map((item) => [item.id, item])),
+    [currentRoundItems],
+  );
+  const collectedItems = useMemo(
+    () => collectedPhotoIds.map((photoId, index) => {
+      const currentRoundItem = currentRoundItemsById.get(photoId);
+      const manifestItem = selectedAssetItemsById.get(photoId);
+      const textLabel = photoId.startsWith('text_find_') ? collectedTextItems[index] : '';
+      return {
+        id: photoId,
+        label: currentRoundItem?.label || manifestItem?.label || textLabel || photoId.replaceAll('_', ' '),
+        image: currentRoundItem?.image || manifestItem?.image || manifestItem?.src || '',
+        src: currentRoundItem?.image || manifestItem?.image || manifestItem?.src || '',
+      };
+    }),
+    [collectedPhotoIds, collectedTextItems, currentRoundItemsById, selectedAssetItemsById],
+  );
   const currentRoundHasCollectedItem = currentRoundItems.some(
     (item) => collectedPhotoIds.includes(item.id),
   );
@@ -126,6 +165,10 @@ export default function ActivityGameApp() {
     && activeTemplateType === 'cat5'
     && currentStep.startsWith('STEP_3_COLLECT_')
     && currentRoundItems.length > 0;
+  const showCat5CollectedItems = sessionActive
+    && activeTemplateType === 'cat5'
+    && (currentStep === 'STEP_4_SYNTHESIS' || currentStep.includes('CELEBRATE'))
+    && collectedItems.length > 0;
   const showCat3Build = sessionActive
     && !sessionFinished
     && activeTemplateType === 'cat3'
@@ -141,6 +184,7 @@ export default function ActivityGameApp() {
   const displayedCat5ItemIndex = currentRoundCollectedIndex >= 0
     ? currentRoundCollectedIndex
     : activeCat5ItemIndex;
+  const collectedSummaryIndex = collectedItems.length > 1 ? 1 : 0;
   const screenLayout = showCat5Items
     ? collectionScreenLayout(
       baseScreenLayout,
@@ -148,7 +192,9 @@ export default function ActivityGameApp() {
       displayedCat5ItemIndex,
       showCat5Selection ? 'device-scroll' : 'none',
     )
-    : baseScreenLayout;
+    : showCat5CollectedItems
+      ? collectionScreenLayout(baseScreenLayout, collectedItems, collectedSummaryIndex, 'none')
+      : baseScreenLayout;
   const lensInteraction = showCat3Build ? {
     type: 'cat3-build',
     options: cat3Options,

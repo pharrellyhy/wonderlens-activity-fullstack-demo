@@ -396,6 +396,11 @@ def _build_directive_speaker_prompt(state: SessionStateModel, directive: TurnDir
         constraints.append(
             "- Do NOT ask binary choice questions (like 'X or Y?') unless the direction explicitly asks for one."
         )
+    if state.interaction_mode == "text":
+        constraints.append(
+            "- Text-only activity mode: ask the child to type, name, say, or describe the answer. "
+            "NEVER say point, tap, click, touch, card, cards, token, or tokens."
+        )
     if state.interaction_mode == "text" and state.activity_type == "activity_recognition_pop_challenge":
         constraints.append(
             "- Text-only recognition mode: ask the child to type, name, say, or describe the matching picture. "
@@ -420,8 +425,8 @@ def _build_directive_speaker_prompt(state: SessionStateModel, directive: TurnDir
 
 
 def _enforce_text_only_dialogue(state: SessionStateModel, dialogue: str) -> str:
-    """Normalize generated recognition prompts that accidentally imply non-text input."""
-    if state.interaction_mode != "text" or state.activity_type != "activity_recognition_pop_challenge":
+    """Normalize generated prompts that accidentally imply non-text/device input."""
+    if state.interaction_mode != "text":
         return dialogue
 
     replacements = (
@@ -434,9 +439,14 @@ def _enforce_text_only_dialogue(state: SessionStateModel, dialogue: str) -> str:
         (r"\btouch\b", "look at"),
         (r"\bcards\b", "pictures"),
         (r"\bcard\b", "picture"),
+        (r"\btokens\b", "markers"),
+        (r"\btoken\b", "marker"),
     )
     for pattern, replacement in replacements:
         dialogue = re.sub(pattern, replacement, dialogue, flags=re.IGNORECASE)
+
+    if state.activity_type != "activity_recognition_pop_challenge":
+        return dialogue
 
     lower_dialogue = dialogue.lower()
     text_choice_cues = ("?", "type", "write", "name", "tell me", "describe", "which", "what", "choose", "pick", "say")

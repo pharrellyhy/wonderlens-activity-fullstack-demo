@@ -17,7 +17,7 @@ function Cat3BuildPanel({ interaction }) {
 
   return (
     <div
-      className="activity-lens__interaction activity-lens__build-panel"
+      className="activity-lens__interaction activity-lens__build-panel activity-lens__build-panel--compact"
       role="listbox"
       aria-label="Build response options"
       aria-disabled={interaction.disabled ? 'true' : 'false'}
@@ -36,6 +36,16 @@ function Cat3BuildPanel({ interaction }) {
   );
 }
 
+function pickerItemClass(index, selectedIndex, total) {
+  if (total <= 0) return '';
+  if (index === selectedIndex) return 'is-current';
+  const previousIndex = (selectedIndex - 1 + total) % total;
+  const nextIndex = (selectedIndex + 1) % total;
+  if (index === previousIndex) return 'is-adjacent is-previous';
+  if (index === nextIndex) return 'is-adjacent is-next';
+  return 'is-offscreen';
+}
+
 function ActivityScreenLayout({ activityName, assetSrc, screenLayout }) {
   const layout = screenLayout || {
     mode: 'single',
@@ -45,6 +55,7 @@ function ActivityScreenLayout({ activityName, assetSrc, screenLayout }) {
   const backgroundSrc = layout.background?.src || assetSrc;
   const backgroundFit = layout.background?.fit || 'cover';
   const items = Array.isArray(layout.items) ? layout.items : [];
+  const selectedIndex = Math.max(0, items.findIndex((item) => item.selected));
 
   return (
     <div className={`activity-screen-layout activity-screen-layout--${layout.mode || 'single'}`}>
@@ -61,13 +72,14 @@ function ActivityScreenLayout({ activityName, assetSrc, screenLayout }) {
 
       {items.length > 0 ? (
         <div className="activity-screen-layout__items" aria-hidden="true">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <div
               key={item.id}
               className={[
                 'activity-screen-layout__item',
                 `activity-screen-layout__item--${item.shape || 'circle'}`,
                 item.selected ? 'is-selected' : '',
+                layout.mode === 'picker' ? pickerItemClass(index, selectedIndex, items.length) : '',
               ].filter(Boolean).join(' ')}
             >
               {item.src ? (
@@ -77,6 +89,10 @@ function ActivityScreenLayout({ activityName, assetSrc, screenLayout }) {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {layout.mode === 'singleText' && layout.text ? (
+        <p className="activity-screen-layout__text">{layout.text}</p>
       ) : null}
     </div>
   );

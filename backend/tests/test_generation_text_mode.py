@@ -1,14 +1,27 @@
 from agents.script_agent import _build_directive_speaker_prompt, _enforce_text_only_dialogue
 from recipe_loader import load_instruction_recipe, recipe_to_session_state
+from schemas.session_state import SessionStateModel
 from schemas.turn_directive import TurnDirective
 from schemas.turn_response import TurnResponse
 from turn_handling.generation import _enforce_text_only_interaction
 
 
-def test_recognition_pop_text_mode_rewrites_physical_choice_prompts() -> None:
-    recipe = load_instruction_recipe("activity_recognition_pop_challenge")
-    state = recipe_to_session_state(recipe, "text-mode-session", "T1", "recognition_pop_challenge")
+TEXT_ONLY_REPRESENTATIVE_ACTIVITIES = (
+    ("activity_career_decision_role_play", "career_decision_role_play"),
+    ("activity_guided_drawing", "guided_drawing"),
+    ("activity_phoneme_treasure_hunt", "phoneme_treasure_hunt"),
+)
+
+
+def _text_state(activity_type: str, filename: str) -> SessionStateModel:
+    recipe = load_instruction_recipe(activity_type)
+    state = recipe_to_session_state(recipe, "text-mode-session", "T1", filename)
     state.interaction_mode = "text"
+    return state
+
+
+def test_recognition_pop_text_mode_rewrites_physical_choice_prompts() -> None:
+    state = _text_state("activity_recognition_pop_challenge", "recognition_pop_challenge")
     response = TurnResponse(
         dialogue="Can you look at the screen and point to the twin? Imagine touching the target card.",
         tone_marker="curious",
@@ -27,9 +40,7 @@ def test_recognition_pop_text_mode_rewrites_physical_choice_prompts() -> None:
 
 
 def test_recognition_pop_text_mode_rewrites_directive_speaker_output() -> None:
-    recipe = load_instruction_recipe("activity_recognition_pop_challenge")
-    state = recipe_to_session_state(recipe, "text-mode-session", "T1", "recognition_pop_challenge")
-    state.interaction_mode = "text"
+    state = _text_state("activity_recognition_pop_challenge", "recognition_pop_challenge")
 
     dialogue = _enforce_text_only_dialogue(
         state,
@@ -43,9 +54,7 @@ def test_recognition_pop_text_mode_rewrites_directive_speaker_output() -> None:
 
 
 def test_recognition_pop_directive_prompt_bans_physical_input_language() -> None:
-    recipe = load_instruction_recipe("activity_recognition_pop_challenge")
-    state = recipe_to_session_state(recipe, "text-mode-session", "T1", "recognition_pop_challenge")
-    state.interaction_mode = "text"
+    state = _text_state("activity_recognition_pop_challenge", "recognition_pop_challenge")
     directive = TurnDirective(
         action="advance",
         reasoning="The child agreed to play.",
@@ -60,9 +69,7 @@ def test_recognition_pop_directive_prompt_bans_physical_input_language() -> None
 
 
 def test_recognition_pop_text_mode_keeps_existing_choice_questions_concise() -> None:
-    recipe = load_instruction_recipe("activity_recognition_pop_challenge")
-    state = recipe_to_session_state(recipe, "text-mode-session", "T1", "recognition_pop_challenge")
-    state.interaction_mode = "text"
+    state = _text_state("activity_recognition_pop_challenge", "recognition_pop_challenge")
     response = TurnResponse(
         dialogue="Which picture matches the target best?",
         tone_marker="curious",
@@ -77,9 +84,7 @@ def test_recognition_pop_text_mode_keeps_existing_choice_questions_concise() -> 
 
 
 def test_recognition_pop_text_mode_adds_natural_prompt_when_dialogue_has_no_choice_cue() -> None:
-    recipe = load_instruction_recipe("activity_recognition_pop_challenge")
-    state = recipe_to_session_state(recipe, "text-mode-session", "T1", "recognition_pop_challenge")
-    state.interaction_mode = "text"
+    state = _text_state("activity_recognition_pop_challenge", "recognition_pop_challenge")
     response = TurnResponse(
         dialogue="The match board is ready.",
         tone_marker="curious",
@@ -96,7 +101,7 @@ def test_recognition_pop_text_mode_adds_natural_prompt_when_dialogue_has_no_choi
 
 def test_recognition_pop_recipe_avoids_child_facing_left_right_suffix() -> None:
     recipe = load_instruction_recipe("activity_recognition_pop_challenge")
-    state = recipe_to_session_state(recipe, "text-mode-session", "T1", "recognition_pop_challenge")
+    state = _text_state("activity_recognition_pop_challenge", "recognition_pop_challenge")
 
     instructions = recipe.step_instructions
     child_facing_text = " ".join(
@@ -116,3 +121,40 @@ def test_recognition_pop_recipe_avoids_child_facing_left_right_suffix() -> None:
     assert "left, right" not in child_facing_text
     assert "this/that" not in child_facing_text
     assert "target card" not in child_facing_text
+
+
+def test_text_mode_sanitizes_device_words_for_representative_activities() -> None:
+    for activity_type, filename in TEXT_ONLY_REPRESENTATIVE_ACTIVITIES:
+        state = _text_state(activity_type, filename)
+        response = TurnResponse(
+            dialogue="Point to the card, tap the helper token, or click the picture when you know.",
+            tone_marker="curious",
+            screen_widget="photo_display",
+            screen_widget_params={},
+        )
+
+        rewritten = _enforce_text_only_interaction(state, response)
+
+        dialogue = rewritten.dialogue.lower()
+        assert "point" not in dialogue
+        assert "tap" not in dialogue
+        assert "click" not in dialogue
+        assert "card" not in dialogue
+        assert "token" not in dialogue
+
+
+def test_directive_prompt_bans_physical_input_language_for_representative_activities() -> None:
+    directive = TurnDirective(
+        action="stay",
+        reasoning="The child needs a bounded text response.",
+        response_direction="Repeat the current activity choice with friendly language.",
+        emotion_tag="curious",
+    )
+
+    for activity_type, filename in TEXT_ONLY_REPRESENTATIVE_ACTIVITIES:
+        state = _text_state(activity_type, filename)
+
+        prompt = _build_directive_speaker_prompt(state, directive)
+
+        assert "Text-only activity mode" in prompt
+        assert "NEVER say point, tap, click, touch, card, cards, token, or tokens." in prompt

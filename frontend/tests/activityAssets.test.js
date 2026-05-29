@@ -15,7 +15,7 @@ const assetRoot = join(publicRoot, 'activity-assets');
 const stylePromptPath = join(assetRoot, 'prompts', 'wonderlens-activity-style.md');
 const STANDARD_BEATS = ['intro', 'rules', 'round_1', 'round_2', 'round_3', 'recap'];
 const CAT5_BEATS = ['intro', 'rules', 'round_1', 'round_2', 'round_3', 'synthesis', 'recap'];
-const LAYOUT_MODES = ['single', 'singleText', 'choice2', 'choice3', 'carousel'];
+const LAYOUT_MODES = ['single', 'singleText', 'choice2', 'choice3', 'picker'];
 const REPRESENTATIVE_ACTIVITY_IDS = new Set([
   'activity_career_decision_role_play',
   'activity_guided_drawing',
@@ -98,6 +98,7 @@ describe('activity asset manifest', () => {
       background: { src: '/activity-assets/test/intro.png', fit: 'cover' },
       items: [],
       selection: 'none',
+      text: '',
     });
   });
 
@@ -126,11 +127,62 @@ describe('activity asset manifest', () => {
       safeArea: { canvas: 480, safe: 380, center: 300 },
       background: { src: '/activity-assets/test/background.png', fit: 'contain' },
       selection: 'device-scroll',
+      text: '',
       items: [
         { id: 'dog', src: '/activity-assets/test/dog.png', shape: 'circle', label: 'Dog' },
         { id: 'cat', src: '/activity-assets/test/cat.png', shape: 'rect3x4', label: 'Cat' },
       ],
     });
+  });
+
+  it('preserves singleText copy through layout normalization', () => {
+    const layout = screenLayoutForBeat({
+      icon: '/activity-assets/test/icon.png',
+      beats: [
+        {
+          id: 'rules',
+          src: '/activity-assets/test/rules.png',
+          layout: {
+            mode: 'singleText',
+            text: 'Draw one big circle',
+            background: { src: '/activity-assets/test/rules.png', fit: 'contain' },
+          },
+        },
+      ],
+    }, 'rules');
+
+    expect(layout).toMatchObject({
+      mode: 'singleText',
+      text: 'Draw one big circle',
+      selection: 'none',
+    });
+  });
+
+  it('normalizes scroll-controlled three-or-more choices to picker instead of a crowded grid', () => {
+    const layout = screenLayoutForBeat({
+      icon: '/activity-assets/test/icon.png',
+      beats: [
+        {
+          id: 'round_1',
+          src: '/activity-assets/test/round_1.png',
+          layout: {
+            mode: 'choice3',
+            selection: 'device-scroll',
+            background: '/activity-assets/test/background.png',
+            items: [
+              { id: 'one', src: '/activity-assets/test/one.png', label: 'One' },
+              { id: 'two', src: '/activity-assets/test/two.png', label: 'Two' },
+              { id: 'three', src: '/activity-assets/test/three.png', label: 'Three' },
+              { id: 'four', src: '/activity-assets/test/four.png', label: 'Four' },
+            ],
+          },
+        },
+      ],
+    }, 'round_1');
+
+    expect(layout.mode).toBe('picker');
+    expect(layout.items).toHaveLength(4);
+    expect(layout.selection).toBe('device-scroll');
   });
 
   it('uses the approved representative interaction layouts for Cat1 Cat3 and Cat5', () => {
@@ -151,16 +203,20 @@ describe('activity asset manifest', () => {
         items: [],
       });
       expect(screenLayoutForBeat(phoneme, beatId)).toMatchObject({
-        mode: 'choice3',
+        mode: 'picker',
         selection: 'device-scroll',
       });
       expect(screenLayoutForBeat(phoneme, beatId).items).toHaveLength(3);
     }
 
     expect(screenLayoutForBeat(phoneme, 'synthesis')).toMatchObject({
-      mode: 'carousel',
+      mode: 'picker',
       selection: 'none',
     });
+  });
+
+  it('documents every supported screen layout mode in the manifest', () => {
+    expect(manifest.screen_style.layouts).toEqual(LAYOUT_MODES);
   });
 
   it('uses square 512px PNGs for every displayed activity asset', () => {

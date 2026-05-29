@@ -370,6 +370,12 @@ _PHOTO_FIND_PROMPTS = [
     "[whispering] Shhh... can you find something {adj} nearby?",
 ]
 
+_B_WORD_FIND_PROMPTS = [
+    "[curious] Can you find a word or object that starts with B, the letter B?",
+    "[encouraging] Look for one B word now, like something whose name starts with B.",
+    "[playful] One B word treasure is ready to be found. What starts with B?",
+]
+
 _ACCEPTANCE_CELEBRATIONS = [
     "[celebrating] Yay! Our adventure begins!",
     "[celebrating] Woohoo! Let's explore together!",
@@ -380,6 +386,19 @@ _ACCEPTANCE_CELEBRATIONS = [
 
 def _collection_photo_prompt(state: SessionStateModel) -> TurnResponse:
     """Deterministic prompt for collection photo phase — no LLM needed."""
+    if isinstance(state.creative_slots, Cat5CreativeSlots):
+        criterion = state.creative_slots.collection_criterion.lower()
+        if "letter b" in criterion or "start with b" in criterion or "starts with b" in criterion:
+            dialogue = random.choice(_B_WORD_FIND_PROMPTS)
+            tone = dialogue.split("]")[0].strip("[")
+            return TurnResponse(
+                dialogue=dialogue,
+                tone_marker=tone,
+                screen_widget="photo_display",
+                screen_widget_params={},
+                stay_on_step=True,
+            )
+
     angle = state.creative_slots.observation_angle if isinstance(state.creative_slots, Cat5CreativeSlots) else "special"
     adjectives = _ANGLE_ADJECTIVES.get(angle, [angle])
     adj = random.choice(adjectives)

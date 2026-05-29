@@ -136,6 +136,79 @@ describe('WonderLensDevice', () => {
     expect(screen.queryByRole('button', { name: /Cat/i })).toBeNull();
   });
 
+  it('renders picker layouts as a centered crown-style selector', () => {
+    render(
+      <WonderLensDevice
+        activity={{ name: 'Phoneme Treasure Hunt', mechanic: 'collect' }}
+        progress={{ current: 1, total: 3 }}
+        assetSrc="/activity-assets/activity_phoneme_treasure_hunt/round_1.png"
+        screenLayout={{
+          mode: 'picker',
+          background: {
+            src: '/activity-assets/activity_phoneme_treasure_hunt/round_1.png',
+            fit: 'cover',
+          },
+          items: [
+            {
+              id: 'ball',
+              src: '/activity-assets/activity_phoneme_treasure_hunt/items/ball.png',
+              shape: 'circle',
+              label: 'Ball',
+            },
+            {
+              id: 'basket',
+              src: '/activity-assets/activity_phoneme_treasure_hunt/items/basket.png',
+              shape: 'circle',
+              label: 'Basket',
+              selected: true,
+            },
+            {
+              id: 'banana',
+              src: '/activity-assets/activity_phoneme_treasure_hunt/items/banana.png',
+              shape: 'circle',
+              label: 'Banana',
+            },
+          ],
+        }}
+        onScrollPrevious={vi.fn()}
+        onScrollNext={vi.fn()}
+        onPrimaryAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Basket').closest('.activity-screen-layout__item')?.className).toContain('is-current');
+    expect(cssBlock('.activity-screen-layout--picker .activity-screen-layout__items')).toContain('grid-template-rows');
+    expect(cssBlock('.activity-screen-layout--picker .activity-screen-layout__item.is-current')).toContain('transform: scale(1)');
+    expect(cssBlock('.activity-screen-layout--picker .activity-screen-layout__item.is-adjacent')).toContain('opacity');
+  });
+
+  it('keeps Cat3 Done Help as a compact non-blocking control strip', () => {
+    render(
+      <WonderLensDevice
+        activity={{ name: 'Guided Drawing', mechanic: 'build' }}
+        progress={{ current: 1, total: 3 }}
+        assetSrc="/activity-assets/activity_guided_drawing/round_1.png"
+        interaction={{
+          type: 'cat3-build',
+          selectedIndex: 1,
+          options: [
+            { label: 'Done', value: 'done' },
+            { label: 'Help', value: 'help' },
+          ],
+        }}
+        onScrollPrevious={vi.fn()}
+        onScrollNext={vi.fn()}
+        onPrimaryAction={vi.fn()}
+      />,
+    );
+
+    const panel = screen.getByRole('listbox', { name: 'Build response options' });
+    expect(panel.className).toContain('activity-lens__build-panel--compact');
+    expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('true');
+    expect(cssBlock('.activity-lens__build-panel--compact')).toContain('align-self: end');
+    expect(cssBlock('.activity-lens__build-panel--compact')).toContain('width: min(58%, 7rem)');
+  });
+
   it('shows an in-lens waiting state while the backend is responding', () => {
     render(
       <WonderLensDevice

@@ -12,7 +12,7 @@ ib_key_concept: Form
 concepts_earned: [Form, Responsibility]
 keywords: [career, firefighter, smoke alarm, role, decision, safety]
 feature_keywords: [firefighter, alarm, water hose, safety choice]
-photo_features: [firefighter portrait, smoke alarm, water hose, safety card]
+photo_features: [firefighter portrait, smoke alarm, water hose, safety picture]
 play_rounds: 3
 plain_description: "The AI makes the child the firefighter in a smoke-alarm scene, then asks simple safety decisions."
 steps_summary:
@@ -22,22 +22,22 @@ steps_summary:
   - "Pick the first safe action and earn the Firefighter Helper badge."
 creative_slots:
   game_mechanic: decide
-  metaphor: "A pretend fire station board where each safety choice lights up one helper token."
+  metaphor: "A pretend fire station board where each safety choice lights up one helper marker."
   role_title: Firefighter Helper
   round_scenarios:
     - "Today you are the firefighter. A smoke alarm is ringing, and your team needs a first decision."
     - "The fire scene needs the right tool: water hose or cooking oil."
     - "The firefighter chooses the first safe action: check that people are outside or run inside alone."
   escalation_axis: "role assignment to tool choice to safety-first responsibility"
-  observation_detail: "a firefighter card, smoke alarm cue, water hose, and safety-choice token"
+  observation_detail: "a firefighter picture, smoke alarm cue, water hose, and safety-choice marker"
 step_instructions:
   hook:
     goal: "Open Career Decision Role Play by naming the firefighter mission and the smoke-alarm cue."
     constraint: "T1 max 3 sentences, end with a choice question."
     emotion_tag: curious
   transition:
-    goal: "Explain the loop: AI gives one firefighter prompt, the child makes one safety choice, and a token is saved."
-    constraint: "T1 max 3 sentences, include one bounded sample choice. Use career_portrait_cards_01 as supportive art when available; if not, describe the firefighter role by text only and do not claim a person card is shown."
+    goal: "Explain the loop: AI gives one firefighter prompt, the child makes one safety choice, and one marker lights up."
+    constraint: "T1 max 3 sentences, include one bounded sample choice. Use career_portrait_cards_01 as supportive art when available; if not, describe the firefighter role by text only and do not claim a person portrait is shown."
     emotion_tag: playful
   rounds:
     - round_number: 1
@@ -86,24 +86,24 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the firefighter role-player role, notices the starter cue, or names something connected to the firefighter alarm decision.
       unexpected: Child asks for another game, starts the choice before the Career Decision Role Play mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Career Decision Role Play title/trigger card without taking the firefighter role-player role yet.
+      no_response: Child watches the Career Decision Role Play title prompt without taking the firefighter role-player role yet.
     ai_followups:
       ideal: Name the firefighter role-player role, connect it to the starter cue, and preview the first choice.
       unexpected: Acknowledge the request, return to the Career Decision Role Play promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Career Decision Role Play role card and first token, then model one tiny in-frame response.'
-    screen: Shows title, child role, source trigger, and empty progress tokens.
+      no_response: '[wait 2s] Name the Career Decision Role Play role and first marker, then model one tiny in-frame response.'
+    screen: Shows title, child role, source trigger, and empty progress markers.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Rule: I prompt, you make one safety choice, and one marker lights up for each turn.'
     child_responses:
       ideal: The child agrees to the choice loop for Career Decision Role Play or asks for the easiest version.
       unexpected: Child tries to skip the firefighter alarm decision, ignore the required rule/asset, or count a different kind of response.
       no_response: Child looks at the Career Decision Role Play rule strip without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Career Decision Role Play loop as AI prompt, child choice, saved token, and show the first response slot.
+      ideal: Restate the Career Decision Role Play loop as AI prompt, child choice, saved marker, and show the first response slot.
       unexpected: Keep the rule tied to the firefighter alarm decision, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Career Decision Role Play rule in one sentence and ask for yes, a point, or the first chance to make a choice.'
-    screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `career_portrait_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, describe the helper role by voice and avoid claiming the screen shows a person.'
+      no_response: '[wait 2s] Read the Career Decision Role Play rule in one sentence and ask for yes or the first chance to make a choice.'
+    screen: 'Shows the rule strip, current round marker, and asset/fallback note. Use `career_portrait_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If art is unavailable, describe the helper role by voice and avoid claiming the screen shows a person.'
   rounds:
   - round_number: 1
     source_contract:
@@ -112,12 +112,12 @@ source_dialogue:
       child_responses:
         ideal: The child answers as the firefighter and decides whether the team sends help for the alarm.
         unexpected: Child drops the firefighter role, names another job, or talks about alarms without making the dispatch decision.
-        no_response: Child looks at the firefighter card and alarm scene without choosing what the team does.
+        no_response: Child stays with the firefighter alarm scene without choosing what the team does.
       ai_followups:
         ideal: Confirm the firefighter decision, name the safety reason, and keep the alarm scenario moving.
         unexpected: Put the child back in the firefighter role, restate the smoke alarm problem, and offer send help now or check first as bounded choices.
         no_response: '[wait 2s] Model "As the firefighter, I send help," then ask for send help or wait/check.'
-      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `career_portrait_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, describe the helper role by voice and avoid claiming the screen shows a person.'
+      screen: 'Shows the active round marker, child response slot, and source-intent cue. Use `career_portrait_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If art is unavailable, describe the helper role by voice and avoid claiming the screen shows a person.'
   - round_number: 2
     source_contract:
       runtime_instruction: Ask for a tool choice inside the same work scenario.
@@ -127,10 +127,10 @@ source_dialogue:
         unexpected: Child picks an unsafe tool, leaves the firefighter role, or asks for a tool unrelated to the fire scene.
         no_response: Child looks between the water hose and cooking oil choices without picking a tool.
       ai_followups:
-        ideal: Confirm the tool choice, say why it fits a firefighter, and place the tool token beside the scene.
+        ideal: Confirm the tool choice, say why it fits a firefighter, and place the tool marker beside the scene.
         unexpected: Keep the child in role, name the unsafe tool plainly, and return to the two visible choices.
-        no_response: '[wait 2s] Point to the hose, say "Firefighters use water for fire," and ask for hose or oil.'
-      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `career_portrait_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, describe the helper role by voice and avoid claiming the screen shows a person.'
+        no_response: '[wait 2s] Say "Firefighters use water for fire," then ask for hose or oil.'
+      screen: 'Shows the active round marker, child response slot, and source-intent cue. Use `career_portrait_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If art is unavailable, describe the helper role by voice and avoid claiming the screen shows a person.'
   - round_number: 3
     source_contract:
       runtime_instruction: Ask what the professional checks before acting.
@@ -138,12 +138,12 @@ source_dialogue:
       child_responses:
         ideal: 'The child chooses the safer first action: check that people are outside.'
         unexpected: Child chooses to run inside alone, ignores the safety check, or talks about being brave instead of making the first-action choice.
-        no_response: Child stays on the safety-choice card without picking outside check or run inside.
+        no_response: Child is unsure about the safety choice and has not picked outside check or run inside.
       ai_followups:
-        ideal: Affirm the safety-first action, show the people-safe token, and close the firefighter scenario.
-        unexpected: Validate wanting to help, then restate that firefighters work with teams and ask for the safe first action.
-        no_response: '[wait 2s] Model "I check people are safe first," then ask the child to choose the safe action.'
-      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `career_portrait_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, describe the helper role by voice and avoid claiming the screen shows a person.'
+        ideal: Affirm the safety-first action, show the people-safe marker, and close the firefighter scenario.
+        unexpected: 'Validate wanting to help, then restate that firefighters work with teams and ask for the safe first action: check people are safe outside or run inside alone.'
+        no_response: '[wait 2s] Model "I check people are safe first," then ask: should the firefighter check people are safe outside, or run inside alone?'
+      screen: 'Shows the active round marker, child response slot, and source-intent cue. Use `career_portrait_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If art is unavailable, describe the helper role by voice and avoid claiming the screen shows a person.'
   celebrate:
     runtime_instruction: Reveal the outcome caused by the child's saved turns and recap concrete choices.
     example_ai_line: 'Your turns made the board light up: first we started, then we tried, then we finished the mission.'
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Career Decision Role Play payoff or ignores how the saved choice turns connect.
       no_response: Child watches the Career Decision Role Play reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's choice turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Career Decision Role Play reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's choice turns, name one concrete saved marker, and invite a short reflection.
+      unexpected: Hold the Career Decision Role Play reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Career Decision Role Play board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:
@@ -171,32 +171,32 @@ source_dialogue:
 screen_frames:
   - widget: photo_display
     widget_params:
-      description: "Firefighter mission card with smoke alarm and helper tokens"
+      description: "Firefighter mission picture with smoke alarm and helper markers"
     animation: sparkle_highlight
     trigger: on_enter
     widget_label: "Fire Station"
-    animation_label: "Mission card"
+    animation_label: "Mission picture"
   - widget: character_display
     widget_params:
-      description: "Firefighter smoke alarm decision card"
+      description: "Firefighter smoke alarm decision picture"
     animation: gentle_pulse
     trigger: on_round_1
     widget_label: "Alarm"
     animation_label: "Send help"
   - widget: character_display
     widget_params:
-      description: "Water hose and cooking oil tool choice card"
+      description: "Water hose and cooking oil tool choice picture"
     animation: scene_transition
     trigger: on_round_2
     widget_label: "Tool Choice"
     animation_label: "Hose choice"
   - widget: character_display
     widget_params:
-      description: "Firefighter safety-first action card"
+      description: "Firefighter safety-first action picture"
     animation: gentle_pulse
     trigger: on_round_3
     widget_label: "Safe First"
-    animation_label: "Safety token"
+    animation_label: "Safety marker"
 celebration_frame:
   widget: badge_award
   widget_params:

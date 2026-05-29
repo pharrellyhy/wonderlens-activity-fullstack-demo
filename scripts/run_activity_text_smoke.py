@@ -75,7 +75,8 @@ SMOKE_CONTRACTS = {
         any_of=("distinctive part", "visible clue", "guess", "clue", "peek", "mystery", "hiding"),
     ),
     "activity_phoneme_treasure_hunt": DialogueContract(
-        any_of=("target sound", "beginning sound", "word", "words", "sound", "starts with"),
+        any_of=("letter b", "b word", "b words", "starts with b", "words that start with b"),
+        forbidden=("smooth like", "bumpy like", "trace", "traced", "finger"),
     ),
     "activity_recognition_pop_challenge": DialogueContract(
         any_of=("target", "match", "distractor", "picture", "choice"),

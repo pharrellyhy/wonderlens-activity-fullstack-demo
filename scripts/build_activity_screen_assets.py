@@ -21,14 +21,6 @@ ITEM_CROPS: dict[str, dict[str, ItemCrop]] = {
         "cat": ("intro.png", (155, 165, 355, 390)),
         "puppy": ("intro.png", (320, 175, 512, 405)),
     },
-    "activity_career_decision_role_play": {
-        "alarm": ("round_1.png", (175, 45, 350, 210)),
-        "phone": ("round_1.png", (300, 300, 485, 512)),
-        "hose": ("round_2.png", (35, 190, 300, 430)),
-        "oil": ("round_2.png", (315, 190, 512, 430)),
-        "outside": ("round_3.png", (190, 175, 512, 430)),
-        "firefighter": ("round_3.png", (0, 210, 190, 420)),
-    },
     "activity_constellation_star_count": {
         "stars_4": ("round_1.png", (90, 95, 420, 350)),
         "stars_6": ("round_2.png", (90, 95, 420, 350)),
@@ -39,11 +31,6 @@ ITEM_CROPS: dict[str, dict[str, ItemCrop]] = {
         "feeling": ("round_2.png", (190, 315, 345, 485)),
         "heart": ("round_3.png", (10, 320, 175, 500)),
         "help": ("round_3.png", (350, 300, 512, 500)),
-    },
-    "activity_guided_drawing": {
-        "paper": ("round_1.png", (95, 95, 350, 315)),
-        "pencil": ("round_2.png", (315, 145, 512, 420)),
-        "drawing": ("round_3.png", (85, 85, 415, 390)),
     },
     "activity_partial_reveal_guess": {
         "ears": ("round_3.png", (120, 115, 370, 315)),

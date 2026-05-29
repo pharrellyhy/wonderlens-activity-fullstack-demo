@@ -23,7 +23,7 @@ except ImportError:
     from state_machine import is_terminal, next_step, step_needs_user_input
 
 from .debug import _build_debug_payload
-from .finalize import derive_frame
+from .finalize import derive_frame, finalize_turn
 from .generation import _generate_with_retry, _has_completion_language
 from .helpers import (
     _advance_state,
@@ -221,11 +221,14 @@ async def resolve_round(
 
                 turn_response, gen_debug = await _generate_with_retry(script_agent, state)
 
+    turn_response, screen_frame = await finalize_turn(
+        state, turn_response, "advance" if not turn_response.stay_on_step else "stay", script_agent=script_agent
+    )
     _append_ai_turn(state, turn_response.dialogue)
     state.turn_count += 1
     return TurnResult(
         turn_response=turn_response,
-        screen_frame=derive_frame(state, "advance" if not turn_response.stay_on_step else "stay"),
+        screen_frame=screen_frame,
         auto_advance=auto_advance or _should_auto_advance(state),
         response_type=_get_response_type(state.current_step),
         error_exit=state.status == "error",

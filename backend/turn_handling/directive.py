@@ -39,7 +39,7 @@ except ImportError:
 
 from .collection import _record_collection_detail
 from .debug import _build_debug_payload
-from .finalize import derive_frame
+from .finalize import derive_frame, finalize_turn
 from .generation import _generate_with_retry
 from .helpers import (
     _CONFIRM_WORDS,
@@ -1155,7 +1155,6 @@ async def _resolve_turn_with_directive(
             speaker_errors.append(f"speaker: {e}")
             logger.warning("Directive speaker failed, falling back to legacy path: %s", e)
             turn_response, _ = await _generate_with_retry(script_agent, state)
-        _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
 
         # For closing: Cat5 uses concept_reveal, Cat1 keeps achievement_image
@@ -1182,6 +1181,7 @@ async def _resolve_turn_with_directive(
 
         if is_terminal(state.current_step):
             state.status = "completed"
+            _append_ai_turn(state, turn_response.dialogue)
             return TurnResult(
                 turn_response=turn_response,
                 screen_frame=closing_frame or derive_frame(state, "advance"),
@@ -1216,14 +1216,21 @@ async def _resolve_turn_with_directive(
             turn_response, _ = await _generate_with_retry(script_agent, state)
 
         turn_response.stay_on_step = stay_on_step
-        _append_ai_turn(state, turn_response.dialogue)
         state.turn_count += 1
 
     assert turn_response is not None, "turn_response must be set by advance/stay/exit branch"
 
+    turn_response, screen_frame = await finalize_turn(
+        state,
+        turn_response,
+        action,
+        script_agent=script_agent,
+        do_not_suggest_items=directive.do_not_suggest_items,
+    )
+    _append_ai_turn(state, turn_response.dialogue)
     return TurnResult(
         turn_response=turn_response,
-        screen_frame=derive_frame(state, action),
+        screen_frame=screen_frame,
         auto_advance=auto_advance,
         response_type=response_type,
         error_exit=state.status == "error",

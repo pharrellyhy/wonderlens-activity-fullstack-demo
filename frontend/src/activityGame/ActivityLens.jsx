@@ -1,4 +1,5 @@
 import { asset } from '../utils/basePath';
+import CrownPicker from './CrownPicker.jsx';
 
 function ProgressDots({ current = 0, total = 3 }) {
   return (
@@ -106,6 +107,7 @@ export default function ActivityLens({
   progress,
   isWaiting = false,
   interaction = null,
+  crown = null,
 }) {
   const activityName = activity?.name || activity?.fallback_label || 'Activity';
   const total = progress?.total || sessionState?.total_rounds || 3;
@@ -116,6 +118,19 @@ export default function ActivityLens({
       <div className="activity-lens__media">
         <ActivityScreenLayout activityName={activityName} assetSrc={assetSrc} screenLayout={screenLayout} />
       </div>
+
+      {crown ? (
+        <div className={`activity-lens__crown${crown.showList ? '' : ' activity-lens__crown--headless'}`}>
+          <CrownPicker
+            items={crown.items}
+            index={crown.index}
+            onStep={crown.onStep}
+            onConfirm={crown.onConfirm}
+            disabled={crown.disabled}
+            confirmLabel={crown.confirmLabel}
+          />
+        </div>
+      ) : null}
 
       {interaction?.type === 'cat3-build' ? (
         <Cat3BuildPanel interaction={interaction} />

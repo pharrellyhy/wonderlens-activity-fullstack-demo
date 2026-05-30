@@ -8,6 +8,7 @@ export default function WonderLensDevice({
   progress = null,
   isWaiting = false,
   interaction = null,
+  crown = null,
   selectionLocked = false,
   scrollDisabled = selectionLocked,
   scrollPreviousLabel = 'Previous activity',
@@ -55,6 +56,7 @@ export default function WonderLensDevice({
             progress={progress}
             isWaiting={isWaiting}
             interaction={interaction}
+            crown={crown}
           />
         </div>
 

@@ -888,6 +888,46 @@
   background: oklch(0.82 0.08 145 / 0.72);
 }
 
+/* Crown picker rendered as an in-lens overlay. Cat3 (no other in-lens picker)
+   shows the vertical Done/Help list on a readable backdrop; Cat5 and the
+   library keep the crown keyboard-only and visually headless. */
+.activity-lens__crown {
+  position: absolute;
+  inset: 12%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.activity-lens__crown .crown-picker {
+  width: min(74%, 9rem);
+  height: min(74%, 9rem);
+  border-radius: 1rem;
+  background: oklch(0.14 0.016 155 / 0.78);
+  box-shadow: 0 0.5rem 1rem oklch(0.04 0.006 150 / 0.34);
+}
+
+.activity-lens__crown .crown-picker__option-image {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.activity-lens__crown .crown-picker__confirm,
+.activity-lens__crown .crown-picker__arc {
+  display: none;
+}
+
+.activity-lens__crown--headless {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  inset: auto auto 0 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+}
+
 .activity-lens__prompt {
   margin: 0;
   overflow-wrap: anywhere;

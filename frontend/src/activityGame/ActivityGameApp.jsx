@@ -323,19 +323,23 @@ export default function ActivityGameApp() {
               />
             ) : null}
           </div>
-          <CrownPicker
-            items={crownItems}
-            index={crownIndex}
-            onStep={crownStep}
-            onConfirm={crownConfirm}
-            disabled={crownDisabled}
-            confirmLabel={isDeviceOptionMode ? 'Select' : 'Start'}
-          />
           <WonderLensDevice
             activity={selectedActivity}
             sessionState={sessionState}
             assetSrc={assetSrc}
             screenLayout={screenLayout}
+            crown={{
+              items: crownItems,
+              index: crownIndex,
+              onStep: crownStep,
+              onConfirm: crownConfirm,
+              disabled: crownDisabled,
+              confirmLabel: isDeviceOptionMode ? 'Select' : 'Start',
+              // Only Cat3 has no other in-lens picker, so it shows the crown's
+              // vertical list; Cat5 uses the screen-layout item picker and the
+              // library uses the left panel, so their crown stays keyboard-only.
+              showList: showCat3Build,
+            }}
             progress={progress}
             isWaiting={loading || turnPending}
             interaction={lensInteraction}

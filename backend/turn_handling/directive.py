@@ -40,7 +40,7 @@ except ImportError:
 from .collection import _record_collection_detail
 from .debug import _build_debug_payload
 from .finalize import derive_frame, finalize_turn
-from .generation import _generate_with_retry
+from .generation import _enforce_text_only_interaction, _generate_with_retry
 from .helpers import (
     _CONFIRM_WORDS,
     _DECLINE_WORDS,
@@ -1123,6 +1123,9 @@ async def _resolve_turn_with_directive(
                 speaker_errors.append(f"celebrate: {e}")
                 logger.warning("Directive speaker failed at celebrate, falling back: %s", e)
                 turn_response, _ = await _generate_with_retry(script_agent, state)
+            # This branch returns before finalize_turn, so sanitize device words
+            # here to keep the text-only game text-only (no-op outside text mode).
+            turn_response = _enforce_text_only_interaction(state, turn_response)
             turn_response.screen_widget = "achievement_image"
             turn_response.sfx_cue = "badge_awarded"
             _append_ai_turn(state, turn_response.dialogue)
@@ -1191,6 +1194,8 @@ async def _resolve_turn_with_directive(
 
         if is_terminal(state.current_step):
             state.status = "completed"
+            # Terminal closing returns before finalize_turn — sanitize here too.
+            turn_response = _enforce_text_only_interaction(state, turn_response)
             _append_ai_turn(state, turn_response.dialogue, step=appended_step, round_number=appended_round)
             return TurnResult(
                 turn_response=turn_response,

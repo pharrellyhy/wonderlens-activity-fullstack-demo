@@ -5,7 +5,13 @@ from agents.script_agent import _build_instruction_overlay
 from recipe_loader import load_instruction_recipe, recipe_to_session_state
 from schemas.turn_plan import TurnPlan
 from schemas.turn_response import TurnResponse
-from turn_handling.finalize import _violates_contract, _violates_flow, finalize_turn
+from turn_handling.finalize import (
+    _scaffold_t0_line,
+    _t0_needs_scaffold,
+    _violates_contract,
+    _violates_flow,
+    finalize_turn,
+)
 from turn_handling.generation import (
     _generate_with_retry,
     _has_completion_language,
@@ -186,3 +192,63 @@ def test_fallback_response_uses_collected_names_not_generic_friends() -> None:
     lower = response.dialogue.lower()
     assert "fluffy" in lower and "bouncy" in lower
     assert "our friends" not in lower
+    # Celebrate fallback reads like a closing, not a start.
+    assert "is ready:" not in lower
+    assert "what should we try" not in lower
+
+
+def test_t0_needs_scaffold_flags_open_question_without_model_phrase() -> None:
+    assert _t0_needs_scaffold("[gentle] How does the dog feel right now?") is True
+
+
+def test_t0_needs_scaffold_passes_with_model_phrase_or_binary_question() -> None:
+    # A recognized scaffold present anywhere clears it.
+    assert _t0_needs_scaffold("[gentle] It sounds like fun. How does the dog feel?") is False
+    # A binary/non-wh question is not an open question.
+    assert _t0_needs_scaffold("[gentle] Should the team go left or right?") is False
+
+
+def test_scaffold_t0_line_inserts_recognized_phrase_before_first_question() -> None:
+    line = "[gentle] What do you see? How does the dog feel?"
+    lead = "It sounds like a lot is happening right now."
+    scaffolded = _scaffold_t0_line(line, 0)
+    assert scaffolded.startswith("[gentle]")  # tone marker preserved
+    # Idempotent: the scaffolded line no longer needs scaffolding.
+    assert _t0_needs_scaffold(scaffolded) is False
+    # The scaffold lands before the FIRST question, not between the two.
+    assert lead in scaffolded
+    assert scaffolded.index(lead) < scaffolded.index("What do you see?")
+
+
+def test_scaffold_t0_line_rotates_lead_by_round() -> None:
+    line = "[gentle] How does the dog feel?"
+    leads = {_scaffold_t0_line(line, r) for r in range(3)}
+    assert len(leads) == 3  # three distinct rounds -> three distinct leads
+
+
+@pytest.mark.asyncio
+async def test_finalize_scaffolds_t0_round_open_question() -> None:
+    state = _career_state("STEP_3_ROUND_1", 1)
+    state.tier = "T0"
+    open_line = TurnResponse(
+        dialogue="[gentle] How does the firefighter feel right now?",
+        tone_marker="gentle",
+        screen_widget="photo_display",
+        screen_widget_params={},
+    )
+    turn, _frame = await finalize_turn(state, open_line, action="advance")
+    assert _t0_needs_scaffold(turn.dialogue) is False
+
+
+@pytest.mark.asyncio
+async def test_finalize_scaffold_inert_at_t1() -> None:
+    state = _career_state("STEP_3_ROUND_1", 1)
+    state.tier = "T1"
+    open_line = TurnResponse(
+        dialogue="[gentle] How does the firefighter feel right now?",
+        tone_marker="gentle",
+        screen_widget="photo_display",
+        screen_widget_params={},
+    )
+    turn, _frame = await finalize_turn(state, open_line, action="advance")
+    assert turn.dialogue == open_line.dialogue  # unchanged at T1

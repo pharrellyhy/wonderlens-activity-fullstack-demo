@@ -404,14 +404,18 @@ def _source_fidelity_fallback_response(state: SessionStateModel) -> TurnResponse
     scenario = getattr(step_goal, "scenario", "")
     scenario_text = f" This round is about {scenario}." if scenario else ""
     names = ", ".join(state.collected_names) if state.collected_names else ""
-    crew = ""
-    if names and (
+    is_closing_arc = (
         "CELEBRATE" in state.current_step or "CLOSING" in state.current_step or "SYNTHESIS" in state.current_step
-    ):
-        crew = f" with {names}"
-    dialogue = (
-        f"[{tone}] {title} is ready: {goal_text}{crew}.{scenario_text} You are the {role_title}. What should we try?"
     )
+    if is_closing_arc:
+        # Celebrate/closing/synthesis end the game — use closing-shaped copy
+        # (no "is ready" / "What should we try?"), naming the collected crew.
+        crew = f"You and {names} " if names else "You "
+        dialogue = f"[{tone}] {crew}did it as the {role_title}! {goal_text}."
+    else:
+        dialogue = (
+            f"[{tone}] {title} is ready: {goal_text}.{scenario_text} You are the {role_title}. What should we try?"
+        )
 
     frame = _fallback_screen_frame(state)
     return TurnResponse(

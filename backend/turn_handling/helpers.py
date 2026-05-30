@@ -200,7 +200,7 @@ def _ended_result(state: SessionStateModel) -> TurnResult:
     retry_stats = _get_retry_stats()
     if retry_stats:
         logger.info("session_retry_stats: %s", retry_stats)
-    frame = _get_screen_frame(state)
+    frame = _get_screen_frame(state).model_copy()
     frame.beat = "closing"
     return TurnResult(
         turn_response=TurnResponse(

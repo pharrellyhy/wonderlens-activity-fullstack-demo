@@ -83,7 +83,10 @@ def derive_frame(state: SessionStateModel, action: str) -> ScreenFrame:
     (advance/stay/need_help/redirect/exit) kept for future action-aware frame
     selection; today the frame is keyed purely on the resolved step.
     """
-    frame = _get_screen_frame(state)
+    # Copy before stamping: _get_screen_frame can return a frame held by
+    # reference on the session state (e.g. celebration_frame), and beat is a
+    # per-turn value that must not mutate the cached object.
+    frame = _get_screen_frame(state).model_copy()
     frame.beat = beat_for_step(state.current_step, state.current_round)
     return frame
 
@@ -130,16 +133,21 @@ def _violates_contract(
     ):
         return True
 
-    # Role fidelity: when the contract names a role_title, the line should not
-    # contradict it. Best-effort — only flag the hard case of a Cat1 decision
-    # round that drops the role word entirely AND offers no question.
+    # Role fidelity: only flag the hard case of a Cat1 decision round that drops
+    # the role word entirely AND offers no question. Matching any significant
+    # role word (not the full title) avoids false-flagging in-role declaratives
+    # that name the role loosely (e.g. "firefighter" for "Firefighter Helper").
     if (
         isinstance(state.creative_slots, Cat1CreativeSlots)
         and state.creative_slots.game_mechanic == "decide"
         and state.current_step.startswith("STEP_3_ROUND_")
         and "?" not in dialogue
     ):
-        return True
+        role_title = (getattr(state.creative_slots, "role_title", "") or "").lower()
+        role_words = [word for word in re.findall(r"[a-z]+", role_title) if len(word) > 3]
+        lowered = dialogue.lower()
+        if role_words and not any(word in lowered for word in role_words):
+            return True
 
     return False
 
@@ -202,7 +210,14 @@ _T0_SCAFFOLD_PHRASES = (
     "it reminds me of",
     "it sounds like",
 )
-_T0_SCAFFOLD_LEAD = "It sounds like a lot is happening right now."
+# Rotated per round so consecutive round openings don't repeat the same lead.
+# Each must contain a recognized scaffold phrase (so it satisfies the contract
+# and keeps _t0_needs_scaffold idempotent) and avoid naming an emotion.
+_T0_SCAFFOLD_LEADS = (
+    "It sounds like a lot is happening right now.",
+    "I think there is so much to notice here.",
+    "It looks like there is plenty going on.",
+)
 
 
 def _t0_needs_scaffold(dialogue: str) -> bool:
@@ -224,20 +239,22 @@ def _t0_needs_scaffold(dialogue: str) -> bool:
     return not any(phrase in lower for phrase in _T0_SCAFFOLD_PHRASES)
 
 
-def _scaffold_t0_line(dialogue: str) -> str:
-    """Insert a recognized observation scaffold just before the final question.
+def _scaffold_t0_line(dialogue: str, current_round: int = 0) -> str:
+    """Insert a recognized observation scaffold just before the first question.
 
     T0 open questions must be modeled first; the inserted clause gives the child
     something concrete to build on without naming an emotion (kept safe for both
-    voice-acting and storytelling round openings).
+    voice-acting and storytelling round openings). Inserting before the FIRST
+    question scaffolds every question in the line; the lead rotates by round.
     """
-    question_index = dialogue.rfind("?")
+    question_index = dialogue.find("?")
     if question_index == -1:
         return dialogue
     head = dialogue[:question_index]
     boundary = max(head.rfind(". "), head.rfind("! "), head.rfind("? "), head.rfind("] "))
     insert_at = boundary + 2 if boundary != -1 else 0
-    return f"{dialogue[:insert_at]}{_T0_SCAFFOLD_LEAD} {dialogue[insert_at:]}"
+    lead = _T0_SCAFFOLD_LEADS[max(current_round, 0) % len(_T0_SCAFFOLD_LEADS)]
+    return f"{dialogue[:insert_at]}{lead} {dialogue[insert_at:]}"
 
 
 async def finalize_turn(
@@ -279,7 +296,8 @@ async def finalize_turn(
         and state.current_step.startswith("STEP_3_ROUND_")
         and _t0_needs_scaffold(turn_response.dialogue)
     ):
-        turn_response = turn_response.model_copy(update={"dialogue": _scaffold_t0_line(turn_response.dialogue)})
+        scaffolded = _scaffold_t0_line(turn_response.dialogue, state.current_round)
+        turn_response = turn_response.model_copy(update={"dialogue": scaffolded})
 
     screen_frame = derive_frame(state, action)
     return turn_response, screen_frame

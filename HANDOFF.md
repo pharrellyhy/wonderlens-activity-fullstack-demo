@@ -1,6 +1,23 @@
 # Session Handoff
 
-Last updated: 2026-05-30
+Last updated: 2026-05-31
+
+---
+
+## Promote 9 non-pilot activities to pilot parity (layout + dialogue + art)
+
+**Problem**: The 3 pilots (career/guided/phoneme) had device-free dialogue, real flat-Nordic art, and representative layouts; the other 9 activities still had device-bound child-facing dialogue, shared placeholder images, and non-representative manifests. Also: the in-lens Done/Help crown covered the scene and the device overflowed its panel.
+
+**Solution**:
+- Layout: moved the Cat3 Done/Help crown to a bottom green pill (UI spec section 4/6), made the device fit its panel height at any window size, added device-level keyboard up/down + widened the scroll-chevron hit target.
+- Dialogue: scrubbed device-bound words (card/token/tap/touch/point/click) from every child-facing source_contract field in the 9 md files into warm, invitational, in-world language; fidelity terms preserved. Done via a per-activity subagent workflow.
+- Art: generated 7 flat-Nordic beat scenes + a single-subject icon for each of the 9 (63 + 9 = 72 PNGs, 512x512) via Codex imagegen against `style-reference-flat-nordic.png`, content-faithful to each activity's rounds. Promoted all 9 manifest entries to representative `single`-scene layouts and added them to REPRESENTATIVE_ACTIVITY_IDS in both contract tests. Fixed a pre-existing phoneme synthesis `picker`->`carousel` manifest divergence.
+
+**Edits**: `frontend/src/index.css`, `frontend/src/activityGame/ActivityGameApp.jsx`, the 9 `backend/games/activity_*.md`, `backend/tests/test_activity_source_fidelity.py`, `tests/test_activity_text_game_asset_contract.py`, `frontend/tests/activityAssets.test.js`, `frontend/public/activity-assets/<9 dirs>/*.png` + `activity-assets.manifest.json`, new `scripts/gen_beat.sh` + `scripts/promote_activity_manifest.py`, `docs/plans/2026-05-30-promote-9-activities-to-pilot-parity.md`. Commits: `7a600f7` (layout), `45f4e0a` (dialogue), `1f84422` (art).
+
+**NOT Changed**: The 3 pilots' regenerated art (career/guided/phoneme) remains uncommitted in the worktree pending separate review. The 9 use single-scene layouts (not the build-script's aspirational carousel+crop design). Orphaned `recap.png` placeholders left in place.
+
+**Verification**: backend definitions+fidelity+asset-contract (21) pass; frontend tests (73) + lint + build pass; live smoke 11/12 first run, vegetable_sort passed on re-run (transient live-model variance) = effectively 12/12. Style self-confirmed consistent via contact-sheet review. Pre-existing unrelated failures: top-level tests/ entity/scenario/turn-handler (fail at HEAD independent of this work) and live-server ai_quality (need a running server).
 
 ---
 
@@ -235,37 +252,3 @@ Last updated: 2026-05-30
 **Verification**:
 - `npm test -- --run tests/activityAssets.test.js` — 8 passed.
 - Manual pilot review found the Animal Sound scene closest to target; the second firefighter and banana prompts reduced the remaining raised/depth cues and are the current candidates for approval.
-
----
-
-## Activity Visual Layout and Interaction Completion
-
-**Problem**: The metadata-driven lens renderer still had placeholder per-beat layouts and no complete item-asset contract for all 12 standalone activities. Cat5 collection still needed to use the same rendered screen assets for its live choices, Cat3/Cat5 behavior needed regression coverage, and the live Recognition Pop directive path could still generate physical-input wording such as "point out" even after the non-directive text normalizer was fixed.
-
-**Solution**: Added a deterministic asset/layout build script that generates all item sprites and rewrites the manifest with explicit safe-area layout metadata for every runtime beat across all 12 activities. The manifest now uses `single`, `choice2`, `choice3`, and `carousel` modes with activity-specific circle/3:4 item cards. Cat5 live `current_round_items` are projected into the same screen layout renderer, with transparent hit targets over the rendered item cards, so selections still send the existing `photo_id` contract. Cat3 remains physical-control driven with in-lens Done/Help highlighting. Recognition Pop text-only enforcement now runs inside the shared speaker layer, including the Turn Director directive path.
-
-**Edits**:
-- `scripts/build_activity_screen_assets.py` — added the reusable item extraction and manifest layout builder.
-- `frontend/public/activity-assets/activity-assets.manifest.json`, `frontend/public/activity-assets/**/items/*.png`, `frontend/public/activity-assets/_sources/phoneme_collection_sheet.png` — added explicit beat layouts and 59 item sprites; the Cat5 source sheet came from Codex imagegen and is not referenced at runtime.
-- `frontend/src/activityGame/ActivityGameApp.jsx`, `ActivityLens.jsx`, `frontend/src/index.css` — render Cat5 live choices through the screen layout system and keep transparent selection hit targets over the visual cards.
-- `backend/games/activity_phoneme_treasure_hunt.md` — points Cat5 collection catalog items at activity-specific item art.
-- `backend/agents/script_agent.py`, `backend/turn_handling/generation.py`, `backend/tests/test_generation_text_mode.py` — moved text-only Recognition Pop wording enforcement into the speaker layer and added directive-path coverage.
-- `frontend/public/activity-assets/prompts/wonderlens-activity-style.md` — documented the new beat-plus-item asset workflow.
-- `frontend/tests/activityAssets.test.js`, `frontend/tests/ActivityGameApp.test.jsx`, `tests/test_activity_text_game_asset_contract.py` — added full layout metadata, Cat5 visual-selection, item dimension, and black-padding regressions.
-
-**NOT Changed**:
-- The standalone activity game remains text-only: no mic, TTS, camera, or photo-upload controls were added.
-- Runtime still uses committed static assets; no image generation API is called by the app.
-- Cat5 still sends existing `/api/turn` `photo_id` selections; Cat3 quick actions remain text turns.
-
-**Verification**:
-- `npm test -- --run tests/activityAssets.test.js tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx` — 18 passed.
-- `npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx tests/ActivityGameApp.test.jsx tests/activityAssets.test.js` — passed.
-- `npm run build` — passed; Vite emitted the existing large chunk warning.
-- `uv run pytest backend/tests/test_generation_text_mode.py backend/tests/test_activity_source_fidelity.py backend/tests/test_activity_text_game_cat3.py tests/test_activity_text_smoke.py tests/test_activity_text_game_asset_contract.py -q` — 28 passed.
-- `uv run ruff check backend/agents/script_agent.py backend/turn_handling/generation.py backend/tests/test_generation_text_mode.py scripts/build_activity_screen_assets.py tests/test_activity_text_game_asset_contract.py tests/test_activity_text_smoke.py backend/tests/test_activity_source_fidelity.py backend/tests/test_activity_text_game_cat3.py` — passed.
-- Restarted backend from the feature worktree while sourcing `/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/.env` and `/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/.elaborate-baton-480304-r8-a8a39bcb34f1.json`.
-- `uv run python scripts/run_activity_text_smoke.py activity_recognition_pop_challenge --timeout 120` — 1 passed, 0 failed.
-- `uv run python scripts/run_activity_text_smoke.py --timeout 120` — 12 passed, 0 failed.
-- Browser/Playwright verification at `http://127.0.0.1:5173/?view=activities` captured `/tmp/wonderlens-browser-audit/01_activity_layout.png`, `/tmp/wonderlens-browser-audit/03_guided_drawing_build.png`, and `/tmp/wonderlens-browser-audit/04_phoneme_selection.png`; confirmed idle exit count 0, active exit count 1, Cat3 Done/Help build controls visible on the device, Cat5 three screen-selection hit targets visible with text input disabled, and no console errors.
-- `git diff --check` — passed.

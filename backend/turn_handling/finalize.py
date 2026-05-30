@@ -88,6 +88,16 @@ def derive_frame(state: SessionStateModel, action: str) -> ScreenFrame:
     return frame
 
 
+# Specific personal possessions the AI cannot see. Unlike the verb-framed
+# _ITEM_SUGGESTION_RE, these are caught even as sensory comparisons ("fuzzy like
+# a teddy bear") during collection. Only qualified possessions are listed (never
+# bare nouns like "ball"/"book"), so on-screen picker activities are unaffected.
+_SPECIFIC_ITEM_RE = re.compile(
+    r"(?i)\b(?:your\s+(?:blanket|pillow|teddy|sock|bed|clothes)"
+    r"|stuffed\s+animal|teddy\s+bear|fuzzy\s+sock|cozy\s+blanket)\b"
+)
+
+
 def _violates_contract(
     state: SessionStateModel,
     turn_response: TurnResponse,
@@ -105,6 +115,11 @@ def _violates_contract(
 
     # do_not_suggest_items: never name specific findable objects.
     if do_not_suggest_items and _ITEM_SUGGESTION_RE.search(dialogue):
+        return True
+
+    # On a collection turn, naming a specific personal possession leaks an item
+    # the AI cannot see — even as a comparison in a silence-encouragement line.
+    if state.current_step.startswith("STEP_3_COLLECT_") and _SPECIFIC_ITEM_RE.search(dialogue):
         return True
 
     # Premature completion during an unfinished collection round.

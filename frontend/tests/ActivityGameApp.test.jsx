@@ -429,6 +429,39 @@ describe('ActivityGameApp', () => {
     expect(await screen.findByText('I can help with that step.')).toBeTruthy();
   });
 
+  it('steps the Cat3 crown with global up/down arrows when the picker is unfocused', async () => {
+    vi.mocked(startActivitySession).mockResolvedValue({
+      session_id: 'cat3-keys',
+      activity_type: 'activity_guided_drawing',
+      template_type: 'cat3',
+      session_state: {
+        status: 'active',
+        template_type: 'cat3',
+        current_step: 'STEP_3_BUILD_1',
+        current_round: 1,
+        total_rounds: 3,
+        current_build_step: 'Draw one simple line or shape to start the picture.',
+        build_materials: ['paper', 'pencil'],
+      },
+      first_turn: { dialogue: 'Make the first mark.', response_type: 'round' },
+    });
+
+    render(<ActivityGameApp />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Guided Drawing/i }));
+    fireEvent.click(screen.getByLabelText('Start activity'));
+
+    expect((await screen.findByRole('option', { name: 'Done' })).getAttribute('aria-selected')).toBe('true');
+
+    // Crown listbox is not focused; arrows dispatched on the document should
+    // still drive the selection via the device-level key handler.
+    fireEvent.keyDown(document.body, { key: 'ArrowDown' });
+    expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(document.body, { key: 'ArrowUp' });
+    expect(screen.getByRole('option', { name: 'Done' }).getAttribute('aria-selected')).toBe('true');
+  });
+
   it('drives Cat5 item selection through the crown picker', async () => {
     vi.mocked(startActivitySession).mockResolvedValue({
       session_id: 'cat5',

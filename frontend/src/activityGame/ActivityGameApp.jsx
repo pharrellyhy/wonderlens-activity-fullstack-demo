@@ -284,6 +284,23 @@ export default function ActivityGameApp() {
   const handleScrollNext = useCallback(() => crownStep(1), [crownStep]);
   const handlePrimaryAction = useCallback(() => crownConfirm(crownIndex), [crownConfirm, crownIndex]);
 
+  // The crown is a watch-style wheel; when a device-option picker is showing
+  // (Cat3 Done/Help, Cat5 item selection) let the keyboard up/down arrows drive
+  // it even when the small in-lens listbox is not focused. Skip when the user is
+  // typing in the transcript input or already inside the crown listbox, which
+  // owns its own arrow handling.
+  useEffect(() => {
+    if (!isDeviceOptionMode) return undefined;
+    const handleDeviceArrowKeys = (event) => {
+      if (event.defaultPrevented || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+      if (event.target?.closest?.('input, textarea, [contenteditable="true"], .crown-picker')) return;
+      event.preventDefault();
+      crownStep(event.key === 'ArrowUp' ? -1 : 1);
+    };
+    window.addEventListener('keydown', handleDeviceArrowKeys);
+    return () => window.removeEventListener('keydown', handleDeviceArrowKeys);
+  }, [isDeviceOptionMode, crownStep]);
+
   return (
     <main className="activity-game">
       <header className="activity-game__topbar">

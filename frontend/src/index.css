@@ -338,6 +338,18 @@
   border-radius: 0 0 999px 0;
 }
 
+/* The chevron glyphs are drawn just outside the button box (right: -1.15rem),
+   so extend each button's clickable area rightward to cover the visible arrow
+   the user actually aims at. */
+.wonderlens-device__scroll-hit::after {
+  position: absolute;
+  top: 0;
+  right: -1.7rem;
+  bottom: 0;
+  left: 0;
+  content: "";
+}
+
 .wonderlens-device__scroll-arc,
 .wonderlens-device__scroll::before,
 .wonderlens-device__scroll::after {
@@ -888,33 +900,76 @@
   background: oklch(0.82 0.08 145 / 0.72);
 }
 
-/* Crown picker rendered as an in-lens overlay. Cat3 (no other in-lens picker)
-   shows the vertical Done/Help list on a readable backdrop; Cat5 and the
-   library keep the crown keyboard-only and visually headless. */
+/* Crown picker rendered as an in-lens overlay. Per the UI layout spec, Cat3
+   shows the current Done/Help choice as a single rounded green pill near the
+   bottom (a text container the crown wheel scrolls through) so it never covers
+   the centered scene. Cat5 and the library keep the crown keyboard-only and
+   visually headless. */
 .activity-lens__crown {
   position: absolute;
-  inset: 12%;
+  inset: 0;
   z-index: 3;
   display: grid;
-  place-items: center;
+  place-items: end center;
+  padding-bottom: 19%;
   pointer-events: none;
 }
 
+/* Strip the wheel chrome; the visible control is just the bottom pill. */
 .activity-lens__crown .crown-picker {
-  width: min(74%, 9rem);
-  height: min(74%, 9rem);
-  border-radius: 1rem;
-  background: oklch(0.14 0.016 155 / 0.78);
-  box-shadow: 0 0.5rem 1rem oklch(0.04 0.006 150 / 0.34);
+  width: auto;
+  height: auto;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.activity-lens__crown .crown-picker__list {
+  display: flex;
+  width: auto;
+  height: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Only the current choice is rendered, as a rounded green pill (§5/§6). */
+.activity-lens__crown .crown-picker__option {
+  position: static;
+  grid-area: auto;
+  width: auto;
+  transform: none;
+}
+
+.activity-lens__crown .crown-picker__option.is-adjacent,
+.activity-lens__crown .crown-picker__option.is-far {
+  display: none;
+}
+
+.activity-lens__crown .crown-picker__option.is-current {
+  padding: 0.34rem 1.25rem;
+  border-radius: 999px;
+  background: oklch(0.88 0.1 145 / 0.94);
+  box-shadow: 0 0.3rem 0.75rem oklch(0.3 0.03 150 / 0.26);
+  opacity: 1;
+}
+
+.activity-lens__crown .crown-picker__option-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: oklch(0.32 0.07 150);
+  text-shadow: none;
 }
 
 .activity-lens__crown .crown-picker__option-image {
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .activity-lens__crown .crown-picker__confirm,
-.activity-lens__crown .crown-picker__arc {
+.activity-lens__crown .crown-picker__arc,
+.activity-lens__crown .crown-picker__controls {
   display: none;
 }
 
@@ -1487,7 +1542,7 @@
 .activity-game__device {
   display: grid;
   min-height: 0;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   background:
     radial-gradient(circle at 53% 22%, oklch(0.98 0.007 90 / 0.82), transparent 19rem),
     oklch(0.986 0.006 105 / 0.58);
@@ -1498,10 +1553,24 @@
 }
 
 .activity-game__device .wonderlens-device-shell {
-  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-height: 0;
   width: min(calc(23.5rem * var(--wonderlens-device-scale, 1)), calc(100% - 2.25rem));
   padding-top: 0;
   padding-bottom: 0.5rem;
+}
+
+/* Size the device to fit the available row HEIGHT (it is width-driven by
+   default, which overflows short windows). Caps keep it at its natural size on
+   tall windows; aspect ratio stays 0.7:1 so it never distorts. */
+.activity-game__device .wonderlens-device {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: calc(26.85rem * var(--wonderlens-device-scale, 1));
 }
 
 .activity-game__transcript {
@@ -1775,6 +1844,14 @@
 
   .activity-game__device .wonderlens-device-shell {
     width: min(calc(21rem * var(--wonderlens-device-scale, 1)), 90vw);
+  }
+
+  /* Stacked layout scrolls, so restore width-driven sizing to avoid distortion. */
+  .activity-game__device .wonderlens-device {
+    width: 100%;
+    height: auto;
+    max-width: none;
+    max-height: none;
   }
 
   .activity-game__metrics {

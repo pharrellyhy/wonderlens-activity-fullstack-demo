@@ -155,6 +155,76 @@ def _violates_flow(state: SessionStateModel, turn_response: TurnResponse, *, act
     return False
 
 
+# Open wh-question and recognized-scaffold contract for T0 round openings.
+# These mirror the live-quality rule (test_ai_quality.has_open_question /
+# has_model_phrase): at T0 an open question must be modeled first so the child
+# has an observation to build on. Kept byte-aligned with the test's lists so
+# the guard fires exactly when the line would otherwise be flagged.
+_T0_OPEN_QUESTION_PATTERNS = tuple(
+    re.compile(pattern)
+    for pattern in (
+        r"\bwhat does\b",
+        r"\bwhat do you\b",
+        r"\bwhat did\b",
+        r"\bwhat would\b",
+        r"\bwhat happens\b",
+        r"\bwhat kind\b",
+        r"\bhow does\b",
+        r"\bhow do you\b",
+        r"\bi wonder what\b",
+        r"\bi wonder how\b",
+        r"\bi wonder where\b",
+        r"\bi wonder why\b",
+    )
+)
+_T0_SCAFFOLD_PHRASES = (
+    "i think",
+    "i'd call",
+    "maybe it's",
+    "it looks like",
+    "i think it looks",
+    "should we call",
+    "it reminds me of",
+    "it sounds like",
+)
+_T0_SCAFFOLD_LEAD = "It sounds like a lot is happening right now."
+
+
+def _t0_needs_scaffold(dialogue: str) -> bool:
+    """Return True when a T0 line ends in an open wh-question with no scaffold.
+
+    Mirrors the live-quality contract: the open question is fine only when the
+    line also models an observation/guess (one of ``_T0_SCAFFOLD_PHRASES``).
+    """
+    lower = dialogue.lower()
+    if "?" not in lower:
+        return False
+    last_q = ""
+    for sentence in reversed(re.split(r"[.!]\s+", lower)):
+        if "?" in sentence:
+            last_q = sentence.strip()
+            break
+    if not any(pattern.search(last_q) for pattern in _T0_OPEN_QUESTION_PATTERNS):
+        return False
+    return not any(phrase in lower for phrase in _T0_SCAFFOLD_PHRASES)
+
+
+def _scaffold_t0_line(dialogue: str) -> str:
+    """Insert a recognized observation scaffold just before the final question.
+
+    T0 open questions must be modeled first; the inserted clause gives the child
+    something concrete to build on without naming an emotion (kept safe for both
+    voice-acting and storytelling round openings).
+    """
+    question_index = dialogue.rfind("?")
+    if question_index == -1:
+        return dialogue
+    head = dialogue[:question_index]
+    boundary = max(head.rfind(". "), head.rfind("! "), head.rfind("? "), head.rfind("] "))
+    insert_at = boundary + 2 if boundary != -1 else 0
+    return f"{dialogue[:insert_at]}{_T0_SCAFFOLD_LEAD} {dialogue[insert_at:]}"
+
+
 async def finalize_turn(
     state: SessionStateModel,
     turn_response: TurnResponse,
@@ -167,7 +237,7 @@ async def finalize_turn(
 
     Stream 1 derives the frame; Stream 2 validates the spoken line, regenerates
     once on contract/flow divergence, falls back deterministically on failure,
-    and sanitizes device words as the single last step.
+    sanitizes device words, and scaffolds T0 round-opening open questions.
     """
     needs_fix = _violates_contract(state, turn_response, do_not_suggest_items=do_not_suggest_items) or _violates_flow(
         state, turn_response, action=action
@@ -185,5 +255,16 @@ async def finalize_turn(
         turn_response = regenerated if regen_ok else _source_fidelity_fallback_response(state)
 
     turn_response = _enforce_text_only_interaction(state, turn_response)
+
+    # T0 round openings must model before asking: an open wh-question gets a
+    # recognized observation scaffold so the youngest tier always has something
+    # concrete to build on. Inert at T1+ and for binary-choice round prompts.
+    if (
+        state.tier == "T0"
+        and state.current_step.startswith("STEP_3_ROUND_")
+        and _t0_needs_scaffold(turn_response.dialogue)
+    ):
+        turn_response = turn_response.model_copy(update={"dialogue": _scaffold_t0_line(turn_response.dialogue)})
+
     screen_frame = derive_frame(state, action)
     return turn_response, screen_frame

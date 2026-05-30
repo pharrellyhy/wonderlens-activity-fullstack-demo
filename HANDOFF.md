@@ -1,6 +1,39 @@
 # Session Handoff
 
-Last updated: 2026-05-29
+Last updated: 2026-05-30
+
+---
+
+## Guided Artist Closing Asset
+
+**Problem**: The Guided Artist activity needed a single WonderLens flat-Nordic
+closing beat PNG showing a child artist waving beside their finished creature
+drawing, matching the supplied nursery style reference and hard visual
+constraints.
+
+**Solution**: Generated one built-in imagegen illustration, kept the source in
+Codex's generated image folder, and saved a resized 512 x 512 RGB project asset
+under a new `guided_artist` activity asset directory.
+
+**Edits**:
+- `frontend/public/activity-assets/guided_artist/closing.png`
+
+**NOT Changed**:
+- No code, manifests, prompts, provider settings, secrets, or unrelated assets
+  were changed.
+- The original generated image remains in
+  `/Users/pharrelly/.codex/generated_images/019e7745-4b1e-7cb3-9dbf-f70fa7e64992/`.
+
+**Verification**:
+- Visual inspection confirmed one full-bleed square nursery scene, no text,
+  letters, numbers, logos, watermark, UI frame, circular mask, border, rim, or
+  vignette.
+- `sips -g pixelWidth -g pixelHeight -g hasAlpha frontend/public/activity-assets/guided_artist/closing.png`
+  - 512 x 512, `hasAlpha: no`.
+- `file frontend/public/activity-assets/guided_artist/closing.png` - PNG image
+  data, 512 x 512, 8-bit/color RGB, non-interlaced.
+- `scripts/build_activity_screen_assets.py` was not run because it is not
+  present in this checkout.
 
 ---
 
@@ -371,81 +404,3 @@ cd backend && uv run ruff check . && uv run ruff format --check .    # → clean
 grep -rn "is_story_game" backend/    # → empty
 grep -rn "synthesis_format ==" backend/    # → empty
 ```
-
----
-
-## Phase 2: Migrate collaborative_story to data-driven format file
-
-**Problem**: The `collaborative_story` synthesis format had its LLM prompts and direction template hardcoded as Python string literals in `synthesis.py` and `directive.py`. Any change to prompt wording required a code edit; the prompts were invisible to non-Python tooling; and there was no single source of truth linking the LLM parameters (temperature, max_tokens, scene_count) to the prompt body.
-
-**Solution**: Extracted the collaborative_story format into `backend/synthesis_formats/collaborative_story.md` (YAML frontmatter + three body sections). Added `_build_template_variables`, `_resolve_format_id`, and `_generate_structured_output` to `synthesis.py`. Wired the story branch of `_generate_and_advance` to use the registry. Three golden-file diff tests assert byte-for-byte fidelity between the new template rendering and the pre-refactor baselines captured in Phase 0.
-
-**Edits**:
-- `backend/synthesis_formats/collaborative_story.md` — NEW: YAML frontmatter (scene_count, LLM params, tier constraints, invite templates) + `# system_prompt`, `# user_prompt`, `# direction_template` body sections; JSON `{` / `}` in user_prompt escaped as `{{` / `}}`; direction template uses `{theme_suffix}`, `{premise_line}`, `{child_story_line}` placeholders for optional segments
-- `backend/turn_handling/synthesis.py` — Added `get_format` / `SynthesisFormat` imports (try/except pattern); added `_resolve_format_id`, `_build_template_variables`, `_generate_structured_output`; changed story branch of `_generate_and_advance` from `_generate_structured_story(state)` to `_generate_structured_output(state, get_format("collaborative_story"))`; fixed mislabeled `# obs_list` comment to `# obs_angle`; removed unnecessary "Build full characters string" comment
-- `tests/test_format_rendering.py` — NEW: three golden-file diff tests (system_prompt, user_prompt, direction) using the same deterministic synthetic state as `capture_synthesis_baselines.py`
-- `tests/test_synthesis_format_loader.py` — Added `TestRealRegistryLoadsCollaborativeStory` class exercising the real format file (not a mock)
-
-**NOT Changed**:
-- `_generate_structured_story` — preserved for Phase 3 cleanup
-- `_build_story_direction` in `directive.py` — untouched; Phase 4 will refactor
-- `_generate_comparison_reveal` — untouched; comparison branch still unchanged
-- `_MIN_STORY_SENTENCES` — preserved; Phase 3 will delete it and read from fmt
-- Golden files in `tests/fixtures/golden/` — unchanged (capture script verified zero diffs)
-
-**Verification**:
-```bash
-# New and existing loader + rendering tests
-uv run pytest tests/test_synthesis_format_loader.py tests/test_format_rendering.py -v
-# → 13 passed
-
-# Full suite
-uv run pytest tests/ --ignore=tests/test_ai_quality.py --deselect tests/test_device_screen_layout.py::test_device_screen_keeps_widget_area_centered_on_tall_viewports -q
-# → 495 passed, 12 skipped
-
-# Lint
-cd backend && uv run ruff check . && uv run ruff format --check .
-# → All checks passed / 59 files already formatted
-
-# Golden sanity
-uv run python tools/capture_synthesis_baselines.py && git diff --stat tests/fixtures/golden/
-# → 0 diffs
-```
-
----
-
-## Progressive Scene Delivery, In-Image Captions, Distinct Celebration + Turn Director Robustness
-
-**Problem**: Three rounds of playtesting Cat5 synthesis surfaced compound issues. (1) The backend blocked on all 3 scene images plus the achievement image before delivering scene 1 to the frontend, so the child watched the loading widget for ~20s even though each scene only takes ~5s. (2) The generated achievement image was visually indistinguishable from scene 3 because the LLM kept producing "characters together in a warm scene" as the achievement description — which is exactly what scene 3 already is. (3) Generated images had no text, while storybook pages traditionally carry a short caption. (4) TurnDirective parsing hard-failed when the LLM returned `screen_widget` as a structured dict `{type: ..., options: [...]}` instead of a plain string, dropping the whole turn into fallback handling. (5) On the last Cat5 collection round the Turn Director wrote a 4-part directive ("celebrate + introduce crew + mark last find + tease story") but forgot to raise `max_sentences`, so the Speaker respected the schema default of 2 and dropped the story-tease half. (6) Device panel rendered-image widgets had no hover feedback; progress dots drifted off-center when label/SFX indicator widths were uneven; ConceptReveal's "You are now a X!" line duplicated the H2 title; and `index.css` still had leftover `!important` stage-mode overrides from before the inline-style fix landed.
-
-**Solution**: Three focused commits:
-- `feat(synthesis)`: per-session `_SceneSession` background worker in `image_gen.py` publishes each finished image to its own `asyncio.Future`; `_deliver_scene` awaits only the future for the scene it's shipping via `asyncio.wait_for(asyncio.shield(future), timeout=30s)` so scene 1 ships the moment it's ready. Last-scene delivery also awaits the achievement future so the celebrate frame has the URL. Only non-None results are cached onto `scene.image_data_url` so a timed-out wait doesn't poison retries. Added `_build_achievement_prompt` in `synthesis.py` that returns a deterministic celebration-poster template with rotating props (confetti / crowns / banners / spotlight / petals / campfire) — character names are interpolated so the portrait matches the story but the composition is locked to a centered hero shot. Removed "no text" from `_STYLE_PREFIX`; `generate_image` now accepts an optional `caption` that gets threaded through the worker and baked into the image via plain string concat (not `str.format` — LLM-produced braces would KeyError). Schema: `StructuredStory.achievement_description` is now optional (default `""`) since the prompt no longer asks for it.
-- `feat(ui)`: `StoryScene`, `AchievementImage`, and `PhotoDisplay` get `transition-transform duration-300 ease-out hover:scale-[1.03]` + a deeper shadow. Global `prefers-reduced-motion` rule already disables the transform for opt-outs. Progress dots moved to `absolute left-1/2 -translate-x-1/2` inside a `relative` parent. ConceptReveal drops the redundant role-line. `index.css` stage-mode `!important` overrides removed now that App.jsx owns device-panel sizing via inline style.
-- `fix(turn-director)`: `TurnDirective` gains a `model_validator(mode="before")` that peels `type` / `widget` / `name` out of a dict `screen_widget` and merges the remainder into `screen_widget_params` (caller-provided params still win). Turn Director system prompt tightened with CORRECT/WRONG examples. `_CAT5_COLLECTION_RULES` detail-phase advance split into "NOT the last round" (`max_sentences=2`, lean celebrate) and "IS the last round" (`max_sentences=4`, explicit 4-sentence structure: celebrate → name crew → mark last find → tease story).
-
-**Edits**:
-- `backend/image_gen.py` — new `_SceneSession` dataclass, `_scene_sessions` registry, `start_scene_images()`, `get_scene_session()`, `clear_scene_session()`, `_scene_image_worker()`, `_process_generated_image()` helper; `generate_image` accepts optional `caption` param; `_STYLE_PREFIX` no longer bans text; brace-safe string-concat prompt assembly with `_CAPTION_PREFIX` / `_CAPTION_SUFFIX`
-- `backend/turn_handling/synthesis.py` — `_generate_structured_story` kicks off background delivery and returns story immediately with image URLs unset; `_deliver_scene` is now async, awaits per-scene future, and pulls the achievement future forward on `is_last`; new `_build_achievement_prompt`, `_CELEBRATION_PROPS` / `_CELEBRATION_CAPTIONS` palettes, `_role_title_for` helper, and `_condense_caption` utility; LLM prompts ask for a per-scene `caption` instead of `achievement_description`
-- `backend/turn_handling/core.py` — updated `_deliver_scene` call site to `await`
-- `backend/schemas/structured_story.py` — `caption` field on `StoryScene`, `achievement_caption` field on `StructuredStory`, `achievement_description` now optional with default `""`
-- `backend/schemas/turn_directive.py` — new `_normalize_screen_widget` model validator coerces dict → name + params split
-- `backend/skills/turn_director_system.md` — explicit `screen_widget` MUST-be-string note with CORRECT/WRONG JSON examples
-- `backend/agents/turn_director.py` — `_CAT5_COLLECTION_RULES` detail-advance split into NOT-last-round vs IS-last-round with explicit `max_sentences`
-- `frontend/src/components/DeviceScreen.jsx` — progress dots absolutely positioned for true panel-center alignment
-- `frontend/src/index.css` — removed `!important` stage-mode overrides; updated comment explaining the inline-style approach
-- `frontend/src/widgets/StoryScene.jsx`, `AchievementImage.jsx`, `PhotoDisplay.jsx` — hover scale + deeper shadow on the image element
-- `frontend/src/widgets/ConceptReveal.jsx` — dropped redundant "You are now a {role}!" paragraph
-- `docs/plans/2026-04-10-celebration-bugfixes-and-consistency.md`, `docs/plans/2026-04-10-progressive-scene-image-delivery.md`, `docs/plans/2026-04-11-hover-caption-distinct-celebration.md` — plan docs
-
-**NOT Changed**:
-- Gemini 2.5 Flash Image model selection, anchor/reference character-consistency chain, JPEG downscale pipeline — all preserved
-- Blocking `generate_scene_images()` wrapper — still used by `_generate_comparison_reveal` (1 scene, no progressive benefit)
-- `prefers-reduced-motion` handling — already present in `index.css`, unchanged
-- Cat1 rules, Cat1 Round rules, Synthesis / Celebrate / Closing rules — unchanged; fix was scoped to Cat5 collection only
-- Tests and pytest suite — no new tests added (all verification was manual + focused import smoke tests)
-
-**Verification**:
-- `cd backend && uv run ruff check . && uv run ruff format --check .` — clean on all changed files
-- Import smoke tests: progressive delivery, caption threading, brace-escape, `_build_achievement_prompt`, `_condense_caption` edge cases, `TurnDirective` dict / string / default / alias / merge all pass
-- `cd frontend && npx vite build` — clean (85 modules)
-- LLM regression test: the exact failing `TurnDirective` payload from the playtest log now parses correctly with `screen_widget="binary_choice"`, `screen_widget_params={"options": [...]}`

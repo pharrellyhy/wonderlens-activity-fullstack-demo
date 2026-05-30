@@ -86,37 +86,37 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the star counter role, notices the starter cue, or names something connected to the first star group.
       unexpected: Child asks for another game, starts the counting or naming step before the Constellation Star Count mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Constellation Star Count title/trigger card without taking the star counter role yet.
+      no_response: Child watches the Constellation Star Count opening moment without taking the star counter role yet.
     ai_followups:
       ideal: Name the star counter role, connect it to the starter cue, and preview the first counting or naming step.
       unexpected: Acknowledge the request, return to the Constellation Star Count promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Constellation Star Count role card and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the Star Counter role and the first little group of stars, then model one tiny gentle response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Here is how we play: I ask, you count the stars, and we light up one star on our path each turn.'
     child_responses:
       ideal: The child agrees to the counting or naming step loop for Constellation Star Count or asks for the easiest version.
       unexpected: Child tries to skip the first star group, ignore the required rule/asset, or count a different kind of response.
-      no_response: Child looks at the Constellation Star Count rule strip without confirming how to start the first turn.
+      no_response: Child looks at the Constellation Star Count rule without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Constellation Star Count loop as AI prompt, child counting or naming step, saved token, and show the first response slot.
+      ideal: Restate the Constellation Star Count loop as AI asks, child counts the stars, one star lights up, and show where the first answer goes.
       unexpected: Keep the rule tied to the first star group, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Constellation Star Count rule in one sentence and ask for yes, a point, or the first chance to count or name the target set.'
+      no_response: '[wait 2s] Say the Constellation Star Count rule in one sentence and ask if they would like to count the first little group of stars together.'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `constellation_count_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a voice-only imaginary star-counting riddle and do not claim a constellation is displayed.'
   rounds:
   - round_number: 1
     source_contract:
-      runtime_instruction: 'Preserve the workbook promise: The child counts visible stars in a constellation card or simplified star pattern. Ask the child to count or identify in the first small turn.'
-      example_ai_line: 'Let us start: The child counts visible stars in a constellation card or simplified star pattern. What is your first try?'
+      runtime_instruction: 'Preserve the workbook promise: the child counts the visible stars in a constellation or simplified star pattern. Invite the child to count the first small group of stars.'
+      example_ai_line: 'Let us begin counting the stars in this little group. Would you like to tell me how many you see?'
       child_responses:
-        ideal: The child counts, names, or checks the items required for the first star group.
-        unexpected: Child guesses the first star group without looking, counts unrelated items, or changes the target set.
-        no_response: Child looks at the first star group display without saying a number, name, or first count.
+        ideal: The child counts, names, or checks the stars in the first star group.
+        unexpected: Child guesses the first star group without looking, counts unrelated things, or changes which stars to count.
+        no_response: Child looks at the first star group without saying a number, name, or first count.
       ai_followups:
-        ideal: Repeat the counted evidence, mark the number/name token, and show what set will be checked next.
-        unexpected: Return attention to the target set for the first star group, count one item aloud, and ask the child to continue.
-        no_response: '[wait 2s] Point to the first item in the first star group, say "one," and invite the child to say the next number or name.'
+        ideal: Repeat the counted stars, light up the number you heard, and show which stars come next.
+        unexpected: Bring attention back to the first star group, count one star aloud, and invite the child to keep going.
+        no_response: '[wait 2s] Name the first star in the first group, say "one," and invite the child to say the next number.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `constellation_count_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a voice-only imaginary star-counting riddle and do not claim a constellation is displayed.'
   - round_number: 2
     source_contract:
@@ -125,11 +125,11 @@ source_dialogue:
       child_responses:
         ideal: The child counts, names, or checks the items required for the second star group or pattern.
         unexpected: Child guesses the second star group or pattern without looking, counts unrelated items, or changes the target set.
-        no_response: Child looks at the second star group or pattern display without saying a number, name, or first count.
+        no_response: Child looks at the second star group or pattern without saying a number, name, or first count.
       ai_followups:
-        ideal: Repeat the counted evidence, mark the number/name token, and show what set will be checked next.
-        unexpected: Return attention to the target set for the second star group or pattern, count one item aloud, and ask the child to continue.
-        no_response: '[wait 2s] Point to the first item in the second star group or pattern, say "one," and invite the child to say the next number or name.'
+        ideal: Repeat the counted stars, light up the number you heard, and show which stars come next.
+        unexpected: Bring attention back to the second star group or pattern, count one star aloud, and invite the child to keep going.
+        no_response: '[wait 2s] Name the first star in the second group or pattern, say "one," and invite the child to say the next number.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `constellation_count_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a voice-only imaginary star-counting riddle and do not claim a constellation is displayed.'
   - round_number: 3
     source_contract:
@@ -138,11 +138,11 @@ source_dialogue:
       child_responses:
         ideal: The child counts, names, or checks the items required for the total constellation recap.
         unexpected: Child guesses the total constellation recap without looking, counts unrelated items, or changes the target set.
-        no_response: Child looks at the total constellation recap display without saying a number, name, or first count.
+        no_response: Child looks at the total constellation recap without saying a number, name, or first count.
       ai_followups:
-        ideal: Repeat the counted evidence, mark the number/name token, and show what set will be checked next.
-        unexpected: Return attention to the target set for the total constellation recap, count one item aloud, and ask the child to continue.
-        no_response: '[wait 2s] Point to the first item in the total constellation recap, say "one," and invite the child to say the next number or name.'
+        ideal: Repeat the counted stars, light up the number you heard, and show which stars come next.
+        unexpected: Bring attention back to the total constellation recap, count one star aloud, and invite the child to keep going.
+        no_response: '[wait 2s] Name the first star in the whole constellation, say "one," and invite the child to say the next number.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `constellation_count_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a voice-only imaginary star-counting riddle and do not claim a constellation is displayed.'
   celebrate:
     runtime_instruction: Reveal the outcome caused by the child's saved turns and recap concrete choices.
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Constellation Star Count payoff or ignores how the saved counting or naming step turns connect.
       no_response: Child watches the Constellation Star Count reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's counting or naming step turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Constellation Star Count reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's counting or naming step turns, name one star group they counted, and invite a short reflection.
+      unexpected: Hold the Constellation Star Count reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Constellation Star Count board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

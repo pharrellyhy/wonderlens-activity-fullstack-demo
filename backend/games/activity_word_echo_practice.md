@@ -86,23 +86,23 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the echo player role, notices the starter cue, or names something connected to the first echo word.
       unexpected: Child asks for another game, starts the echo or recall before the Word Echo Practice mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Word Echo Practice title/trigger card without taking the echo player role yet.
+      no_response: Child watches the Word Echo Practice title prompt without taking the echo player role yet.
     ai_followups:
       ideal: Name the echo player role, connect it to the starter cue, and preview the first echo or recall.
       unexpected: Acknowledge the request, return to the Word Echo Practice promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Word Echo Practice role card and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the Word Echo Practice role and the first echo, then model one tiny in-frame response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Here is the rhythm: I say a little prompt, you echo it back, and we light up one step for each turn.'
     child_responses:
       ideal: The child agrees to the echo or recall loop for Word Echo Practice or asks for the easiest version.
       unexpected: Child tries to skip the first echo word, ignore the required rule/asset, or count a different kind of response.
       no_response: Child looks at the Word Echo Practice rule strip without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Word Echo Practice loop as AI prompt, child echo or recall, saved token, and show the first response slot.
+      ideal: Restate the Word Echo Practice loop as AI prompt, child echo or recall, lit step, and show the first response slot.
       unexpected: Keep the rule tied to the first echo word, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Word Echo Practice rule in one sentence and ask for yes, a point, or the first chance to echo or recall the prompt.'
+      no_response: '[wait 2s] Read the Word Echo Practice rhythm in one sentence and ask for a yes or the first chance to echo or recall the prompt.'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `word_echo_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, run the activity voice-only and do not claim the screen is showing a word.'
   rounds:
   - round_number: 1
@@ -114,7 +114,7 @@ source_dialogue:
         unexpected: Child changes the first echo word word/fact, guesses randomly, or turns the echo into unrelated talk.
         no_response: Child listens to the first echo word prompt without echoing, answering, or choosing a smaller repeat.
       ai_followups:
-        ideal: Repeat back the remembered part, mark the memory token, and cue the next echo or recall.
+        ideal: Repeat back the remembered part, light up the memory step, and cue the next echo or recall.
         unexpected: Slow the first echo word into smaller pieces, accept a partial recall, and ask for just the next word or sound.
         no_response: '[wait 2s] Say the first echo word prompt in two short beats, then invite the child to copy one beat.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `word_echo_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, run the activity voice-only and do not claim the screen is showing a word.'
@@ -127,7 +127,7 @@ source_dialogue:
         unexpected: Child changes the echo variation word/fact, guesses randomly, or turns the echo into unrelated talk.
         no_response: Child listens to the echo variation prompt without echoing, answering, or choosing a smaller repeat.
       ai_followups:
-        ideal: Repeat back the remembered part, mark the memory token, and cue the next echo or recall.
+        ideal: Repeat back the remembered part, light up the memory step, and cue the next echo or recall.
         unexpected: Slow the echo variation into smaller pieces, accept a partial recall, and ask for just the next word or sound.
         no_response: '[wait 2s] Say the echo variation prompt in two short beats, then invite the child to copy one beat.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `word_echo_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, run the activity voice-only and do not claim the screen is showing a word.'
@@ -140,7 +140,7 @@ source_dialogue:
         unexpected: Child changes the remembered echo pair word/fact, guesses randomly, or turns the echo into unrelated talk.
         no_response: Child listens to the remembered echo pair prompt without echoing, answering, or choosing a smaller repeat.
       ai_followups:
-        ideal: Repeat back the remembered part, mark the memory token, and cue the next echo or recall.
+        ideal: Repeat back the remembered part, light up the memory step, and cue the next echo or recall.
         unexpected: Slow the remembered echo pair into smaller pieces, accept a partial recall, and ask for just the next word or sound.
         no_response: '[wait 2s] Say the remembered echo pair prompt in two short beats, then invite the child to copy one beat.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `word_echo_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, run the activity voice-only and do not claim the screen is showing a word.'
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Word Echo Practice payoff or ignores how the saved echo or recall turns connect.
       no_response: Child watches the Word Echo Practice reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's echo or recall turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Word Echo Practice reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's echo or recall turns, name one concrete saved echo, and invite a short reflection.
+      unexpected: Hold the Word Echo Practice reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Word Echo Practice board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

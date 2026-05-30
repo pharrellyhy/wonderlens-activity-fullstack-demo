@@ -86,23 +86,23 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the feeling helper role, notices the starter cue, or names something connected to the visible face or body cue.
       unexpected: Child asks for another game, starts the kind response before the Emotion Reader mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Emotion Reader title/trigger card without taking the feeling helper role yet.
+      no_response: Child watches the Emotion Reader opening moment without taking the feeling helper role yet.
     ai_followups:
       ideal: Name the feeling helper role, connect it to the starter cue, and preview the first kind response.
       unexpected: Acknowledge the request, return to the Emotion Reader promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Emotion Reader role card and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the Emotion Reader feeling helper role and the first cue, then model one tiny gentle response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Here is how it goes: I share a cue, you choose one kind response, and we save one for each turn.'
     child_responses:
       ideal: The child agrees to the kind response loop for Emotion Reader or asks for the easiest version.
       unexpected: Child tries to skip the visible face or body cue, ignore the required rule/asset, or count a different kind of response.
-      no_response: Child looks at the Emotion Reader rule strip without confirming how to start the first turn.
+      no_response: Child looks at the Emotion Reader rule without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Emotion Reader loop as AI prompt, child kind response, saved token, and show the first response slot.
+      ideal: Restate the Emotion Reader loop as a shared cue, a child kind response, and a saved turn, then show the first response slot.
       unexpected: Keep the rule tied to the visible face or body cue, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Emotion Reader rule in one sentence and ask for yes, a point, or the first chance to choose a kind response.'
+      no_response: '[wait 2s] Say the Emotion Reader rule in one sentence and ask for yes, or the first chance to choose a kind response.'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `emotion_expression_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a story description of a character''s visible cues and avoid claiming the screen shows a face.'
   rounds:
   - round_number: 1
@@ -114,10 +114,10 @@ source_dialogue:
         unexpected: Child judges the person/object, ignores the visible face or body cue cue, or offers help that does not fit the need.
         no_response: Child watches the visible face or body cue cue without naming a feeling, need, or helpful action.
       ai_followups:
-        ideal: Connect the cue to the caring choice, save the kindness token, and show the calmer or helped state.
-        unexpected: Reframe without judging, point to the cue for the visible face or body cue, and offer two gentle help choices.
+        ideal: Connect the cue to the caring choice, save the kindness for this turn, and show the calmer or helped state.
+        unexpected: Reframe without judging, name the cue for the visible face or body cue, and offer two gentle help choices.
         no_response: '[wait 2s] Model one caring sentence for the visible face or body cue, then ask the child to choose a feeling or help action.'
-      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `emotion_expression_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a story description of a character''s visible cues and avoid claiming the screen shows a face.'
+      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `emotion_expression_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a story description of a character''s visible cues and avoid claiming the screen shows a face. Do not ask the child to point, tap, or touch the screen.'
   - round_number: 2
     source_contract:
       runtime_instruction: Keep the same source frame and ask for a second care turn with a small variation.
@@ -127,10 +127,10 @@ source_dialogue:
         unexpected: Child judges the person/object, ignores the possible feeling cue, or offers help that does not fit the need.
         no_response: Child watches the possible feeling cue without naming a feeling, need, or helpful action.
       ai_followups:
-        ideal: Connect the cue to the caring choice, save the kindness token, and show the calmer or helped state.
-        unexpected: Reframe without judging, point to the cue for the possible feeling, and offer two gentle help choices.
+        ideal: Connect the cue to the caring choice, save the kindness for this turn, and show the calmer or helped state.
+        unexpected: Reframe without judging, name the cue for the possible feeling, and offer two gentle help choices.
         no_response: '[wait 2s] Model one caring sentence for the possible feeling, then ask the child to choose a feeling or help action.'
-      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `emotion_expression_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a story description of a character''s visible cues and avoid claiming the screen shows a face.'
+      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `emotion_expression_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a story description of a character''s visible cues and avoid claiming the screen shows a face. Do not ask the child to point, tap, or touch the screen.'
   - round_number: 3
     source_contract:
       runtime_instruction: Ask the child to recap, show, choose, or explain the result so the source action has closure.
@@ -140,10 +140,10 @@ source_dialogue:
         unexpected: Child judges the person/object, ignores the kind help choice cue, or offers help that does not fit the need.
         no_response: Child watches the kind help choice cue without naming a feeling, need, or helpful action.
       ai_followups:
-        ideal: Connect the cue to the caring choice, save the kindness token, and show the calmer or helped state.
-        unexpected: Reframe without judging, point to the cue for the kind help choice, and offer two gentle help choices.
+        ideal: Connect the cue to the caring choice, save the kindness for this turn, and show the calmer or helped state.
+        unexpected: Reframe without judging, name the cue for the kind help choice, and offer two gentle help choices.
         no_response: '[wait 2s] Model one caring sentence for the kind help choice, then ask the child to choose a feeling or help action.'
-      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `emotion_expression_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a story description of a character''s visible cues and avoid claiming the screen shows a face.'
+      screen: 'Shows the active round token, child response slot, and source-intent cue. Use `emotion_expression_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use a story description of a character''s visible cues and avoid claiming the screen shows a face. Do not ask the child to point, tap, or touch the screen.'
   celebrate:
     runtime_instruction: Reveal the outcome caused by the child's saved turns and recap concrete choices.
     example_ai_line: 'Your turns made the board light up: first we started, then we tried, then we finished the mission.'
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Emotion Reader payoff or ignores how the saved kind response turns connect.
       no_response: Child watches the Emotion Reader reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's kind response turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Emotion Reader reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's kind response turns, name one concrete saved turn, and invite a short reflection.
+      unexpected: Hold the Emotion Reader reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Emotion Reader board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

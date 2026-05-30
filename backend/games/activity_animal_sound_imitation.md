@@ -86,63 +86,63 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the animal voice performer role, notices the starter cue, or names something connected to the first animal voice.
       unexpected: Child asks for another game, starts the safe sound or movement before the Animal Sound Imitation mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Animal Sound Imitation title/trigger card without taking the animal voice performer role yet.
+      no_response: Child watches the Animal Sound Imitation opening moment without taking the animal voice performer role yet.
     ai_followups:
       ideal: Name the animal voice performer role, connect it to the starter cue, and preview the first safe sound or movement.
       unexpected: Acknowledge the request, return to the Animal Sound Imitation promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Animal Sound Imitation role card and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the Animal Sound Imitation role and the first animal, then model one tiny in-frame response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Here is how we play: I invite, you try a safe animal voice, and we save one little turn each time.'
     child_responses:
       ideal: The child agrees to the safe sound or movement loop for Animal Sound Imitation or asks for the easiest version.
       unexpected: Child tries to skip the first animal voice, ignore the required rule/asset, or count a different kind of response.
-      no_response: Child looks at the Animal Sound Imitation rule strip without confirming how to start the first turn.
+      no_response: Child looks at the Animal Sound Imitation rule without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Animal Sound Imitation loop as AI prompt, child safe sound or movement, saved token, and show the first response slot.
+      ideal: Restate the Animal Sound Imitation loop as AI invite, child safe sound or movement, saved turn, and show the first response slot.
       unexpected: Keep the rule tied to the first animal voice, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Animal Sound Imitation rule in one sentence and ask for yes, a point, or the first chance to try a safe sound or movement.'
+      no_response: '[wait 2s] Say the Animal Sound Imitation rule in one sentence and ask for a yes or the first chance to try a safe sound or movement.'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `animal_sound_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, the AI describes the animal by voice and must not claim the screen is showing a picture.'
   rounds:
   - round_number: 1
     source_contract:
-      runtime_instruction: 'Preserve the asset promise: the highlighted first card is rabbit. Ask for a tiny rabbit sniff or quiet rabbit sound, and do not switch to a different animal.'
-      example_ai_line: 'The rabbit card is up first. Can you try one tiny rabbit sniff at a safe volume?'
+      runtime_instruction: 'Preserve the asset promise: the highlighted first animal is rabbit. Invite a tiny rabbit sniff or quiet rabbit sound, and do not switch to a different animal.'
+      example_ai_line: 'First up is the rabbit. Would you like to try one tiny rabbit sniff at a safe volume?'
       child_responses:
         ideal: The child tries the first animal voice with safe volume, space, or body control.
         unexpected: Child makes the first animal voice too rough/loud, switches to an unrelated performance, or proposes an unsafe movement.
         no_response: Child watches the first animal voice cue without moving, sounding, or choosing a smaller version.
       ai_followups:
-        ideal: Mirror the safe part of the first animal voice, save the performance token, and cue the next variation.
+        ideal: Mirror the safe part of the first animal voice, save the performance turn, and cue the next variation.
         unexpected: Name the safety boundary, shrink the action to a safer version, and invite one controlled try for the first animal voice.
-        no_response: '[wait 2s] Demonstrate the smallest safe version of the first animal voice, then ask the child to copy just that part.'
+        no_response: '[wait 2s] Demonstrate the smallest safe version of the first animal voice, then invite the child to copy just that part.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `animal_sound_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, the AI describes the animal by voice and must not claim the screen is showing a picture.'
   - round_number: 2
     source_contract:
-      runtime_instruction: 'Keep the asset promise: the second card is cat meow. Ask for a meow with one soft/loud or sleepy/happy variation, and do not keep talking about the rabbit or puppy.'
-      example_ai_line: Now the cat meow card is highlighted. Can your meow sound sleepy or soft?
+      runtime_instruction: 'Keep the asset promise: the second animal is cat meow. Invite a meow with one soft/loud or sleepy/happy variation, and do not keep talking about the rabbit or puppy.'
+      example_ai_line: Now it is the cat meow. Could your meow sound sleepy or soft?
       child_responses:
         ideal: The child tries the changed animal voice or volume with safe volume, space, or body control.
         unexpected: Child makes the changed animal voice or volume too rough/loud, switches to an unrelated performance, or proposes an unsafe movement.
         no_response: Child watches the changed animal voice or volume cue without moving, sounding, or choosing a smaller version.
       ai_followups:
-        ideal: Mirror the safe part of the changed animal voice or volume, save the performance token, and cue the next variation.
+        ideal: Mirror the safe part of the changed animal voice or volume, save the performance turn, and cue the next variation.
         unexpected: Name the safety boundary, shrink the action to a safer version, and invite one controlled try for the changed animal voice or volume.
-        no_response: '[wait 2s] Demonstrate the smallest safe version of the changed animal voice or volume, then ask the child to copy just that part.'
+        no_response: '[wait 2s] Demonstrate the smallest safe version of the changed animal voice or volume, then invite the child to copy just that part.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `animal_sound_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, the AI describes the animal by voice and must not claim the screen is showing a picture.'
   - round_number: 3
     source_contract:
-      runtime_instruction: 'Keep the asset promise: the third card is puppy. Ask for one short friendly puppy line, and do not introduce another animal.'
-      example_ai_line: The puppy card is last. What is one friendly puppy line?
+      runtime_instruction: 'Keep the asset promise: the third animal is puppy. Invite one short friendly puppy line, and do not introduce another animal.'
+      example_ai_line: The puppy comes last. What is one friendly puppy line?
       child_responses:
         ideal: The child tries the favorite animal-role line with safe volume, space, or body control.
         unexpected: Child makes the favorite animal-role line too rough/loud, switches to an unrelated performance, or proposes an unsafe movement.
         no_response: Child watches the favorite animal-role line cue without moving, sounding, or choosing a smaller version.
       ai_followups:
-        ideal: Mirror the safe part of the favorite animal-role line, save the performance token, and cue the next variation.
+        ideal: Mirror the safe part of the favorite animal-role line, save the performance turn, and cue the next variation.
         unexpected: Name the safety boundary, shrink the action to a safer version, and invite one controlled try for the favorite animal-role line.
-        no_response: '[wait 2s] Demonstrate the smallest safe version of the favorite animal-role line, then ask the child to copy just that part.'
+        no_response: '[wait 2s] Demonstrate the smallest safe version of the favorite animal-role line, then invite the child to copy just that part.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `animal_sound_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, the AI describes the animal by voice and must not claim the screen is showing a picture.'
   celebrate:
     runtime_instruction: Reveal the outcome caused by the child's saved turns and recap concrete choices.
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Animal Sound Imitation payoff or ignores how the saved safe sound or movement turns connect.
       no_response: Child watches the Animal Sound Imitation reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's safe sound or movement turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Animal Sound Imitation reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's safe sound or movement turns, name one concrete saved turn, and invite a short reflection.
+      unexpected: Hold the Animal Sound Imitation reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Animal Sound Imitation board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

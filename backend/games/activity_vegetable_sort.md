@@ -86,29 +86,29 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the vegetable sorter role, notices the starter cue, or names something connected to the first vegetable group.
       unexpected: Child asks for another game, starts the sorting move before the Vegetable Sort mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Vegetable Sort title/trigger card without taking the vegetable sorter role yet.
+      no_response: Child watches the Vegetable Sort opening moment without taking the vegetable sorter role yet.
     ai_followups:
       ideal: Name the vegetable sorter role, connect it to the starter cue, and preview the first sorting move.
       unexpected: Acknowledge the request, return to the Vegetable Sort promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Vegetable Sort role card and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the Vegetable Sort role and the first vegetable group, then model one tiny in-frame response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Rule: I prompt, you try the activity action, and we save your idea for each turn.'
     child_responses:
       ideal: The child agrees to the sorting move loop for Vegetable Sort or asks for the easiest version.
       unexpected: Child tries to skip the first vegetable group, ignore the required rule/asset, or count a different kind of response.
       no_response: Child looks at the Vegetable Sort rule strip without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Vegetable Sort loop as AI prompt, child sorting move, saved token, and show the first response slot.
+      ideal: Restate the Vegetable Sort loop as AI prompt, child sorting move, saved idea, and show the first response slot.
       unexpected: Keep the rule tied to the first vegetable group, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Vegetable Sort rule in one sentence and ask for yes, a point, or the first chance to place one item by the rule.'
+      no_response: '[wait 2s] Read the Vegetable Sort rule in one sentence and ask for a yes or the first chance to place one item by the rule.'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `vegetable_sort_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, use photographed vegetables or a voice-only sorting prompt and do not claim cards are shown.'
   rounds:
   - round_number: 1
     source_contract:
-      runtime_instruction: 'Preserve the workbook promise: The child sorts vegetable cards or photographed vegetables by a visible or meaningful rule. Ask the child to group or organize in the first small turn.'
-      example_ai_line: 'Let us start: The child sorts vegetable cards or photographed vegetables by a visible or meaningful rule. What is your first try?'
+      runtime_instruction: 'Preserve the workbook promise: the child sorts the vegetables by a visible or meaningful rule. Invite the child to group or organize the vegetables in the first small turn.'
+      example_ai_line: 'Let us start by sorting these vegetables by a rule we can see. Which ones would you like to group together first?'
       child_responses:
         ideal: The child places or names an item according to the first vegetable group rule.
         unexpected: Child mixes rules for the first vegetable group, sorts by an invisible reason, or moves items without naming a grouping idea.
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Vegetable Sort payoff or ignores how the saved sorting move turns connect.
       no_response: Child watches the Vegetable Sort reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's sorting move turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Vegetable Sort reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's sorting move turns, name one concrete saved idea, and invite a short reflection.
+      unexpected: Hold the Vegetable Sort reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Vegetable Sort board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

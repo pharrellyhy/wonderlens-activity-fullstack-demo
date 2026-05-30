@@ -87,23 +87,23 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the story gate unlocker role, notices the starter cue, or names something connected to the moon door color challenge.
       unexpected: Child asks for another game, starts the story unlock response before the Story Challenge Unlock mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Story Challenge Unlock title/trigger card without taking the story gate unlocker role yet.
+      no_response: Child watches the Story Challenge Unlock opening moment without taking the story gate unlocker role yet.
     ai_followups:
       ideal: Name the story gate unlocker role, connect it to the starter cue, and preview the first story unlock response.
       unexpected: Acknowledge the request, return to the Story Challenge Unlock promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Story Challenge Unlock role card and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the Story Challenge Unlock role and the first moment, then model one tiny in-frame response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Here is how it goes: I share a story moment, you give one little answer, and a gate opens each turn.'
     child_responses:
       ideal: The child agrees to the story unlock response loop for Story Challenge Unlock or asks for the easiest version.
       unexpected: Child tries to skip the moon door color challenge, ignore the required rule/asset, or count a different kind of response.
       no_response: Child looks at the Story Challenge Unlock rule strip without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Story Challenge Unlock loop as AI prompt, child story unlock response, saved token, and show the first response slot.
+      ideal: Restate the Story Challenge Unlock loop as a story moment, the child's little answer, an opened gate, and invite the first response.
       unexpected: Keep the rule tied to the moon door color challenge, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Story Challenge Unlock rule in one sentence and ask for yes, a point, or the first chance to give the story unlock response.'
+      no_response: '[wait 2s] Say the Story Challenge Unlock idea in one sentence and ask, would you like to give the first little answer?'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `story_unlock_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If unlock UI is unavailable, use voice-only story choices and do not claim a screen element has unlocked.'
   rounds:
   - round_number: 1
@@ -115,9 +115,9 @@ source_dialogue:
         unexpected: Child answers before the moon-door story pause, gives an unrelated color/object, or tries to open the door without the color challenge.
         no_response: Child watches the locked moon door without naming or showing a moon-color item.
       ai_followups:
-        ideal: Open the moon door, narrate the fox stepping through, and save the color token.
+        ideal: Open the moon door, narrate the fox stepping through, and keep the color saved.
         unexpected: Return to the moon-door cliffhanger, repeat the allowed colors, and ask for one named or shown color.
-        no_response: '[wait 2s] Point to the moon door colors, model "blue opens it," and invite the child to say or show one color.'
+        no_response: '[wait 2s] Name the moon door colors, model "blue opens it," and invite the child to say or show one color.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `story_unlock_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If unlock UI is unavailable, use voice-only story choices and do not claim a screen element has unlocked.'
   - round_number: 2
     source_contract:
@@ -126,9 +126,9 @@ source_dialogue:
       child_responses:
         ideal: The child makes a soft owl sound or says a gentle hello to wake the bridge.
         unexpected: Child shouts, switches animals, or talks about the bridge without trying the owl sound challenge.
-        no_response: Child stays on the sleepy owl bridge card without making a sound or greeting.
+        no_response: Child stays at the sleepy owl bridge without making a sound or greeting.
       ai_followups:
-        ideal: Wake the owl bridge softly, narrate the fox crossing, and save the sound token.
+        ideal: Wake the owl bridge softly, narrate the fox crossing, and keep the sound saved.
         unexpected: Keep the sleepy-owl scene, lower the volume target, and offer "hoo-hoo" or "hello owl" as the two safe responses.
         no_response: '[wait 2s] Make one quiet "hoo-hoo" example, then ask the child to copy it or whisper hello.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `story_unlock_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If unlock UI is unavailable, use voice-only story choices and do not claim a screen element has unlocked.'
@@ -141,7 +141,7 @@ source_dialogue:
         unexpected: Child answers with a different word, asks to skip the word gate, or treats the page as a quiz answer instead of an echo.
         no_response: Child looks at the star-word page without repeating the word.
       ai_followups:
-        ideal: Let the star page glow, repeat the echoed word once in the story, and save the word token.
+        ideal: Let the star page glow, repeat the echoed word once in the story, and keep the word saved.
         unexpected: Stay in the final gate scene, say the target word again slowly, and accept a tiny echo attempt.
         no_response: '[wait 2s] Say "bon-jour" in two beats and invite the child to copy just one beat if needed.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `story_unlock_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If unlock UI is unavailable, use voice-only story choices and do not claim a screen element has unlocked.'
@@ -153,8 +153,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Story Challenge Unlock payoff or ignores how the saved story unlock response turns connect.
       no_response: Child watches the Story Challenge Unlock reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's story unlock response turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Story Challenge Unlock reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's story unlock response turns, name one concrete saved moment, and invite a short reflection.
+      unexpected: Hold the Story Challenge Unlock reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Story Challenge Unlock board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

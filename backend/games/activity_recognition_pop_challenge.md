@@ -90,17 +90,17 @@ source_dialogue:
     ai_followups:
       ideal: Name the quick match spotter role, connect it to the starter cue, and preview the first comparison choice.
       unexpected: Acknowledge the request, return to the Recognition Pop Challenge promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Name the Recognition Pop Challenge role badge and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the Recognition Pop Challenge role and the first picture, then gently model one tiny response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Here is how it works: I ask, you tell me your match, and we light up one spot for each turn.'
     child_responses:
       ideal: The child agrees to the comparison choice loop for Recognition Pop Challenge or asks for the easiest version.
       unexpected: Child tries to skip the first target picture, ignore the required rule/asset, or count a different kind of response.
       no_response: Child looks at the Recognition Pop Challenge rule strip without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Recognition Pop Challenge loop as AI prompt, child comparison choice, saved token, and show the first response slot.
+      ideal: Restate the Recognition Pop Challenge flow as AI asks, child names a match, one spot lights up, and show the first response slot.
       unexpected: Keep the rule tied to the first target picture, name the supported fallback, and offer one allowed first turn.
       no_response: '[wait 2s] Read the Recognition Pop Challenge rule in one sentence and ask for yes or one word about the visible options.'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `recognition_challenge_cards_01` in `center_display_area` during prod.step_2; prod.step_3.round_1-3; fallback: If tap UI or state timing is unavailable, block at Phase 0 rather than converting to dialogue.'
@@ -112,7 +112,7 @@ source_dialogue:
       child_responses:
         ideal: The child compares the visible options for the first target picture and chooses or explains one.
         unexpected: Child responds to only one side of the first target picture, changes the comparison rule, or talks about an option that is not visible.
-        no_response: Child looks between the first target picture options without choosing, pointing, or naming a difference.
+        no_response: Child looks between the first target picture options without choosing or naming a difference.
       ai_followups:
         ideal: Name the comparison evidence, save the selected option, and keep the next comparison state clear.
         unexpected: Restate the two visible options and the comparison lens for the first target picture, then ask for the matching picture name or a short description.
@@ -120,12 +120,12 @@ source_dialogue:
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `recognition_challenge_cards_01` in `center_display_area` during prod.step_2; prod.step_3.round_1-3; fallback: If tap UI or state timing is unavailable, block at Phase 0 rather than converting to dialogue.'
   - round_number: 2
     source_contract:
-      runtime_instruction: 'Keep the asset promise: the target remains a red apple and the close distractors are strawberry and cherries. Ask for a typed comparison, not a tap or point.'
+      runtime_instruction: 'Keep the asset promise: the target remains a red apple and the close distractors are strawberry and cherries. Invite the child to tell you their comparison in words.'
       example_ai_line: 'Now compare red apple with strawberry and cherries. Which one is the best match, and what looks different?'
       child_responses:
         ideal: The child compares the visible options for the new target among distractors and chooses or explains one.
         unexpected: Child responds to only one side of the new target among distractors, changes the comparison rule, or talks about an option that is not visible.
-        no_response: Child looks between the new target among distractors options without choosing, pointing, or naming a difference.
+        no_response: Child looks between the new target among distractors options without choosing or naming a difference.
       ai_followups:
         ideal: Name the comparison evidence, save the selected option, and keep the next comparison state clear.
         unexpected: Restate the two visible options and the comparison lens for the new target among distractors, then ask for the matching picture name or a short description.
@@ -138,7 +138,7 @@ source_dialogue:
       child_responses:
         ideal: The child compares the visible options for the final match rule and chooses or explains one.
         unexpected: Child responds to only one side of the final match rule, changes the comparison rule, or talks about an option that is not visible.
-        no_response: Child looks between the final match rule options without choosing, pointing, or naming a difference.
+        no_response: Child looks between the final match rule options without choosing or naming a difference.
       ai_followups:
         ideal: Name the comparison evidence, save the selected option, and keep the next comparison state clear.
         unexpected: Restate the two visible options and the comparison lens for the final match rule, then ask for the matching picture name or a short description.
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Recognition Pop Challenge payoff or ignores how the saved comparison choice turns connect.
       no_response: Child watches the Recognition Pop Challenge reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's comparison choice turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Recognition Pop Challenge reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's comparison choice turns, name one concrete saved match, and invite a short reflection.
+      unexpected: Hold the Recognition Pop Challenge reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Recognition Pop Challenge board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

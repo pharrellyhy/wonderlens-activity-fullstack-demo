@@ -86,23 +86,23 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the pretend trip planner role, notices the starter cue, or names something connected to the pack choice.
       unexpected: Child asks for another game, starts the plan or prediction before the Travel Planner mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Travel Planner title/trigger card without taking the pretend trip planner role yet.
+      no_response: Child watches the opening Travel Planner moment without taking the pretend trip planner role yet.
     ai_followups:
       ideal: Name the pretend trip planner role, connect it to the starter cue, and preview the first plan or prediction.
       unexpected: Acknowledge the request, return to the Travel Planner promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Travel Planner role card and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the Travel Planner role and the first small plan, then model one tiny in-frame response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Rule: I share a prompt, you try the activity, and we save one turn each time.'
     child_responses:
       ideal: The child agrees to the plan or prediction loop for Travel Planner or asks for the easiest version.
       unexpected: Child tries to skip the pack choice, ignore the required rule/asset, or count a different kind of response.
       no_response: Child looks at the Travel Planner rule strip without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Travel Planner loop as AI prompt, child plan or prediction, saved token, and show the first response slot.
+      ideal: Restate the Travel Planner loop as AI prompt, child plan or prediction, saved turn, and show the first response slot.
       unexpected: Keep the rule tied to the pack choice, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Travel Planner rule in one sentence and ask for yes, a point, or the first chance to make a plan or prediction.'
+      no_response: '[wait 2s] Read the Travel Planner rule in one sentence and ask for yes or the first chance to make a plan or prediction.'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `travel_planning_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If cards are unavailable, run the planning conversation by voice only.'
   rounds:
   - round_number: 1
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Travel Planner payoff or ignores how the saved plan or prediction turns connect.
       no_response: Child watches the Travel Planner reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's plan or prediction turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Travel Planner reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's plan or prediction turns, name one concrete saved turn, and invite a short reflection.
+      unexpected: Hold the Travel Planner reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Travel Planner board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

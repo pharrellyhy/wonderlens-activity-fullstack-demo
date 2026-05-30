@@ -86,23 +86,23 @@ source_dialogue:
     child_responses:
       ideal: The child accepts the picture clue detective role, notices the starter cue, or names something connected to the first visible clue.
       unexpected: Child asks for another game, starts the clue guess before the Partial Reveal Guess mission is framed, or follows an unrelated topic.
-      no_response: Child watches the Partial Reveal Guess title/trigger card without taking the picture clue detective role yet.
+      no_response: Child watches the Partial Reveal Guess opening moment without taking the picture clue detective role yet.
     ai_followups:
       ideal: Name the picture clue detective role, connect it to the starter cue, and preview the first clue guess.
       unexpected: Acknowledge the request, return to the Partial Reveal Guess promise, and offer the smallest supported first action.
-      no_response: '[wait 2s] Point to the Partial Reveal Guess role card and first token, then model one tiny in-frame response.'
+      no_response: '[wait 2s] Name the picture clue detective role and the first clue, then model one tiny in-frame response.'
     screen: Shows title, child role, source trigger, and empty progress tokens.
   transition:
     runtime_instruction: Explain the rule as an action loop and name any required asset or honest fallback.
-    example_ai_line: 'Rule: I prompt, you try the activity action, and we save one token for each turn.'
+    example_ai_line: 'Rule: I share a clue, you make one guess, and we light up one step of the mystery for each turn.'
     child_responses:
       ideal: The child agrees to the clue guess loop for Partial Reveal Guess or asks for the easiest version.
       unexpected: Child tries to skip the first visible clue, ignore the required rule/asset, or count a different kind of response.
       no_response: Child looks at the Partial Reveal Guess rule strip without confirming how to start the first turn.
     ai_followups:
-      ideal: Restate the Partial Reveal Guess loop as AI prompt, child clue guess, saved token, and show the first response slot.
+      ideal: Restate the Partial Reveal Guess loop as a clue from me, a guess from you, one mystery step lit up, and show the first response slot.
       unexpected: Keep the rule tied to the first visible clue, name the supported fallback, and offer one allowed first turn.
-      no_response: '[wait 2s] Read the Partial Reveal Guess rule in one sentence and ask for yes, a point, or the first chance to make a clue-based guess.'
+      no_response: '[wait 2s] Read the Partial Reveal Guess rule in one sentence and ask for a yes or the first chance to make a clue-based guess.'
     screen: 'Shows the rule strip, current round token, and asset/fallback chip. Use `partial_reveal_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If partial cards are unavailable, switch to a voice-only partial-clue riddle and do not claim the screen is showing a picture.'
   rounds:
   - round_number: 1
@@ -116,7 +116,7 @@ source_dialogue:
       ai_followups:
         ideal: Tie the guess to the visible clue, reveal whether that clue fits, and set up the next evidence step.
         unexpected: Name the clue in the first visible clue, separate it from one distracting detail, and ask for one maybe-guess.
-        no_response: '[wait 2s] Point to one visible clue for the first visible clue, model a "maybe it is" guess, and invite a copy or new guess.'
+        no_response: '[wait 2s] Name one visible clue from the first visible clue, model a "maybe it is" guess, and invite a copy or new guess.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `partial_reveal_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If partial cards are unavailable, switch to a voice-only partial-clue riddle and do not claim the screen is showing a picture.'
   - round_number: 2
     source_contract:
@@ -129,7 +129,7 @@ source_dialogue:
       ai_followups:
         ideal: Tie the guess to the visible clue, reveal whether that clue fits, and set up the next evidence step.
         unexpected: Name the clue in the second revealed clue, separate it from one distracting detail, and ask for one maybe-guess.
-        no_response: '[wait 2s] Point to one visible clue for the second revealed clue, model a "maybe it is" guess, and invite a copy or new guess.'
+        no_response: '[wait 2s] Name one visible clue from the second revealed clue, model a "maybe it is" guess, and invite a copy or new guess.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `partial_reveal_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If partial cards are unavailable, switch to a voice-only partial-clue riddle and do not claim the screen is showing a picture.'
   - round_number: 3
     source_contract:
@@ -142,7 +142,7 @@ source_dialogue:
       ai_followups:
         ideal: Tie the guess to the visible clue, reveal whether that clue fits, and set up the next evidence step.
         unexpected: Name the clue in the final whole-object guess, separate it from one distracting detail, and ask for one maybe-guess.
-        no_response: '[wait 2s] Point to one visible clue for the final whole-object guess, model a "maybe it is" guess, and invite a copy or new guess.'
+        no_response: '[wait 2s] Name one visible clue from the final whole-object guess, model a "maybe it is" guess, and invite a copy or new guess.'
       screen: 'Shows the active round token, child response slot, and source-intent cue. Use `partial_reveal_cards_01` in `center_card_area` during prod.step_2; prod.step_3.round_1-3; fallback: If partial cards are unavailable, switch to a voice-only partial-clue riddle and do not claim the screen is showing a picture.'
   celebrate:
     runtime_instruction: Reveal the outcome caused by the child's saved turns and recap concrete choices.
@@ -152,8 +152,8 @@ source_dialogue:
       unexpected: Child asks to restart before seeing the Partial Reveal Guess payoff or ignores how the saved clue guess turns connect.
       no_response: Child watches the Partial Reveal Guess reveal without commenting on the saved turns.
     ai_followups:
-      ideal: Tie the reveal to the child's clue guess turns, name one concrete saved token, and invite a short reflection.
-      unexpected: Hold the Partial Reveal Guess reveal, point to the saved turn that matters, and ask what changed because of it.
+      ideal: Tie the reveal to the child's clue guess turns, name one concrete saved turn, and invite a short reflection.
+      unexpected: Hold the Partial Reveal Guess reveal, name the saved turn that matters, and ask what changed because of it.
       no_response: '[wait 2s] Narrate one before/after change from the Partial Reveal Guess board, then offer two favorite-turn choices.'
     screen: Shows a final board with saved turns, asset/fallback note when relevant, and source-specific payoff.
   closing:

@@ -1,6 +1,26 @@
 # Session Handoff
 
-Last updated: 2026-05-29
+Last updated: 2026-05-30
+
+---
+
+## Guided Drawing Beat Art Regeneration
+
+**Problem**: The Guided Drawing pilot needed the first three real flat-Nordic scene beats generated in the approved WonderLens activity asset style: intro, rules, and round 1.
+
+**Solution**: Used Codex built-in image generation with the `style-reference-flat-nordic.png` target to create three separate full-bleed square PNG scenes, resized them to 512x512, and copied them into the Guided Drawing activity asset folder.
+
+**Edits**:
+- `frontend/public/activity-assets/activity_guided_drawing/intro.png` — Guided Artist child waving at a desk with blank paper.
+- `frontend/public/activity-assets/activity_guided_drawing/rules.png` — hand drawing one pencil mark with a muted-sage checkmark.
+- `frontend/public/activity-assets/activity_guided_drawing/round_1.png` — centered paper with one large pencil circle and a colored pencil.
+
+**NOT Changed**: Other pilot assets, manifest metadata, source recipes, prompts, and the unrelated uncommitted Career/Phoneme image edits in this worktree.
+
+**Verification**:
+- Final PNG inspection confirmed all three files are 512x512 PNGs with no text, circular mask, lens border, or combined multi-image source.
+- `scripts/build_activity_screen_assets.py` ran cleanly in a temporary copy to avoid overwriting unrelated dirty image assets; manifest asset-path validation passed there.
+- `cd frontend && npm run test -- activityAssets.test.js` — 13 passed.
 
 ---
 
@@ -249,40 +269,3 @@ Last updated: 2026-05-29
 - `uv run python scripts/run_activity_text_smoke.py --timeout 120` — 12 passed, 0 failed.
 - Browser/Playwright verification at `http://127.0.0.1:5173/?view=activities` captured `/tmp/wonderlens-browser-audit/01_activity_layout.png`, `/tmp/wonderlens-browser-audit/03_guided_drawing_build.png`, and `/tmp/wonderlens-browser-audit/04_phoneme_selection.png`; confirmed idle exit count 0, active exit count 1, Cat3 Done/Help build controls visible on the device, Cat5 three screen-selection hit targets visible with text input disabled, and no console errors.
 - `git diff --check` — passed.
-
----
-
-## Metadata-Driven Device Screen Layout Renderer
-
-**Problem**: The device lens still treated each activity beat as one full-screen bitmap. The UI design guidance allows one, two, or three-plus visual assets inside the circular screen, with circle and 3:4 rectangle treatments, while keeping the real device screen touchless and controlled by the side scroll rocker plus start/select button.
-
-**Solution**: Added a normalized `screenLayoutForBeat` asset contract and wired it into the standalone activity device. Beats without metadata still render as one full-screen asset. Beats with metadata can now render `single`, `choice2`, `choice3`, or `carousel` layouts, with visual-only circle/3:4 item cards, selected-state styling, and safe-area defaults matching the 480/380/300 spec. Added starter manifest metadata for Phoneme Treasure Hunt carousel, Guided Drawing single-screen, and Recognition Pop two-choice layouts, using existing assets as placeholders until the next activity-specific regeneration pass.
-
-**Edits**:
-- `frontend/src/activityGame/activityAssets.js` — added `beatForId` and `screenLayoutForBeat` normalization.
-- `frontend/src/activityGame/ActivityLens.jsx`, `WonderLensDevice.jsx`, `ActivityGameApp.jsx` — pass and render metadata-driven screen layouts inside the circular lens.
-- `frontend/src/index.css` — added the reusable screen composition styles for single, two-choice, three-choice, carousel, circle, rectangle, and selected states.
-- `frontend/public/activity-assets/activity-assets.manifest.json` — added the screen style metadata and representative per-beat layout metadata.
-- `frontend/tests/activityAssets.test.js`, `frontend/tests/WonderLensDevice.test.jsx` — added renderer and visual-only layout coverage.
-
-**Verification**:
-- `npm test -- --run tests/activityAssets.test.js tests/WonderLensDevice.test.jsx` — 11 passed.
-- `npm run build` — passed; Vite emitted the existing large chunk warning.
-- Chrome headless screenshot at `http://localhost:5173/?view=activities` rendered the screenshot-style layout, preserved device proportions, and loaded the device lens visual without a reachability issue.
-
----
-
-## Activity Layout, Cat3 Controls, and Asset Flow Alignment
-
-**Problem**: The standalone activity view had two `Exit activity` controls, still carried the earlier adjustable transcript-width toolbar, and no longer matched the preferred WonderLens Prototype layout. Cat3 Guided Drawing repeated the build-step card inside the device lens and used on-screen buttons even though the physical device screen should be touchless. Animal Sound Imitation also showed a fixed rabbit/cat/puppy asset sequence while the live dialogue could drift to a dog-only path; the same asset/dialogue mismatch risk existed for Recognition Pop and Partial Reveal because their assets are fixed but their recipes were still generic.
-
-**Solution**: Reworked `/?view=activities` into the screenshot-style frame: green top bar, activity list plus device preview, metrics row, and full-width transcript panel. The transcript-width toolbar is gone, leaving only the library `Exit activity` button during an active session. Cat3 now shows only a compact in-lens `Done`/`Help` selector, moves the highlight with the physical scroll rocker, and confirms with the green start/select button. The three asset-specific recipes now name the exact visible sequences: Animal Sound uses rabbit, cat meow, and puppy; Recognition Pop uses the red apple target with blue car, strawberry, cherries, and basketball distractors; Partial Reveal uses cat ears, cat paws, and cat face.
-
-**Verification**:
-- `npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx` — 10 passed.
-- `npm run build` — passed; Vite emitted the existing large chunk warning.
-- `uv run pytest backend/tests/test_activity_source_fidelity.py -q` — 4 passed.
-- Restarted backend from the feature worktree while sourcing `/Users/pharrelly/codebase/github/wonderlens-activity-fullstack-demo/backend/.env` and the Google credential JSON from the same backend root.
-- Live `POST /api/start-activity` for Animal Sound produced a rabbit/cat/puppy opener, and the first accepted turn asked for the rabbit sniff rather than dog-only dialogue.
-- Browser verification at `http://localhost:5173/?view=activities` confirmed the screenshot-style layout, single exit location, visual companion in the device lens, and tightened activity-list metadata.
-

@@ -180,7 +180,7 @@
           "src": "/activity-assets/activity_phoneme_treasure_hunt/synthesis.png",
           "usage": "synthesis",
           "layout": {
-            "mode": "picker",
+            "mode": "carousel",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -259,12 +259,139 @@
       "icon": "/activity-assets/activity_partial_reveal_guess/icon.png",
       "fallback_label": "Partial Reveal Guess",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_partial_reveal_guess/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_partial_reveal_guess/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_partial_reveal_guess/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_partial_reveal_guess/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_partial_reveal_guess/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_partial_reveal_guess/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_partial_reveal_guess/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_partial_reveal_guess/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_partial_reveal_guess/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_partial_reveal_guess/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_partial_reveal_guess/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_partial_reveal_guess/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_partial_reveal_guess/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_partial_reveal_guess/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_partial_reveal_guess/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_partial_reveal_guess/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_partial_reveal_guess/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_partial_reveal_guess/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_partial_reveal_guess/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_partial_reveal_guess/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -273,12 +400,139 @@
       "icon": "/activity-assets/activity_animal_sound_imitation/icon.png",
       "fallback_label": "Animal Sound Imitation",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_animal_sound_imitation/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_animal_sound_imitation/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_animal_sound_imitation/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_animal_sound_imitation/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_animal_sound_imitation/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_animal_sound_imitation/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_animal_sound_imitation/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_animal_sound_imitation/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_animal_sound_imitation/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_animal_sound_imitation/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_animal_sound_imitation/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_animal_sound_imitation/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_animal_sound_imitation/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_animal_sound_imitation/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_animal_sound_imitation/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_animal_sound_imitation/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_animal_sound_imitation/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_animal_sound_imitation/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_animal_sound_imitation/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_animal_sound_imitation/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -287,12 +541,139 @@
       "icon": "/activity-assets/activity_word_echo_practice/icon.png",
       "fallback_label": "Word Echo Practice",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_word_echo_practice/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_word_echo_practice/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_word_echo_practice/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_word_echo_practice/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_word_echo_practice/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_word_echo_practice/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_word_echo_practice/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_word_echo_practice/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_word_echo_practice/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_word_echo_practice/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_word_echo_practice/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_word_echo_practice/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_word_echo_practice/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_word_echo_practice/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_word_echo_practice/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_word_echo_practice/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_word_echo_practice/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_word_echo_practice/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_word_echo_practice/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_word_echo_practice/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -301,12 +682,139 @@
       "icon": "/activity-assets/activity_emotion_reader/icon.png",
       "fallback_label": "Emotion Reader",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_emotion_reader/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_emotion_reader/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_emotion_reader/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_emotion_reader/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_emotion_reader/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_emotion_reader/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_emotion_reader/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_emotion_reader/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_emotion_reader/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_emotion_reader/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_emotion_reader/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_emotion_reader/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_emotion_reader/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_emotion_reader/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_emotion_reader/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_emotion_reader/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_emotion_reader/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_emotion_reader/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_emotion_reader/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_emotion_reader/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -315,12 +823,139 @@
       "icon": "/activity-assets/activity_constellation_star_count/icon.png",
       "fallback_label": "Constellation Star Count",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_constellation_star_count/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_constellation_star_count/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_constellation_star_count/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_constellation_star_count/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_constellation_star_count/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_constellation_star_count/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_constellation_star_count/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_constellation_star_count/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_constellation_star_count/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_constellation_star_count/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_constellation_star_count/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_constellation_star_count/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_constellation_star_count/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_constellation_star_count/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_constellation_star_count/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_constellation_star_count/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_constellation_star_count/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_constellation_star_count/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_constellation_star_count/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_constellation_star_count/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -470,12 +1105,139 @@
       "icon": "/activity-assets/activity_vegetable_sort/icon.png",
       "fallback_label": "Vegetable Sort",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_vegetable_sort/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_vegetable_sort/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_vegetable_sort/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_vegetable_sort/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_vegetable_sort/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_vegetable_sort/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_vegetable_sort/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_vegetable_sort/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_vegetable_sort/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_vegetable_sort/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_vegetable_sort/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_vegetable_sort/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_vegetable_sort/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_vegetable_sort/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_vegetable_sort/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_vegetable_sort/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_vegetable_sort/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_vegetable_sort/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_vegetable_sort/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_vegetable_sort/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -484,12 +1246,139 @@
       "icon": "/activity-assets/activity_travel_planner/icon.png",
       "fallback_label": "Travel Planner",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_travel_planner/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_travel_planner/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_travel_planner/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_travel_planner/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_travel_planner/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_travel_planner/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_travel_planner/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_travel_planner/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_travel_planner/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_travel_planner/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_travel_planner/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_travel_planner/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_travel_planner/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_travel_planner/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_travel_planner/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_travel_planner/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_travel_planner/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_travel_planner/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_travel_planner/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_travel_planner/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -639,12 +1528,139 @@
       "icon": "/activity-assets/activity_story_challenge_unlock/icon.png",
       "fallback_label": "Story Challenge Unlock",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_story_challenge_unlock/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_story_challenge_unlock/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_story_challenge_unlock/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_story_challenge_unlock/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_story_challenge_unlock/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_story_challenge_unlock/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_story_challenge_unlock/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_story_challenge_unlock/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_story_challenge_unlock/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_story_challenge_unlock/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_story_challenge_unlock/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_story_challenge_unlock/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_story_challenge_unlock/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_story_challenge_unlock/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_story_challenge_unlock/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_story_challenge_unlock/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_story_challenge_unlock/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_story_challenge_unlock/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_story_challenge_unlock/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_story_challenge_unlock/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     },
     {
@@ -653,12 +1669,139 @@
       "icon": "/activity-assets/activity_recognition_pop_challenge/icon.png",
       "fallback_label": "Recognition Pop Challenge",
       "beats": [
-        { "id": "intro", "src": "/activity-assets/activity_recognition_pop_challenge/intro.png", "usage": "hook" },
-        { "id": "rules", "src": "/activity-assets/activity_recognition_pop_challenge/rules.png", "usage": "setup" },
-        { "id": "round_1", "src": "/activity-assets/activity_recognition_pop_challenge/round_1.png", "usage": "round" },
-        { "id": "round_2", "src": "/activity-assets/activity_recognition_pop_challenge/round_2.png", "usage": "round" },
-        { "id": "round_3", "src": "/activity-assets/activity_recognition_pop_challenge/round_3.png", "usage": "round" },
-        { "id": "recap", "src": "/activity-assets/activity_recognition_pop_challenge/recap.png", "usage": "closing" }
+        {
+          "id": "intro",
+          "src": "/activity-assets/activity_recognition_pop_challenge/intro.png",
+          "usage": "hook",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_recognition_pop_challenge/intro.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "rules",
+          "src": "/activity-assets/activity_recognition_pop_challenge/rules.png",
+          "usage": "setup",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_recognition_pop_challenge/rules.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_1",
+          "src": "/activity-assets/activity_recognition_pop_challenge/round_1.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_recognition_pop_challenge/round_1.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_2",
+          "src": "/activity-assets/activity_recognition_pop_challenge/round_2.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_recognition_pop_challenge/round_2.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "round_3",
+          "src": "/activity-assets/activity_recognition_pop_challenge/round_3.png",
+          "usage": "round",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_recognition_pop_challenge/round_3.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "celebrate",
+          "src": "/activity-assets/activity_recognition_pop_challenge/celebrate.png",
+          "usage": "celebration",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_recognition_pop_challenge/celebrate.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        },
+        {
+          "id": "closing",
+          "src": "/activity-assets/activity_recognition_pop_challenge/closing.png",
+          "usage": "closing",
+          "layout": {
+            "mode": "single",
+            "selection": "none",
+            "safeArea": {
+              "canvas": 480,
+              "safe": 380,
+              "center": 300
+            },
+            "background": {
+              "src": "/activity-assets/activity_recognition_pop_challenge/closing.png",
+              "fit": "cover"
+            },
+            "items": []
+          }
+        }
       ]
     }
   ]

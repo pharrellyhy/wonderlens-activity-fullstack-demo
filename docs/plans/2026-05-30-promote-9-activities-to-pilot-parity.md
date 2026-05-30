@@ -63,6 +63,15 @@ Replace each `icon.png` with on-style art (or derive from intro). Verify.
 ### Final
 Update HANDOFF.md + goal docs; run full suite + live smoke; self-confirm visuals via Playwright; commit. Art is human-gated for final sign-off but user authorized autonomous self-confirm this round.
 
+## PROGRESS (2026-05-30)
+- DONE + committed `7a600f7`: layout fix (bottom-pill crown + device fit + keyboard/chevron).
+- DONE + committed `45f4e0a`: device-word scrub for 9 md + fidelity REPRESENTATIVE promotion + this plan.
+- Asset pipeline proven: `scripts/gen_beat.sh` (race-safe Codex imagegen → 512² PNG). animal_sound: all 7 beats generated + on-style (verified). Other 8: beats generating via `/tmp/wl_prompts/gen_all8.sh` (bg task; serial; rate-limit retry). Scene descriptions in `/tmp/wl_prompts/scenes.json`, prompts composed by `/tmp/wl_prompts/compose.py`.
+- `scripts/promote_activity_manifest.py <id> [rounds]`: rewrites an activity's manifest entry to representative `single` scene layouts (intro,rules,round_1..N,celebrate,closing). animal_sound already promoted in working tree.
+- Decision: the 9 use `single`-mode scene layouts (like career pilot), NOT the build-script's aspirational carousel+crop design (crops don't match freely-generated art). Note divergence from build_activity_screen_assets.py.
+- FIXED pre-existing failure: phoneme synthesis manifest `picker`→`carousel` (matches build-script source line 238 + the touchless-goal test).
+- REMAINING: (1) finish 8-activity beat gen + verify contact sheets, regen failures; (2) run promote_activity_manifest.py for all 9; (3) add 9 to REPRESENTATIVE_ACTIVITY_IDS in tests/test_activity_text_game_asset_contract.py; (4) replace 9 icons (dedicated single-subject art or from a beat); (5) run asset-contract + frontend activityAssets + definitions/fidelity; (6) live smoke; (7) commit (art per-activity or one asset commit) + HANDOFF.
+
 ## Gotchas
 - Parallel Codex imagegen races on `~/.codex/generated_images` newest-dir → SERIALIZE or capture-by-diff.
 - Don't promote (contract change) until BOTH content + celebrate/closing art + layouts exist for that activity, or asset-contract test breaks.

@@ -14,6 +14,15 @@ REPRESENTATIVE_ACTIVITY_IDS = {
     "activity_career_decision_role_play",
     "activity_guided_drawing",
     "activity_phoneme_treasure_hunt",
+    "activity_animal_sound_imitation",
+    "activity_constellation_star_count",
+    "activity_emotion_reader",
+    "activity_partial_reveal_guess",
+    "activity_recognition_pop_challenge",
+    "activity_story_challenge_unlock",
+    "activity_travel_planner",
+    "activity_vegetable_sort",
+    "activity_word_echo_practice",
 }
 
 if str(BACKEND_DIR) not in sys.path:

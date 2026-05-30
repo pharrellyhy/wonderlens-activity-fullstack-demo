@@ -106,6 +106,12 @@ export default function CrownPicker({
 
   useEffect(() => stopMomentum, [stopMomentum]);
 
+  // Cancel any in-flight momentum the moment the picker is locked (e.g. a turn
+  // is pending) so detents stop draining onStep after selection.
+  useEffect(() => {
+    if (disabled) stopMomentum();
+  }, [disabled, stopMomentum]);
+
   return (
     <div className="crown-picker" data-testid="crown-picker" onWheel={handleWheel}>
       <ul
@@ -114,7 +120,7 @@ export default function CrownPicker({
         aria-label={label}
         aria-disabled={disabled ? 'true' : 'false'}
         aria-activedescendant={total ? `${PICKER_ID}-option-${focusedIndex}` : undefined}
-        tabIndex={-1}
+        tabIndex={disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
       >
         {items.map((item, itemIndex) => (

@@ -249,21 +249,6 @@ export default function ActivityGameApp() {
 
   const isDeviceOptionMode = showCat3Build || showCat5Selection;
   const sessionStatus = sessionFinished ? 'completed' : sessionActive ? 'active' : 'ready';
-  const handleScrollPrevious = showCat3Build
-    ? () => selectCat3Option(-1)
-    : showCat5Selection
-      ? () => selectCat5Item(-1)
-      : () => selectRelativeActivity(-1);
-  const handleScrollNext = showCat3Build
-    ? () => selectCat3Option(1)
-    : showCat5Selection
-      ? () => selectCat5Item(1)
-      : () => selectRelativeActivity(1);
-  const handlePrimaryAction = useCallback(() => {
-    if (showCat3Build) void confirmCat3Option();
-    else if (showCat5Selection) void confirmCat5Item();
-    else void handleStart();
-  }, [confirmCat3Option, confirmCat5Item, handleStart, showCat3Build, showCat5Selection]);
 
   const libraryItems = useMemo(
     () => activities.map((activity) => ({ id: activity.id, label: activity.name })),
@@ -294,6 +279,10 @@ export default function ActivityGameApp() {
     else if (showCat5Selection) void confirmCat5Item(focusedIndex);
     else void handleStart();
   }, [confirmCat3Option, confirmCat5Item, handleStart, showCat3Build, showCat5Selection]);
+
+  const handleScrollPrevious = useCallback(() => crownStep(-1), [crownStep]);
+  const handleScrollNext = useCallback(() => crownStep(1), [crownStep]);
+  const handlePrimaryAction = useCallback(() => crownConfirm(crownIndex), [crownConfirm, crownIndex]);
 
   return (
     <main className="activity-game">
@@ -354,7 +343,7 @@ export default function ActivityGameApp() {
             scrollDisabled={sessionActive && !isDeviceOptionMode}
             scrollPreviousLabel={isDeviceOptionMode ? 'Previous device option' : 'Previous activity'}
             scrollNextLabel={isDeviceOptionMode ? 'Next device option' : 'Next activity'}
-            scrollControlLabel={isDeviceOptionMode ? 'Pick' : 'Pick'}
+            scrollControlLabel="Pick"
             primaryLabel={isDeviceOptionMode ? 'Select' : 'Start'}
             primaryAriaLabel={isDeviceOptionMode ? 'Confirm selected device option' : 'Start activity'}
             primaryDisabled={isDeviceOptionMode ? loading || turnPending : sessionActive || loading || catalogLoading}

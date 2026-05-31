@@ -284,7 +284,7 @@ export default function ActivityGameApp() {
   const confirmCat1Choice = useCallback(async (itemIndex = activeCat1ChoiceIndex) => {
     const item = cat1ChoiceItems[itemIndex] || cat1ChoiceItems[0];
     if (!item || loading || turnPending) return;
-    await sendMessage(item.label || item.id);
+    await sendMessage(item.label || item.id, { isSelection: true });
   }, [activeCat1ChoiceIndex, cat1ChoiceItems, loading, sendMessage, turnPending]);
 
   const isDeviceOptionMode = showCat3Build || showCat5Selection || showCat1Choice;

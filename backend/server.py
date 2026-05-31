@@ -176,6 +176,7 @@ class TurnRequest(BaseModel):
     text: str = ""
     is_silent: bool = False
     photo_id: str | None = None
+    is_selection: bool = False
 
 
 class TTSRequest(BaseModel):
@@ -586,7 +587,9 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
 
     # Resolve the turn using unified turn handler
     result = await resolve_turn(
-        state, TurnInput(text=req.text, is_silent=req.is_silent, photo_id=req.photo_id), script_agent
+        state,
+        TurnInput(text=req.text, is_silent=req.is_silent, photo_id=req.photo_id, is_selection=req.is_selection),
+        script_agent
     )
 
     # DB logging based on result
@@ -659,7 +662,9 @@ async def turn_and_speak(req: TurnRequest) -> Response:
 
         # Resolve the turn using unified turn handler
         result = await resolve_turn(
-            state, TurnInput(text=req.text, is_silent=req.is_silent, photo_id=req.photo_id), script_agent
+            state,
+            TurnInput(text=req.text, is_silent=req.is_silent, photo_id=req.photo_id, is_selection=req.is_selection),
+            script_agent
         )
 
         # DB logging based on result

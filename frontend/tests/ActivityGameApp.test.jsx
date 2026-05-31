@@ -511,7 +511,7 @@ describe('ActivityGameApp', () => {
     fireEvent.keyDown(document.body, { key: 'ArrowDown' });
     fireEvent.click(selectButton);
 
-    expect(vi.mocked(sendTurn)).toHaveBeenCalledWith('cat1rp', 'Car', false);
+    expect(vi.mocked(sendTurn)).toHaveBeenCalledWith('cat1rp', 'Car', false, null, true);
     expect(await screen.findByText('Good looking!')).toBeTruthy();
   });
 

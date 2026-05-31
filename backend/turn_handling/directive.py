@@ -180,6 +180,27 @@ def _build_hook_confirmation_directive(state: SessionStateModel) -> TurnDirectiv
     )
 
 
+def _build_choice_selection_directive(selected_text: str) -> TurnDirective:
+    """Advance a Cat1 choice round when the child selects an option on the device.
+
+    The device picker confirms one option per round, so the selection is the
+    round's answer-of-record: acknowledge the pick and advance to the next round
+    instead of re-asking. The live speaker still phrases the acknowledgement.
+    """
+    label = (selected_text or "").strip() or "that one"
+    return TurnDirective(
+        action="advance",
+        reasoning="Child selected an option on the device; record it and advance to the next round.",
+        response_direction=(
+            f"The child just chose '{label}' on the device. In one short, warm sentence, celebrate that "
+            "specific choice, then lead into the next part of the activity. Do NOT ask them to choose again "
+            "or to pick from the same options."
+        ),
+        emotion_tag="encouraging",
+        max_sentences=2,
+    )
+
+
 def _pick_stuck_default(state: SessionStateModel) -> tuple[str, str]:
     """Pick a playful (name, detail) fallback for a stuck child at detail phase.
 
@@ -269,12 +290,23 @@ def _build_story_direction(state: SessionStateModel, chosen_theme: str = "") -> 
     return direction, max_sentences
 
 
-def _fast_path_directive(normalized_text: str, state: SessionStateModel) -> TurnDirective | None:
+def _fast_path_directive(
+    normalized_text: str,
+    state: SessionStateModel,
+    is_selection: bool = False,
+) -> TurnDirective | None:
     """Map common short phrases to TurnDirective without an LLM call.
 
     Context-dependent: "yes" means different things at different steps.
     Returns None when LLM classification is needed.
     """
+    if (
+        is_selection
+        and state.current_step.startswith("STEP_3_ROUND_")
+        and isinstance(state.creative_slots, Cat1CreativeSlots)
+    ):
+        return _build_choice_selection_directive(normalized_text)
+
     if normalized_text in _CONFIRM_WORDS and state.current_step == "STEP_1_HOOK":
         return _build_hook_confirmation_directive(state)
 
@@ -978,7 +1010,7 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
     # Fast path for common short phrases
     if child_text and not turn_input.is_silent:
         normalized = child_text.strip().lower().rstrip("!.?")
-        fast = _fast_path_directive(normalized, state)
+        fast = _fast_path_directive(normalized, state, is_selection=turn_input.is_selection)
         if fast is not None:
             logger.info(
                 "turn_director: step=%s action=%s (fast-path) text=%s",

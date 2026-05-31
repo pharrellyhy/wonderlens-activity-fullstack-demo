@@ -101,3 +101,19 @@ def test_cat3_setup_confirmation_cues_first_fixed_build_step() -> None:
     assert "done" in direction
     assert "help" in direction
     assert "what shape would you like" not in direction
+
+
+def test_cat1_device_selection_advances_round() -> None:
+    recipe = load_instruction_recipe("activity_recognition_pop_challenge")
+    state = recipe_to_session_state(recipe, "s-sel", "T1", "recognition_pop")
+    state.current_step = "STEP_3_ROUND_1"
+    state.current_round = 1
+
+    # A bare label without the selection flag is left to normal classification.
+    assert _fast_path_directive("apple", state) is None
+
+    # A confirmed device selection is the round's answer-of-record: advance.
+    directive = _fast_path_directive("apple", state, is_selection=True)
+    assert directive is not None
+    assert directive.action == "advance"
+    assert "apple" in directive.response_direction.lower()

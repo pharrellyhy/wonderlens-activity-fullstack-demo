@@ -13,9 +13,10 @@ export async function startSession(photo, tier) {
   return res.json();
 }
 
-export async function sendTurn(sessionId, text, isSilent, photoId = null) {
+export async function sendTurn(sessionId, text, isSilent, photoId = null, isSelection = false) {
   const body = { session_id: sessionId, text, is_silent: isSilent };
   if (photoId) body.photo_id = photoId;
+  if (isSelection) body.is_selection = true;
   const res = await fetch(`${BASE}/api/turn`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

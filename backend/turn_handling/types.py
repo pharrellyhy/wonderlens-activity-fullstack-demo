@@ -17,6 +17,7 @@ class TurnInput:
     text: str = ""
     is_silent: bool = False
     photo_id: str | None = None
+    is_selection: bool = False
 
 
 @dataclass

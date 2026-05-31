@@ -110,7 +110,7 @@ export default function useActivityTextSession() {
     }
   }, [isCurrentRequest]);
 
-  const sendMessage = useCallback(async (text) => {
+  const sendMessage = useCallback(async (text, { isSelection = false } = {}) => {
     const trimmed = text.trim();
     const activeSessionId = sessionIdRef.current || sessionId;
     const status = sessionStatusRef.current || sessionState?.status;
@@ -122,7 +122,9 @@ export default function useActivityTextSession() {
     setMessages((prev) => [...prev, { role: 'child', text: trimmed }]);
 
     try {
-      const data = await sendTurn(activeSessionId, trimmed, false);
+      const data = isSelection
+        ? await sendTurn(activeSessionId, trimmed, false, null, true)
+        : await sendTurn(activeSessionId, trimmed, false);
       return applyTurn(data, requestGeneration, activeSessionId);
     } catch (err) {
       if (isCurrentRequest(requestGeneration, activeSessionId)) {

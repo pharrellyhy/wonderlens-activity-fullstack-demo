@@ -443,7 +443,7 @@
           "src": "/activity-assets/activity_animal_sound_imitation/round_1.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "carousel",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -454,7 +454,27 @@
               "src": "/activity-assets/activity_animal_sound_imitation/round_1.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "rabbit",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/rabbit.png",
+                "shape": "circle",
+                "label": "Rabbit",
+                "selected": true
+              },
+              {
+                "id": "cat",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/cat.png",
+                "shape": "circle",
+                "label": "Cat"
+              },
+              {
+                "id": "puppy",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/puppy.png",
+                "shape": "circle",
+                "label": "Puppy"
+              }
+            ]
           }
         },
         {
@@ -462,7 +482,7 @@
           "src": "/activity-assets/activity_animal_sound_imitation/round_2.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "carousel",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -473,7 +493,27 @@
               "src": "/activity-assets/activity_animal_sound_imitation/round_2.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "rabbit",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/rabbit.png",
+                "shape": "circle",
+                "label": "Rabbit"
+              },
+              {
+                "id": "cat",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/cat.png",
+                "shape": "circle",
+                "label": "Cat",
+                "selected": true
+              },
+              {
+                "id": "puppy",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/puppy.png",
+                "shape": "circle",
+                "label": "Puppy"
+              }
+            ]
           }
         },
         {
@@ -481,7 +521,7 @@
           "src": "/activity-assets/activity_animal_sound_imitation/round_3.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "carousel",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -492,7 +532,27 @@
               "src": "/activity-assets/activity_animal_sound_imitation/round_3.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "rabbit",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/rabbit.png",
+                "shape": "circle",
+                "label": "Rabbit"
+              },
+              {
+                "id": "cat",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/cat.png",
+                "shape": "circle",
+                "label": "Cat"
+              },
+              {
+                "id": "puppy",
+                "src": "/activity-assets/activity_animal_sound_imitation/items/puppy.png",
+                "shape": "circle",
+                "label": "Puppy",
+                "selected": true
+              }
+            ]
           }
         },
         {
@@ -1148,7 +1208,7 @@
           "src": "/activity-assets/activity_vegetable_sort/round_1.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "choice3",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -1159,7 +1219,27 @@
               "src": "/activity-assets/activity_vegetable_sort/round_1.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "tomato",
+                "src": "/activity-assets/activity_vegetable_sort/items/tomato.png",
+                "shape": "circle",
+                "label": "Tomato",
+                "selected": true
+              },
+              {
+                "id": "broccoli",
+                "src": "/activity-assets/activity_vegetable_sort/items/broccoli.png",
+                "shape": "circle",
+                "label": "Broccoli"
+              },
+              {
+                "id": "carrot",
+                "src": "/activity-assets/activity_vegetable_sort/items/carrot.png",
+                "shape": "circle",
+                "label": "Carrot"
+              }
+            ]
           }
         },
         {
@@ -1167,7 +1247,7 @@
           "src": "/activity-assets/activity_vegetable_sort/round_2.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "choice3",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -1178,7 +1258,27 @@
               "src": "/activity-assets/activity_vegetable_sort/round_2.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "potato",
+                "src": "/activity-assets/activity_vegetable_sort/items/potato.png",
+                "shape": "circle",
+                "label": "Potato",
+                "selected": true
+              },
+              {
+                "id": "cucumber",
+                "src": "/activity-assets/activity_vegetable_sort/items/cucumber.png",
+                "shape": "circle",
+                "label": "Cucumber"
+              },
+              {
+                "id": "carrot",
+                "src": "/activity-assets/activity_vegetable_sort/items/carrot.png",
+                "shape": "circle",
+                "label": "Carrot"
+              }
+            ]
           }
         },
         {
@@ -1186,7 +1286,7 @@
           "src": "/activity-assets/activity_vegetable_sort/round_3.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "choice3",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -1197,7 +1297,27 @@
               "src": "/activity-assets/activity_vegetable_sort/round_3.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "broccoli",
+                "src": "/activity-assets/activity_vegetable_sort/items/broccoli.png",
+                "shape": "circle",
+                "label": "Broccoli"
+              },
+              {
+                "id": "pumpkin",
+                "src": "/activity-assets/activity_vegetable_sort/items/pumpkin.png",
+                "shape": "circle",
+                "label": "Pumpkin",
+                "selected": true
+              },
+              {
+                "id": "corn",
+                "src": "/activity-assets/activity_vegetable_sort/items/corn.png",
+                "shape": "circle",
+                "label": "Corn"
+              }
+            ]
           }
         },
         {
@@ -1712,7 +1832,7 @@
           "src": "/activity-assets/activity_recognition_pop_challenge/round_1.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "choice2",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -1723,7 +1843,21 @@
               "src": "/activity-assets/activity_recognition_pop_challenge/round_1.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "apple",
+                "src": "/activity-assets/activity_recognition_pop_challenge/items/apple.png",
+                "shape": "circle",
+                "label": "Apple",
+                "selected": true
+              },
+              {
+                "id": "car",
+                "src": "/activity-assets/activity_recognition_pop_challenge/items/car.png",
+                "shape": "circle",
+                "label": "Car"
+              }
+            ]
           }
         },
         {
@@ -1731,7 +1865,7 @@
           "src": "/activity-assets/activity_recognition_pop_challenge/round_2.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "choice3",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -1742,7 +1876,27 @@
               "src": "/activity-assets/activity_recognition_pop_challenge/round_2.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "apple",
+                "src": "/activity-assets/activity_recognition_pop_challenge/items/apple.png",
+                "shape": "circle",
+                "label": "Apple",
+                "selected": true
+              },
+              {
+                "id": "strawberry",
+                "src": "/activity-assets/activity_recognition_pop_challenge/items/strawberry.png",
+                "shape": "circle",
+                "label": "Strawberry"
+              },
+              {
+                "id": "cherries",
+                "src": "/activity-assets/activity_recognition_pop_challenge/items/cherries.png",
+                "shape": "circle",
+                "label": "Cherries"
+              }
+            ]
           }
         },
         {
@@ -1750,7 +1904,7 @@
           "src": "/activity-assets/activity_recognition_pop_challenge/round_3.png",
           "usage": "round",
           "layout": {
-            "mode": "single",
+            "mode": "choice2",
             "selection": "none",
             "safeArea": {
               "canvas": 480,
@@ -1761,7 +1915,21 @@
               "src": "/activity-assets/activity_recognition_pop_challenge/round_3.png",
               "fit": "cover"
             },
-            "items": []
+            "items": [
+              {
+                "id": "apple",
+                "src": "/activity-assets/activity_recognition_pop_challenge/items/apple.png",
+                "shape": "circle",
+                "label": "Apple",
+                "selected": true
+              },
+              {
+                "id": "basketball",
+                "src": "/activity-assets/activity_recognition_pop_challenge/items/basketball.png",
+                "shape": "circle",
+                "label": "Basketball"
+              }
+            ]
           }
         },
         {

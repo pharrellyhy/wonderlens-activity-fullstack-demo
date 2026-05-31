@@ -15,9 +15,11 @@ Last updated: 2026-05-31
 
 **Edits**: `frontend/src/index.css`, `frontend/src/activityGame/ActivityGameApp.jsx`, the 9 `backend/games/activity_*.md`, `backend/tests/test_activity_source_fidelity.py`, `tests/test_activity_text_game_asset_contract.py`, `frontend/tests/activityAssets.test.js`, `frontend/public/activity-assets/<9 dirs>/*.png` + `activity-assets.manifest.json`, new `scripts/gen_beat.sh` + `scripts/promote_activity_manifest.py`, `docs/plans/2026-05-30-promote-9-activities-to-pilot-parity.md`. Commits: `7a600f7` (layout), `45f4e0a` (dialogue), `1f84422` (art).
 
-**NOT Changed**: The 3 pilots' regenerated art (career/guided/phoneme) remains uncommitted in the worktree pending separate review. The 9 use single-scene layouts (not the build-script's aspirational carousel+crop design). Orphaned `recap.png` placeholders left in place.
+**Follow-ups (same session, committed)**: 3 pilots' regenerated art committed (`443136f`); single-subject pilot icons replacing old multi-object scene icons (`2ae1d7d`); passive choice/carousel layouts + 15 item sprites for animal_sound/recognition_pop/vegetable_sort (`356df98`); interactive device-selection wired for recognition_pop Cat1 rounds (`c35b9b0`, mirrors Cat3/Cat5 — scroll highlights a card, select sends its label; veg_sort/animal stay passive). PR #14 opened + updated. Deeper live multi-turn flows driven for recognition_pop/story_unlock/emotion_reader — dialogue warm, invitational, device-word-free, source-faithful; recognition_pop live rounds reference exactly its item sprites (apple/car → apple/strawberry/cherries → apple/basketball).
 
-**Verification**: backend definitions+fidelity+asset-contract (21) pass; frontend tests (73) + lint + build pass; live smoke 11/12 first run, vegetable_sort passed on re-run (transient live-model variance) = effectively 12/12. Style self-confirmed consistent via contact-sheet review. Pre-existing unrelated failures: top-level tests/ entity/scenario/turn-handler (fail at HEAD independent of this work) and live-server ai_quality (need a running server).
+**NOT Changed**: vegetable_sort round scenes still depict grouped baskets while its item choices are individual veggies (visual soft spot). Orphaned `recap.png` placeholders left in place. The build-script's aspirational carousel+crop design is superseded by separate item sprites.
+
+**Verification**: backend definitions+fidelity+asset-contract (21) pass; frontend tests (74) + lint + build pass; live smoke effectively 12/12. Style self-confirmed via contact-sheet review. Pre-existing unrelated failures: top-level tests/ entity/scenario/turn-handler (fail at HEAD independent of this work) and live-server ai_quality (need a running server).
 
 ---
 

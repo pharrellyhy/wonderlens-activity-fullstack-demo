@@ -1,6 +1,25 @@
 # Session Handoff
 
-Last updated: 2026-05-31
+Last updated: 2026-06-01
+
+---
+
+## Full Activity Live QA Fix Pass
+
+**Problem**: Live all-activity QA found source-alignment and flow defects: several Cat1 activities drifted into generic heart/feeling prompts, final device selections could ask follow-up questions, Phoneme Treasure Hunt asked for a character-name exchange after item selection, Cat3 Help could lose the current build step, short viewports pushed the intro transcript too low, and stale recap PNGs still had black padded corners.
+
+**Solution**: Added Cat1 source-goal round rules and source-contract context to the director/directive paths, carried next-round source goals through device selections, sanitized only explicitly no-question final directives, advanced Phoneme B-detail turns without a character-name loop, kept Cat3 Help self-contained on the current build step, constrained the short-height activity layout so the intro remains visible, and replaced stale black-corner recap assets with visually safe existing closing assets.
+
+**Edits**: `backend/agents/{script_agent.py,turn_director.py}`, `backend/turn_handling/directive.py`, `backend/skills/speaker_directive_system.md`, focused backend regressions, `frontend/src/index.css`, new `frontend/tests/activityGameLayoutCss.test.js`, `tests/test_activity_text_game_asset_contract.py`, and 9 `frontend/public/activity-assets/activity_*/recap.png` replacements.
+
+**NOT Changed**: No secrets or credential files were edited. No runtime image-generation path was added; asset generation remains offline/static. Backend and frontend servers were left running from this worktree for manual review.
+
+**Verification**:
+- `uv run pytest backend/tests/test_activity_source_fidelity.py backend/tests/test_activity_text_game_turns.py backend/tests/test_activity_text_game_cat3.py tests/test_activity_text_game_asset_contract.py -q` - 37 passed.
+- `cd frontend && npm test -- ActivityGameApp.test.jsx activityAssets.test.js activityGameLayoutCss.test.js` - 28 passed across 3 files.
+- Playwright layout check: `/tmp/wonderlens-activity-ui-position-check-20260601-fixed.json` - 12/12 activities visible in first viewport on desktop and mobile.
+- Live provider check with backend `.env` and Google credential JSON sourced: `/tmp/wonderlens-activity-live-check-20260601-fixed-v4.json` - 12 passed, 0 failed.
+- Asset review: generated contact sheets `/tmp/wonderlens-current-activity-assets-20260601.png` and `/tmp/wonderlens-current-item-assets-20260601.png`; `/tmp/wl*` prompt scripts confirmed flat-Nordic, no-text, no-black-corner generation constraints.
 
 ---
 
@@ -233,24 +252,3 @@ Last updated: 2026-05-31
 **Verification**:
 - `npm test -- --run tests/activityAssets.test.js` — 8 passed.
 - `git diff --check -- HANDOFF.md frontend/public/activity-assets/prompts/wonderlens-activity-style.md frontend/tests/activityAssets.test.js` — passed.
-
----
-
-## Flat Nordic Asset Pilot Pass
-
-**Problem**: The latest regenerated display assets were moving in the right direction but still read as sculpted toy/material art instead of the requested flat Nordic visual style. The active asset prompt still included depth-oriented language that pulled Codex imagegen toward rendered volume.
-
-**Solution**: Changed the activity asset style contract to flat Nordic vector only, using the user's nursery-wall-art prompt structure and screenshot references: asymmetric simple animal silhouettes, large blocky body shapes, muted salmon/dusty blue/oat color blocks, sparse black decorative strokes, thin colored-pencil linework, soft peach/off-white wash, clean composition, and generous negative space. Added a regression assertion so the active style prompt no longer contains light/depth generation terms or contact-sheet language. Generated reference-driven Animal Sound pilots for visual review, plus earlier firefighter and banana probes.
-
-**Edits**:
-- `frontend/public/activity-assets/prompts/wonderlens-activity-style.md` — replaced the light-depth style contract with flat Nordic vector/nursery-wall-art direction.
-- `frontend/tests/activityAssets.test.js` — updated prompt contract coverage to require the flat Nordic vector terms and reject depth/contact-sheet language.
-
-**NOT Changed**:
-- The existing runtime PNG assets were not batch-replaced in this pass.
-- The generated pilot images remain in Codex's generated image folder until the flat-vector direction is approved for scale-out.
-- No app runtime code or backend behavior changed.
-
-**Verification**:
-- `npm test -- --run tests/activityAssets.test.js` — 8 passed.
-- Manual pilot review found the Animal Sound scene closest to target; the second firefighter and banana prompts reduced the remaining raised/depth cues and are the current candidates for approval.

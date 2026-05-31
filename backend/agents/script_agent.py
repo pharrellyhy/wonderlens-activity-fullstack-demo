@@ -465,6 +465,28 @@ def _enforce_text_only_dialogue(state: SessionStateModel, dialogue: str) -> str:
     return dialogue
 
 
+def _directive_forbids_questions(directive: TurnDirective) -> bool:
+    """Return True when the directive explicitly requires statement-only output."""
+    direction = directive.response_direction.lower()
+    return (
+        bool(re.search(r"do not ask (?:another|any|a|the child a) question", direction))
+        or "zero question marks" in direction
+        or "do not end with a question" in direction
+        or "not end with a question" in direction
+    )
+
+
+def _remove_question_sentences(dialogue: str) -> str:
+    """Remove question sentences when a directive forbids questions."""
+    if "?" not in dialogue:
+        return dialogue
+    sentences = re.split(r"(?<=[.!?])\s+", dialogue.strip())
+    kept = [sentence for sentence in sentences if "?" not in sentence]
+    if kept:
+        return " ".join(kept).strip()
+    return dialogue.replace("?", ".").strip()
+
+
 _PHASE_SECTION_RE = re.compile(
     r"### PHASE:\s*(\w+)\s*\([^)]*\)\s*\n(.*?)(?=### |\Z)",
     re.DOTALL,
@@ -1096,6 +1118,7 @@ class ScriptAgent:
             or "tell a complete" in rd_lower
             or "generate a complete" in rd_lower
             or "name the ib concept" in rd_lower
+            or "help the child with:" in rd_lower
         )
 
         if is_self_contained:
@@ -1183,6 +1206,8 @@ class ScriptAgent:
                 turn.character_sfx = list(directive.character_sfx)
             _clean_dialogue(turn, state)
             turn.dialogue = _enforce_text_only_dialogue(state, turn.dialogue)
+            if _directive_forbids_questions(directive):
+                turn.dialogue = _remove_question_sentences(turn.dialogue)
 
             logger.info(
                 "Directive Speaker: step=%s action=%s latency=%dms",

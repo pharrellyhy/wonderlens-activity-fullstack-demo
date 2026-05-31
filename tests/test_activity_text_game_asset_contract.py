@@ -192,3 +192,26 @@ def test_manifest_item_assets_are_sized_and_not_black_padded() -> None:
             ]
             edge_black_ratio = max(_near_black_ratio(image.crop(box)) for box in edge_boxes)
             assert edge_black_ratio < 0.25, f"item asset appears black padded: {asset_path}"
+
+
+def test_committed_activity_assets_do_not_have_black_padded_corners() -> None:
+    activity_assets_root = PUBLIC_ROOT / "activity-assets"
+    image_paths = [
+        path
+        for path in activity_assets_root.glob("activity_*/*.png")
+        if path.is_file()
+    ]
+    assert image_paths
+
+    for image_path in sorted(image_paths):
+        with Image.open(image_path) as image:
+            if image.size != (512, 512):
+                continue
+            corner_boxes = [
+                (0, 0, 40, 40),
+                (image.width - 40, 0, image.width, 40),
+                (0, image.height - 40, 40, image.height),
+                (image.width - 40, image.height - 40, image.width, image.height),
+            ]
+            corner_black_ratio = max(_near_black_ratio(image.crop(box)) for box in corner_boxes)
+            assert corner_black_ratio < 0.25, f"activity asset appears black padded: {image_path}"

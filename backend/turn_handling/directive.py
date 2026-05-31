@@ -16,6 +16,7 @@ try:
     from ..logger import setup_logger
     from ..schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from ..schemas.session_state import SessionStateModel
+    from ..schemas.step_instruction import RoundInstruction
     from ..schemas.turn_directive import StoryElement, TurnDirective
     from ..schemas.turn_response import TurnResponse
     from ..state_machine import (
@@ -29,6 +30,7 @@ except ImportError:
     from logger import setup_logger
     from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import SessionStateModel
+    from schemas.step_instruction import RoundInstruction
     from schemas.turn_directive import StoryElement, TurnDirective
     from schemas.turn_response import TurnResponse
     from state_machine import (
@@ -141,6 +143,15 @@ def _starts_with_letter_b(text: str) -> bool:
     return bool(words and words[0].startswith("b"))
 
 
+def _collection_item_label(state: SessionStateModel, item_id: str) -> str:
+    """Return a display label for a collected item id."""
+    for round_items in state.round_items:
+        for item in round_items:
+            if item.get("id") == item_id:
+                return str(item.get("label") or item_id.replace("_", " "))
+    return item_id.replace("_", " ")
+
+
 def _build_hook_confirmation_directive(state: SessionStateModel) -> TurnDirective | None:
     """Advance from hook into the rules/setup step without asking the first round yet."""
     if isinstance(state.creative_slots, Cat1CreativeSlots) and state.creative_slots.game_mechanic == "decide":
@@ -148,6 +159,23 @@ def _build_hook_confirmation_directive(state: SessionStateModel) -> TurnDirectiv
             "Celebrate the child becoming the Firefighter Helper. Explain the choice loop: "
             "you give one firefighter prompt, the child makes one safety choice, and one helper marker lights up. "
             "Ask if they are ready for the first safety choice. Do NOT ask the first decision yet."
+        )
+    elif isinstance(state.creative_slots, Cat1CreativeSlots):
+        role_title = state.creative_slots.role_title
+        transition = state.instruction_recipe.step_instructions.transition if state.instruction_recipe else None
+        goal = transition.goal if transition is not None else "Explain the activity loop."
+        constraint = transition.constraint if transition is not None else "Keep it brief and source-aligned."
+        example = transition.source_contract.example_ai_line if transition is not None else ""
+        direction = (
+            f"Celebrate the child becoming the {role_title}. Explain this source transition in one sentence: "
+            f'"{goal}" Use this transition constraint: "{constraint}" '
+        )
+        if example:
+            direction += f'Use this source example for specificity: "{example}" '
+        direction += (
+            "Ask if they are ready for the first source round. Do NOT ask the first round question yet. "
+            "Do NOT add generic heart, tummy, taste, bite, sound, or feeling language unless the source transition "
+            "explicitly asks for it."
         )
     elif isinstance(state.creative_slots, Cat3CreativeSlots):
         materials = " and ".join(state.creative_slots.build_materials) or "drawing materials"
@@ -180,7 +208,37 @@ def _build_hook_confirmation_directive(state: SessionStateModel) -> TurnDirectiv
     )
 
 
-def _build_choice_selection_directive(selected_text: str) -> TurnDirective:
+def _cat1_round_instruction(state: SessionStateModel, round_number: int) -> RoundInstruction | None:
+    """Return the instruction recipe round for a Cat1 round number."""
+    if not state.instruction_recipe:
+        return None
+    for round_instruction in state.instruction_recipe.step_instructions.rounds:
+        if round_instruction.round_number == round_number:
+            return round_instruction
+    return None
+
+
+def _cat1_source_goal_direction(round_instruction: RoundInstruction | None) -> str:
+    """Build source-anchored question guidance for one Cat1 round."""
+    if round_instruction is None:
+        return "Ask the source-aligned prompt for this round."
+    parts = [
+        f'Ask this source goal: "{round_instruction.goal}".',
+        f'Use this source constraint: "{round_instruction.constraint}".',
+    ]
+    source_contract = round_instruction.source_contract
+    if source_contract.example_ai_line:
+        parts.append(f'Use this source example for specificity: "{source_contract.example_ai_line}".')
+    if source_contract.ai_followups.ideal:
+        parts.append(f'When the child answers, follow this source follow-up: "{source_contract.ai_followups.ideal}".')
+    parts.append(
+        "Do NOT replace this with a generic heart, tummy, taste, bite, sound, or feeling question unless "
+        "the source goal explicitly asks for that."
+    )
+    return " ".join(parts)
+
+
+def _build_choice_selection_directive(selected_text: str, state: SessionStateModel) -> TurnDirective:
     """Advance a Cat1 choice round when the child selects an option on the device.
 
     The device picker confirms one option per round, so the selection is the
@@ -188,14 +246,33 @@ def _build_choice_selection_directive(selected_text: str) -> TurnDirective:
     instead of re-asking. The live speaker still phrases the acknowledgement.
     """
     label = (selected_text or "").strip() or "that one"
+    if state.current_round >= state.total_rounds:
+        direction = (
+            f"The child just chose '{label}' as the final round answer. In one short, warm sentence, celebrate "
+            "that specific choice. This is the final round; do not ask another question, do not introduce a new "
+            "choice, and do not ask about the selection's sound, taste, color, or feelings. The celebration step "
+            "comes next. Use zero question marks."
+        )
+    else:
+        next_round = state.current_round + 1
+        next_instruction = _cat1_round_instruction(state, next_round)
+        if next_instruction is not None:
+            direction = (
+                f"The child just chose '{label}' on the device as the answer for this round. In one short, warm "
+                f"sentence, celebrate that specific choice. Then present the next source scenario: "
+                f'"{next_instruction.scenario}". {_cat1_source_goal_direction(next_instruction)} '
+                "Do NOT ask them to choose again or pick from the same options."
+            )
+        else:
+            direction = (
+                f"The child just chose '{label}' on the device. In one short, warm sentence, celebrate that "
+                "specific choice, then lead into the next source-aligned part of the activity. Do NOT ask them "
+                "to choose again or to pick from the same options."
+            )
     return TurnDirective(
         action="advance",
         reasoning="Child selected an option on the device; record it and advance to the next round.",
-        response_direction=(
-            f"The child just chose '{label}' on the device. In one short, warm sentence, celebrate that "
-            "specific choice, then lead into the next part of the activity. Do NOT ask them to choose again "
-            "or to pick from the same options."
-        ),
+        response_direction=direction,
         emotion_tag="encouraging",
         max_sentences=2,
     )
@@ -305,7 +382,7 @@ def _fast_path_directive(
         and state.current_step.startswith("STEP_3_ROUND_")
         and isinstance(state.creative_slots, Cat1CreativeSlots)
     ):
-        return _build_choice_selection_directive(normalized_text)
+        return _build_choice_selection_directive(normalized_text, state)
 
     if normalized_text in _CONFIRM_WORDS and state.current_step == "STEP_1_HOOK":
         return _build_hook_confirmation_directive(state)
@@ -439,10 +516,10 @@ def _fast_path_directive(
                         f"sees, finds, or does in the scene — NOT about how it feels."
                     )
                 else:
-                    question_guidance = f"Ask ONE question about how the {state.entity_name} feels or reacts."
+                    question_guidance = _cat1_source_goal_direction(_cat1_round_instruction(state, 1))
                 direction = (
                     f"Celebrate acceptance briefly. This is a verbal/imagination game — the child "
-                    f'stays with the photo on screen. Present the first scenario: "{scenario}". '
+                    f'stays with the photo on screen. Present the first source scenario: "{scenario}". '
                     f"{question_guidance}"
                 )
             elif isinstance(state.creative_slots, Cat3CreativeSlots):
@@ -706,11 +783,18 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
     ):
         remaining = max(0, state.total_rounds - len(state.collected_photos))
         is_last = remaining == 0
+        item_label = _collection_item_label(state, turn_input.photo_id)
 
         # Build context-aware direction using story scaffold if available
         direction = "Celebrate finding this item! Ask a detail question about it."
-        scaffold = None
-        if isinstance(state.creative_slots, Cat5CreativeSlots) and state.creative_slots.story_scaffold:
+        if _is_phoneme_b_hunt(state):
+            direction = (
+                f"Celebrate choosing {item_label} as a word that starts with letter B. "
+                "Ask the child for one short typed note about why it fits the B-word treasure hunt. "
+                "Do NOT ask which word they chose; the device selection already chose it. "
+                "Do NOT ask for a character name."
+            )
+        elif isinstance(state.creative_slots, Cat5CreativeSlots) and state.creative_slots.story_scaffold:
             scaffold = state.creative_slots.story_scaffold
             direction = (
                 f"Celebrate finding this item! Based on the story scaffold strategy for round "
@@ -867,6 +951,53 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
                 state.current_step,
                 state.detail_stuck_count,
                 child_text[:30],
+            )
+            state.last_directive_action = fast.action
+            return fast
+
+        if _is_phoneme_b_hunt(state):
+            state.detail_stuck_count = 0
+            state.detail_exchange_count += 1
+            current_item = state.collected_photos[-1] if state.collected_photos else "this item"
+            current_item_label = _collection_item_label(state, current_item)
+            remaining = max(0, state.total_rounds - len(state.collected_photos))
+            collected_labels = [_collection_item_label(state, item_id) for item_id in state.collected_photos]
+            story_elem = StoryElement(
+                round_number=state.current_round,
+                character_name=current_item_label,
+                trait_or_detail=child_text,
+                child_words=current_item_label,
+            )
+
+            direction = (
+                f'The child said "{child_text}" about {current_item_label}. '
+                f"Celebrate that {current_item_label} starts with letter B and save it as a B treasure. "
+            )
+            if remaining > 0:
+                direction += (
+                    f"Then invite the child to choose the next B-starting word or object ({remaining} more to go). "
+                    "Do NOT ask for a character name."
+                )
+            else:
+                direction += (
+                    "This was the last B treasure. Recap the collected B words "
+                    f"({', '.join(collected_labels)}) and tease the B-word recap. "
+                    "Do NOT ask for a character name or a new item."
+                )
+
+            fast = TurnDirective(
+                action="advance",
+                reasoning=f"Child confirmed B-word detail for {current_item_label}; advance to the next B hunt step.",
+                response_direction=direction,
+                emotion_tag="celebrating" if remaining == 0 else "delighted",
+                stay_on_step=False,
+                story_element=story_elem,
+            )
+            logger.info(
+                "turn_director: step=%s action=advance (phoneme B detail) item=%s remaining=%d",
+                state.current_step,
+                current_item_label,
+                remaining,
             )
             state.last_directive_action = fast.action
             return fast
@@ -1037,15 +1168,20 @@ async def _get_turn_directive(state: SessionStateModel, turn_input: "TurnInput")
         and state.instruction_recipe
     ):
         next_round = state.current_round + 1
-        recipe_rounds = state.instruction_recipe.step_instructions.rounds
-        next_scenario = ""
-        for r in recipe_rounds:
-            if r.round_number == next_round:
-                next_scenario = r.scenario
-                break
-        if next_scenario:
-            # Append the exact scenario to the direction so the speaker uses it
-            directive.response_direction += f' NEXT SCENARIO (use this EXACT text): "{next_scenario}"'
+        next_instruction = _cat1_round_instruction(state, next_round)
+        if next_instruction is not None:
+            # Append the exact next source contract so the speaker does not
+            # fall back to generic feelings/sensory prompts after advancing.
+            directive.response_direction += (
+                f' NEXT SOURCE SCENARIO (use this EXACT text): "{next_instruction.scenario}". '
+                f'NEXT SOURCE GOAL: "{next_instruction.goal}". '
+                f'NEXT SOURCE CONSTRAINT: "{next_instruction.constraint}".'
+            )
+        elif state.current_round >= state.total_rounds:
+            directive.response_direction += (
+                " This was the final round answer. Do NOT ask another question or introduce a new prompt; "
+                "the celebration step handles the wrap-up."
+            )
 
     state.last_directive_action = directive.action
     return directive

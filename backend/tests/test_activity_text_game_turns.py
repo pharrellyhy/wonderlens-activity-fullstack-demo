@@ -1,6 +1,11 @@
+import pytest
+from entity_registry import generate_round_items
+from recipe_loader import load_instruction_recipe, recipe_to_session_state
 from schemas.creative_slots import Cat5CreativeSlots
 from schemas.session_state import SessionStateModel
+from turn_handling import TurnInput
 from turn_handling.collection import record_text_collection_pick
+from turn_handling.directive import _get_turn_directive
 from turn_handling.helpers import _sync_round_from_step
 
 
@@ -100,3 +105,25 @@ def test_sync_round_sets_round_on_collect_step() -> None:
     state = _phoneme_state("STEP_3_COLLECT_2", current_round=0)
     _sync_round_from_step(state)
     assert state.current_round == 2
+
+
+@pytest.mark.asyncio
+async def test_phoneme_detail_advances_without_character_name_exchange() -> None:
+    recipe = load_instruction_recipe("activity_phoneme_treasure_hunt")
+    state = recipe_to_session_state(recipe, "phoneme-detail", "T1", "phoneme_treasure_hunt")
+    state.current_step = "STEP_3_COLLECT_1"
+    state.current_round = 1
+    state.collection_phase = "detail"
+    state.round_items = generate_round_items("activity_phoneme_treasure_hunt", 3)
+    state.collected_photos = ["ball"]
+
+    directive = await _get_turn_directive(state, TurnInput(text="The ball is round and bouncy."))
+
+    assert directive.action == "advance"
+    assert directive.story_element is not None
+    assert directive.story_element.character_name == "Ball"
+    assert directive.story_element.trait_or_detail == "The ball is round and bouncy."
+    direction = directive.response_direction.lower()
+    assert "starts with letter b" in direction
+    assert "next b-starting word" in direction
+    assert "character name" in direction

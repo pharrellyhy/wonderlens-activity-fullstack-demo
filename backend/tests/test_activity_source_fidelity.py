@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from activity_catalog import activity_summaries
-from agents.script_agent import _build_instruction_overlay
-from agents.turn_director import _select_step_phase_rules
+from agents.script_agent import _build_instruction_overlay, _directive_forbids_questions, _remove_question_sentences
+from agents.turn_director import _build_state_context, _select_step_phase_rules
 from game_loader import get_demo_entities, get_demo_recipe
 from recipe_loader import recipe_to_session_state
+from schemas.turn_directive import TurnDirective
 from turn_handling.directive import _fast_path_directive
 from turn_handling.helpers import _collection_photo_prompt
 
@@ -282,6 +283,25 @@ def test_phoneme_hook_confirmation_stays_on_rules_not_first_find() -> None:
     assert "tell me the first" not in direction
 
 
+def test_generic_cat1_hook_confirmation_uses_source_transition_without_heart_language() -> None:
+    recipe = get_demo_recipe("activity_travel_planner")
+    assert recipe is not None
+    state = recipe_to_session_state(recipe, "travel-hook-session", "T1", "travel_planner")
+    state.current_step = "STEP_1_HOOK"
+    state.current_round = 0
+
+    directive = _fast_path_directive("yes", state)
+
+    assert directive is not None
+    direction = directive.response_direction.lower()
+    assert "mini travel planner" in direction
+    assert "source transition" in direction
+    assert "ready for the first source round" in direction
+    assert "happy dance" not in direction
+    assert "how your heart feels" not in direction
+    assert "first round question" in direction
+
+
 def test_career_uncertainty_stays_on_current_bounded_decision() -> None:
     recipe = get_demo_recipe("activity_career_decision_role_play")
     assert recipe is not None
@@ -299,6 +319,104 @@ def test_career_uncertainty_stays_on_current_bounded_decision() -> None:
     assert "run inside alone" in direction
     assert "water hose" not in direction
     assert "cooking oil" not in direction
+
+
+def _round_state(activity_id: str, round_number: int = 1):
+    recipe = get_demo_recipe(activity_id)
+    assert recipe is not None
+    state = recipe_to_session_state(recipe, f"{activity_id}-round-session", "T1", activity_id.removeprefix("activity_"))
+    state.current_step = f"STEP_3_ROUND_{round_number}"
+    state.current_round = round_number
+    return state
+
+
+def test_non_emotion_cat1_director_uses_source_goal_rules_not_voice_feelings() -> None:
+    expectations = {
+        "activity_constellation_star_count": ("count", "star", "number"),
+        "activity_partial_reveal_guess": ("clue", "guess", "cat ears"),
+        "activity_recognition_pop_challenge": ("target", "match", "distractor"),
+        "activity_story_challenge_unlock": ("moon door", "silver", "blue"),
+        "activity_travel_planner": ("pack", "predict", "travel"),
+        "activity_vegetable_sort": ("sort", "rule", "vegetable"),
+        "activity_word_echo_practice": ("echo", "repeat", "word"),
+    }
+
+    for activity_id, required_terms in expectations.items():
+        state = _round_state(activity_id)
+
+        rules = _select_step_phase_rules(state).lower()
+        context = _build_state_context(state).lower()
+
+        assert "current round source goal" in context
+        assert "current round source constraint" in context
+        assert "do not ask about emotions or feelings" in rules
+        assert "how the {entity_name} feels or reacts" not in rules
+        for term in required_terms:
+            assert term in context, f"{activity_id} missing director context term: {term}"
+
+
+def test_invitation_fast_path_uses_first_source_goal_for_non_emotion_cat1() -> None:
+    expectations = {
+        "activity_constellation_star_count": ("count", "first star group"),
+        "activity_partial_reveal_guess": ("cat ears", "guess"),
+        "activity_story_challenge_unlock": ("moon door", "silver"),
+        "activity_travel_planner": ("pack", "sunny"),
+        "activity_vegetable_sort": ("sort", "color"),
+        "activity_word_echo_practice": ("echo", "word"),
+    }
+
+    for activity_id, required_terms in expectations.items():
+        state = _round_state(activity_id, 1)
+        state.current_step = "STEP_2_RULES"
+        state.current_round = 0
+
+        directive = _fast_path_directive("yes", state)
+
+        assert directive is not None
+        direction = directive.response_direction.lower()
+        for term in required_terms:
+            assert term in direction, f"{activity_id} missing invitation direction term: {term}"
+        assert "feels or reacts" not in direction
+        assert "how your heart feels" not in direction
+
+
+def test_device_selection_fast_path_carries_next_source_round_and_stops_after_last_round() -> None:
+    recognition = _round_state("activity_recognition_pop_challenge", 1)
+    recognition_directive = _fast_path_directive("Apple", recognition, is_selection=True)
+
+    assert recognition_directive is not None
+    assert _directive_forbids_questions(recognition_directive) is False
+    recognition_direction = recognition_directive.response_direction.lower()
+    assert "strawberry" in recognition_direction
+    assert "cherries" in recognition_direction
+    assert "same or different" in recognition_direction
+    assert "ask about taste" not in recognition_direction
+    assert "how it tastes" not in recognition_direction
+    assert "big bite" not in recognition_direction
+
+    vegetable = _round_state("activity_vegetable_sort", 3)
+    vegetable_directive = _fast_path_directive("Pumpkin", vegetable, is_selection=True)
+
+    assert vegetable_directive is not None
+    assert _directive_forbids_questions(vegetable_directive) is True
+    vegetable_direction = vegetable_directive.response_direction.lower()
+    assert "final round" in vegetable_direction
+    assert "do not ask" in vegetable_direction
+    assert "zero question marks" in vegetable_direction
+    assert "what makes your pumpkin feel" not in vegetable_direction
+
+
+def test_no_question_directive_sanitizes_speaker_question() -> None:
+    directive = TurnDirective(
+        action="advance",
+        reasoning="Final device selection.",
+        response_direction="Celebrate the final answer. Do not ask another question. Use zero question marks.",
+        emotion_tag="encouraging",
+    )
+    dialogue = "[encouraging] Corn is a super choice to finish our sorting game! Would you like to see how we did?"
+
+    assert _directive_forbids_questions(directive) is True
+    assert _remove_question_sentences(dialogue) == "[encouraging] Corn is a super choice to finish our sorting game!"
 
 
 def test_activity_recipes_preserve_source_dialogue_contracts() -> None:

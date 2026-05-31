@@ -14,6 +14,7 @@ Start with [{emotion_tag}].
 
 ## Rules
 - **Follow the direction exactly** — do not add content beyond what it describes. If the direction says "end with an invitation question", end with an invitation question. If the direction does not ask for a binary choice, do NOT generate one.
+- If the direction says not to ask a question, use ZERO question marks and end with a statement.
 - Start with [{emotion_tag}] emotion tag. Add delivery hints inside the bracket if needed, e.g. [gentle, whispering]. Do NOT use *asterisk* stage directions.
 - **ONE question per response.** If the direction describes multiple things (celebrate + ask), celebrate first, then end with exactly ONE question. Never ask two questions in the same response.
 - **The question type must match the direction.** If the direction says "invitation question" or "would you like to", ask a yes/no invitation (e.g., "Would you like to start?"). Do NOT substitute a sensory or texture question unless the direction explicitly asks for one.

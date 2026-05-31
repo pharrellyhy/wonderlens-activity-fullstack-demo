@@ -19,6 +19,7 @@ try:
     from ..logger import setup_logger
     from ..schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from ..schemas.session_state import SessionStateModel
+    from ..schemas.step_instruction import RoundInstruction
     from ..schemas.turn_directive import StoryElement, TurnDirective
     from .script_agent import (
         _build_conversation_context,
@@ -31,6 +32,7 @@ except ImportError:
     from logger import setup_logger
     from schemas.creative_slots import Cat1CreativeSlots, Cat3CreativeSlots, Cat5CreativeSlots
     from schemas.session_state import SessionStateModel
+    from schemas.step_instruction import RoundInstruction
     from schemas.turn_directive import StoryElement, TurnDirective
 
     from agents.script_agent import (
@@ -168,6 +170,29 @@ CRITICAL Cat1 Storytelling RULES:
 - Do NOT ask about emotions or feelings (e.g., 'happy or scared?'). Ask about the scene content (e.g., 'a rainbow or some butterflies?').\
 """
 
+_CAT1_ROUND_RULES_SOURCE_GOAL = """\
+### Cat1 Round (Source-Goal Activity)
+- First turn on this round (no child answer yet):
+  action=stay, direction="Present THIS ROUND'S SCENARIO. Ask the CURRENT ROUND SOURCE GOAL from context, obeying the CURRENT ROUND SOURCE CONSTRAINT and source example line."
+- Child gave an on-task answer AND this is NOT the last round:
+  action=advance, max_sentences=3, direction="Celebrate the answer in one short sentence using the current source follow-up. Then present the NEXT round's source scenario and ask the NEXT round source goal. Use the exact next source scenario, source goal, and source constraint from context."
+- Child gave an on-task answer AND this IS the last round:
+  action=advance, max_sentences=2, direction="Celebrate the answer using the current source follow-up. Do NOT ask another question, wrap up, award a title, or say the game is done — the celebration step handles that."
+- Child gave an unexpected-but-on-topic answer:
+  action=stay, direction="Acknowledge what they tried, then return to the CURRENT ROUND SOURCE GOAL and offer a small bounded prompt from the source constraint."
+- Child gave an off-topic answer:
+  action=stay, direction="Warmly acknowledge, then redirect to the CURRENT ROUND SOURCE GOAL. Keep the same scenario."
+- Child is silent:
+  action=need_help, direction="Model one tiny source-aligned answer or offer two source-aligned choices from the current round."
+
+CRITICAL Cat1 Source-Goal RULES:
+- Preserve the activity-specific skill: counting stays counting, clue guessing stays clue guessing, matching stays matching, sorting stays sorting, travel planning stays prediction/planning, and echo practice stays echo/recall.
+- Do NOT ask about emotions or feelings unless the current source goal, source constraint, or source contract explicitly asks for a feeling cue or kind-help response.
+- For non-emotion source goals, avoid the words "heart", "tummy", "feel", "feels", and "feeling" entirely; use concrete words like look, count, match, sort, pack, guess, echo, say, or choose.
+- Do NOT replace the source goal with generic heart, tummy, taste, bite, sound, or sensory questions.
+- Use the current/next source scenario, goal, constraint, example line, and follow-up from context.\
+"""
+
 _CAT3_BUILD_RULES = """\
 ### Cat3 Build Round
 - Child says done:
@@ -238,9 +263,22 @@ def _select_step_phase_rules(state: SessionStateModel) -> str:
             and state.creative_slots.game_mechanic == "decide"
         ):
             return _CAT1_ROUND_RULES_DECIDE
+        if isinstance(state.creative_slots, Cat1CreativeSlots):
+            return _CAT1_ROUND_RULES_SOURCE_GOAL
         return _CAT1_ROUND_RULES_VOICE_ACTING
 
     return ""
+
+
+def _round_instruction_for(state: SessionStateModel, round_number: int | None = None) -> RoundInstruction | None:
+    """Return the instruction recipe round for the requested 1-based round."""
+    if not state.instruction_recipe:
+        return None
+    target_round = round_number or state.current_round
+    for round_instruction in state.instruction_recipe.step_instructions.rounds:
+        if round_instruction.round_number == target_round:
+            return round_instruction
+    return None
 
 
 def _build_state_context(state: SessionStateModel) -> str:
@@ -332,6 +370,34 @@ def _build_state_context(state: SessionStateModel) -> str:
             lines.append(
                 "You MUST present this exact scenario to the child. Do NOT substitute or invent a different one."
             )
+
+        current_round_instruction = _round_instruction_for(state)
+        if current_round_instruction:
+            source_contract = current_round_instruction.source_contract
+            lines.append("")
+            lines.append(f"CURRENT ROUND SOURCE GOAL: {current_round_instruction.goal}")
+            lines.append(f"CURRENT ROUND SOURCE CONSTRAINT: {current_round_instruction.constraint}")
+            if source_contract.runtime_instruction:
+                lines.append(f"CURRENT ROUND RUNTIME INSTRUCTION: {source_contract.runtime_instruction}")
+            if source_contract.example_ai_line:
+                lines.append(f'CURRENT ROUND EXAMPLE AI LINE: "{source_contract.example_ai_line}"')
+            if source_contract.child_responses.ideal:
+                lines.append(f"CURRENT ROUND IDEAL CHILD RESPONSE: {source_contract.child_responses.ideal}")
+            if source_contract.ai_followups.ideal:
+                lines.append(f"CURRENT ROUND IDEAL FOLLOW-UP: {source_contract.ai_followups.ideal}")
+            if source_contract.ai_followups.unexpected:
+                lines.append(f"CURRENT ROUND UNEXPECTED FOLLOW-UP: {source_contract.ai_followups.unexpected}")
+            if source_contract.ai_followups.no_response:
+                lines.append(f"CURRENT ROUND NO-RESPONSE FOLLOW-UP: {source_contract.ai_followups.no_response}")
+
+        next_round_instruction = _round_instruction_for(state, state.current_round + 1)
+        if next_round_instruction:
+            lines.append("")
+            lines.append(f"NEXT ROUND SOURCE SCENARIO: {next_round_instruction.scenario}")
+            lines.append(f"NEXT ROUND SOURCE GOAL: {next_round_instruction.goal}")
+            lines.append(f"NEXT ROUND SOURCE CONSTRAINT: {next_round_instruction.constraint}")
+            if next_round_instruction.source_contract.ai_followups.ideal:
+                lines.append(f"NEXT ROUND IDEAL FOLLOW-UP: {next_round_instruction.source_contract.ai_followups.ideal}")
 
     # Synthesis state
     if state.current_step == "STEP_4_SYNTHESIS":

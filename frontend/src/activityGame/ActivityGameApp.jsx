@@ -10,6 +10,12 @@ import WonderLensDevice from './WonderLensDevice.jsx';
 
 const EMPTY_LIST = [];
 
+// Cat1 activities whose round screens present concrete pickable options the
+// child names: the device scroll highlights an option card and the green
+// select button sends its label as the turn (a passive carousel/sort/voice
+// activity stays text-driven and is not listed here).
+const CAT1_CHOICE_SELECT_ACTIVITY_IDS = new Set(['activity_recognition_pop_challenge']);
+
 function isFinishedSession(sessionState) {
   return sessionState?.status === 'completed'
     || sessionState?.status === 'exited'
@@ -63,6 +69,7 @@ export default function ActivityGameApp() {
   const [catalogError, setCatalogError] = useState('');
   const [cat3OptionIndex, setCat3OptionIndex] = useState(0);
   const [cat5ItemIndex, setCat5ItemIndex] = useState(0);
+  const [cat1ChoiceIndex, setCat1ChoiceIndex] = useState(0);
   const {
     messages,
     sessionId,
@@ -175,11 +182,22 @@ export default function ActivityGameApp() {
     && !sessionFinished
     && activeTemplateType === 'cat3'
     && currentStep.startsWith('STEP_3_BUILD_');
+  const cat1ChoiceItems = baseScreenLayout?.items || EMPTY_LIST;
+  const showCat1Choice = sessionActive
+    && !sessionFinished
+    && activeTemplateType === 'cat1'
+    && currentStep.startsWith('STEP_3_ROUND_')
+    && CAT1_CHOICE_SELECT_ACTIVITY_IDS.has(selectedActivity?.id)
+    && cat1ChoiceItems.length > 0;
+  const activeCat1ChoiceIndex = cat1ChoiceItems.length
+    ? Math.min(cat1ChoiceIndex, cat1ChoiceItems.length - 1)
+    : 0;
   const cat3Options = useMemo(() => [
     { label: 'Done', value: 'done' },
     { label: 'Help', value: 'help' },
   ], []);
-  const inputDisabled = !sessionId || loading || turnPending || sessionFinished || showCat5Selection || showCat3Build;
+  const inputDisabled = !sessionId || loading || turnPending || sessionFinished
+    || showCat5Selection || showCat3Build || showCat1Choice;
   const activeCat5ItemIndex = currentRoundItems.length
     ? Math.min(cat5ItemIndex, currentRoundItems.length - 1)
     : 0;
@@ -187,16 +205,22 @@ export default function ActivityGameApp() {
     ? currentRoundCollectedIndex
     : activeCat5ItemIndex;
   const collectedSummaryIndex = collectedItems.length > 1 ? 1 : 0;
-  const screenLayout = showCat5Items
-    ? collectionScreenLayout(
-      baseScreenLayout,
-      currentRoundItems,
-      displayedCat5ItemIndex,
-      showCat5Selection ? 'device-scroll' : 'none',
-    )
-    : showCat5CollectedItems
-      ? collectionScreenLayout(baseScreenLayout, collectedItems, collectedSummaryIndex, 'none')
-      : baseScreenLayout;
+  const screenLayout = showCat1Choice
+    ? {
+      ...baseScreenLayout,
+      selection: 'device-scroll',
+      items: cat1ChoiceItems.map((item, index) => ({ ...item, selected: index === activeCat1ChoiceIndex })),
+    }
+    : showCat5Items
+      ? collectionScreenLayout(
+        baseScreenLayout,
+        currentRoundItems,
+        displayedCat5ItemIndex,
+        showCat5Selection ? 'device-scroll' : 'none',
+      )
+      : showCat5CollectedItems
+        ? collectionScreenLayout(baseScreenLayout, collectedItems, collectedSummaryIndex, 'none')
+        : baseScreenLayout;
   // The crown picker owns the Cat3 Done/Help selection surface, so the in-lens
   // build panel no longer renders an interactive control.
   const lensInteraction = null;
@@ -207,6 +231,7 @@ export default function ActivityGameApp() {
 
   useEffect(() => {
     setCat3OptionIndex(0);
+    setCat1ChoiceIndex(0);
   }, [currentStep]);
 
   useEffect(() => {
@@ -247,7 +272,18 @@ export default function ActivityGameApp() {
     await sendCollectionItem(item.id, item.label);
   }, [activeCat5ItemIndex, currentRoundItems, loading, sendCollectionItem, turnPending]);
 
-  const isDeviceOptionMode = showCat3Build || showCat5Selection;
+  const selectCat1Choice = useCallback((offset) => {
+    if (!cat1ChoiceItems.length) return;
+    setCat1ChoiceIndex((index) => (index + offset + cat1ChoiceItems.length) % cat1ChoiceItems.length);
+  }, [cat1ChoiceItems.length]);
+
+  const confirmCat1Choice = useCallback(async (itemIndex = activeCat1ChoiceIndex) => {
+    const item = cat1ChoiceItems[itemIndex] || cat1ChoiceItems[0];
+    if (!item || loading || turnPending) return;
+    await sendMessage(item.label || item.id);
+  }, [activeCat1ChoiceIndex, cat1ChoiceItems, loading, sendMessage, turnPending]);
+
+  const isDeviceOptionMode = showCat3Build || showCat5Selection || showCat1Choice;
   const sessionStatus = sessionFinished ? 'completed' : sessionActive ? 'active' : 'ready';
 
   const libraryItems = useMemo(
@@ -260,25 +296,31 @@ export default function ActivityGameApp() {
     ? cat3Options.map((option) => ({ id: option.value, label: option.label }))
     : showCat5Selection
       ? currentRoundItems.map((item) => ({ id: item.id, label: item.label, image: item.image }))
-      : libraryItems;
+      : showCat1Choice
+        ? cat1ChoiceItems.map((item) => ({ id: item.id, label: item.label, image: item.src }))
+        : libraryItems;
   const crownIndex = showCat3Build
     ? cat3OptionIndex
     : showCat5Selection
       ? activeCat5ItemIndex
-      : libraryIndex;
+      : showCat1Choice
+        ? activeCat1ChoiceIndex
+        : libraryIndex;
   const crownDisabled = isDeviceOptionMode
     ? loading || turnPending
     : sessionActive || loading || catalogLoading;
   const crownStep = useCallback((direction) => {
     if (showCat3Build) selectCat3Option(direction);
     else if (showCat5Selection) selectCat5Item(direction);
+    else if (showCat1Choice) selectCat1Choice(direction);
     else selectRelativeActivity(direction);
-  }, [selectCat3Option, selectCat5Item, selectRelativeActivity, showCat3Build, showCat5Selection]);
+  }, [selectCat3Option, selectCat5Item, selectCat1Choice, selectRelativeActivity, showCat3Build, showCat5Selection, showCat1Choice]);
   const crownConfirm = useCallback((focusedIndex) => {
     if (showCat3Build) void confirmCat3Option();
     else if (showCat5Selection) void confirmCat5Item(focusedIndex);
+    else if (showCat1Choice) void confirmCat1Choice(focusedIndex);
     else void handleStart();
-  }, [confirmCat3Option, confirmCat5Item, handleStart, showCat3Build, showCat5Selection]);
+  }, [confirmCat3Option, confirmCat5Item, confirmCat1Choice, handleStart, showCat3Build, showCat5Selection, showCat1Choice]);
 
   const handleScrollPrevious = useCallback(() => crownStep(-1), [crownStep]);
   const handleScrollNext = useCallback(() => crownStep(1), [crownStep]);

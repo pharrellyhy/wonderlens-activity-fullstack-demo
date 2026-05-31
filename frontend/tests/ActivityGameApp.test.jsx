@@ -57,6 +57,16 @@ vi.mock('../src/utils/api.js', () => ({
       premise: 'Draw one small step at a time.',
       core_ib_key_concepts: ['Form', 'Change'],
       asset_manifest_id: 'activity_guided_drawing',
+    }, {
+      id: 'activity_recognition_pop_challenge',
+      name: 'Recognition Pop Challenge',
+      kind: 'activity',
+      category: 'category_1',
+      mechanic: 'compare',
+      tier: 'T1',
+      premise: 'Find the picture that matches the target.',
+      core_ib_key_concepts: ['Form'],
+      asset_manifest_id: 'activity_recognition_pop_challenge',
     }],
   })),
   fetchActivityAssetManifest: vi.fn(async () => manifest),
@@ -460,6 +470,49 @@ describe('ActivityGameApp', () => {
 
     fireEvent.keyDown(document.body, { key: 'ArrowUp' });
     expect(screen.getByRole('option', { name: 'Done' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('drives Cat1 recognition_pop choices through device selection', async () => {
+    vi.mocked(startActivitySession).mockResolvedValue({
+      session_id: 'cat1rp',
+      activity_type: 'activity_recognition_pop_challenge',
+      template_type: 'cat1',
+      session_state: {
+        status: 'active',
+        template_type: 'cat1',
+        current_step: 'STEP_3_ROUND_1',
+        current_round: 1,
+        total_rounds: 3,
+      },
+      first_turn: { dialogue: 'Which picture matches the apple?', response_type: 'round' },
+    });
+    vi.mocked(sendTurn).mockResolvedValue({
+      session_state: {
+        status: 'active',
+        template_type: 'cat1',
+        current_step: 'STEP_3_ROUND_2',
+        current_round: 2,
+        total_rounds: 3,
+      },
+      turn: { dialogue: 'Good looking!', response_type: 'round' },
+    });
+
+    render(<ActivityGameApp />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Recognition Pop Challenge/i }));
+    fireEvent.click(screen.getByLabelText('Start activity'));
+
+    // Cat1 choice rounds enter device-option mode: text input is locked and the
+    // green select button confirms the highlighted card as the turn.
+    const selectButton = await screen.findByLabelText('Confirm selected device option');
+    expect(screen.getByPlaceholderText('Type a response').disabled).toBe(true);
+
+    // Default highlight is the first option (apple); step to the second (car).
+    fireEvent.keyDown(document.body, { key: 'ArrowDown' });
+    fireEvent.click(selectButton);
+
+    expect(vi.mocked(sendTurn)).toHaveBeenCalledWith('cat1rp', 'Car', false);
+    expect(await screen.findByText('Good looking!')).toBeTruthy();
   });
 
   it('drives Cat5 item selection through the crown picker', async () => {

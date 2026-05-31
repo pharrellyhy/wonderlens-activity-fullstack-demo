@@ -1730,6 +1730,82 @@
   text-align: center;
 }
 
+.activity-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 30rem;
+  margin: auto;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid oklch(0.88 0.02 150);
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(circle at 12% 0%, oklch(0.95 0.05 145 / 0.5), transparent 60%),
+    oklch(0.99 0.006 120);
+  box-shadow: 0 0.5rem 1.1rem oklch(0.45 0.03 150 / 0.08);
+}
+
+.activity-intro__head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.activity-intro__icon {
+  width: 3.2rem;
+  height: 3.2rem;
+  flex: 0 0 auto;
+  border-radius: 0.7rem;
+  background: oklch(0.97 0.01 120);
+  object-fit: cover;
+}
+
+.activity-intro__eyebrow {
+  margin: 0;
+  color: oklch(0.55 0.09 150);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.activity-intro__title {
+  margin: 0.1rem 0 0;
+  color: oklch(0.28 0.05 155);
+  font-size: 1.12rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.activity-intro__premise {
+  margin: 0;
+  color: oklch(0.36 0.02 155);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.activity-intro__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.activity-intro__chip {
+  padding: 0.22rem 0.66rem;
+  border-radius: 999px;
+  background: oklch(0.92 0.045 145);
+  color: oklch(0.32 0.06 150);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.activity-intro__hint {
+  margin: 0.1rem 0 0;
+  color: oklch(0.5 0.04 150);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
 .activity-game__metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

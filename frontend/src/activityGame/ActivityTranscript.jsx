@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CompassIcon } from '../icons';
+import ActivityIntro from './ActivityIntro.jsx';
 
 const STREAM_INTERVAL_MS = 24;
 const STREAM_STEPS = 32;
@@ -80,7 +81,14 @@ function PendingMessage({ label }) {
   );
 }
 
-export default function ActivityTranscript({ messages, loading, turnPending }) {
+export default function ActivityTranscript({
+  messages,
+  loading,
+  turnPending,
+  introActivity = null,
+  introIconSrc = '',
+  introRoundCount = 3,
+}) {
   const messagesRef = useRef(null);
   const latestAiIndex = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -127,9 +135,7 @@ export default function ActivityTranscript({ messages, loading, turnPending }) {
             </div>
           </div>
         )) : (
-          <div className="activity-transcript__empty">
-            <p>Select an activity and start when ready.</p>
-          </div>
+          <ActivityIntro activity={introActivity} iconSrc={introIconSrc} roundCount={introRoundCount} />
         )}
         {loading || turnPending ? <PendingMessage label={waitingLabel} /> : null}
       </div>

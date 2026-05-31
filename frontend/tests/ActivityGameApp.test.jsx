@@ -515,6 +515,16 @@ describe('ActivityGameApp', () => {
     expect(await screen.findByText('Good looking!')).toBeTruthy();
   });
 
+  it('shows a brief intro for the selected activity before starting', async () => {
+    render(<ActivityGameApp />);
+
+    // The first activity is selected by default; its intro (not the generic
+    // placeholder) renders in the transcript area before a session starts.
+    expect(await screen.findByText('Up next')).toBeTruthy();
+    expect(screen.getByText('Repeat a word back.')).toBeTruthy();
+    expect(screen.getByText(/Press the green button/i)).toBeTruthy();
+  });
+
   it('drives Cat5 item selection through the crown picker', async () => {
     vi.mocked(startActivitySession).mockResolvedValue({
       session_id: 'cat5',

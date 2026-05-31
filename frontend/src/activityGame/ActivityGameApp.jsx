@@ -443,7 +443,14 @@ export default function ActivityGameApp() {
       ) : null}
 
       <section className="activity-game__transcript-panel" aria-label="Activity text game">
-        <ActivityTranscript messages={messages} loading={loading} turnPending={turnPending} />
+        <ActivityTranscript
+          messages={messages}
+          loading={loading}
+          turnPending={turnPending}
+          introActivity={sessionActive ? null : selectedActivity}
+          introIconSrc={selectedAsset?.icon || ''}
+          introRoundCount={(selectedAsset?.beats || []).filter((beat) => beat.id.startsWith('round_')).length || 3}
+        />
         <ActivityTextInput disabled={inputDisabled} finished={sessionFinished} onSend={sendMessage} />
       </section>
     </main>

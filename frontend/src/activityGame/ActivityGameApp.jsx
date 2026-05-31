@@ -10,11 +10,15 @@ import WonderLensDevice from './WonderLensDevice.jsx';
 
 const EMPTY_LIST = [];
 
-// Cat1 activities whose round screens present concrete pickable options the
-// child names: the device scroll highlights an option card and the green
-// select button sends its label as the turn (a passive carousel/sort/voice
-// activity stays text-driven and is not listed here).
-const CAT1_CHOICE_SELECT_ACTIVITY_IDS = new Set(['activity_recognition_pop_challenge']);
+// Cat1 activities whose round screens present concrete pickable options: the
+// device scroll highlights an option card and the green select button sends
+// its label as the turn. The backend treats the label as a normal text turn,
+// so the directive speaker still drives the conversation.
+const CAT1_CHOICE_SELECT_ACTIVITY_IDS = new Set([
+  'activity_recognition_pop_challenge',
+  'activity_vegetable_sort',
+  'activity_animal_sound_imitation',
+]);
 
 function isFinishedSession(sessionState) {
   return sessionState?.status === 'completed'

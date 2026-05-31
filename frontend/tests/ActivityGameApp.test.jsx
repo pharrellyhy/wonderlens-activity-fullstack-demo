@@ -518,11 +518,13 @@ describe('ActivityGameApp', () => {
   it('shows a brief intro for the selected activity before starting', async () => {
     render(<ActivityGameApp />);
 
-    // The first activity is selected by default; its intro (not the generic
-    // placeholder) renders in the transcript area before a session starts.
-    expect(await screen.findByText('Up next')).toBeTruthy();
+    // The first activity is selected by default; its tester-facing intro (not
+    // the generic placeholder) renders in the transcript area before start.
+    expect(await screen.findByText(/Up next/i)).toBeTruthy();
     expect(screen.getByText('Repeat a word back.')).toBeTruthy();
     expect(screen.getByText(/Press the green button/i)).toBeTruthy();
+    // Tester-facing details include the category.
+    expect(screen.getByText(/Cat1/)).toBeTruthy();
   });
 
   it('drives Cat5 item selection through the crown picker', async () => {

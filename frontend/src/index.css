@@ -1732,17 +1732,12 @@
 
 .activity-intro {
   display: flex;
+  width: 100%;
   flex-direction: column;
-  gap: 0.7rem;
-  max-width: 30rem;
-  margin: auto;
-  padding: 1.1rem 1.25rem;
-  border: 1px solid oklch(0.88 0.02 150);
-  border-radius: 0.9rem;
-  background:
-    radial-gradient(circle at 12% 0%, oklch(0.95 0.05 145 / 0.5), transparent 60%),
-    oklch(0.99 0.006 120);
-  box-shadow: 0 0.5rem 1.1rem oklch(0.45 0.03 150 / 0.08);
+  align-self: flex-start;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.5rem 0.25rem;
 }
 
 .activity-intro__head {
@@ -1784,19 +1779,39 @@
   line-height: 1.4;
 }
 
-.activity-intro__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+.activity-intro__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.3rem 1rem;
+  margin: 0.1rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid oklch(0.9 0.018 150);
+  border-radius: 0.7rem;
+  background: oklch(0.985 0.006 120);
 }
 
-.activity-intro__chip {
-  padding: 0.22rem 0.66rem;
-  border-radius: 999px;
-  background: oklch(0.92 0.045 145);
-  color: oklch(0.32 0.06 150);
+.activity-intro__row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.activity-intro__row dt {
+  flex: 0 0 5.2rem;
+  color: oklch(0.55 0.04 150);
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.activity-intro__row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: oklch(0.3 0.03 155);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .activity-intro__hint {
@@ -1938,6 +1953,30 @@
     min-height: 3.5rem;
     border-right: 0;
     border-bottom: 1px solid oklch(0.86 0.018 150);
+  }
+}
+
+/* Flow mode: most real screens are shorter than the fixed card, which squeezes
+   the transcript/intro. Below ~980px tall, let the card grow to its content and
+   scroll the page; the device becomes width-driven so it never collapses in an
+   auto-height row. The fixed kiosk card is kept only on very tall screens. */
+@media (max-height: 980px) {
+  .activity-game {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    grid-template-rows: auto minmax(0, auto) auto auto;
+  }
+
+  .activity-game__device .wonderlens-device {
+    width: 100%;
+    height: auto;
+    max-width: none;
+    max-height: none;
+  }
+
+  .activity-transcript__messages {
+    min-height: 6.5rem;
   }
 }
 

@@ -182,7 +182,7 @@ describe('WonderLensDevice', () => {
     expect(cssBlock('.activity-screen-layout--picker .activity-screen-layout__item.is-adjacent')).toContain('opacity');
   });
 
-  it('keeps Cat3 Done Help off the lens as a compact device option rail', () => {
+  it('keeps Cat3 Done Help inside the lens as a compact edge rail', () => {
     render(
       <WonderLensDevice
         activity={{ name: 'Guided Drawing', mechanic: 'build' }}
@@ -203,12 +203,13 @@ describe('WonderLensDevice', () => {
     );
 
     const panel = screen.getByRole('listbox', { name: 'Build response options' });
-    expect(panel.className).toContain('wonderlens-device__option-rail');
+    expect(panel.className).toContain('activity-lens__option-rail');
     expect(screen.getByRole('option', { name: 'Done' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('true');
-    expect(document.querySelector('.activity-lens__build-panel')).toBeNull();
-    expect(cssBlock('.wonderlens-device__option-rail')).toContain('bottom: 11.4%');
-    expect(cssBlock('.wonderlens-device__option-rail')).toContain('width: 40%');
+    expect(document.querySelector('.wonderlens-device__option-rail')).toBeNull();
+    expect(cssBlock('.activity-lens__option-rail')).toContain('left: 14%');
+    expect(cssBlock('.activity-lens__option-rail')).toContain('bottom: 17%');
+    expect(cssBlock('.activity-lens__option-rail')).toContain('width: min(40%, 5.2rem)');
   });
 
   it('shows an in-lens waiting state while the backend is responding', () => {

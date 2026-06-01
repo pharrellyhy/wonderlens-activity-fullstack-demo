@@ -12,6 +12,50 @@ function ProgressDots({ current = 0, total = 3 }) {
   );
 }
 
+function LensOptionRail({ optionRail }) {
+  if (!optionRail) return null;
+
+  const selectedIndex = optionRail.selectedIndex || 0;
+  const options = optionRail.options || [];
+  const disabled = Boolean(optionRail.disabled);
+
+  const handleKeyDown = (event) => {
+    if (disabled) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      optionRail.onStep?.(1);
+    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      optionRail.onStep?.(-1);
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      optionRail.onConfirm?.(selectedIndex);
+    }
+  };
+
+  return (
+    <div
+      className="activity-lens__option-rail"
+      role="listbox"
+      aria-label={optionRail.label || 'Lens response options'}
+      aria-disabled={disabled ? 'true' : 'false'}
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={handleKeyDown}
+    >
+      {options.map((option, index) => (
+        <span
+          key={option.value || option.id || index}
+          className={index === selectedIndex ? 'activity-lens__option is-selected' : 'activity-lens__option'}
+          role="option"
+          aria-selected={index === selectedIndex ? 'true' : 'false'}
+        >
+          {option.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function pickerItemClass(index, selectedIndex, total) {
   if (total <= 0) return '';
   if (index === selectedIndex) return 'is-current';
@@ -82,6 +126,7 @@ export default function ActivityLens({
   progress,
   isWaiting = false,
   crown = null,
+  optionRail = null,
 }) {
   const activityName = activity?.name || activity?.fallback_label || 'Activity';
   const total = progress?.total || sessionState?.total_rounds || 3;
@@ -105,6 +150,8 @@ export default function ActivityLens({
           />
         </div>
       ) : null}
+
+      <LensOptionRail optionRail={optionRail} />
 
       <div className="activity-lens__copy">
         <ProgressDots current={current} total={total} />

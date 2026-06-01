@@ -8,7 +8,7 @@ Last updated: 2026-06-01
 
 **Problem**: In Cat3 build rounds, the device screen first showed only the currently selected `Done` pill, then a wider in-lens `Done`/`Help` strip that made `Help` discoverable but blocked too much of the drawing scene.
 
-**Solution**: Moved Cat3 `Done`/`Help` out of the circular lens and onto a compact lower device-bezel option rail. The drawing screen is now unobstructed, while both choices remain visible. The physical device scroll controls still move selection, the green device button still confirms the selected option, and the rail also supports keyboard arrows/Enter when focused. Cat5/Cat1/library crown behavior remains headless because those modes already have visible choices elsewhere.
+**Solution**: Kept Cat3 `Done`/`Help` inside the circular device screen, but tucked both choices into a tiny lower-left lens-edge rail. The drawing scene stays mostly unobstructed, both choices remain visible, the physical device scroll controls still move selection, the green device button still confirms the selected option, and the rail also supports keyboard arrows/Enter when focused. Cat5/Cat1/library crown behavior remains headless because those modes already have visible choices elsewhere.
 
 **Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/activityGame/WonderLensDevice.jsx`, `frontend/src/index.css`, `frontend/tests/ActivityGameApp.test.jsx`, and `frontend/tests/WonderLensDevice.test.jsx`.
 
@@ -17,7 +17,7 @@ Last updated: 2026-06-01
 **Verification**:
 - `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js` - 25 passed.
 - `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityGameLayoutCss.test.js` - passed.
-- Playwright live walkthrough reached Guided Drawing build step, verified both `Done` and `Help` are visible on the device rail, `Next device option` selects `Help`, the rail does not overlap the lens, and captured `/tmp/wonderlens-cat3-device-option-rail.png`.
+- Chrome/CDP live walkthrough reached Guided Drawing build step, verified both `Done` and `Help` are visible inside the lens, `Next device option` selects `Help`, measured the rail fully inside the circular lens at about 4.4% of lens area, and captured `/tmp/wonderlens-cat3-lens-edge-rail.png`.
 
 ---
 

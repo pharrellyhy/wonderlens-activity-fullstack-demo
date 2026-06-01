@@ -900,11 +900,9 @@
   background: oklch(0.82 0.08 145 / 0.72);
 }
 
-/* Crown picker rendered as an in-lens overlay. Per the UI layout spec, Cat3
-   shows the current Done/Help choice as a single rounded green pill near the
-   bottom (a text container the crown wheel scrolls through) so it never covers
-   the centered scene. Cat5 and the library keep the crown keyboard-only and
-   visually headless. */
+/* Crown picker rendered as an in-lens overlay. Cat3 now uses the separate
+   Done/Help strip below; Cat5, Cat1, and the library keep the crown
+   keyboard-only and visually headless. */
 .activity-lens__crown {
   position: absolute;
   inset: 0;
@@ -1052,7 +1050,7 @@
 
 .activity-lens__build-panel--compact {
   align-self: end;
-  width: min(58%, 7rem);
+  width: min(72%, 8.8rem);
   max-height: none;
   margin-bottom: 11%;
   border-color: oklch(0.9 0.04 145 / 0.48);
@@ -1085,6 +1083,11 @@
   background: oklch(0.82 0.12 145);
   color: oklch(0.16 0.02 155);
   box-shadow: 0 0 0.55rem oklch(0.8 0.12 145 / 0.38);
+}
+
+.activity-lens__build-panel:focus-visible {
+  outline: 0.16rem solid oklch(0.73 0.13 165);
+  outline-offset: 0.16rem;
 }
 
 .activity-lens__meta {

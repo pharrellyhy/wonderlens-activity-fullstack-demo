@@ -229,9 +229,6 @@ export default function ActivityGameApp() {
       : showCat5CollectedItems
         ? collectionScreenLayout(baseScreenLayout, collectedItems, collectedSummaryIndex, 'none')
         : baseScreenLayout;
-  // The crown picker owns the Cat3 Done/Help selection surface, so the in-lens
-  // build panel no longer renders an interactive control.
-  const lensInteraction = null;
   const progress = {
     current: sessionState?.current_round || 0,
     total: sessionState?.total_rounds || 3,
@@ -329,6 +326,16 @@ export default function ActivityGameApp() {
     else if (showCat1Choice) void confirmCat1Choice(focusedIndex);
     else void handleStart();
   }, [confirmCat3Option, confirmCat5Item, confirmCat1Choice, handleStart, showCat3Build, showCat5Selection, showCat1Choice]);
+  const lensInteraction = showCat3Build
+    ? {
+      type: 'cat3-build',
+      selectedIndex: cat3OptionIndex,
+      options: cat3Options,
+      disabled: loading || turnPending,
+      onStep: selectCat3Option,
+      onConfirm: crownConfirm,
+    }
+    : null;
 
   const handleScrollPrevious = useCallback(() => crownStep(-1), [crownStep]);
   const handleScrollNext = useCallback(() => crownStep(1), [crownStep]);
@@ -419,17 +426,17 @@ export default function ActivityGameApp() {
             sessionState={sessionState}
             assetSrc={assetSrc}
             screenLayout={screenLayout}
-            crown={{
+            crown={showCat3Build ? null : {
               items: crownItems,
               index: crownIndex,
               onStep: crownStep,
               onConfirm: crownConfirm,
               disabled: crownDisabled,
               confirmLabel: isDeviceOptionMode ? 'Select' : 'Start',
-              // Only Cat3 has no other in-lens picker, so it shows the crown's
-              // vertical list; Cat5 uses the screen-layout item picker and the
-              // library uses the left panel, so their crown stays keyboard-only.
-              showList: showCat3Build,
+              // Cat3 uses a visible in-lens Done/Help strip. Cat5, Cat1, and
+              // the library already have visible choices elsewhere, so their
+              // crown picker remains keyboard-only.
+              showList: false,
             }}
             progress={progress}
             isWaiting={loading || turnPending}

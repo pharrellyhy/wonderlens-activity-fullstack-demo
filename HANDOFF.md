@@ -4,6 +4,23 @@ Last updated: 2026-06-01
 
 ---
 
+## Cat3 Done Help Affordance
+
+**Problem**: In Cat3 build rounds, the device screen showed only the currently selected `Done` pill, so testers could not tell that `Help` was available or how the hardware pick control would switch options.
+
+**Solution**: Replaced the Cat3 single-choice crown pill with a visible in-lens segmented `Done`/`Help` option strip. The physical device scroll controls still move selection, the green device button still confirms the selected option, and the strip also supports keyboard arrows/Enter when focused. Cat5/Cat1/library crown behavior remains headless because those modes already have visible choices elsewhere.
+
+**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/index.css`, `frontend/tests/ActivityGameApp.test.jsx`, and `frontend/tests/WonderLensDevice.test.jsx`.
+
+**NOT Changed**: No backend behavior, activity recipes, assets, or live provider calls changed.
+
+**Verification**:
+- `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js` - 25 passed.
+- `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityGameLayoutCss.test.js` - passed.
+- Playwright live walkthrough reached Guided Drawing build step, verified both `Done` and `Help` are visible, `Next device option` selects `Help`, and captured `/tmp/wonderlens-cat3-done-help-strip.png`.
+
+---
+
 ## Adjustable Activity Game Grid
 
 **Problem**: The standalone activity-game shell had fixed grid dimensions, then the first tester slider lived inside the grid it resized. A delayed-commit fix made the label move without visible resizing and could snap back at release.
@@ -208,25 +225,3 @@ Last updated: 2026-06-01
 - Restarted backend from this worktree while sourcing the backend-root `.env` and Google credential JSON path without printing secret values.
 - `uv run python scripts/run_activity_text_smoke.py --timeout 120` — 12 passed, 0 failed.
 - Browser verification at `http://127.0.0.1:5173/?view=activities` passed for Cat1/Cat3/Cat5; screenshots: `/tmp/wonderlens-browser-verification/career-cat1-passive.png`, `/tmp/wonderlens-browser-verification/guided-cat3-scroll-select.png`, `/tmp/wonderlens-browser-verification/phoneme-cat5-scroll-select.png`.
-
----
-
-## Three-Activity Plan-Backed Goal
-
-**Problem**: The next implementation pass needed a concrete execution contract for the approved representative rollout: Cat1/Cat3/Cat5 assets, Cat5 touchless controls, delegated-agent boundaries, and a completion rule that verifies all 12 activities before declaring the goal achieved.
-
-**Solution**: Created a plan-backed goal pair for the three representative activities: `activity_career_decision_role_play`, `activity_guided_drawing`, and `activity_phoneme_treasure_hunt`. The plan records the settled interaction model for Cat1 passive visuals, Cat3 `Done`/`Help` scroll-confirm, and Cat5 item scroll-confirm. The goal records hard constraints, delegated-agent rules, live credential handling, required checks, and the final completion gate requiring all 12 activities to pass live smoke.
-
-**Edits**:
-- `docs/plans/2026-05-29-activity-assets-touchless-controls.md` — added the detailed implementation plan.
-- `goals/2026-05-29-activity-assets-touchless-controls-goal.md` — added the plan-backed goal file and goal invocation.
-- `docs/plans/README.md` — added the plan index for plan-goal workflow entries.
-- `goals/README.md` — added the goal index.
-
-**NOT Changed**:
-- No runtime assets, frontend code, backend code, or interaction behavior were changed in this pass.
-- No active `/goal` run was started.
-- No secrets or credential files were read or modified.
-
-**Verification**:
-- `git diff --check -- docs/plans/2026-05-29-activity-assets-touchless-controls.md goals/2026-05-29-activity-assets-touchless-controls-goal.md docs/plans/README.md goals/README.md` — passed.

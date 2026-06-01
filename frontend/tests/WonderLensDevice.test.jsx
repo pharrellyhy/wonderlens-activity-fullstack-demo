@@ -204,9 +204,10 @@ describe('WonderLensDevice', () => {
 
     const panel = screen.getByRole('listbox', { name: 'Build response options' });
     expect(panel.className).toContain('activity-lens__build-panel--compact');
+    expect(screen.getByRole('option', { name: 'Done' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('true');
     expect(cssBlock('.activity-lens__build-panel--compact')).toContain('align-self: end');
-    expect(cssBlock('.activity-lens__build-panel--compact')).toContain('width: min(58%, 7rem)');
+    expect(cssBlock('.activity-lens__build-panel--compact')).toContain('width: min(72%, 8.8rem)');
   });
 
   it('shows an in-lens waiting state while the backend is responding', () => {

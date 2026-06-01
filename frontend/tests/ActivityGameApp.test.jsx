@@ -370,7 +370,8 @@ describe('ActivityGameApp', () => {
 
     expect((await screen.findByRole('option', { name: 'Done' })).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('false');
-    expect(screen.getByRole('listbox', { name: 'Crown picker' })).toBeTruthy();
+    expect(screen.getByRole('listbox', { name: 'Build response options' })).toBeTruthy();
+    expect(screen.queryByRole('listbox', { name: 'Crown picker' })).toBeNull();
     expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(true);
     expect(screen.queryByText('Draw one simple line or shape to start the picture.')).toBeNull();
     expect(screen.queryByText('paper + pencil')).toBeNull();
@@ -429,7 +430,7 @@ describe('ActivityGameApp', () => {
     expect(screen.getByRole('heading', { name: 'Word Echo Practice' })).toBeTruthy();
   });
 
-  it('drives Cat3 Done/Help through the crown picker', async () => {
+  it('drives Cat3 Done/Help through the visible build option strip', async () => {
     vi.mocked(startActivitySession).mockResolvedValue({
       session_id: 'cat3',
       activity_type: 'activity_guided_drawing',
@@ -464,7 +465,7 @@ describe('ActivityGameApp', () => {
     fireEvent.click(screen.getByLabelText('Start activity'));
 
     expect((await screen.findByRole('option', { name: 'Done' })).getAttribute('aria-selected')).toBe('true');
-    const listbox = screen.getByRole('listbox', { name: 'Crown picker' });
+    const listbox = screen.getByRole('listbox', { name: 'Build response options' });
 
     fireEvent.keyDown(listbox, { key: 'ArrowDown' });
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('true');

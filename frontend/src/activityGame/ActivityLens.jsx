@@ -15,13 +15,30 @@ function ProgressDots({ current = 0, total = 3 }) {
 function Cat3BuildPanel({ interaction }) {
   const selectedIndex = interaction.selectedIndex || 0;
   const options = interaction.options || [];
+  const disabled = Boolean(interaction.disabled);
+
+  const handleKeyDown = (event) => {
+    if (disabled) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      interaction.onStep?.(1);
+    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      interaction.onStep?.(-1);
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      interaction.onConfirm?.(selectedIndex);
+    }
+  };
 
   return (
     <div
       className="activity-lens__interaction activity-lens__build-panel activity-lens__build-panel--compact"
       role="listbox"
       aria-label="Build response options"
-      aria-disabled={interaction.disabled ? 'true' : 'false'}
+      aria-disabled={disabled ? 'true' : 'false'}
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={handleKeyDown}
     >
       {options.map((option, index) => (
         <span

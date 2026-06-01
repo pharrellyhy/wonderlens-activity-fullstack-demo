@@ -6,18 +6,18 @@ Last updated: 2026-06-01
 
 ## Cat5 Object Picker Label Hiding
 
-**Problem**: Cat5 object-selection rounds, such as Phoneme Treasure Hunt, displayed the actual object names (`Ball`, `Cup`, `Book`) on the screen picker, leaking the answer while the child was choosing.
+**Problem**: Cat5 object-selection rounds, such as Phoneme Treasure Hunt, displayed the actual object names (`Ball`, `Cup`, `Book`) on the screen picker, leaking the answer while the child was choosing. The first label-hiding pass also exposed the source PNG white backgrounds as a square/solid selected card.
 
-**Solution**: Cat5 collection selection now keeps object labels in state for accessibility and submission, but hides those labels from the visible screen items. Selection items use transparent surfaces with a ring-only selected state and contained object images, matching the lighter Cat3 control treatment.
+**Solution**: Cat5 collection selection now keeps object labels in state for accessibility and submission, but hides those labels from the visible screen items. Phoneme item PNGs now have real alpha backgrounds, and selection items use clipped circular transparent surfaces with a ring/halo selected state and contained object images.
 
-**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/index.css`, `frontend/tests/ActivityGameApp.test.jsx`, and `frontend/tests/WonderLensDevice.test.jsx`.
+**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/index.css`, `frontend/public/activity-assets/activity_phoneme_treasure_hunt/items/*.png`, `frontend/tests/ActivityGameApp.test.jsx`, `frontend/tests/WonderLensDevice.test.jsx`, and `frontend/tests/activityAssets.test.js`.
 
-**NOT Changed**: No backend behavior, activity recipes, item IDs, object images, or provider calls changed. Cat5 recap/detail views can still show selected labels after selection.
+**NOT Changed**: No backend behavior, activity recipes, item IDs, or provider calls changed. Cat5 recap/detail views can still show selected labels after selection.
 
 **Verification**:
-- `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js` - 26 passed.
+- `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js activityAssets.test.js` - passed.
 - `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityGameLayoutCss.test.js` - passed.
-- Chrome/CDP live walkthrough reached Phoneme Treasure Hunt object selection, verified `itemSpans: []`, transparent item backgrounds, `object-fit: contain`, and captured `/tmp/wonderlens-cat5-transparent-picker.png`.
+- Chrome/CDP live walkthrough reached Phoneme Treasure Hunt object selection, verified `itemSpans: []`, transparent circular item backgrounds, contained images with normal blend mode, and captured `/tmp/wonderlens-cat5-polished-alpha-picker.png`.
 
 ---
 

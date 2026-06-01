@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
@@ -48,6 +49,14 @@ function pngDimensions(assetPath) {
     width: buffer.readUInt32BE(16),
     height: buffer.readUInt32BE(20),
   };
+}
+
+function pngHasAlpha(assetPath) {
+  const buffer = readFileSync(publicAssetPath(assetPath));
+  expect(buffer.toString('ascii', 1, 4)).toBe('PNG');
+  const colorType = buffer.readUInt8(25);
+  const hasTransparencyChunk = buffer.includes(Buffer.from('tRNS'));
+  return colorType === 4 || colorType === 6 || hasTransparencyChunk;
 }
 
 function expectLayoutAssetExists(assetPath, label) {
@@ -240,6 +249,21 @@ describe('activity asset manifest', () => {
       for (const beat of entry.beats) {
         expect(pngDimensions(beat.src)).toEqual({ width: 512, height: 512 });
       }
+    }
+  });
+
+  it('keeps Cat5 picker item assets transparent', () => {
+    const phoneme = manifest.activities.find((entry) => entry.id === 'activity_phoneme_treasure_hunt');
+    const itemPaths = new Set();
+    for (const beat of phoneme.beats) {
+      for (const item of beat.layout?.items || []) {
+        if (item.src?.includes('/items/')) itemPaths.add(item.src);
+      }
+    }
+
+    expect(itemPaths.size).toBeGreaterThan(0);
+    for (const itemPath of itemPaths) {
+      expect(pngHasAlpha(itemPath), `${itemPath} should have alpha for transparent picker rendering`).toBe(true);
     }
   });
 

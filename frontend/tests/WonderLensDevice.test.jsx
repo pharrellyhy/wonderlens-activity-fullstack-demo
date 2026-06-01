@@ -213,8 +213,13 @@ describe('WonderLensDevice', () => {
     expect(document.querySelector('.activity-screen-layout--transparent-items')).toBeTruthy();
     expect(document.querySelectorAll('.activity-screen-layout__item span')).toHaveLength(0);
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item')).toContain('background: transparent');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item')).toContain('overflow: hidden');
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected')).toContain('background: transparent');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected')).toContain('0 0.24rem 0.46rem');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item img')).toContain('width: 92%');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item img')).toContain('height: 92%');
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item img')).toContain('object-fit: contain');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item img')).toContain('border-radius: inherit');
   });
 
   it('keeps Cat3 Done Help inside the lens as a curved side rail', () => {

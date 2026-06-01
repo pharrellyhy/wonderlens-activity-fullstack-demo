@@ -4,6 +4,23 @@ Last updated: 2026-06-01
 
 ---
 
+## Cat5 Object Picker Label Hiding
+
+**Problem**: Cat5 object-selection rounds, such as Phoneme Treasure Hunt, displayed the actual object names (`Ball`, `Cup`, `Book`) on the screen picker, leaking the answer while the child was choosing.
+
+**Solution**: Cat5 collection selection now keeps object labels in state for accessibility and submission, but hides those labels from the visible screen items. Selection items use transparent surfaces with a ring-only selected state and contained object images, matching the lighter Cat3 control treatment.
+
+**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/index.css`, `frontend/tests/ActivityGameApp.test.jsx`, and `frontend/tests/WonderLensDevice.test.jsx`.
+
+**NOT Changed**: No backend behavior, activity recipes, item IDs, object images, or provider calls changed. Cat5 recap/detail views can still show selected labels after selection.
+
+**Verification**:
+- `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js` - 26 passed.
+- `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityGameLayoutCss.test.js` - passed.
+- Chrome/CDP live walkthrough reached Phoneme Treasure Hunt object selection, verified `itemSpans: []`, transparent item backgrounds, `object-fit: contain`, and captured `/tmp/wonderlens-cat5-transparent-picker.png`.
+
+---
+
 ## Cat3 Done Help Affordance
 
 **Problem**: In Cat3 build rounds, the device screen first showed only the currently selected `Done` pill, then a wider in-lens `Done`/`Help` strip that made `Help` discoverable but blocked too much of the drawing scene.
@@ -194,34 +211,3 @@ Last updated: 2026-06-01
 - Restarted backend from this worktree while sourcing the backend-root `.env` and Google credential JSON path without printing secret values.
 - `uv run python scripts/run_activity_text_smoke.py --timeout 120` — 12 passed, 0 failed.
 - Browser verification at `http://127.0.0.1:5173/?view=activities` passed for Career Decision Role Play, Guided Drawing, and Phoneme Treasure Hunt. Career used the bounded firefighter decision with no picker; Guided Drawing repeated the ears/petals step through the compact scroll/select Help path; Phoneme Treasure Hunt used B-word prompting, crown picker selection, and recapped the selected `Book`, `Banana`, `Basket` items.
-
----
-
-## Three-Activity Asset and Touchless Control Implementation
-
-**Problem**: The approved representative pilot needed to move from plan to verified implementation: flat Nordic runtime assets for the three selected activities, Cat5 touchless item selection through the device controls, Cat1/Cat3 behavior preservation, and all-activity live smoke before declaring the goal complete.
-
-**Solution**: Implemented the three-activity pilot in the feature worktree. Cat1 Career Decision Role Play remains a passive visual companion with text as the response path. Cat3 Guided Drawing keeps `Done`/`Help` on the device and uses the right scroll rocker plus green start/select button. Cat5 Phoneme Treasure Hunt now uses the same scroll-highlight/start-select model for item collection, keeps typed input disabled only during item selection, and re-enables text input for the detail prompt while preserving the selected item highlight. The Cat5 runtime round item sets are now deterministic and match the approved manifest/art sets.
-
-**Edits**:
-- `frontend/public/activity-assets/activity_career_decision_role_play/**`, `activity_guided_drawing/**`, `activity_phoneme_treasure_hunt/**` — replaced only the three representative runtime assets and added separate item assets where needed.
-- `frontend/public/activity-assets/activity-assets.manifest.json` — added pilot layout metadata only for the three representative activities.
-- `backend/entity_registry.py` — added deterministic Cat5 round sets for `activity_phoneme_treasure_hunt`.
-- `frontend/src/activityGame/ActivityGameApp.jsx`, `ActivityLens.jsx`, `WonderLensDevice.jsx`, `frontend/src/index.css` — implemented touchless Cat5 item selection and preserved Cat3 physical-control selection.
-- `frontend/tests/ActivityGameApp.test.jsx`, `frontend/tests/WonderLensDevice.test.jsx`, `frontend/tests/activityAssets.test.js`, `tests/test_activity_text_game_asset_contract.py` — added/updated regressions for pilot scope, Cat5 scroll/select, Cat5 text unlock, selected item continuity, and asset contracts.
-
-**NOT Changed**:
-- Standalone activity mode remains text-only; no STT, TTS, mic, camera, photo upload, or image-recognition controls were added.
-- Non-representative activity PNGs and manifest layout metadata were restored to stay outside the three-activity pilot scope.
-- Runtime uses committed static PNGs only; no runtime image generation API is called.
-
-**Verification**:
-- `npm test -- --run tests/activityAssets.test.js tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx` — 20 passed.
-- `npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/activityAssets.test.js` — passed.
-- `npm run build` — passed; Vite emitted the existing large chunk warning.
-- `uv run pytest backend/tests/test_activity_source_fidelity.py backend/tests/test_activity_text_game_cat3.py tests/test_activity_text_smoke.py tests/test_activity_text_game_asset_contract.py -q` — 25 passed.
-- `uv run ruff check backend/tests/test_activity_source_fidelity.py backend/tests/test_activity_text_game_cat3.py scripts/run_activity_text_smoke.py tests/test_activity_text_smoke.py tests/test_activity_text_game_asset_contract.py backend/entity_registry.py` — passed.
-- `git diff --check` — passed.
-- Restarted backend from this worktree while sourcing the backend-root `.env` and Google credential JSON path without printing secret values.
-- `uv run python scripts/run_activity_text_smoke.py --timeout 120` — 12 passed, 0 failed.
-- Browser verification at `http://127.0.0.1:5173/?view=activities` passed for Cat1/Cat3/Cat5; screenshots: `/tmp/wonderlens-browser-verification/career-cat1-passive.png`, `/tmp/wonderlens-browser-verification/guided-cat3-scroll-select.png`, `/tmp/wonderlens-browser-verification/phoneme-cat5-scroll-select.png`.

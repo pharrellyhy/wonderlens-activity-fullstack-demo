@@ -786,6 +786,18 @@
     0 0.48rem 0.9rem oklch(0.04 0.006 150 / 0.34);
 }
 
+.activity-screen-layout--transparent-items .activity-screen-layout__item {
+  overflow: visible;
+  border-color: oklch(0.76 0.045 145 / 0.34);
+  background: transparent;
+  box-shadow: none;
+}
+
+.activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected {
+  background: transparent;
+  box-shadow: 0 0 0 0.12rem oklch(0.78 0.11 145 / 0.42);
+}
+
 .activity-screen-layout__item--circle {
   aspect-ratio: 1;
   border-radius: 50%;
@@ -800,6 +812,11 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.activity-screen-layout--transparent-items .activity-screen-layout__item img {
+  object-fit: contain;
+  filter: drop-shadow(0 0.18rem 0.22rem oklch(0.1 0.01 145 / 0.18));
 }
 
 .activity-screen-layout__item span {

@@ -182,6 +182,41 @@ describe('WonderLensDevice', () => {
     expect(cssBlock('.activity-screen-layout--picker .activity-screen-layout__item.is-adjacent')).toContain('opacity');
   });
 
+  it('can render Cat5 picker items without visible labels on transparent surfaces', () => {
+    render(
+      <WonderLensDevice
+        activity={{ name: 'Phoneme Treasure Hunt', mechanic: 'collect' }}
+        progress={{ current: 1, total: 3 }}
+        screenLayout={{
+          mode: 'picker',
+          selection: 'device-scroll',
+          hideLabels: true,
+          transparentItems: true,
+          background: { src: '/activity-assets/activity_phoneme_treasure_hunt/round_1.png', fit: 'cover' },
+          items: [
+            {
+              id: 'ball',
+              src: '/activity-assets/activity_phoneme_treasure_hunt/items/ball.png',
+              shape: 'circle',
+              label: 'Ball',
+              selected: true,
+            },
+          ],
+        }}
+        onScrollPrevious={vi.fn()}
+        onScrollNext={vi.fn()}
+        onPrimaryAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText('Ball')).toBeNull();
+    expect(document.querySelector('.activity-screen-layout--transparent-items')).toBeTruthy();
+    expect(document.querySelectorAll('.activity-screen-layout__item span')).toHaveLength(0);
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item')).toContain('background: transparent');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected')).toContain('background: transparent');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item img')).toContain('object-fit: contain');
+  });
+
   it('keeps Cat3 Done Help inside the lens as a curved side rail', () => {
     render(
       <WonderLensDevice

@@ -76,9 +76,15 @@ function ActivityScreenLayout({ activityName, assetSrc, screenLayout }) {
   const backgroundFit = layout.background?.fit || 'cover';
   const items = Array.isArray(layout.items) ? layout.items : [];
   const selectedIndex = Math.max(0, items.findIndex((item) => item.selected));
+  const className = [
+    'activity-screen-layout',
+    `activity-screen-layout--${layout.mode || 'single'}`,
+    layout.hideLabels ? 'activity-screen-layout--hide-labels' : '',
+    layout.transparentItems ? 'activity-screen-layout--transparent-items' : '',
+  ].filter(Boolean).join(' ');
 
   return (
-    <div className={`activity-screen-layout activity-screen-layout--${layout.mode || 'single'}`}>
+    <div className={className}>
       {backgroundSrc ? (
         <img
           key={backgroundSrc}
@@ -105,7 +111,7 @@ function ActivityScreenLayout({ activityName, assetSrc, screenLayout }) {
               {item.src ? (
                 <img src={asset(item.src)} alt="" aria-hidden="true" />
               ) : null}
-              {item.label ? <span>{item.label}</span> : null}
+              {item.label && !layout.hideLabels ? <span>{item.label}</span> : null}
             </div>
           ))}
         </div>

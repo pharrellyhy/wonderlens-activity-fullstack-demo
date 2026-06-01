@@ -212,20 +212,24 @@ describe('ActivityGameApp', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Phoneme Treasure Hunt/i }));
     fireEvent.click(screen.getByLabelText('Start activity'));
 
-    expect(await screen.findByText('Ball')).toBeTruthy();
+    expect((await screen.findByRole('option', { name: 'Ball' })).getAttribute('aria-selected')).toBe('true');
     expect(screen.queryByText('Choose a word that starts with b')).toBeNull();
-    expect(screen.getByText('Cup')).toBeTruthy();
-    expect(screen.getByText('Book')).toBeTruthy();
     expect(document.querySelector('.activity-screen-layout--picker')).toBeTruthy();
+    expect(document.querySelector('.activity-screen-layout--transparent-items')).toBeTruthy();
+    expect(document.querySelectorAll('.activity-screen-layout__item span')).toHaveLength(0);
+    expect(screen.queryByText('Ball')).toBeNull();
+    expect(screen.queryByText('Cup')).toBeNull();
+    expect(screen.queryByText('Book')).toBeNull();
     expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(true);
     expect(screen.queryByRole('button', { name: 'Select: Ball' })).toBeNull();
-    expect(document.querySelector('.activity-screen-layout__item.is-selected span')?.textContent).toBe('Ball');
 
     fireEvent.click(screen.getByLabelText('Next device option'));
-    expect(document.querySelector('.activity-screen-layout__item.is-selected span')?.textContent).toBe('Cup');
+    expect(screen.getByRole('option', { name: 'Cup' }).getAttribute('aria-selected')).toBe('true');
+    expect(document.querySelectorAll('.activity-screen-layout__item span')).toHaveLength(0);
 
     fireEvent.click(screen.getByLabelText('Previous device option'));
-    expect(document.querySelector('.activity-screen-layout__item.is-selected span')?.textContent).toBe('Ball');
+    expect(screen.getByRole('option', { name: 'Ball' }).getAttribute('aria-selected')).toBe('true');
+    expect(document.querySelectorAll('.activity-screen-layout__item span')).toHaveLength(0);
 
     fireEvent.click(screen.getByLabelText('Confirm selected device option'));
 
@@ -271,7 +275,7 @@ describe('ActivityGameApp', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Phoneme Treasure Hunt/i }));
     fireEvent.click(screen.getByLabelText('Start activity'));
-    expect(await screen.findByText('Ball')).toBeTruthy();
+    expect(await screen.findByRole('option', { name: 'Ball' })).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Confirm selected device option'));
 
     expect(await screen.findByText('Ready for the B chant.')).toBeTruthy();
@@ -325,7 +329,7 @@ describe('ActivityGameApp', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Phoneme Treasure Hunt/i }));
     fireEvent.click(screen.getByLabelText('Start activity'));
-    expect(await screen.findByText('Ball')).toBeTruthy();
+    expect(await screen.findByRole('option', { name: 'Ball' })).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Confirm selected device option'));
 
     expect(await screen.findByText('Ball works. Which B word did you choose?')).toBeTruthy();

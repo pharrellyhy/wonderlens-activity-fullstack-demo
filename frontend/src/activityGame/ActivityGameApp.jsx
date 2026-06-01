@@ -35,13 +35,15 @@ function layoutModeForItems(items) {
   return 'single';
 }
 
-function collectionScreenLayout(baseLayout, items, selectedIndex = 0, selection = 'device-scroll') {
+function collectionScreenLayout(baseLayout, items, selectedIndex = 0, selection = 'device-scroll', display = {}) {
   if (!items.length) return baseLayout;
 
   return {
     ...(baseLayout || {}),
     mode: layoutModeForItems(items),
     selection,
+    hideLabels: Boolean(display.hideLabels),
+    transparentItems: Boolean(display.transparentItems),
     items: items.map((item, index) => ({
       id: item.id || `item_${index + 1}`,
       src: item.image || item.src || baseLayout?.background?.src || '',
@@ -225,6 +227,10 @@ export default function ActivityGameApp() {
         currentRoundItems,
         displayedCat5ItemIndex,
         showCat5Selection ? 'device-scroll' : 'none',
+        {
+          hideLabels: showCat5Selection,
+          transparentItems: showCat5Selection,
+        },
       )
       : showCat5CollectedItems
         ? collectionScreenLayout(baseScreenLayout, collectedItems, collectedSummaryIndex, 'none')

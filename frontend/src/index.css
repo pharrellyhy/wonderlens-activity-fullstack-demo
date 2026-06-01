@@ -902,24 +902,26 @@
 
 .activity-lens__option-rail {
   position: absolute;
-  left: 14%;
-  bottom: 17%;
+  right: 6%;
+  top: 50%;
   z-index: 4;
   display: grid;
-  width: min(40%, 5.2rem);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.12rem;
-  border: 1px solid oklch(0.76 0.045 145 / 0.58);
+  width: min(25%, 2.25rem);
+  height: min(38%, 4.25rem);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.18rem;
+  border: 1px solid oklch(0.76 0.045 145 / 0.42);
   border-radius: 999px;
-  background: oklch(0.98 0.012 145 / 0.88);
-  box-shadow: 0 0.14rem 0.32rem oklch(0.18 0.012 145 / 0.18);
-  padding: 0.12rem;
+  background: oklch(0.98 0.012 145 / 0.18);
+  box-shadow: 0 0.12rem 0.24rem oklch(0.18 0.012 145 / 0.12);
+  padding: 0.14rem;
+  transform: translateY(-50%);
 }
 
 .activity-lens__option {
   display: grid;
   min-width: 0;
-  min-height: 0.94rem;
+  min-height: 0;
   place-items: center;
   border-radius: 999px;
   color: oklch(0.3 0.045 155);
@@ -928,11 +930,14 @@
   line-height: 1;
   text-shadow: none;
   text-transform: uppercase;
+  transform-origin: right center;
+  transition: transform 150ms ease-out, background-color 150ms ease-out;
 }
 
 .activity-lens__option.is-selected {
-  background: oklch(0.78 0.11 145);
+  background: oklch(0.78 0.11 145 / 0.74);
   color: oklch(0.16 0.02 155);
+  transform: scale(1.16);
 }
 
 .activity-lens__option-rail:focus-visible {
@@ -940,7 +945,7 @@
   outline-offset: 0.14rem;
 }
 
-/* Crown picker rendered as an in-lens overlay. Cat3 uses the small lower-left
+/* Crown picker rendered as an in-lens overlay. Cat3 uses the curved side
    lens option rail; Cat5, Cat1, and the library keep the crown
    keyboard-only and visually headless. */
 .activity-lens__crown {

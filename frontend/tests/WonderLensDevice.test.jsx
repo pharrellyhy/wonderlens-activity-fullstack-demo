@@ -182,7 +182,7 @@ describe('WonderLensDevice', () => {
     expect(cssBlock('.activity-screen-layout--picker .activity-screen-layout__item.is-adjacent')).toContain('opacity');
   });
 
-  it('keeps Cat3 Done Help inside the lens as a compact edge rail', () => {
+  it('keeps Cat3 Done Help inside the lens as a curved side rail', () => {
     render(
       <WonderLensDevice
         activity={{ name: 'Guided Drawing', mechanic: 'build' }}
@@ -207,9 +207,12 @@ describe('WonderLensDevice', () => {
     expect(screen.getByRole('option', { name: 'Done' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('true');
     expect(document.querySelector('.wonderlens-device__option-rail')).toBeNull();
-    expect(cssBlock('.activity-lens__option-rail')).toContain('left: 14%');
-    expect(cssBlock('.activity-lens__option-rail')).toContain('bottom: 17%');
-    expect(cssBlock('.activity-lens__option-rail')).toContain('width: min(40%, 5.2rem)');
+    expect(cssBlock('.activity-lens__option-rail')).toContain('right: 6%');
+    expect(cssBlock('.activity-lens__option-rail')).toContain('top: 50%');
+    expect(cssBlock('.activity-lens__option-rail')).toContain('transform: translateY(-50%)');
+    expect(cssBlock('.activity-lens__option-rail')).toContain('grid-template-rows: repeat(2, minmax(0, 1fr))');
+    expect(cssBlock('.activity-lens__option-rail')).toContain('background: oklch(0.98 0.012 145 / 0.18)');
+    expect(cssBlock('.activity-lens__option.is-selected')).toContain('transform: scale(1.16)');
   });
 
   it('shows an in-lens waiting state while the backend is responding', () => {

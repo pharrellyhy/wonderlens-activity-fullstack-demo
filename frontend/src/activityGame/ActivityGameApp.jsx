@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchActivities, fetchActivityAssetManifest } from '../utils/api';
 import { assetForBeat, beatIdFromSessionState, screenLayoutForBeat } from './activityAssets';
 import ActivityLibrary from './ActivityLibrary.jsx';
@@ -78,8 +78,6 @@ export default function ActivityGameApp() {
   const [cat5ItemIndex, setCat5ItemIndex] = useState(0);
   const [cat1ChoiceIndex, setCat1ChoiceIndex] = useState(0);
   const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
-  const [draftGridSize, setDraftGridSize] = useState(DEFAULT_GRID_SIZE);
-  const gridSizeDraggingRef = useRef(false);
   const {
     messages,
     sessionId,
@@ -335,21 +333,10 @@ export default function ActivityGameApp() {
   const handleScrollPrevious = useCallback(() => crownStep(-1), [crownStep]);
   const handleScrollNext = useCallback(() => crownStep(1), [crownStep]);
   const handlePrimaryAction = useCallback(() => crownConfirm(crownIndex), [crownConfirm, crownIndex]);
-  const handleGridSizeDragStart = useCallback(() => {
-    gridSizeDraggingRef.current = true;
-  }, []);
-  const handleGridSizeCommit = useCallback((event) => {
-    const nextSize = Number(event.currentTarget.value);
-    gridSizeDraggingRef.current = false;
-    setDraftGridSize(nextSize);
-    setGridSize(nextSize);
-  }, []);
   const handleGridSizeChange = useCallback((event) => {
-    const nextSize = Number(event.target.value);
-    setDraftGridSize(nextSize);
-    if (!gridSizeDraggingRef.current) setGridSize(nextSize);
+    setGridSize(Number(event.target.value));
   }, []);
-  const gridSizePercent = Math.round(draftGridSize * 100);
+  const gridSizePercent = Math.round(gridSize * 100);
   const activityGameStyle = useMemo(() => ({
     '--activity-game-size': gridSize.toFixed(2),
   }), [gridSize]);
@@ -372,32 +359,30 @@ export default function ActivityGameApp() {
   }, [isDeviceOptionMode, crownStep]);
 
   return (
-    <main className="activity-game" style={activityGameStyle}>
+    <div className="activity-game-shell" style={activityGameStyle}>
+      <div className="activity-game__grid-toolbar" aria-label="Layout controls">
+        <label className="activity-game__grid-size">
+          <span>Grid</span>
+          <input
+            type="range"
+            min={MIN_GRID_SIZE}
+            max={MAX_GRID_SIZE}
+            step="0.02"
+            value={gridSize}
+            aria-label="Activity game grid size"
+            onChange={handleGridSizeChange}
+          />
+          <output>{gridSizePercent}%</output>
+        </label>
+      </div>
+
+      <main className="activity-game">
       <header className="activity-game__topbar">
         <h1>WonderLens Prototype</h1>
-        <div className="activity-game__topbar-tools">
-          <label className="activity-game__grid-size">
-            <span>Grid</span>
-            <input
-              type="range"
-              min={MIN_GRID_SIZE}
-              max={MAX_GRID_SIZE}
-              step="0.02"
-              value={draftGridSize}
-              aria-label="Activity game grid size"
-              onChange={handleGridSizeChange}
-              onPointerDown={handleGridSizeDragStart}
-              onPointerCancel={handleGridSizeCommit}
-              onPointerUp={handleGridSizeCommit}
-              onBlur={handleGridSizeCommit}
-            />
-            <output>{gridSizePercent}%</output>
-          </label>
-          <div className="activity-game__tester">
-            <span>Tester Mode</span>
-            <span className="activity-game__tester-dot" aria-hidden="true" />
-            <span className="activity-game__tester-avatar" aria-label="Tester profile">TS</span>
-          </div>
+        <div className="activity-game__tester">
+          <span>Tester Mode</span>
+          <span className="activity-game__tester-dot" aria-hidden="true" />
+          <span className="activity-game__tester-avatar" aria-label="Tester profile">TS</span>
         </div>
       </header>
 
@@ -497,5 +482,6 @@ export default function ActivityGameApp() {
         <ActivityTextInput disabled={inputDisabled} finished={sessionFinished} onSend={sendMessage} />
       </section>
     </main>
+    </div>
   );
 }

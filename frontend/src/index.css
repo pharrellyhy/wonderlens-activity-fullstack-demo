@@ -1255,20 +1255,32 @@
 }
 
 /* Standalone activity text game */
-.activity-game {
+.activity-game-shell {
   --activity-game-size: 1;
   --activity-game-topbar-row: calc(4.7rem * var(--activity-game-size));
   --activity-game-stage-min: calc(25rem * var(--activity-game-size));
   --activity-game-metrics-row: calc(4.2rem * var(--activity-game-size));
   --activity-game-transcript-min: calc(12.5rem * var(--activity-game-size));
   --wonderlens-device-scale: var(--activity-game-size);
+  min-height: 100dvh;
+  padding: 0.75rem 0;
+}
+
+.activity-game__grid-toolbar {
+  display: flex;
+  width: min(61rem, calc(100vw - 1.5rem));
+  justify-content: flex-end;
+  margin: 0 auto 0.45rem;
+}
+
+.activity-game {
   display: grid;
   width: min(calc(61rem * var(--activity-game-size)), calc(100vw - 1.5rem));
-  height: min(calc(64rem * var(--activity-game-size)), calc(100dvh - 1.5rem));
-  min-height: min(calc(42rem * var(--activity-game-size)), calc(100dvh - 1.5rem));
+  height: min(calc(64rem * var(--activity-game-size)), calc(100dvh - 4.6rem));
+  min-height: min(calc(42rem * var(--activity-game-size)), calc(100dvh - 4.6rem));
   grid-template-rows: var(--activity-game-topbar-row) minmax(var(--activity-game-stage-min), 1fr) var(--activity-game-metrics-row) minmax(var(--activity-game-transcript-min), 0.56fr);
   overflow: hidden;
-  margin: 0.75rem auto;
+  margin: 0 auto;
   border: 1px solid oklch(0.82 0.028 150);
   border-radius: 0.45rem;
   background:
@@ -1289,14 +1301,6 @@
     radial-gradient(circle at 91% 26%, oklch(0.91 0.05 145), transparent 8rem),
     linear-gradient(90deg, oklch(0.9 0.052 145), oklch(0.94 0.026 145));
   padding: 0 1.7rem;
-}
-
-.activity-game__topbar-tools {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  min-width: 0;
 }
 
 .activity-game__grid-size {
@@ -1952,6 +1956,16 @@
 }
 
 @media (max-width: 760px) {
+  .activity-game-shell {
+    padding: 0.4rem 0;
+  }
+
+  .activity-game__grid-toolbar {
+    width: min(100vw - 0.8rem, 34rem);
+    justify-content: flex-start;
+    margin-bottom: 0.4rem;
+  }
+
   .activity-game {
     width: min(100vw - 0.8rem, 34rem);
     height: auto;
@@ -1965,13 +1979,6 @@
     flex-direction: column;
     order: 1;
     padding: 1rem;
-  }
-
-  .activity-game__topbar-tools {
-    width: 100%;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.7rem;
   }
 
   .activity-game__grid-size {
@@ -2026,7 +2033,7 @@
    allowing the stage/device area to push the transcript below the fold. */
 @media (max-height: 980px) {
   .activity-game {
-    height: calc(100dvh - 1.5rem);
+    height: calc(100dvh - 4.6rem);
     min-height: 0;
     overflow: hidden;
     grid-template-rows: clamp(4.2rem, calc(4.2rem * var(--activity-game-size)), 5rem) minmax(clamp(16rem, calc(16rem * var(--activity-game-size)), 20rem), 0.82fr) clamp(3.8rem, calc(3.8rem * var(--activity-game-size)), 4.35rem) minmax(7rem, 0.54fr);

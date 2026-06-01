@@ -7,12 +7,15 @@ const css = readFileSync(join(cwd(), 'src', 'index.css'), 'utf8');
 
 describe('activity game short viewport layout CSS', () => {
   it('uses CSS variables so the activity game grid can be resized', () => {
+    const shellStart = css.indexOf('.activity-game-shell {');
+    const toolbarStart = css.indexOf('.activity-game__grid-toolbar', shellStart);
+    const shellBlock = css.slice(shellStart, toolbarStart);
     const gameStart = css.indexOf('.activity-game {');
     const nextRuleStart = css.indexOf('.activity-game__topbar', gameStart);
     const gameBlock = css.slice(gameStart, nextRuleStart);
 
-    expect(gameBlock).toContain('--activity-game-size');
-    expect(gameBlock).toContain('--activity-game-stage-min');
+    expect(shellBlock).toContain('--activity-game-size');
+    expect(shellBlock).toContain('--activity-game-stage-min');
     expect(gameBlock).toMatch(/width:\s*min\(calc\(61rem \* var\(--activity-game-size\)/);
     expect(gameBlock).toMatch(/height:\s*min\(calc\(64rem \* var\(--activity-game-size\)/);
     expect(gameBlock).toContain('grid-template-rows: var(--activity-game-topbar-row)');

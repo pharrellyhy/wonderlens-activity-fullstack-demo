@@ -92,7 +92,7 @@ describe('ActivityGameApp', () => {
     expect(screen.queryByText(/Choose a concept/i)).toBeNull();
     expect(screen.queryByText(/concept/i)).toBeNull();
     expect(screen.queryByLabelText(/Upload photo/i)).toBeNull();
-    expect(screen.queryByLabelText('Layout controls')).toBeNull();
+    expect(screen.getByLabelText('Layout controls')).toBeTruthy();
     expect(screen.queryByText('Transcript width')).toBeNull();
   });
 
@@ -112,37 +112,35 @@ describe('ActivityGameApp', () => {
     render(<ActivityGameApp />);
 
     expect(await screen.findByText('WonderLens Prototype')).toBeTruthy();
-    const grid = document.querySelector('.activity-game');
+    const shell = document.querySelector('.activity-game-shell');
     const sizeInput = screen.getByLabelText('Activity game grid size');
 
-    expect(grid.style.getPropertyValue('--activity-game-size')).toBe('1.00');
+    expect(shell.style.getPropertyValue('--activity-game-size')).toBe('1.00');
     expect(sizeInput.value).toBe('1');
     expect(sizeInput.max).toBe('1.5');
     expect(screen.getByText('100%')).toBeTruthy();
 
     fireEvent.change(sizeInput, { target: { value: '1.12' } });
 
-    expect(grid.style.getPropertyValue('--activity-game-size')).toBe('1.12');
+    expect(shell.style.getPropertyValue('--activity-game-size')).toBe('1.12');
     expect(screen.getByText('112%')).toBeTruthy();
   });
 
-  it('keeps the grid stable while the size slider is dragged', async () => {
+  it('resizes live while the size slider is dragged outside the grid', async () => {
     render(<ActivityGameApp />);
 
     expect(await screen.findByText('WonderLens Prototype')).toBeTruthy();
-    const grid = document.querySelector('.activity-game');
+    const shell = document.querySelector('.activity-game-shell');
     const sizeInput = screen.getByLabelText('Activity game grid size');
+
+    expect(document.querySelector('.activity-game__grid-toolbar')?.contains(sizeInput)).toBe(true);
 
     fireEvent.pointerDown(sizeInput);
     fireEvent.change(sizeInput, { target: { value: '1.5' } });
 
     expect(sizeInput.value).toBe('1.5');
     expect(screen.getByText('150%')).toBeTruthy();
-    expect(grid.style.getPropertyValue('--activity-game-size')).toBe('1.00');
-
-    fireEvent.pointerUp(sizeInput);
-
-    expect(grid.style.getPropertyValue('--activity-game-size')).toBe('1.50');
+    expect(shell.style.getPropertyValue('--activity-game-size')).toBe('1.50');
   });
 
   it('locks activity switching while a session exists and exits back to idle display', async () => {

@@ -12,48 +12,6 @@ function ProgressDots({ current = 0, total = 3 }) {
   );
 }
 
-function Cat3BuildPanel({ interaction }) {
-  const selectedIndex = interaction.selectedIndex || 0;
-  const options = interaction.options || [];
-  const disabled = Boolean(interaction.disabled);
-
-  const handleKeyDown = (event) => {
-    if (disabled) return;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-      event.preventDefault();
-      interaction.onStep?.(1);
-    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-      event.preventDefault();
-      interaction.onStep?.(-1);
-    } else if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      interaction.onConfirm?.(selectedIndex);
-    }
-  };
-
-  return (
-    <div
-      className="activity-lens__interaction activity-lens__build-panel activity-lens__build-panel--compact"
-      role="listbox"
-      aria-label="Build response options"
-      aria-disabled={disabled ? 'true' : 'false'}
-      tabIndex={disabled ? -1 : 0}
-      onKeyDown={handleKeyDown}
-    >
-      {options.map((option, index) => (
-        <span
-          key={option.value}
-          className={index === selectedIndex ? 'activity-lens__build-option is-selected' : 'activity-lens__build-option'}
-          role="option"
-          aria-selected={index === selectedIndex ? 'true' : 'false'}
-        >
-          {option.label}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function pickerItemClass(index, selectedIndex, total) {
   if (total <= 0) return '';
   if (index === selectedIndex) return 'is-current';
@@ -123,7 +81,6 @@ export default function ActivityLens({
   screenLayout = null,
   progress,
   isWaiting = false,
-  interaction = null,
   crown = null,
 }) {
   const activityName = activity?.name || activity?.fallback_label || 'Activity';
@@ -147,10 +104,6 @@ export default function ActivityLens({
             confirmLabel={crown.confirmLabel}
           />
         </div>
-      ) : null}
-
-      {interaction?.type === 'cat3-build' ? (
-        <Cat3BuildPanel interaction={interaction} />
       ) : null}
 
       <div className="activity-lens__copy">

@@ -326,9 +326,9 @@ export default function ActivityGameApp() {
     else if (showCat1Choice) void confirmCat1Choice(focusedIndex);
     else void handleStart();
   }, [confirmCat3Option, confirmCat5Item, confirmCat1Choice, handleStart, showCat3Build, showCat5Selection, showCat1Choice]);
-  const lensInteraction = showCat3Build
+  const deviceOptionRail = showCat3Build
     ? {
-      type: 'cat3-build',
+      label: 'Build response options',
       selectedIndex: cat3OptionIndex,
       options: cat3Options,
       disabled: loading || turnPending,
@@ -440,7 +440,7 @@ export default function ActivityGameApp() {
             }}
             progress={progress}
             isWaiting={loading || turnPending}
-            interaction={lensInteraction}
+            optionRail={deviceOptionRail}
             selectionLocked={sessionActive}
             scrollDisabled={sessionActive && !isDeviceOptionMode}
             scrollPreviousLabel={isDeviceOptionMode ? 'Previous device option' : 'Previous activity'}

@@ -372,6 +372,8 @@ describe('ActivityGameApp', () => {
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('false');
     expect(screen.getByRole('listbox', { name: 'Build response options' })).toBeTruthy();
     expect(screen.queryByRole('listbox', { name: 'Crown picker' })).toBeNull();
+    expect(document.querySelector('.wonderlens-device__option-rail')).toBeTruthy();
+    expect(document.querySelector('.activity-lens__build-panel')).toBeNull();
     expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(true);
     expect(screen.queryByText('Draw one simple line or shape to start the picture.')).toBeNull();
     expect(screen.queryByText('paper + pencil')).toBeNull();
@@ -430,7 +432,7 @@ describe('ActivityGameApp', () => {
     expect(screen.getByRole('heading', { name: 'Word Echo Practice' })).toBeTruthy();
   });
 
-  it('drives Cat3 Done/Help through the visible build option strip', async () => {
+  it('drives Cat3 Done/Help through the visible device option rail', async () => {
     vi.mocked(startActivitySession).mockResolvedValue({
       session_id: 'cat3',
       activity_type: 'activity_guided_drawing',
@@ -475,7 +477,7 @@ describe('ActivityGameApp', () => {
     expect(await screen.findByText('I can help with that step.')).toBeTruthy();
   });
 
-  it('steps the Cat3 crown with global up/down arrows when the picker is unfocused', async () => {
+  it('steps the Cat3 device option rail with global up/down arrows when unfocused', async () => {
     vi.mocked(startActivitySession).mockResolvedValue({
       session_id: 'cat3-keys',
       activity_type: 'activity_guided_drawing',

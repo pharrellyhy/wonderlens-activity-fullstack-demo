@@ -182,14 +182,14 @@ describe('WonderLensDevice', () => {
     expect(cssBlock('.activity-screen-layout--picker .activity-screen-layout__item.is-adjacent')).toContain('opacity');
   });
 
-  it('keeps Cat3 Done Help as a compact non-blocking control strip', () => {
+  it('keeps Cat3 Done Help off the lens as a compact device option rail', () => {
     render(
       <WonderLensDevice
         activity={{ name: 'Guided Drawing', mechanic: 'build' }}
         progress={{ current: 1, total: 3 }}
         assetSrc="/activity-assets/activity_guided_drawing/round_1.png"
-        interaction={{
-          type: 'cat3-build',
+        optionRail={{
+          label: 'Build response options',
           selectedIndex: 1,
           options: [
             { label: 'Done', value: 'done' },
@@ -203,11 +203,12 @@ describe('WonderLensDevice', () => {
     );
 
     const panel = screen.getByRole('listbox', { name: 'Build response options' });
-    expect(panel.className).toContain('activity-lens__build-panel--compact');
+    expect(panel.className).toContain('wonderlens-device__option-rail');
     expect(screen.getByRole('option', { name: 'Done' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Help' }).getAttribute('aria-selected')).toBe('true');
-    expect(cssBlock('.activity-lens__build-panel--compact')).toContain('align-self: end');
-    expect(cssBlock('.activity-lens__build-panel--compact')).toContain('width: min(72%, 8.8rem)');
+    expect(document.querySelector('.activity-lens__build-panel')).toBeNull();
+    expect(cssBlock('.wonderlens-device__option-rail')).toContain('bottom: 11.4%');
+    expect(cssBlock('.wonderlens-device__option-rail')).toContain('width: 40%');
   });
 
   it('shows an in-lens waiting state while the backend is responding', () => {

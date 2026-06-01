@@ -6,18 +6,18 @@ Last updated: 2026-06-01
 
 ## Cat3 Done Help Affordance
 
-**Problem**: In Cat3 build rounds, the device screen showed only the currently selected `Done` pill, so testers could not tell that `Help` was available or how the hardware pick control would switch options.
+**Problem**: In Cat3 build rounds, the device screen first showed only the currently selected `Done` pill, then a wider in-lens `Done`/`Help` strip that made `Help` discoverable but blocked too much of the drawing scene.
 
-**Solution**: Replaced the Cat3 single-choice crown pill with a visible in-lens segmented `Done`/`Help` option strip. The physical device scroll controls still move selection, the green device button still confirms the selected option, and the strip also supports keyboard arrows/Enter when focused. Cat5/Cat1/library crown behavior remains headless because those modes already have visible choices elsewhere.
+**Solution**: Moved Cat3 `Done`/`Help` out of the circular lens and onto a compact lower device-bezel option rail. The drawing screen is now unobstructed, while both choices remain visible. The physical device scroll controls still move selection, the green device button still confirms the selected option, and the rail also supports keyboard arrows/Enter when focused. Cat5/Cat1/library crown behavior remains headless because those modes already have visible choices elsewhere.
 
-**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/index.css`, `frontend/tests/ActivityGameApp.test.jsx`, and `frontend/tests/WonderLensDevice.test.jsx`.
+**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/activityGame/WonderLensDevice.jsx`, `frontend/src/index.css`, `frontend/tests/ActivityGameApp.test.jsx`, and `frontend/tests/WonderLensDevice.test.jsx`.
 
 **NOT Changed**: No backend behavior, activity recipes, assets, or live provider calls changed.
 
 **Verification**:
 - `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js` - 25 passed.
 - `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityGameLayoutCss.test.js` - passed.
-- Playwright live walkthrough reached Guided Drawing build step, verified both `Done` and `Help` are visible, `Next device option` selects `Help`, and captured `/tmp/wonderlens-cat3-done-help-strip.png`.
+- Playwright live walkthrough reached Guided Drawing build step, verified both `Done` and `Help` are visible on the device rail, `Next device option` selects `Help`, the rail does not overlap the lens, and captured `/tmp/wonderlens-cat3-device-option-rail.png`.
 
 ---
 

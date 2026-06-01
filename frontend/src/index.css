@@ -2029,7 +2029,7 @@
     height: calc(100dvh - 1.5rem);
     min-height: 0;
     overflow: hidden;
-    grid-template-rows: calc(4.2rem * var(--activity-game-size)) minmax(calc(16rem * var(--activity-game-size)), 0.82fr) calc(3.8rem * var(--activity-game-size)) minmax(calc(11rem * var(--activity-game-size)), 0.54fr);
+    grid-template-rows: clamp(4.2rem, calc(4.2rem * var(--activity-game-size)), 5rem) minmax(clamp(16rem, calc(16rem * var(--activity-game-size)), 20rem), 0.82fr) clamp(3.8rem, calc(3.8rem * var(--activity-game-size)), 4.35rem) minmax(7rem, 0.54fr);
   }
 
   .activity-game__stage {

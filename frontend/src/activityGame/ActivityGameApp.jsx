@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchActivities, fetchActivityAssetManifest } from '../utils/api';
 import { assetForBeat, beatIdFromSessionState, screenLayoutForBeat } from './activityAssets';
 import ActivityLibrary from './ActivityLibrary.jsx';
@@ -11,7 +11,7 @@ import WonderLensDevice from './WonderLensDevice.jsx';
 const EMPTY_LIST = [];
 const DEFAULT_GRID_SIZE = 1;
 const MIN_GRID_SIZE = 0.88;
-const MAX_GRID_SIZE = 1.16;
+const MAX_GRID_SIZE = 1.5;
 
 // Cat1 activities whose round screens present concrete pickable options: the
 // device scroll highlights an option card and the green select button sends
@@ -78,6 +78,8 @@ export default function ActivityGameApp() {
   const [cat5ItemIndex, setCat5ItemIndex] = useState(0);
   const [cat1ChoiceIndex, setCat1ChoiceIndex] = useState(0);
   const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
+  const [draftGridSize, setDraftGridSize] = useState(DEFAULT_GRID_SIZE);
+  const gridSizeDraggingRef = useRef(false);
   const {
     messages,
     sessionId,
@@ -333,10 +335,21 @@ export default function ActivityGameApp() {
   const handleScrollPrevious = useCallback(() => crownStep(-1), [crownStep]);
   const handleScrollNext = useCallback(() => crownStep(1), [crownStep]);
   const handlePrimaryAction = useCallback(() => crownConfirm(crownIndex), [crownConfirm, crownIndex]);
-  const handleGridSizeChange = useCallback((event) => {
-    setGridSize(Number(event.target.value));
+  const handleGridSizeDragStart = useCallback(() => {
+    gridSizeDraggingRef.current = true;
   }, []);
-  const gridSizePercent = Math.round(gridSize * 100);
+  const handleGridSizeCommit = useCallback((event) => {
+    const nextSize = Number(event.currentTarget.value);
+    gridSizeDraggingRef.current = false;
+    setDraftGridSize(nextSize);
+    setGridSize(nextSize);
+  }, []);
+  const handleGridSizeChange = useCallback((event) => {
+    const nextSize = Number(event.target.value);
+    setDraftGridSize(nextSize);
+    if (!gridSizeDraggingRef.current) setGridSize(nextSize);
+  }, []);
+  const gridSizePercent = Math.round(draftGridSize * 100);
   const activityGameStyle = useMemo(() => ({
     '--activity-game-size': gridSize.toFixed(2),
   }), [gridSize]);
@@ -370,9 +383,13 @@ export default function ActivityGameApp() {
               min={MIN_GRID_SIZE}
               max={MAX_GRID_SIZE}
               step="0.02"
-              value={gridSize}
+              value={draftGridSize}
               aria-label="Activity game grid size"
               onChange={handleGridSizeChange}
+              onPointerDown={handleGridSizeDragStart}
+              onPointerCancel={handleGridSizeCommit}
+              onPointerUp={handleGridSizeCommit}
+              onBlur={handleGridSizeCommit}
             />
             <output>{gridSizePercent}%</output>
           </label>

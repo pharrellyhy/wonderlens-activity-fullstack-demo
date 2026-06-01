@@ -26,6 +26,7 @@ describe('activity game short viewport layout CSS', () => {
     expect(shortViewportBlock).toContain('.activity-game__stage');
     expect(shortViewportBlock).toMatch(/\.activity-game__stage\s*\{[\s\S]*max-height:/);
     expect(shortViewportBlock).toMatch(/\.activity-game__stage\s*\{[\s\S]*overflow:\s*hidden/);
+    expect(shortViewportBlock).toContain('grid-template-rows: clamp(4.2rem');
     expect(shortViewportBlock).toMatch(/\.activity-game__list\s*\{[\s\S]*overflow:\s*auto/);
     expect(shortViewportBlock).toMatch(/\.activity-game__transcript\s*\{[\s\S]*overflow:\s*hidden/);
     expect(shortViewportBlock).toMatch(/\.activity-transcript__messages\s*\{[\s\S]*min-height:\s*0/);

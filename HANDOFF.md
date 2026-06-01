@@ -6,19 +6,20 @@ Last updated: 2026-06-01
 
 ## Adjustable Activity Game Grid
 
-**Problem**: The standalone activity-game shell had fixed grid dimensions, which made it hard to tune the tester view after the intro/layout pass.
+**Problem**: The standalone activity-game shell had fixed grid dimensions, then the first tester slider resized the shell while the pointer was still dragging it, making the control bounce under the cursor.
 
-**Solution**: Added a topbar `Grid` range control that adjusts the `.activity-game` CSS size variable from 88% to 116%. The same variable now drives the outer grid width/height, row minimums, and WonderLens device scale while preserving the default 100% layout. Short-height viewports now let the transcript message area shrink and scroll so the input does not overlap when the grid is enlarged.
+**Solution**: Added a topbar `Grid` range control that adjusts the `.activity-game` CSS size variable from 88% to 150%. The displayed slider value updates during drag, but the applied grid size is committed on pointer release/blur so the control stays stable under the cursor. Keyboard changes still apply immediately. The same variable drives the outer grid width/height, row minimums, and WonderLens device scale while preserving the default 100% layout. Short-height row minimums are clamped, and the transcript message area shrinks/scrolls so the input does not overlap when the grid is enlarged.
 
 **Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/index.css`, `frontend/tests/ActivityGameApp.test.jsx`, and `frontend/tests/activityGameLayoutCss.test.js`.
 
 **NOT Changed**: No backend behavior, activity recipes, assets, or live provider code changed. The branch remains standalone.
 
 **Verification**:
-- `cd frontend && npm test -- ActivityGameApp.test.jsx activityGameLayoutCss.test.js` - 17 passed.
+- `cd frontend && npm test -- ActivityGameApp.test.jsx activityGameLayoutCss.test.js` - 18 passed.
 - `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx tests/ActivityGameApp.test.jsx tests/activityGameLayoutCss.test.js` - passed.
 - Playwright rendered `http://127.0.0.1:5173/?view=activities`, changed the slider to 112%, confirmed `--activity-game-size: 1.12`, captured `/tmp/wonderlens-grid-size-check.png`, and verified transcript/input boxes do not overlap.
 - Playwright checked desktop slider values 88%, 100%, and 116%, plus mobile 390x844 at 116%, with no overflow or transcript/input overlap.
+- Playwright drag check confirmed the output can reach 150% while the applied grid stays at 100% during drag, then commits to `--activity-game-size: 1.50` on release with no transcript/input overlap; screenshot `/tmp/wonderlens-grid-size-150-check.png`.
 
 ---
 

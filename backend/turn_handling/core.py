@@ -5,12 +5,15 @@ The ``resolve_turn`` function is the single entry point called by both
 and dispatches to the appropriate step-specific handler module.
 """
 
+from collections.abc import Callable
+
 try:
     from ..agents.script_agent import ScriptAgent
     from ..config import get_settings
     from ..logger import setup_logger
     from ..schemas.child_intent import ChildIntentClassification
     from ..schemas.session_state import SessionStateModel
+    from ..schemas.turn_directive import TurnDirective
     from ..state_machine import EARLY_EXIT, is_terminal, step_needs_user_input
 except ImportError:
     from agents.script_agent import ScriptAgent
@@ -18,6 +21,7 @@ except ImportError:
     from logger import setup_logger
     from schemas.child_intent import ChildIntentClassification
     from schemas.session_state import SessionStateModel
+    from schemas.turn_directive import TurnDirective
     from state_machine import EARLY_EXIT, is_terminal, step_needs_user_input
 
 from .collection import (
@@ -49,6 +53,72 @@ from .synthesis import _deliver_scene, _resolve_synthesis_turn
 from .types import TurnInput, TurnResult
 
 logger = setup_logger(__name__)
+
+_MAX_CONSECUTIVE_UNPRODUCTIVE_TURNS = 3
+_UNPRODUCTIVE_ACTIONS = {"stay", "need_help", "redirect"}
+
+
+def _has_turn_input(turn_input: TurnInput) -> bool:
+    """Return whether this turn represents a child attempt."""
+    return bool(turn_input.text) or bool(turn_input.photo_id) or turn_input.is_silent
+
+
+async def _exit_after_repeated_unproductive_turns(
+    state: SessionStateModel,
+    script_agent: ScriptAgent,
+    debug_builder: Callable[[object, object], dict],
+) -> TurnResult:
+    """End gracefully when the child is stuck on the same step for too long."""
+    state.consecutive_unproductive_turns = 0
+    state.current_step = EARLY_EXIT
+    state.status = "exited"
+    state.last_exit_reason = "repeated_unproductive_turns"
+    turn_response, gen_debug = await _generate_with_retry(script_agent, state)
+    _append_ai_turn(state, turn_response.dialogue)
+    return TurnResult(
+        turn_response=turn_response,
+        screen_frame=derive_frame(state, "exit"),
+        auto_advance=False,
+        response_type="graceful_exit",
+        error_exit=state.status == "error",
+        debug=debug_builder(gen_debug, turn_response),
+    )
+
+
+def _cap_repeated_unproductive_directive(
+    state: SessionStateModel,
+    turn_input: TurnInput,
+    directive: TurnDirective,
+) -> TurnDirective:
+    """Convert repeated non-progress directives into a graceful exit."""
+    if directive.action not in _UNPRODUCTIVE_ACTIONS or not _has_turn_input(turn_input):
+        if directive.action == "advance":
+            state.consecutive_unproductive_turns = 0
+        return directive
+
+    state.consecutive_unproductive_turns += 1
+    if state.consecutive_unproductive_turns < _MAX_CONSECUTIVE_UNPRODUCTIVE_TURNS:
+        return directive
+
+    state.consecutive_unproductive_turns = 0
+    state.last_exit_reason = "repeated_unproductive_turns"
+    state.last_directive_action = "exit"
+    return directive.model_copy(
+        update={
+            "action": "exit",
+            "reasoning": (
+                f"The child has had {_MAX_CONSECUTIVE_UNPRODUCTIVE_TURNS} consecutive "
+                "help or non-progress turns on the same step, so the activity should end gently."
+            ),
+            "response_direction": (
+                "Gently say this is a good place to pause, affirm the child's effort, "
+                "and close without asking another question."
+            ),
+            "emotion_tag": "gentle",
+            "stay_on_step": False,
+            "max_sentences": 2,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +194,7 @@ async def resolve_turn(
             _append_child_turn(state, "...")
         state.current_step = EARLY_EXIT
         state.status = "exited"
+        state.last_exit_reason = "consecutive_silence"
         turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         _append_ai_turn(state, turn_response.dialogue)
         return TurnResult(
@@ -156,6 +227,7 @@ async def resolve_turn(
         if turn_input.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
             if _is_correct_collection_photo(state, turn_input.photo_id):
                 _record_correct_collection_pick(state, turn_input.photo_id)
+                state.consecutive_unproductive_turns = 0
                 logger.info("Phase transition: photo -> detail (correct photo %s)", turn_input.photo_id)
                 state.collection_phase = "detail"
                 state.detail_exchange_count = 0
@@ -164,6 +236,7 @@ async def resolve_turn(
                 if state.consecutive_wrong >= 2:
                     state.current_step = EARLY_EXIT
                     state.status = "exited"
+                    state.last_exit_reason = "wrong_photos"
                     turn_response, gen_debug = await _generate_with_retry(script_agent, state)
                     _append_ai_turn(state, turn_response.dialogue)
                     return TurnResult(
@@ -195,6 +268,7 @@ async def resolve_turn(
             return await _resolve_synthesis_turn(state, turn_input, script_agent)
 
         directive = await _get_turn_directive(state, turn_input)
+        directive = _cap_repeated_unproductive_directive(state, turn_input, directive)
         return await _resolve_turn_with_directive(state, turn_input, script_agent, directive)
 
     # --- 3b. Classify child intent (runs before any step-specific logic) ---
@@ -294,6 +368,10 @@ async def resolve_turn(
         # Generic interactive step fallback
         turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         if turn_response.stay_on_step:
+            if _has_turn_input(turn_input):
+                state.consecutive_unproductive_turns += 1
+                if state.consecutive_unproductive_turns >= _MAX_CONSECUTIVE_UNPRODUCTIVE_TURNS:
+                    return await _exit_after_repeated_unproductive_turns(state, script_agent, _debug)
             _append_ai_turn(state, turn_response.dialogue)
             state.turn_count += 1
             return TurnResult(
@@ -305,6 +383,7 @@ async def resolve_turn(
                 debug=_debug(gen_debug, turn_response),
             )
         response_type = _get_response_type(state.current_step)
+        state.consecutive_unproductive_turns = 0
         _append_ai_turn(state, turn_response.dialogue)
         _advance_state(state)
         state.turn_count += 1

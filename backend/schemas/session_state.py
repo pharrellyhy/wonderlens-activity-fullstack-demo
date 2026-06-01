@@ -52,6 +52,10 @@ class SessionStateModel(BaseModel):
     round_items: list[list[dict]] = Field(default_factory=list, description="Per-round item sets for Cat 5")
     consecutive_wrong: int = 0
     consecutive_silence: int = 0
+    consecutive_unproductive_turns: int = Field(
+        default=0,
+        description="Consecutive child turns that stayed on the same actionable step without meaningful progress",
+    )
     detail_exchange_count: int = Field(default=0, description="Cat 5 Phase B exchange counter — reset on phase change")
     detail_stuck_count: int = Field(
         default=0,
@@ -60,6 +64,7 @@ class SessionStateModel(BaseModel):
     )
     turn_count: int = 0
     status: Literal["active", "completed", "exited", "error"] = "active"
+    last_exit_reason: str = Field(default="", description="Machine-readable reason for graceful early exit")
 
     # Visual Agent output
     visual_frames: list[ScreenFrame] = Field(default_factory=list)

@@ -33,7 +33,7 @@ from turn_handling import (
     _record_collection_detail,
     resolve_turn,
 )
-from turn_handling.directive import _resolve_turn_with_directive
+from turn_handling.directive import _get_turn_directive, _resolve_turn_with_directive
 from turn_handling.helpers import _HISTORY_LIMIT, _append_ai_turn, _should_auto_advance
 from turn_handling.types import TurnResult
 
@@ -229,6 +229,49 @@ async def test_invitation_acceptance_advances_immediately(monkeypatch) -> None:
     # Deterministic templates — no LLM call
     assert agent.generate_turn.call_count == 0
     assert "celebrating" in result.turn_response.dialogue or "excited" in result.turn_response.dialogue
+
+
+@pytest.mark.asyncio
+async def test_third_unproductive_directive_exits_gracefully(monkeypatch) -> None:
+    """Repeated help/non-progress responses on an actionable step cannot loop forever."""
+    monkeypatch.setattr("turn_handling.core.get_settings", lambda: SimpleNamespace(turn_director_enabled=True))
+
+    async def _need_help_directive(state, turn_input):
+        return TurnDirective(
+            action="need_help",
+            reasoning="Child is still asking for help.",
+            response_direction="Model a tiny answer and offer two choices.",
+            stay_on_step=True,
+        )
+
+    monkeypatch.setattr("turn_handling.core._get_turn_directive", _need_help_directive)
+
+    state = _make_state(
+        template_type="cat1",
+        current_step="STEP_3_ROUND_1",
+        current_round=1,
+        total_rounds=3,
+        creative_slots=Cat1CreativeSlots(
+            game_mechanic="voice_acting",
+            metaphor="voice studio",
+            role_title="Sound Scout",
+            round_scenarios=["Try a tiny sound", "Try a bigger sound", "Try a final sound"],
+            escalation_axis="sound size",
+            observation_detail="soft petals",
+        ),
+    )
+    agent = _make_agent_mock()
+    agent.generate_turn_from_directive = AsyncMock(return_value=_mock_turn(dialogue="Let's pause here."))
+
+    first = await resolve_turn(state, _make_input(text="Help"), agent)
+    second = await resolve_turn(state, _make_input(text="Help"), agent)
+    third = await resolve_turn(state, _make_input(text="Help"), agent)
+
+    assert first.response_type == "round"
+    assert second.response_type == "round"
+    assert third.response_type == "graceful_exit"
+    assert state.current_step == EARLY_EXIT
+    assert state.status == "exited"
 
 
 @pytest.mark.asyncio
@@ -1577,8 +1620,6 @@ async def test_detail_phase_non_answer_scaffolds_first_then_force_advances() -> 
     2. Second: force-advance with a playful default (counters reset,
        name + detail appended, round_advance_pending True).
     """
-    from turn_handling.directive import _get_turn_directive
-
     state = _make_state(
         current_step="STEP_3_COLLECT_3",
         current_round=3,

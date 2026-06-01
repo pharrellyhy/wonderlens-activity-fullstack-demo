@@ -596,9 +596,9 @@ async def process_turn(req: TurnRequest) -> JSONResponse:
     response_type = "error" if result.error_exit else result.response_type
 
     if state.status == "exited":
-        exit_reason = "consecutive_silence" if state.consecutive_silence >= 2 else "invitation_declined"
-        if state.consecutive_wrong >= 2:
-            exit_reason = "wrong_photos"
+        exit_reason = state.last_exit_reason or (
+            "consecutive_silence" if state.consecutive_silence >= 2 else "invitation_declined"
+        )
         await update_session_status(settings.db_path, req.session_id, "exited", exit_reason, state.turn_count)
     elif state.status == "completed":
         completion_reason = "closing_delivered" if result.response_type == "closing" else "all_steps_done"
@@ -671,9 +671,9 @@ async def turn_and_speak(req: TurnRequest) -> Response:
         response_type = "error" if result.error_exit else result.response_type
 
         if state.status == "exited":
-            exit_reason = "consecutive_silence" if state.consecutive_silence >= 2 else "invitation_declined"
-            if state.consecutive_wrong >= 2:
-                exit_reason = "wrong_photos"
+            exit_reason = state.last_exit_reason or (
+                "consecutive_silence" if state.consecutive_silence >= 2 else "invitation_declined"
+            )
             await update_session_status(settings.db_path, req.session_id, "exited", exit_reason, state.turn_count)
         elif state.status == "completed":
             completion_reason = "closing_delivered" if result.response_type == "closing" else "all_steps_done"
@@ -1187,6 +1187,8 @@ def _build_state_snapshot(state: SessionStateModel) -> str:
         "synthesis_phase": state.synthesis_phase,
         "consecutive_silence": state.consecutive_silence,
         "consecutive_wrong": state.consecutive_wrong,
+        "consecutive_unproductive_turns": state.consecutive_unproductive_turns,
+        "last_exit_reason": state.last_exit_reason,
         "collected_photos": state.collected_photos,
         "collected_text_items": state.collected_text_items,
         "collected_names": state.collected_names,
@@ -1207,6 +1209,8 @@ def _session_state_dict(state: SessionStateModel) -> dict:
         "collected_text_items": state.collected_text_items,
         "consecutive_silence": state.consecutive_silence,
         "consecutive_wrong": state.consecutive_wrong,
+        "consecutive_unproductive_turns": state.consecutive_unproductive_turns,
+        "last_exit_reason": state.last_exit_reason,
         "invitation_decline_count": state.invitation_decline_count,
         "turn_count": state.turn_count,
         "template_type": state.template_type,

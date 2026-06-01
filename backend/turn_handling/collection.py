@@ -167,6 +167,7 @@ async def resolve_collection_wrong_pick(
     if turn_input.photo_id and state.current_step.startswith("STEP_3_COLLECT_"):
         if _is_correct_collection_photo(state, turn_input.photo_id):
             _record_correct_collection_pick(state, turn_input.photo_id)
+            state.consecutive_unproductive_turns = 0
             # Phase A -> Phase B: correct photo triggers detail-harvesting question
             logger.info("Phase transition: photo -> detail (correct photo %s)", turn_input.photo_id)
             state.collection_phase = "detail"
@@ -179,6 +180,7 @@ async def resolve_collection_wrong_pick(
     if state.consecutive_wrong >= 2:
         state.current_step = EARLY_EXIT
         state.status = "exited"
+        state.last_exit_reason = "wrong_photos"
         turn_response, gen_debug = await _generate_with_retry(script_agent, state)
         _append_ai_turn(state, turn_response.dialogue)
         return TurnResult(

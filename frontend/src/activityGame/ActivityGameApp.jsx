@@ -9,6 +9,9 @@ import useActivityTextSession from './useActivityTextSession.js';
 import WonderLensDevice from './WonderLensDevice.jsx';
 
 const EMPTY_LIST = [];
+const DEFAULT_GRID_SIZE = 1;
+const MIN_GRID_SIZE = 0.88;
+const MAX_GRID_SIZE = 1.16;
 
 // Cat1 activities whose round screens present concrete pickable options: the
 // device scroll highlights an option card and the green select button sends
@@ -74,6 +77,7 @@ export default function ActivityGameApp() {
   const [cat3OptionIndex, setCat3OptionIndex] = useState(0);
   const [cat5ItemIndex, setCat5ItemIndex] = useState(0);
   const [cat1ChoiceIndex, setCat1ChoiceIndex] = useState(0);
+  const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
   const {
     messages,
     sessionId,
@@ -329,6 +333,13 @@ export default function ActivityGameApp() {
   const handleScrollPrevious = useCallback(() => crownStep(-1), [crownStep]);
   const handleScrollNext = useCallback(() => crownStep(1), [crownStep]);
   const handlePrimaryAction = useCallback(() => crownConfirm(crownIndex), [crownConfirm, crownIndex]);
+  const handleGridSizeChange = useCallback((event) => {
+    setGridSize(Number(event.target.value));
+  }, []);
+  const gridSizePercent = Math.round(gridSize * 100);
+  const activityGameStyle = useMemo(() => ({
+    '--activity-game-size': gridSize.toFixed(2),
+  }), [gridSize]);
 
   // The crown is a watch-style wheel; when a device-option picker is showing
   // (Cat3 Done/Help, Cat5 item selection) let the keyboard up/down arrows drive
@@ -348,13 +359,28 @@ export default function ActivityGameApp() {
   }, [isDeviceOptionMode, crownStep]);
 
   return (
-    <main className="activity-game">
+    <main className="activity-game" style={activityGameStyle}>
       <header className="activity-game__topbar">
         <h1>WonderLens Prototype</h1>
-        <div className="activity-game__tester">
-          <span>Tester Mode</span>
-          <span className="activity-game__tester-dot" aria-hidden="true" />
-          <span className="activity-game__tester-avatar" aria-label="Tester profile">TS</span>
+        <div className="activity-game__topbar-tools">
+          <label className="activity-game__grid-size">
+            <span>Grid</span>
+            <input
+              type="range"
+              min={MIN_GRID_SIZE}
+              max={MAX_GRID_SIZE}
+              step="0.02"
+              value={gridSize}
+              aria-label="Activity game grid size"
+              onChange={handleGridSizeChange}
+            />
+            <output>{gridSizePercent}%</output>
+          </label>
+          <div className="activity-game__tester">
+            <span>Tester Mode</span>
+            <span className="activity-game__tester-dot" aria-hidden="true" />
+            <span className="activity-game__tester-avatar" aria-label="Tester profile">TS</span>
+          </div>
         </div>
       </header>
 

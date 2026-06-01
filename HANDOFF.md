@@ -4,6 +4,24 @@ Last updated: 2026-06-01
 
 ---
 
+## Adjustable Activity Game Grid
+
+**Problem**: The standalone activity-game shell had fixed grid dimensions, which made it hard to tune the tester view after the intro/layout pass.
+
+**Solution**: Added a topbar `Grid` range control that adjusts the `.activity-game` CSS size variable from 88% to 116%. The same variable now drives the outer grid width/height, row minimums, and WonderLens device scale while preserving the default 100% layout. Short-height viewports now let the transcript message area shrink and scroll so the input does not overlap when the grid is enlarged.
+
+**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/index.css`, `frontend/tests/ActivityGameApp.test.jsx`, and `frontend/tests/activityGameLayoutCss.test.js`.
+
+**NOT Changed**: No backend behavior, activity recipes, assets, or live provider code changed. The branch remains standalone.
+
+**Verification**:
+- `cd frontend && npm test -- ActivityGameApp.test.jsx activityGameLayoutCss.test.js` - 17 passed.
+- `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx tests/ActivityGameApp.test.jsx tests/activityGameLayoutCss.test.js` - passed.
+- Playwright rendered `http://127.0.0.1:5173/?view=activities`, changed the slider to 112%, confirmed `--activity-game-size: 1.12`, captured `/tmp/wonderlens-grid-size-check.png`, and verified transcript/input boxes do not overlap.
+- Playwright checked desktop slider values 88%, 100%, and 116%, plus mobile 390x844 at 116%, with no overflow or transcript/input overlap.
+
+---
+
 ## Full Activity Live QA Fix Pass
 
 **Problem**: Live all-activity QA found source-alignment and flow defects: several Cat1 activities drifted into generic heart/feeling prompts, final device selections could ask follow-up questions, Phoneme Treasure Hunt asked for a character-name exchange after item selection, Cat3 Help could lose the current build step, short viewports pushed the intro transcript too low, and stale recap PNGs still had black padded corners.
@@ -211,44 +229,3 @@ Last updated: 2026-06-01
 
 **Verification**:
 - `git diff --check -- docs/plans/2026-05-29-activity-assets-touchless-controls.md goals/2026-05-29-activity-assets-touchless-controls-goal.md docs/plans/README.md goals/README.md` — passed.
-
----
-
-## Blank-White Object and Character Asset Pilot
-
-**Problem**: The flat Nordic direction was closer, but the generated assets still carried a warm beige background wash. The banana pilot was close, while the firefighter helmet showed a mismatched internal stroke/contour treatment. The user wants to test blank white backgrounds, refined people, and small multi-object activity scenes before replacing the runtime asset set.
-
-**Solution**: Updated the active asset style contract so reusable item, object, and character assets are centered on blank clean white or barely tinted white padding, while full-screen scene beats can still use full-bleed square art. Added a stroke-system rule that matches the banana pilot: broad flat color fills, linework only for arc eyes/tiny facial marks/sparse texture dashes, and no helmet panel strokes or internal contour bands. Generated Codex built-in imagegen pilots for visual review: banana/object variants, refined people, and small multi-object activity scenes.
-
-**Generated Pilots**:
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a184b389cf881969c760b48134b6ad4.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a184c00a8148196b9d26727df7e6f20.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a184c4daab0819684fbfb6215d7e4e3.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a184c751b748196b3e7420d50870025.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a184cc712c481968edfa2865f65083b.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a18501806a08196a5b617cc660c7411.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a1850733a7481968b89a58246265990.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a18515f61d481969a9fc992992e19db.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a1851a6f7e881968d8a54db533cd703.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a18535dc5b081968b165ab3e3adff29.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a185565495c81969c1315c5282eeb80.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a1855bfd3188196b1f432f866a90a00.png`
-- `/Users/pharrelly/.codex/generated_images/019e6796-207e-78b1-99ac-215bbe71abf1/ig_04db5e2559360fe0016a1856114aec8196bd2ddbd23e2649bb.png`
-
-**Current Read**:
-- Best object direction: banana variants and object-only recognition scene.
-- Best people direction: the later plain helper is closest; firefighter people still drift because helmet/body details introduce shadow bands.
-- Best activity scene direction: object-only clusters work better than person-plus-object compositions for this style.
-
-**Edits**:
-- `frontend/public/activity-assets/prompts/wonderlens-activity-style.md` — changed the style contract from warm ivory/peach washes to blank clean white or barely tinted white backgrounds for reusable object/person assets, then added the banana-matched stroke-system rule.
-- `frontend/tests/activityAssets.test.js` — updated the prompt contract assertion to require the blank-white asset direction and stroke-system constraints.
-
-**NOT Changed**:
-- Runtime assets were not overwritten.
-- No frontend runtime code or backend behavior changed.
-- The generated pilots remain in Codex's generated image folder until the user approves a scale-out direction.
-
-**Verification**:
-- `npm test -- --run tests/activityAssets.test.js` — 8 passed.
-- `git diff --check -- HANDOFF.md frontend/public/activity-assets/prompts/wonderlens-activity-style.md frontend/tests/activityAssets.test.js` — passed.

@@ -108,6 +108,23 @@ describe('ActivityGameApp', () => {
     expect(screen.getByRole('heading', { name: 'Word Echo Practice' })).toBeTruthy();
   });
 
+  it('lets testers adjust the activity game grid size', async () => {
+    render(<ActivityGameApp />);
+
+    expect(await screen.findByText('WonderLens Prototype')).toBeTruthy();
+    const grid = document.querySelector('.activity-game');
+    const sizeInput = screen.getByLabelText('Activity game grid size');
+
+    expect(grid.style.getPropertyValue('--activity-game-size')).toBe('1.00');
+    expect(sizeInput.value).toBe('1');
+    expect(screen.getByText('100%')).toBeTruthy();
+
+    fireEvent.change(sizeInput, { target: { value: '1.12' } });
+
+    expect(grid.style.getPropertyValue('--activity-game-size')).toBe('1.12');
+    expect(screen.getByText('112%')).toBeTruthy();
+  });
+
   it('locks activity switching while a session exists and exits back to idle display', async () => {
     vi.mocked(startActivitySession).mockResolvedValue({
       session_id: 's1',

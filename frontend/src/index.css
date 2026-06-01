@@ -1256,11 +1256,17 @@
 
 /* Standalone activity text game */
 .activity-game {
+  --activity-game-size: 1;
+  --activity-game-topbar-row: calc(4.7rem * var(--activity-game-size));
+  --activity-game-stage-min: calc(25rem * var(--activity-game-size));
+  --activity-game-metrics-row: calc(4.2rem * var(--activity-game-size));
+  --activity-game-transcript-min: calc(12.5rem * var(--activity-game-size));
+  --wonderlens-device-scale: var(--activity-game-size);
   display: grid;
-  width: min(61rem, calc(100vw - 1.5rem));
-  height: min(64rem, calc(100dvh - 1.5rem));
-  min-height: 42rem;
-  grid-template-rows: 4.7rem minmax(25rem, 1fr) 4.2rem minmax(12.5rem, 0.56fr);
+  width: min(calc(61rem * var(--activity-game-size)), calc(100vw - 1.5rem));
+  height: min(calc(64rem * var(--activity-game-size)), calc(100dvh - 1.5rem));
+  min-height: min(calc(42rem * var(--activity-game-size)), calc(100dvh - 1.5rem));
+  grid-template-rows: var(--activity-game-topbar-row) minmax(var(--activity-game-stage-min), 1fr) var(--activity-game-metrics-row) minmax(var(--activity-game-transcript-min), 0.56fr);
   overflow: hidden;
   margin: 0.75rem auto;
   border: 1px solid oklch(0.82 0.028 150);
@@ -1283,6 +1289,43 @@
     radial-gradient(circle at 91% 26%, oklch(0.91 0.05 145), transparent 8rem),
     linear-gradient(90deg, oklch(0.9 0.052 145), oklch(0.94 0.026 145));
   padding: 0 1.7rem;
+}
+
+.activity-game__topbar-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.activity-game__grid-size {
+  display: grid;
+  grid-template-columns: auto minmax(5.8rem, 7.2rem) 2.9rem;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  border: 1px solid oklch(0.76 0.045 145);
+  border-radius: 999px;
+  background: oklch(0.98 0.012 120 / 0.74);
+  color: oklch(0.31 0.05 155);
+  font-size: 0.7rem;
+  font-weight: 850;
+  line-height: 1;
+  padding: 0.42rem 0.58rem 0.42rem 0.72rem;
+  text-transform: uppercase;
+}
+
+.activity-game__grid-size input {
+  width: 100%;
+  min-width: 0;
+  accent-color: oklch(0.58 0.12 150);
+}
+
+.activity-game__grid-size output {
+  color: oklch(0.25 0.04 155);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .activity-game__topbar h1 {
@@ -1924,6 +1967,17 @@
     padding: 1rem;
   }
 
+  .activity-game__topbar-tools {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.7rem;
+  }
+
+  .activity-game__grid-size {
+    width: min(100%, 21rem);
+  }
+
   .activity-game__stage {
     grid-template-columns: 1fr;
     order: 4;
@@ -1975,7 +2029,7 @@
     height: calc(100dvh - 1.5rem);
     min-height: 0;
     overflow: hidden;
-    grid-template-rows: 4.2rem minmax(16rem, 0.82fr) 3.8rem minmax(11rem, 0.54fr);
+    grid-template-rows: calc(4.2rem * var(--activity-game-size)) minmax(calc(16rem * var(--activity-game-size)), 0.82fr) calc(3.8rem * var(--activity-game-size)) minmax(calc(11rem * var(--activity-game-size)), 0.54fr);
   }
 
   .activity-game__stage {
@@ -2005,8 +2059,12 @@
     max-height: min(22rem, calc(100dvh - 23rem));
   }
 
+  .activity-game__transcript {
+    overflow: hidden;
+  }
+
   .activity-transcript__messages {
-    min-height: 6.5rem;
+    min-height: 0;
   }
 }
 

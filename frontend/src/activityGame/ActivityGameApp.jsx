@@ -12,6 +12,8 @@ const EMPTY_LIST = [];
 const DEFAULT_GRID_SIZE = 1;
 const MIN_GRID_SIZE = 0.88;
 const MAX_GRID_SIZE = 1.5;
+const PHONEME_TREASURE_HUNT_ACTIVITY_ID = 'activity_phoneme_treasure_hunt';
+const PICKER_ORIENTATIONS = ['horizontal', 'vertical'];
 
 // Cat1 activities whose round screens present concrete pickable options: the
 // device scroll highlights an option card and the green select button sends
@@ -35,6 +37,14 @@ function layoutModeForItems(items) {
   return 'single';
 }
 
+function defaultPickerOrientationForActivity(activityId) {
+  return activityId === PHONEME_TREASURE_HUNT_ACTIVITY_ID ? 'horizontal' : 'vertical';
+}
+
+function normalizePickerOrientation(orientation) {
+  return orientation === 'horizontal' ? 'horizontal' : 'vertical';
+}
+
 function collectionScreenLayout(baseLayout, items, selectedIndex = 0, selection = 'device-scroll', display = {}) {
   if (!items.length) return baseLayout;
 
@@ -44,6 +54,7 @@ function collectionScreenLayout(baseLayout, items, selectedIndex = 0, selection 
     selection,
     hideLabels: Boolean(display.hideLabels),
     transparentItems: Boolean(display.transparentItems),
+    pickerOrientation: normalizePickerOrientation(display.pickerOrientation || baseLayout?.pickerOrientation),
     items: items.map((item, index) => ({
       id: item.id || `item_${index + 1}`,
       src: item.image || item.src || baseLayout?.background?.src || '',
@@ -81,6 +92,7 @@ export default function ActivityGameApp() {
   const [cat1ChoiceIndex, setCat1ChoiceIndex] = useState(0);
   const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
   const [cat5RoundItemCache, setCat5RoundItemCache] = useState({ key: '', items: EMPTY_LIST });
+  const [pickerOrientationByActivityId, setPickerOrientationByActivityId] = useState({});
   const {
     messages,
     sessionId,
@@ -124,6 +136,9 @@ export default function ActivityGameApp() {
     () => activities.find((activity) => activity.id === selectedId) || activities[0] || null,
     [activities, selectedId],
   );
+  const selectedActivityId = selectedActivity?.id || '';
+  const defaultPickerOrientation = defaultPickerOrientationForActivity(selectedActivityId);
+  const pickerOrientation = pickerOrientationByActivityId[selectedActivityId] || defaultPickerOrientation;
 
   const selectedAsset = useMemo(
     () => assetManifest.activities.find((entry) => entry.id === selectedActivity?.asset_manifest_id)
@@ -245,6 +260,7 @@ export default function ActivityGameApp() {
         {
           hideLabels: true,
           transparentItems: true,
+          pickerOrientation,
         },
       )
       : showCat5CollectedItems
@@ -364,6 +380,13 @@ export default function ActivityGameApp() {
   const handleGridSizeChange = useCallback((event) => {
     setGridSize(Number(event.target.value));
   }, []);
+  const handlePickerOrientationChange = useCallback((orientation) => {
+    if (!selectedActivityId || !PICKER_ORIENTATIONS.includes(orientation)) return;
+    setPickerOrientationByActivityId((current) => ({
+      ...current,
+      [selectedActivityId]: orientation,
+    }));
+  }, [selectedActivityId]);
   const gridSizePercent = Math.round(gridSize * 100);
   const activityGameStyle = useMemo(() => ({
     '--activity-game-size': gridSize.toFixed(2),
@@ -402,6 +425,22 @@ export default function ActivityGameApp() {
           />
           <output>{gridSizePercent}%</output>
         </label>
+        <div className="activity-game__picker-orientation" role="group" aria-label="Picker orientation">
+          <span>Picker</span>
+          <div className="activity-game__picker-segment">
+            {PICKER_ORIENTATIONS.map((orientation) => (
+              <button
+                key={orientation}
+                type="button"
+                aria-label={`${orientation[0].toUpperCase()}${orientation.slice(1)} picker`}
+                aria-pressed={pickerOrientation === orientation ? 'true' : 'false'}
+                onClick={() => handlePickerOrientationChange(orientation)}
+              >
+                {orientation === 'horizontal' ? 'Horizontal' : 'Vertical'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <main className="activity-game">

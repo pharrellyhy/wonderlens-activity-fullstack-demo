@@ -6,19 +6,19 @@ Last updated: 2026-06-02
 
 ## Cat5 Object Picker Visual Polish
 
-**Problem**: Cat5 object-selection rounds, such as Phoneme Treasure Hunt, displayed actual object names (`Ball`, `Cup`, `Book`) on the screen picker and the round backdrop already contained the same selectable objects. The first label-hiding pass also exposed source PNG white backgrounds as square/solid selected cards, the selected item could snap back to a solid white card after the correct pick, and the transparent picker still had a visible circular boundary around the selected item.
+**Problem**: Cat5 object-selection rounds, such as Phoneme Treasure Hunt, displayed actual object names (`Ball`, `Cup`, `Book`) on the screen picker and the round backdrop already contained the same selectable objects. The first label-hiding pass also exposed source PNG white backgrounds as square/solid selected cards, the selected item could snap back to a solid white card after the correct pick, the transparent picker still had a visible circular boundary around the selected item, and the vertical picker felt less grounded on the new desk/tabletop backdrop.
 
-**Solution**: Cat5 collection/detail screens keep object labels in state for accessibility and submission, but hide those labels from the visible lens items until the later synthesis recap. Phoneme item PNGs have real alpha backgrounds, collection/detail item containers now render with transparent border/background/shadow so only the object artwork is visible, the last visible Cat5 round items are cached per collect step when the backend detail response omits `current_round_items`, and the three Phoneme round backdrops were replaced with item-free nursery/tabletop scenes.
+**Solution**: Cat5 collection/detail screens keep object labels in state for accessibility and submission, but hide those labels from the visible lens items until the later synthesis recap. Phoneme item PNGs have real alpha backgrounds, collection/detail item containers now render with transparent border/background/shadow so only the object artwork is visible, the last visible Cat5 round items are cached per collect step when the backend detail response omits `current_round_items`, the three Phoneme round backdrops were replaced with item-free nursery/tabletop scenes, and Phoneme defaults to a horizontal tabletop picker with a tester-toolbar Horizontal/Vertical toggle.
 
 **Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/index.css`, `frontend/public/activity-assets/activity_phoneme_treasure_hunt/items/*.png`, `frontend/public/activity-assets/activity_phoneme_treasure_hunt/round_{1,2,3}.png`, `frontend/tests/ActivityGameApp.test.jsx`, `frontend/tests/WonderLensDevice.test.jsx`, and `frontend/tests/activityAssets.test.js`.
 
 **NOT Changed**: No backend behavior, activity recipes, item IDs, or provider calls changed. Cat5 synthesis/recap can still show selected labels after collection.
 
 **Verification**:
-- `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js activityAssets.test.js` - 40 passed.
+- `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js activityAssets.test.js` - 42 passed.
 - `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityGameLayoutCss.test.js tests/activityAssets.test.js` - passed.
 - `git diff --check` - passed.
-- Playwright browser smoke with a mocked Cat5 detail response that omits `current_round_items` verified zero visible item labels before/after selection, transparent border/background and no selected container shadow before/after selection, the item-free `round_1.png` backdrop, and captured `/tmp/wonderlens-cat5-no-picker-boundary.png` plus `/tmp/wonderlens-cat5-no-picker-boundary-post-pick.png`.
+- Playwright browser smokes verified zero visible item labels before/after selection, transparent border/background and no selected container shadow before/after selection, the item-free `round_1.png` backdrop, horizontal default item centers left/current/right on the desk scene, Vertical toggle item centers top/current/bottom, and captured `/tmp/wonderlens-cat5-horizontal-picker.png` plus `/tmp/wonderlens-cat5-vertical-picker-toggle.png`.
 
 ---
 

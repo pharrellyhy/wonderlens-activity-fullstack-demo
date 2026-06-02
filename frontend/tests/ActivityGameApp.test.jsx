@@ -143,6 +143,49 @@ describe('ActivityGameApp', () => {
     expect(shell.style.getPropertyValue('--activity-game-size')).toBe('1.50');
   });
 
+  it('defaults Phoneme picker to horizontal and lets testers switch orientation', async () => {
+    vi.mocked(startActivitySession).mockResolvedValue({
+      session_id: 'cat5',
+      activity_type: 'activity_phoneme_treasure_hunt',
+      template_type: 'cat5',
+      session_state: {
+        status: 'active',
+        template_type: 'cat5',
+        current_step: 'STEP_3_COLLECT_1',
+        current_round: 1,
+        total_rounds: 3,
+        collection_phase: 'photo',
+        collected_photos: [],
+        current_round_items: [
+          { id: 'ball', label: 'Ball', image: '/activity-assets/activity_phoneme_treasure_hunt/items/ball.png' },
+          { id: 'cup', label: 'Cup', image: '/activity-assets/activity_phoneme_treasure_hunt/items/cup.png' },
+          { id: 'book', label: 'Book', image: '/activity-assets/activity_phoneme_treasure_hunt/items/book.png' },
+        ],
+      },
+      first_turn: { dialogue: 'Pick the B word.', response_type: 'round' },
+    });
+
+    render(<ActivityGameApp />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Phoneme Treasure Hunt/i }));
+
+    expect(screen.getByRole('button', { name: 'Horizontal picker' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Vertical picker' }).getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(screen.getByLabelText('Start activity'));
+
+    expect(await screen.findByRole('option', { name: 'Ball' })).toBeTruthy();
+    expect(document.querySelector('.activity-screen-layout--picker-horizontal')).toBeTruthy();
+    expect(document.querySelector('.activity-screen-layout--picker-vertical')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vertical picker' }));
+
+    expect(screen.getByRole('button', { name: 'Horizontal picker' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Vertical picker' }).getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('.activity-screen-layout--picker-vertical')).toBeTruthy();
+    expect(document.querySelector('.activity-screen-layout--picker-horizontal')).toBeNull();
+  });
+
   it('locks activity switching while a session exists and exits back to idle display', async () => {
     vi.mocked(startActivitySession).mockResolvedValue({
       session_id: 's1',

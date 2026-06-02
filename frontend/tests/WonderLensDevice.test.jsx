@@ -182,6 +182,53 @@ describe('WonderLensDevice', () => {
     expect(cssBlock('.activity-screen-layout--picker .activity-screen-layout__item.is-adjacent')).toContain('opacity');
   });
 
+  it('can render picker layouts horizontally across a desk scene', () => {
+    render(
+      <WonderLensDevice
+        activity={{ name: 'Phoneme Treasure Hunt', mechanic: 'collect' }}
+        progress={{ current: 1, total: 3 }}
+        screenLayout={{
+          mode: 'picker',
+          pickerOrientation: 'horizontal',
+          background: {
+            src: '/activity-assets/activity_phoneme_treasure_hunt/round_1.png',
+            fit: 'cover',
+          },
+          items: [
+            {
+              id: 'ball',
+              src: '/activity-assets/activity_phoneme_treasure_hunt/items/ball.png',
+              shape: 'circle',
+              label: 'Ball',
+            },
+            {
+              id: 'cup',
+              src: '/activity-assets/activity_phoneme_treasure_hunt/items/cup.png',
+              shape: 'circle',
+              label: 'Cup',
+              selected: true,
+            },
+            {
+              id: 'book',
+              src: '/activity-assets/activity_phoneme_treasure_hunt/items/book.png',
+              shape: 'circle',
+              label: 'Book',
+            },
+          ],
+        }}
+        onScrollPrevious={vi.fn()}
+        onScrollNext={vi.fn()}
+        onPrimaryAction={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('.activity-screen-layout--picker-horizontal')).toBeTruthy();
+    expect(screen.getByText('Cup').closest('.activity-screen-layout__item')?.className).toContain('is-current');
+    expect(cssBlock('.activity-screen-layout--picker-horizontal .activity-screen-layout__items')).toContain('grid-template-columns');
+    expect(cssBlock('.activity-screen-layout--picker-horizontal .activity-screen-layout__item.is-previous')).toContain('translateX(-');
+    expect(cssBlock('.activity-screen-layout--picker-horizontal .activity-screen-layout__item.is-next')).toContain('translateX(');
+  });
+
   it('can render Cat5 picker items without visible labels on transparent surfaces', () => {
     render(
       <WonderLensDevice

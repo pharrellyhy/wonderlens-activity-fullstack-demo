@@ -622,6 +622,32 @@
   transform: scale(0.5);
 }
 
+.activity-screen-layout--picker-horizontal .activity-screen-layout__items {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 1fr;
+  width: 86%;
+  max-width: 86%;
+  height: 44%;
+  transform: translateY(18%);
+}
+
+.activity-screen-layout--picker-horizontal .activity-screen-layout__item {
+  width: 34%;
+}
+
+.activity-screen-layout--picker-horizontal .activity-screen-layout__item.is-current {
+  width: 50%;
+  transform: scale(1);
+}
+
+.activity-screen-layout--picker-horizontal .activity-screen-layout__item.is-previous {
+  transform: translateX(-80%) scale(0.72);
+}
+
+.activity-screen-layout--picker-horizontal .activity-screen-layout__item.is-next {
+  transform: translateX(80%) scale(0.72);
+}
+
 .crown-picker {
   position: relative;
   display: grid;
@@ -1285,6 +1311,8 @@
 .activity-game__grid-toolbar {
   display: flex;
   width: min(61rem, calc(100vw - 1.5rem));
+  align-items: center;
+  gap: 0.6rem;
   justify-content: flex-end;
   margin: 0 auto 0.45rem;
 }
@@ -1334,6 +1362,51 @@
   line-height: 1;
   padding: 0.42rem 0.58rem 0.42rem 0.72rem;
   text-transform: uppercase;
+}
+
+.activity-game__picker-orientation {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  border: 1px solid oklch(0.76 0.045 145);
+  border-radius: 999px;
+  background: oklch(0.98 0.012 120 / 0.74);
+  color: oklch(0.31 0.05 155);
+  font-size: 0.7rem;
+  font-weight: 850;
+  line-height: 1;
+  padding: 0.22rem 0.22rem 0.22rem 0.72rem;
+  text-transform: uppercase;
+}
+
+.activity-game__picker-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.activity-game__picker-segment button {
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.36rem 0.58rem;
+  text-transform: none;
+}
+
+.activity-game__picker-segment button[aria-pressed="true"] {
+  background: oklch(0.82 0.1 145);
+  color: oklch(0.18 0.045 150);
+  box-shadow: inset 0 0 0 1px oklch(0.64 0.08 145 / 0.38);
+}
+
+.activity-game__picker-segment button:focus-visible {
+  outline: 0.15rem solid oklch(0.7 0.14 170);
+  outline-offset: 0.12rem;
 }
 
 .activity-game__grid-size input {
@@ -1978,6 +2051,7 @@
 
   .activity-game__grid-toolbar {
     width: min(100vw - 0.8rem, 34rem);
+    flex-wrap: wrap;
     justify-content: flex-start;
     margin-bottom: 0.4rem;
   }

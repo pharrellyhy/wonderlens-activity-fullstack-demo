@@ -66,6 +66,13 @@ function pickerItemClass(index, selectedIndex, total) {
   return 'is-offscreen';
 }
 
+function pickerOrientationClass(layout) {
+  if (layout.mode !== 'picker') return '';
+  return layout.pickerOrientation === 'horizontal'
+    ? 'activity-screen-layout--picker-horizontal'
+    : 'activity-screen-layout--picker-vertical';
+}
+
 function ActivityScreenLayout({ activityName, assetSrc, screenLayout }) {
   const layout = screenLayout || {
     mode: 'single',
@@ -79,6 +86,7 @@ function ActivityScreenLayout({ activityName, assetSrc, screenLayout }) {
   const className = [
     'activity-screen-layout',
     `activity-screen-layout--${layout.mode || 'single'}`,
+    pickerOrientationClass(layout),
     layout.hideLabels ? 'activity-screen-layout--hide-labels' : '',
     layout.transparentItems ? 'activity-screen-layout--transparent-items' : '',
   ].filter(Boolean).join(' ');

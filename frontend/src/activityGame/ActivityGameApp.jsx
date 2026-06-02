@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchActivities, fetchActivityAssetManifest } from '../utils/api';
+import { asset as assetPath } from '../utils/basePath.js';
 import { assetForBeat, beatIdFromSessionState, screenLayoutForBeat } from './activityAssets';
 import ActivityLibrary from './ActivityLibrary.jsx';
 import ActivityTextInput from './ActivityTextInput.jsx';
@@ -476,7 +477,7 @@ export default function ActivityGameApp() {
             {selectedAsset?.icon ? (
               <img
                 className="activity-game__preview-icon"
-                src={selectedAsset.icon}
+                src={assetPath(selectedAsset.icon)}
                 alt={`${selectedActivity?.name || 'Selected activity'} icon`}
               />
             ) : null}

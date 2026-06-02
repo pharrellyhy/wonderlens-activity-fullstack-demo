@@ -1,3 +1,5 @@
+import { asset as assetPath } from '../utils/basePath.js';
+
 export default function ActivityLibrary({
   activities,
   selectedId,
@@ -29,7 +31,7 @@ export default function ActivityLibrary({
               disabled={selectionLocked}
             >
               {asset?.icon ? (
-                <img className="activity-card__icon" src={asset.icon} alt={`${activity.name} icon`} />
+                <img className="activity-card__icon" src={assetPath(asset.icon)} alt={`${activity.name} icon`} />
               ) : null}
               <span className="activity-card__title">{activity.name}</span>
               <span className="activity-card__meta">

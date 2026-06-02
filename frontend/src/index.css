@@ -788,16 +788,14 @@
 
 .activity-screen-layout--transparent-items .activity-screen-layout__item {
   overflow: hidden;
-  border-color: oklch(0.76 0.045 145 / 0.34);
+  border-color: transparent;
   background: transparent;
   box-shadow: none;
 }
 
 .activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected {
   background: transparent;
-  box-shadow:
-    0 0 0 0.12rem oklch(0.78 0.11 145 / 0.64),
-    0 0.24rem 0.46rem oklch(0.12 0.018 145 / 0.18);
+  box-shadow: none;
 }
 
 .activity-screen-layout__item--circle {

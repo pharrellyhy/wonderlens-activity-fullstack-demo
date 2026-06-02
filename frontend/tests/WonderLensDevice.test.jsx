@@ -214,8 +214,10 @@ describe('WonderLensDevice', () => {
     expect(document.querySelectorAll('.activity-screen-layout__item span')).toHaveLength(0);
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item')).toContain('background: transparent');
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item')).toContain('overflow: hidden');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item')).toContain('border-color: transparent');
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected')).toContain('background: transparent');
-    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected')).toContain('0 0.24rem 0.46rem');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected')).not.toContain('0 0 0 0.12rem');
+    expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item.is-selected')).toContain('box-shadow: none');
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item img')).toContain('width: 92%');
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item img')).toContain('height: 92%');
     expect(cssBlock('.activity-screen-layout--transparent-items .activity-screen-layout__item img')).toContain('object-fit: contain');

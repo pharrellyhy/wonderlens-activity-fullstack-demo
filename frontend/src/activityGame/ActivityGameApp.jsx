@@ -80,6 +80,7 @@ export default function ActivityGameApp() {
   const [cat5ItemIndex, setCat5ItemIndex] = useState(0);
   const [cat1ChoiceIndex, setCat1ChoiceIndex] = useState(0);
   const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
+  const [cat5RoundItemCache, setCat5RoundItemCache] = useState({ key: '', items: EMPTY_LIST });
   const {
     messages,
     sessionId,
@@ -146,11 +147,25 @@ export default function ActivityGameApp() {
   const currentStep = sessionState?.current_step || '';
   const activeTemplateType = sessionState?.template_type || templateType;
   const currentRoundItems = sessionState?.current_round_items || EMPTY_LIST;
+  const cat5RoundKey = sessionActive && activeTemplateType === 'cat5' && currentStep.startsWith('STEP_3_COLLECT_')
+    ? `${sessionId}:${currentStep}:${sessionState?.current_round || 0}`
+    : '';
+  const cat5RoundItems = currentRoundItems.length
+    ? currentRoundItems
+    : cat5RoundItemCache.key === cat5RoundKey
+      ? cat5RoundItemCache.items
+      : EMPTY_LIST;
   const collectedPhotoIds = sessionState?.collected_photos || EMPTY_LIST;
   const collectedTextItems = sessionState?.collected_text_items || EMPTY_LIST;
+
+  useEffect(() => {
+    if (!cat5RoundKey || !currentRoundItems.length) return;
+    setCat5RoundItemCache({ key: cat5RoundKey, items: currentRoundItems });
+  }, [cat5RoundKey, currentRoundItems]);
+
   const currentRoundItemsById = useMemo(
-    () => new Map(currentRoundItems.map((item) => [item.id, item])),
-    [currentRoundItems],
+    () => new Map(cat5RoundItems.map((item) => [item.id, item])),
+    [cat5RoundItems],
   );
   const collectedItems = useMemo(
     () => collectedPhotoIds.map((photoId, index) => {
@@ -166,10 +181,10 @@ export default function ActivityGameApp() {
     }),
     [collectedPhotoIds, collectedTextItems, currentRoundItemsById, selectedAssetItemsById],
   );
-  const currentRoundHasCollectedItem = currentRoundItems.some(
+  const currentRoundHasCollectedItem = cat5RoundItems.some(
     (item) => collectedPhotoIds.includes(item.id),
   );
-  const currentRoundCollectedIndex = currentRoundItems.findIndex(
+  const currentRoundCollectedIndex = cat5RoundItems.findIndex(
     (item) => collectedPhotoIds.includes(item.id),
   );
   const showCat5Selection = sessionActive
@@ -177,13 +192,13 @@ export default function ActivityGameApp() {
     && activeTemplateType === 'cat5'
     && currentStep.startsWith('STEP_3_COLLECT_')
     && sessionState?.collection_phase !== 'detail'
-    && currentRoundItems.length > 0
+    && cat5RoundItems.length > 0
     && !currentRoundHasCollectedItem;
   const showCat5Items = sessionActive
     && !sessionFinished
     && activeTemplateType === 'cat5'
     && currentStep.startsWith('STEP_3_COLLECT_')
-    && currentRoundItems.length > 0;
+    && cat5RoundItems.length > 0;
   const showCat5CollectedItems = sessionActive
     && activeTemplateType === 'cat5'
     && (currentStep === 'STEP_4_SYNTHESIS' || currentStep.includes('CELEBRATE'))
@@ -208,8 +223,8 @@ export default function ActivityGameApp() {
   ], []);
   const inputDisabled = !sessionId || loading || turnPending || sessionFinished
     || showCat5Selection || showCat3Build || showCat1Choice;
-  const activeCat5ItemIndex = currentRoundItems.length
-    ? Math.min(cat5ItemIndex, currentRoundItems.length - 1)
+  const activeCat5ItemIndex = cat5RoundItems.length
+    ? Math.min(cat5ItemIndex, cat5RoundItems.length - 1)
     : 0;
   const displayedCat5ItemIndex = currentRoundCollectedIndex >= 0
     ? currentRoundCollectedIndex
@@ -224,12 +239,12 @@ export default function ActivityGameApp() {
     : showCat5Items
       ? collectionScreenLayout(
         baseScreenLayout,
-        currentRoundItems,
+        cat5RoundItems,
         displayedCat5ItemIndex,
         showCat5Selection ? 'device-scroll' : 'none',
         {
-          hideLabels: showCat5Selection,
-          transparentItems: showCat5Selection,
+          hideLabels: true,
+          transparentItems: true,
         },
       )
       : showCat5CollectedItems
@@ -247,7 +262,7 @@ export default function ActivityGameApp() {
 
   useEffect(() => {
     setCat5ItemIndex(0);
-  }, [currentStep, currentRoundItems.length]);
+  }, [currentStep, cat5RoundItems.length]);
 
   const handleStart = useCallback(async () => {
     if (!selectedActivity) return;
@@ -267,9 +282,9 @@ export default function ActivityGameApp() {
   }, [cat3Options.length]);
 
   const selectCat5Item = useCallback((offset) => {
-    if (!currentRoundItems.length) return;
-    setCat5ItemIndex((index) => (index + offset + currentRoundItems.length) % currentRoundItems.length);
-  }, [currentRoundItems.length]);
+    if (!cat5RoundItems.length) return;
+    setCat5ItemIndex((index) => (index + offset + cat5RoundItems.length) % cat5RoundItems.length);
+  }, [cat5RoundItems.length]);
 
   const confirmCat3Option = useCallback(async () => {
     const option = cat3Options[cat3OptionIndex] || cat3Options[0];
@@ -278,10 +293,10 @@ export default function ActivityGameApp() {
   }, [cat3OptionIndex, cat3Options, loading, sendMessage, turnPending]);
 
   const confirmCat5Item = useCallback(async (itemIndex = activeCat5ItemIndex) => {
-    const item = currentRoundItems[itemIndex] || currentRoundItems[0];
+    const item = cat5RoundItems[itemIndex] || cat5RoundItems[0];
     if (!item || loading || turnPending) return;
     await sendCollectionItem(item.id, item.label);
-  }, [activeCat5ItemIndex, currentRoundItems, loading, sendCollectionItem, turnPending]);
+  }, [activeCat5ItemIndex, cat5RoundItems, loading, sendCollectionItem, turnPending]);
 
   const selectCat1Choice = useCallback((offset) => {
     if (!cat1ChoiceItems.length) return;
@@ -306,7 +321,7 @@ export default function ActivityGameApp() {
   const crownItems = showCat3Build
     ? cat3Options.map((option) => ({ id: option.value, label: option.label }))
     : showCat5Selection
-      ? currentRoundItems.map((item) => ({ id: item.id, label: item.label, image: item.image }))
+      ? cat5RoundItems.map((item) => ({ id: item.id, label: item.label, image: item.image }))
       : showCat1Choice
         ? cat1ChoiceItems.map((item) => ({ id: item.id, label: item.label, image: item.src }))
         : libraryItems;

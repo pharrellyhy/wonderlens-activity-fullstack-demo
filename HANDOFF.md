@@ -1,23 +1,24 @@
 # Session Handoff
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
 ---
 
-## Cat5 Object Picker Label Hiding
+## Cat5 Object Picker Visual Polish
 
-**Problem**: Cat5 object-selection rounds, such as Phoneme Treasure Hunt, displayed the actual object names (`Ball`, `Cup`, `Book`) on the screen picker, leaking the answer while the child was choosing. The first label-hiding pass also exposed the source PNG white backgrounds as a square/solid selected card.
+**Problem**: Cat5 object-selection rounds, such as Phoneme Treasure Hunt, displayed actual object names (`Ball`, `Cup`, `Book`) on the screen picker and the round backdrop already contained the same selectable objects. The first label-hiding pass also exposed source PNG white backgrounds as square/solid selected cards, and the selected item could snap back to a solid white card after the correct pick.
 
-**Solution**: Cat5 collection selection now keeps object labels in state for accessibility and submission, but hides those labels from the visible screen items. Phoneme item PNGs now have real alpha backgrounds, and selection items use clipped circular transparent surfaces with a ring/halo selected state and contained object images.
+**Solution**: Cat5 collection/detail screens keep object labels in state for accessibility and submission, but hide those labels from the visible lens items until the later synthesis recap. Phoneme item PNGs have real alpha backgrounds, collection/detail items use clipped circular transparent surfaces with a ring/halo selected state, the last visible Cat5 round items are cached per collect step when the backend detail response omits `current_round_items`, and the three Phoneme round backdrops were replaced with item-free nursery/tabletop scenes.
 
-**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/index.css`, `frontend/public/activity-assets/activity_phoneme_treasure_hunt/items/*.png`, `frontend/tests/ActivityGameApp.test.jsx`, `frontend/tests/WonderLensDevice.test.jsx`, and `frontend/tests/activityAssets.test.js`.
+**Edits**: `frontend/src/activityGame/ActivityGameApp.jsx`, `frontend/src/activityGame/ActivityLens.jsx`, `frontend/src/index.css`, `frontend/public/activity-assets/activity_phoneme_treasure_hunt/items/*.png`, `frontend/public/activity-assets/activity_phoneme_treasure_hunt/round_{1,2,3}.png`, `frontend/tests/ActivityGameApp.test.jsx`, `frontend/tests/WonderLensDevice.test.jsx`, and `frontend/tests/activityAssets.test.js`.
 
-**NOT Changed**: No backend behavior, activity recipes, item IDs, or provider calls changed. Cat5 recap/detail views can still show selected labels after selection.
+**NOT Changed**: No backend behavior, activity recipes, item IDs, or provider calls changed. Cat5 synthesis/recap can still show selected labels after collection.
 
 **Verification**:
-- `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js activityAssets.test.js` - passed.
-- `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityGameLayoutCss.test.js` - passed.
-- Chrome/CDP live walkthrough reached Phoneme Treasure Hunt object selection, verified `itemSpans: []`, transparent circular item backgrounds, contained images with normal blend mode, and captured `/tmp/wonderlens-cat5-polished-alpha-picker.png`.
+- `cd frontend && npm test -- ActivityGameApp.test.jsx WonderLensDevice.test.jsx activityGameLayoutCss.test.js activityAssets.test.js` - 40 passed.
+- `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityGameLayoutCss.test.js tests/activityAssets.test.js` - passed.
+- `git diff --check` - passed.
+- Playwright browser smoke with a mocked Cat5 detail response that omits `current_round_items` verified zero visible item labels before/after selection, transparent selected backgrounds before/after selection, the item-free `round_1.png` backdrop, and captured `/tmp/wonderlens-cat5-empty-bg-picker-settled.png` plus `/tmp/wonderlens-cat5-post-pick-transparent-settled.png`.
 
 ---
 

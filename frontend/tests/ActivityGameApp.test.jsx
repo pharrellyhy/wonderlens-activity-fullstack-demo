@@ -235,6 +235,8 @@ describe('ActivityGameApp', () => {
 
     expect(vi.mocked(sendTurn)).toHaveBeenCalledWith('cat5', '', false, 'ball');
     expect(await screen.findByText('Ball works. Which B word did you choose?')).toBeTruthy();
+    expect(document.querySelector('.activity-screen-layout--transparent-items')).toBeTruthy();
+    expect(document.querySelectorAll('.activity-screen-layout__item span')).toHaveLength(0);
   });
 
   it('uses collected Cat5 item order for synthesis instead of static manifest recap items', async () => {
@@ -334,7 +336,7 @@ describe('ActivityGameApp', () => {
 
     expect(await screen.findByText('Ball works. Which B word did you choose?')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Select: Ball' })).toBeNull();
-    expect(document.querySelector('.activity-screen-layout__item.is-selected span')?.textContent).toBe('Ball');
+    expect(document.querySelectorAll('.activity-screen-layout__item span')).toHaveLength(0);
     expect(screen.getByRole('textbox', { name: 'Text response' }).disabled).toBe(false);
   });
 

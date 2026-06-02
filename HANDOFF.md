@@ -4,6 +4,24 @@ Last updated: 2026-06-02
 
 ---
 
+## Script Agent Proxy Hardening
+
+**Problem**: A remote deployment showed current activity-game UI but Script Agent turns fell back with `Connection error`, producing source-fidelity fallback text such as `Emotion Reader is ready...`. Rebuilding frontend and sourcing Google credentials does not fix this path because the Script Agent uses DashScope through the OpenAI-compatible client, not Vertex.
+
+**Solution**: The cached Script Agent DashScope client now uses a custom `httpx.AsyncClient` with `trust_env=False`, so broken `HTTP_PROXY`/`HTTPS_PROXY` shell variables cannot hijack provider calls. This matches the existing live-smoke helper behavior that already ignores proxy environment variables.
+
+**Edits**: `backend/agents/script_agent.py`, `backend/tests/test_script_agent_client.py`, and `HANDOFF.md`.
+
+**NOT Changed**: No secrets, `.env`, credential files, provider keys, frontend code, assets, activity recipes, or nginx config were changed. Other DashScope clients were not broadened in this small fix.
+
+**Verification**:
+- `cd backend && uv run pytest tests/test_script_agent_client.py -q` - 1 passed.
+- `cd backend && uv run ruff check agents/script_agent.py tests/test_script_agent_client.py` - passed.
+- `cd backend && uv run pytest tests/test_script_agent_client.py tests/test_generation_fallback.py -q` - 2 passed.
+- Local live `/api/start-activity` check for `activity_emotion_reader` passed while fake `HTTP_PROXY`/`HTTPS_PROXY` pointed at `127.0.0.1:1`; DashScope returned HTTP 200 and the dialogue was not fallback-like.
+
+---
+
 ## Cat5 Object Picker Visual Polish
 
 **Problem**: Cat5 object-selection rounds, such as Phoneme Treasure Hunt, displayed actual object names (`Ball`, `Cup`, `Book`) on the screen picker and the round backdrop already contained the same selectable objects. The first label-hiding pass also exposed source PNG white backgrounds as square/solid selected cards, the selected item could snap back to a solid white card after the correct pick, the transparent picker still had a visible circular boundary around the selected item, and the vertical picker felt less grounded on the new desk/tabletop backdrop.
@@ -182,33 +200,3 @@ Last updated: 2026-06-02
 - `git diff --check` — passed.
 - Restarted backend/frontend from this worktree with backend-root `.env` and Google credential JSON sourced for live API access.
 - Live API walkthrough passed: Career `sure -> yes -> i dont know -> send help` stayed aligned through rules, round 1, and round 2; Guided `sure -> yes` cued `Draw one big circle`; Phoneme `yes -> yes` exposed `Ball,Cup,Book` at `STEP_3_COLLECT_1`, and typed `screen` was rejected with no collected item.
-
----
-
-## Three-Activity Flow and Layout Fixes
-
-**Problem**: The corrective goal for the three representative activities still had open behavior and layout defects: Career Decision Role Play could drift on uncertainty and expose device-bound wording, Guided Drawing could act like an open-ended drawing prompt with an intrusive selector, and Phoneme Treasure Hunt could drift from B-word collection while showing a weak grid/recap experience.
-
-**Solution**: Tightened the three source recipes and text-mode speaker guardrails, added Cat1 decision-round uncertainty fast paths, normalized runtime layouts to `single`, `singleText`, `choice2`, `choice3`, and `picker`, implemented a crown-style picker for three-plus Cat5 choices, made Cat5 synthesis/celebration derive from `sessionState.collected_photos`, and moved Cat3 `Done`/`Help` into a compact scroll/select strip.
-
-**Edits**:
-- `backend/games/activity_career_decision_role_play.md`, `activity_guided_drawing.md`, `activity_phoneme_treasure_hunt.md` — aligned child-facing source intent for firefighter decisions, fixed guided drawing steps, and B-starting phoneme collection.
-- `backend/agents/script_agent.py`, `backend/agents/turn_director.py`, `backend/turn_handling/directive.py` — added text-only device-word sanitation and Cat1 decision-round uncertainty handling.
-- `frontend/src/activityGame/activityAssets.js`, `ActivityGameApp.jsx`, `ActivityLens.jsx`, `frontend/src/index.css` — added picker normalization/rendering, compact Cat3 control strip, passive Cat1 screen sync, and state-derived Cat5 recap.
-- `backend/tests/test_activity_source_fidelity.py`, `test_generation_text_mode.py`, `test_activity_text_game_cat3.py`, `frontend/tests/ActivityGameApp.test.jsx`, `WonderLensDevice.test.jsx`, `activityAssets.test.js`, `scripts/run_activity_text_smoke.py` — added focused regressions and live smoke assertions.
-
-**NOT Changed**:
-- No scene assets were regenerated or replaced.
-- The standalone activity game remains text-only: no STT, TTS, mic, camera, photo upload, or image-recognition controls were added.
-- Runtime still uses committed static assets and the existing backend provider APIs.
-
-**Verification**:
-- `cd backend && uv run pytest tests/test_activity_source_fidelity.py tests/test_generation_text_mode.py tests/test_activity_text_game_cat3.py -q` — 23 passed.
-- `cd backend && uv run ruff check agents/turn_director.py turn_handling/directive.py turn_handling/helpers.py tests/test_activity_source_fidelity.py tests/test_activity_text_game_cat3.py` — passed.
-- `cd frontend && npm test -- tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityAssets.test.js` — 27 passed.
-- `cd frontend && npx eslint src/activityGame/ActivityGameApp.jsx src/activityGame/ActivityLens.jsx src/activityGame/WonderLensDevice.jsx src/activityGame/activityAssets.js tests/ActivityGameApp.test.jsx tests/WonderLensDevice.test.jsx tests/activityAssets.test.js` — passed.
-- `cd frontend && npm run build` — passed; Vite emitted the existing large chunk warning.
-- `git diff --check` — passed.
-- Restarted backend from this worktree while sourcing the backend-root `.env` and Google credential JSON path without printing secret values.
-- `uv run python scripts/run_activity_text_smoke.py --timeout 120` — 12 passed, 0 failed.
-- Browser verification at `http://127.0.0.1:5173/?view=activities` passed for Career Decision Role Play, Guided Drawing, and Phoneme Treasure Hunt. Career used the bounded firefighter decision with no picker; Guided Drawing repeated the ears/petals step through the compact scroll/select Help path; Phoneme Treasure Hunt used B-word prompting, crown picker selection, and recapped the selected `Book`, `Banana`, `Basket` items.

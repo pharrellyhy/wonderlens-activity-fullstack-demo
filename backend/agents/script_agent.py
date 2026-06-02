@@ -246,11 +246,13 @@ class ScriptAgentError(Exception):
 @lru_cache(maxsize=1)
 def _get_client() -> AsyncOpenAI:
     settings = get_settings()
+    timeout = httpx.Timeout(60.0, connect=15.0)
     return AsyncOpenAI(
         api_key=settings.dashscope_api_key,
         base_url=settings.dashscope_base_url,
         max_retries=0,
-        timeout=httpx.Timeout(60.0, connect=15.0),
+        timeout=timeout,
+        http_client=httpx.AsyncClient(timeout=timeout, trust_env=False),
     )
 
 

@@ -416,6 +416,7 @@ id_rsa.pub
 # AI and development assistants
 .aider*
 .cursor/
+.claude
 
 # ============================================================================
 # Claude
